@@ -38,6 +38,14 @@ def format_duration(total_seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
+def format_duration_hm(total_seconds: float) -> str:
+    """Format seconds as HH:MM with minute precision."""
+    seconds = max(int(total_seconds), 0)
+    total_minutes = seconds // 60
+    hours, minutes = divmod(total_minutes, 60)
+    return f"{hours:02d}:{minutes:02d}"
+
+
 def _split_interval_by_local_boundaries(
     start_utc: datetime,
     stop_utc: datetime,
