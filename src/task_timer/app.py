@@ -578,7 +578,9 @@ class TaskTimerApp:
 
     def _setup_headers(self) -> None:
         for idx, spec in enumerate(self._column_specs()):
-            ttk.Label(self.header_frame, text=spec["header"]).grid(row=0, column=idx, padx=4, pady=2, sticky=spec["sticky"])
+            ttk.Label(self.header_frame, text=spec["header"], anchor="center").grid(
+                row=0, column=idx, padx=4, pady=2, sticky="ew"
+            )
 
     def _toggle_task(self, task_id: str) -> None:
         task = self.service.state.tasks.get(task_id)

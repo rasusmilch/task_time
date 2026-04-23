@@ -105,13 +105,18 @@ class AddTaskDialog:
         self.name_var = StringVar()
         self.notes_var = StringVar()
 
-        ttk.Label(self.window, text="Task name").grid(row=0, column=0, sticky="w")
-        ttk.Entry(self.window, textvariable=self.name_var, width=32).grid(row=0, column=1, padx=4, pady=2)
-        ttk.Label(self.window, text="Task note").grid(row=1, column=0, sticky="w")
-        ttk.Entry(self.window, textvariable=self.notes_var, width=48).grid(row=1, column=1, padx=4, pady=2)
+        self.window.grid_columnconfigure(1, weight=1)
+
+        ttk.Label(self.window, text="Task name").grid(row=0, column=0, padx=(6, 4), pady=2, sticky="w")
+        self.name_entry = ttk.Entry(self.window, textvariable=self.name_var)
+        self.name_entry.grid(row=0, column=1, padx=(0, 6), pady=2, sticky="ew")
+
+        ttk.Label(self.window, text="Task note").grid(row=1, column=0, padx=(6, 4), pady=2, sticky="w")
+        self.notes_entry = ttk.Entry(self.window, textvariable=self.notes_var)
+        self.notes_entry.grid(row=1, column=1, padx=(0, 6), pady=2, sticky="ew")
 
         button_row = ttk.Frame(self.window)
-        button_row.grid(row=2, column=0, columnspan=2, sticky="e", pady=6)
+        button_row.grid(row=2, column=0, columnspan=2, padx=6, pady=6, sticky="e")
         ttk.Button(button_row, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(button_row, text="Create", command=self._confirm).pack(side="right")
 
@@ -119,6 +124,7 @@ class AddTaskDialog:
         self.window.bind("<Escape>", lambda _event: self.window.destroy())
         self.window.wait_visibility()
         self.window.focus_force()
+        self.name_entry.focus_set()
         parent.wait_window(self.window)
 
     def _confirm(self, _event: object | None = None) -> None:
