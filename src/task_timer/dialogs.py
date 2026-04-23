@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from tkinter import Toplevel, messagebox, ttk
+from tkinter import StringVar, Toplevel, messagebox, ttk
 
 from typing import TYPE_CHECKING
+
+from .models import NOTES_MAX_LENGTH
 
 if TYPE_CHECKING:
     from .app import TaskTimerService
@@ -86,3 +88,46 @@ class EditTimeDialog:
             self.window.destroy()
         except Exception as exc:  # noqa: BLE001
             messagebox.showerror("Delete failed", str(exc))
+
+
+class AddTaskDialog:
+    """Dialog prompting for initial task name and notes."""
+
+    def __init__(self, parent: Toplevel) -> None:
+        self.confirmed = False
+        self.name = ""
+        self.notes = ""
+        self.window = Toplevel(parent)
+        self.window.title("Add Task")
+        self.window.transient(parent)
+        self.window.grab_set()
+
+        self.name_var = StringVar()
+        self.notes_var = StringVar()
+
+        ttk.Label(self.window, text="Task name").grid(row=0, column=0, sticky="w")
+        ttk.Entry(self.window, textvariable=self.name_var, width=32).grid(row=0, column=1, padx=4, pady=2)
+        ttk.Label(self.window, text="Task note").grid(row=1, column=0, sticky="w")
+        ttk.Entry(self.window, textvariable=self.notes_var, width=48).grid(row=1, column=1, padx=4, pady=2)
+
+        button_row = ttk.Frame(self.window)
+        button_row.grid(row=2, column=0, columnspan=2, sticky="e", pady=6)
+        ttk.Button(button_row, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
+        ttk.Button(button_row, text="Create", command=self._confirm).pack(side="right")
+
+        self.window.bind("<Return>", self._confirm)
+        self.window.bind("<Escape>", lambda _event: self.window.destroy())
+        self.window.wait_visibility()
+        self.window.focus_force()
+        parent.wait_window(self.window)
+
+    def _confirm(self, _event: object | None = None) -> None:
+        name = self.name_var.get().strip()
+        notes = self.notes_var.get().replace("\n", " ").strip()[:NOTES_MAX_LENGTH]
+        if not name:
+            messagebox.showerror("Name required", "Task name is required")
+            return
+        self.name = name
+        self.notes = notes
+        self.confirmed = True
+        self.window.destroy()
