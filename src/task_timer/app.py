@@ -10,14 +10,14 @@ from tkinter import StringVar, Tk, Toplevel, filedialog, messagebox, ttk
 from typing import Any
 from uuid import uuid4
 
-from .dialogs import EditTimeDialog
+from .dialogs import AddTaskDialog, EditTimeDialog
 from .exporter import build_export_text, write_export_file
 from .mini_mode import MiniModeWindow
 from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TaskState, event_dict
 from .storage import EventStorage
 from .time_utils import (
     detect_local_timezone,
-    format_duration,
+    format_duration_hm,
     interval_seconds_in_local_day,
     interval_seconds_in_local_week,
     parse_utc_z,
@@ -351,9 +351,11 @@ class TaskTimerApp:
         self.daily_var = StringVar()
         self.weekly_var = StringVar()
         self.mini_mode_window: MiniModeWindow | None = None
+        self._tick_job: str | None = None
 
         self._build_ui()
-        self.refresh_ui()
+        self.refresh_structure()
+        self.refresh_live_values()
         self._tick()
 
     def _build_ui(self) -> None:
@@ -367,10 +369,15 @@ class TaskTimerApp:
 
         self.list_frame = ttk.Frame(self.root)
         self.list_frame.pack(fill="both", expand=True, padx=8, pady=8)
+        self._setup_headers()
 
     def add_task(self) -> None:
-        task_id = self.service.create_task("New Task", "")
-        self.refresh_ui()
+        dialog = AddTaskDialog(self.root)
+        if not dialog.confirmed:
+            return
+        task_id = self.service.create_task(dialog.name, dialog.notes)
+        self.refresh_structure()
+        self.refresh_live_values()
         name_entry = self.rows.get(task_id, {}).get("name_entry")
         if name_entry:
             name_entry.focus_set()
@@ -383,86 +390,165 @@ class TaskTimerApp:
         should_reset = messagebox.askyesno("Reset after export", "Export done. Reset all non-deleted task timers?")
         if should_reset:
             self.service.reset_all_non_deleted_tasks()
-        self.refresh_ui()
+        self.refresh_structure()
+        self.refresh_live_values()
 
     def open_mini_mode(self) -> None:
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
             self.mini_mode_window.window.lift()
             return
-        self.mini_mode_window = MiniModeWindow(self.root, self.service, self.refresh_ui)
+        self.mini_mode_window = MiniModeWindow(self.root, self.service, self._after_state_change)
 
-    def refresh_ui(self) -> None:
-        for child in self.list_frame.winfo_children():
-            child.destroy()
-        self.rows.clear()
+    def refresh_structure(self) -> None:
+        active_tasks = [task for task in self.service.state.tasks.values() if not task.is_deleted]
+        active_ids = {task.task_id for task in active_tasks}
+        for task_id in list(self.rows):
+            if task_id not in active_ids:
+                row = self.rows.pop(task_id)
+                for widget_name in ("name_entry", "notes_entry", "state_label", "elapsed_label", "start_btn", "stop_btn", "reset_btn", "delete_btn", "edit_btn"):
+                    row[widget_name].destroy()
 
+        row_index = 1
+        for task in active_tasks:
+            if task.task_id not in self.rows:
+                self.rows[task.task_id] = self._create_row(task.task_id)
+            self._grid_row(self.rows[task.task_id], row_index)
+            self.refresh_row(task.task_id)
+            row_index += 1
+        if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
+            self.mini_mode_window.refresh_structure()
+
+    def _create_row(self, task_id: str) -> dict[str, Any]:
+        task = self.service.state.tasks[task_id]
+        name_var = StringVar(value=task.name)
+        notes_var = StringVar(value=task.notes)
+        row: dict[str, Any] = {
+            "name_var": name_var,
+            "notes_var": notes_var,
+            "name_dirty": False,
+            "notes_dirty": False,
+        }
+        row["name_entry"] = ttk.Entry(self.list_frame, textvariable=name_var, width=20)
+        row["notes_entry"] = ttk.Entry(self.list_frame, textvariable=notes_var, width=30)
+        row["state_label"] = ttk.Label(self.list_frame, text="")
+        row["start_btn"] = ttk.Button(self.list_frame, text="Start", command=lambda t=task_id: self._start_task(t))
+        row["stop_btn"] = ttk.Button(self.list_frame, text="Stop", command=lambda t=task_id: self._stop_task(t))
+        row["reset_btn"] = ttk.Button(self.list_frame, text="Reset", command=lambda t=task_id: self._reset_task(t))
+        row["delete_btn"] = ttk.Button(self.list_frame, text="Delete", command=lambda t=task_id: self._delete_task(t))
+        row["edit_btn"] = ttk.Button(self.list_frame, text="Edit Time", command=lambda t=task_id: self._edit_time(t))
+        row["elapsed_label"] = ttk.Label(self.list_frame, text="00:00")
+
+        row["name_entry"].bind("<KeyRelease>", lambda _event, t=task_id: self._mark_dirty(t, "name"))
+        row["notes_entry"].bind("<KeyRelease>", lambda _event, t=task_id: self._mark_dirty(t, "notes"))
+        row["name_entry"].bind("<FocusOut>", lambda _event, t=task_id: self._commit_row(t))
+        row["notes_entry"].bind("<FocusOut>", lambda _event, t=task_id: self._commit_row(t))
+        row["name_entry"].bind("<Return>", lambda _event, t=task_id: self._commit_row(t))
+        row["notes_entry"].bind("<Return>", lambda _event, t=task_id: self._commit_row(t))
+        return row
+
+    def _grid_row(self, row: dict[str, Any], row_index: int) -> None:
+        row["name_entry"].grid(row=row_index, column=0, padx=4, pady=2)
+        row["notes_entry"].grid(row=row_index, column=1, padx=4, pady=2)
+        row["state_label"].grid(row=row_index, column=2, padx=4, pady=2)
+        row["start_btn"].grid(row=row_index, column=3)
+        row["stop_btn"].grid(row=row_index, column=4)
+        row["reset_btn"].grid(row=row_index, column=5)
+        row["delete_btn"].grid(row=row_index, column=6)
+        row["edit_btn"].grid(row=row_index, column=7)
+        row["elapsed_label"].grid(row=row_index, column=8, padx=4, pady=2)
+
+    def refresh_row(self, task_id: str) -> None:
+        task = self.service.state.tasks.get(task_id)
+        row = self.rows.get(task_id)
+        if not task or not row:
+            return
+        row["state_label"].configure(text="Running" if task.is_running else "Stopped")
+        self._sync_entry_var(task_id, "name_var", "name_dirty", "name_entry", task.name)
+        self._sync_entry_var(task_id, "notes_var", "notes_dirty", "notes_entry", task.notes)
+
+    def _sync_entry_var(self, task_id: str, var_key: str, dirty_key: str, entry_key: str, state_value: str) -> None:
+        row = self.rows[task_id]
+        entry = row[entry_key]
+        has_focus = self.root.focus_get() == entry
+        if not row[dirty_key] and not has_focus and row[var_key].get() != state_value:
+            row[var_key].set(state_value)
+
+    def refresh_live_values(self) -> None:
         now_utc = utc_now()
+        for task_id, row in self.rows.items():
+            task = self.service.state.tasks.get(task_id)
+            if task and not task.is_deleted:
+                row["elapsed_label"].configure(text=format_duration_hm(self.service.task_elapsed(task, now_utc)))
         daily, weekly, _ = self.service.compute_totals(now_utc)
-        self.daily_var.set(f"Daily Total: {format_duration(daily)}")
-        self.weekly_var.set(f"Weekly Total: {format_duration(weekly)}")
+        self.daily_var.set(f"Daily Total: {format_duration_hm(daily)}")
+        self.weekly_var.set(f"Weekly Total: {format_duration_hm(weekly)}")
+        if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
+            self.mini_mode_window.refresh_live_values()
 
+    def _mark_dirty(self, task_id: str, field: str) -> None:
+        row = self.rows.get(task_id)
+        if row:
+            row[f"{field}_dirty"] = True
+
+    def _commit_row(self, task_id: str) -> None:
+        task = self.service.state.tasks.get(task_id)
+        row = self.rows.get(task_id)
+        if not task or not row:
+            return
+        name = row["name_var"].get().strip()
+        notes = row["notes_var"].get()
+        if not name:
+            row["name_var"].set(task.name)
+            row["name_dirty"] = False
+            messagebox.showerror("Name required", "Task name is required")
+            return
+        clean_notes = notes.replace("\n", " ").strip()[:NOTES_MAX_LENGTH]
+        if name != task.name or clean_notes != task.notes:
+            self.service.update_task(task_id, name, clean_notes)
+            row["name_dirty"] = False
+            row["notes_dirty"] = False
+            self.refresh_row(task_id)
+            self.refresh_live_values()
+            if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
+                self.mini_mode_window.refresh_structure()
+            return
+        row["name_dirty"] = False
+        row["notes_dirty"] = False
+
+    def _after_state_change(self) -> None:
+        self.refresh_structure()
+        self.refresh_live_values()
+
+    def _setup_headers(self) -> None:
         header = ["Name", "Notes", "State", "Start", "Stop", "Reset", "Delete", "Edit Time", "Elapsed"]
         for idx, label in enumerate(header):
             ttk.Label(self.list_frame, text=label).grid(row=0, column=idx, padx=4, pady=2, sticky="w")
 
-        row_index = 1
-        for task in self.service.state.tasks.values():
-            if task.is_deleted:
-                continue
-            name_var = StringVar(value=task.name)
-            notes_var = StringVar(value=task.notes)
-            state_text = "Running" if task.is_running else "Stopped"
-            row_style = {"background": "#dff0d8"} if task.is_running else {}
-
-            name_entry = ttk.Entry(self.list_frame, textvariable=name_var, width=20)
-            notes_entry = ttk.Entry(self.list_frame, textvariable=notes_var, width=30)
-            name_entry.grid(row=row_index, column=0, padx=4, pady=2)
-            notes_entry.grid(row=row_index, column=1, padx=4, pady=2)
-            state_label = ttk.Label(self.list_frame, text=state_text)
-            state_label.grid(row=row_index, column=2, padx=4, pady=2)
-            ttk.Button(self.list_frame, text="Start", command=lambda t=task.task_id: self._start_task(t)).grid(row=row_index, column=3)
-            ttk.Button(self.list_frame, text="Stop", command=lambda t=task.task_id: self._stop_task(t)).grid(row=row_index, column=4)
-            ttk.Button(self.list_frame, text="Reset", command=lambda t=task.task_id: self._reset_task(t)).grid(row=row_index, column=5)
-            ttk.Button(self.list_frame, text="Delete", command=lambda t=task.task_id: self._delete_task(t)).grid(row=row_index, column=6)
-            ttk.Button(self.list_frame, text="Edit Time", command=lambda t=task.task_id: self._edit_time(t)).grid(row=row_index, column=7)
-            elapsed = ttk.Label(self.list_frame, text=format_duration(self.service.task_elapsed(task, now_utc)))
-            elapsed.grid(row=row_index, column=8, padx=4, pady=2)
-
-            def _commit(_: object, t_id: str = task.task_id, nv: StringVar = name_var, vv: StringVar = notes_var) -> None:
-                self.service.update_task(t_id, nv.get(), vv.get())
-                self.refresh_ui()
-
-            name_entry.bind("<FocusOut>", _commit)
-            notes_entry.bind("<FocusOut>", _commit)
-            name_entry.bind("<Return>", _commit)
-            notes_entry.bind("<Return>", _commit)
-
-            self.rows[task.task_id] = {"elapsed": elapsed, "name_entry": name_entry}
-            row_index += 1
-
     def _start_task(self, task_id: str) -> None:
         self.service.start_task(task_id)
-        self.refresh_ui()
+        self._after_state_change()
 
     def _stop_task(self, task_id: str) -> None:
         self.service.stop_task(task_id)
-        self.refresh_ui()
+        self._after_state_change()
 
     def _reset_task(self, task_id: str) -> None:
         if messagebox.askyesno("Confirm reset", "Reset this task timer to zero?"):
             self.service.reset_task(task_id)
-            self.refresh_ui()
+            self._after_state_change()
 
     def _delete_task(self, task_id: str) -> None:
         if messagebox.askyesno("Confirm delete", "Delete this task from active view?"):
             self.service.delete_task(task_id)
-            self.refresh_ui()
+            self._after_state_change()
 
     def _edit_time(self, task_id: str) -> None:
         dialog = EditTimeDialog(self.root, self.service, task_id)
         if dialog.changed:
-            self.refresh_ui()
+            self._after_state_change()
 
     def _tick(self) -> None:
-        self.refresh_ui()
-        self.root.after(1000, self._tick)
+        self.refresh_live_values()
+        now_local = datetime.now().astimezone(self.service.local_tz)
+        next_delay_ms = max((60 - now_local.second) * 1000 - (now_local.microsecond // 1000), 1000)
+        self._tick_job = self.root.after(next_delay_ms, self._tick)
