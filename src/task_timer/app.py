@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import tkinter as tk
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,6 +25,9 @@ from .time_utils import (
     to_utc_z,
     utc_now,
 )
+
+RUNNING_COLOR = "#1f9d55"
+STOPPED_COLOR = "#c62828"
 
 
 class TaskTimerService:
@@ -396,8 +400,10 @@ class TaskTimerApp:
     def open_mini_mode(self) -> None:
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
             self.mini_mode_window.window.lift()
+            self.root.iconify()
             return
         self.mini_mode_window = MiniModeWindow(self.root, self.service, self._after_state_change)
+        self.root.iconify()
 
     def refresh_structure(self) -> None:
         active_tasks = [task for task in self.service.state.tasks.values() if not task.is_deleted]
@@ -405,8 +411,7 @@ class TaskTimerApp:
         for task_id in list(self.rows):
             if task_id not in active_ids:
                 row = self.rows.pop(task_id)
-                for widget_name in ("name_entry", "notes_entry", "state_label", "elapsed_label", "start_btn", "stop_btn", "reset_btn", "delete_btn", "edit_btn"):
-                    row[widget_name].destroy()
+                row["container"].destroy()
 
         row_index = 1
         for task in active_tasks:
@@ -422,21 +427,31 @@ class TaskTimerApp:
         task = self.service.state.tasks[task_id]
         name_var = StringVar(value=task.name)
         notes_var = StringVar(value=task.notes)
+        container = tk.Frame(self.list_frame, bd=1, relief="solid", padx=2, pady=2)
         row: dict[str, Any] = {
             "name_var": name_var,
             "notes_var": notes_var,
             "name_dirty": False,
             "notes_dirty": False,
+            "container": container,
         }
-        row["name_entry"] = ttk.Entry(self.list_frame, textvariable=name_var, width=20)
-        row["notes_entry"] = ttk.Entry(self.list_frame, textvariable=notes_var, width=30)
-        row["state_label"] = ttk.Label(self.list_frame, text="")
-        row["start_btn"] = ttk.Button(self.list_frame, text="Start", command=lambda t=task_id: self._start_task(t))
-        row["stop_btn"] = ttk.Button(self.list_frame, text="Stop", command=lambda t=task_id: self._stop_task(t))
-        row["reset_btn"] = ttk.Button(self.list_frame, text="Reset", command=lambda t=task_id: self._reset_task(t))
-        row["delete_btn"] = ttk.Button(self.list_frame, text="Delete", command=lambda t=task_id: self._delete_task(t))
-        row["edit_btn"] = ttk.Button(self.list_frame, text="Edit Time", command=lambda t=task_id: self._edit_time(t))
-        row["elapsed_label"] = ttk.Label(self.list_frame, text="00:00")
+        row["name_entry"] = ttk.Entry(container, textvariable=name_var, width=20)
+        row["notes_entry"] = ttk.Entry(container, textvariable=notes_var, width=30)
+        row["state_label"] = tk.Label(container, text="", width=9)
+        row["toggle_btn"] = ttk.Button(container, text="Start", command=lambda t=task_id: self._toggle_task(t))
+        row["reset_btn"] = ttk.Button(container, text="Reset", command=lambda t=task_id: self._reset_task(t))
+        row["delete_btn"] = ttk.Button(container, text="Delete", command=lambda t=task_id: self._delete_task(t))
+        row["edit_btn"] = ttk.Button(container, text="Edit Time", command=lambda t=task_id: self._edit_time(t))
+        row["elapsed_label"] = tk.Label(container, text="00:00", width=7)
+
+        row["name_entry"].grid(row=0, column=0, padx=4, pady=2)
+        row["notes_entry"].grid(row=0, column=1, padx=4, pady=2)
+        row["state_label"].grid(row=0, column=2, padx=4, pady=2)
+        row["toggle_btn"].grid(row=0, column=3)
+        row["reset_btn"].grid(row=0, column=4)
+        row["delete_btn"].grid(row=0, column=5)
+        row["edit_btn"].grid(row=0, column=6)
+        row["elapsed_label"].grid(row=0, column=7, padx=4, pady=2)
 
         row["name_entry"].bind("<KeyRelease>", lambda _event, t=task_id: self._mark_dirty(t, "name"))
         row["notes_entry"].bind("<KeyRelease>", lambda _event, t=task_id: self._mark_dirty(t, "notes"))
@@ -447,22 +462,20 @@ class TaskTimerApp:
         return row
 
     def _grid_row(self, row: dict[str, Any], row_index: int) -> None:
-        row["name_entry"].grid(row=row_index, column=0, padx=4, pady=2)
-        row["notes_entry"].grid(row=row_index, column=1, padx=4, pady=2)
-        row["state_label"].grid(row=row_index, column=2, padx=4, pady=2)
-        row["start_btn"].grid(row=row_index, column=3)
-        row["stop_btn"].grid(row=row_index, column=4)
-        row["reset_btn"].grid(row=row_index, column=5)
-        row["delete_btn"].grid(row=row_index, column=6)
-        row["edit_btn"].grid(row=row_index, column=7)
-        row["elapsed_label"].grid(row=row_index, column=8, padx=4, pady=2)
+        row["container"].grid(row=row_index, column=0, columnspan=8, padx=2, pady=2, sticky="ew")
 
     def refresh_row(self, task_id: str) -> None:
         task = self.service.state.tasks.get(task_id)
         row = self.rows.get(task_id)
         if not task or not row:
             return
-        row["state_label"].configure(text="Running" if task.is_running else "Stopped")
+        is_running = task.is_running
+        state_text = "Running" if is_running else "Stopped"
+        state_color = RUNNING_COLOR if is_running else STOPPED_COLOR
+        row["state_label"].configure(text=state_text, bg=state_color, fg="white")
+        row["elapsed_label"].configure(fg=state_color)
+        row["toggle_btn"].configure(text="Stop" if is_running else "Start")
+        row["container"].configure(bg="#e9f7ef" if is_running else "#fdecea")
         self._sync_entry_var(task_id, "name_var", "name_dirty", "name_entry", task.name)
         self._sync_entry_var(task_id, "notes_var", "notes_dirty", "notes_entry", task.notes)
 
@@ -479,6 +492,8 @@ class TaskTimerApp:
             task = self.service.state.tasks.get(task_id)
             if task and not task.is_deleted:
                 row["elapsed_label"].configure(text=format_duration_hm(self.service.task_elapsed(task, now_utc)))
+                row["toggle_btn"].configure(text="Stop" if task.is_running else "Start")
+                self.refresh_row(task_id)
         daily, weekly, _ = self.service.compute_totals(now_utc)
         self.daily_var.set(f"Daily Total: {format_duration_hm(daily)}")
         self.weekly_var.set(f"Weekly Total: {format_duration_hm(weekly)}")
@@ -520,16 +535,18 @@ class TaskTimerApp:
         self.refresh_live_values()
 
     def _setup_headers(self) -> None:
-        header = ["Name", "Notes", "State", "Start", "Stop", "Reset", "Delete", "Edit Time", "Elapsed"]
+        header = ["Name", "Notes", "State", "Action", "Reset", "Delete", "Edit Time", "Elapsed"]
         for idx, label in enumerate(header):
             ttk.Label(self.list_frame, text=label).grid(row=0, column=idx, padx=4, pady=2, sticky="w")
 
-    def _start_task(self, task_id: str) -> None:
-        self.service.start_task(task_id)
-        self._after_state_change()
-
-    def _stop_task(self, task_id: str) -> None:
-        self.service.stop_task(task_id)
+    def _toggle_task(self, task_id: str) -> None:
+        task = self.service.state.tasks.get(task_id)
+        if not task:
+            return
+        if task.is_running:
+            self.service.stop_task(task_id)
+        else:
+            self.service.start_task(task_id)
         self._after_state_change()
 
     def _reset_task(self, task_id: str) -> None:
