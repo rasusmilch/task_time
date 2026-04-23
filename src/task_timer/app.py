@@ -378,9 +378,31 @@ class TaskTimerApp:
         ttk.Label(toolbar, textvariable=self.daily_var).pack(side="right", padx=4)
         ttk.Label(toolbar, textvariable=self.weekly_var).pack(side="right", padx=4)
 
-        self.list_frame = ttk.Frame(self.root)
-        self.list_frame.pack(fill="both", expand=True, padx=8, pady=8)
+        self.table_frame = ttk.Frame(self.root)
+        self.table_frame.pack(fill="both", expand=True, padx=8, pady=8)
+        self.header_frame = ttk.Frame(self.table_frame)
+        self.header_frame.pack(fill="x")
+        self.rows_frame = ttk.Frame(self.table_frame)
+        self.rows_frame.pack(fill="both", expand=True, pady=(2, 0))
+        self._configure_table_columns(self.header_frame)
+        self.rows_frame.grid_columnconfigure(0, weight=1)
         self._setup_headers()
+
+    def _column_specs(self) -> list[dict[str, Any]]:
+        return [
+            {"key": "name", "header": "Name", "minsize": 160, "sticky": "w"},
+            {"key": "notes", "header": "Notes", "minsize": 230, "sticky": "w"},
+            {"key": "state", "header": "State", "minsize": 90, "sticky": "ew"},
+            {"key": "action", "header": "Action", "minsize": 80, "sticky": "ew"},
+            {"key": "reset", "header": "Reset", "minsize": 80, "sticky": "ew"},
+            {"key": "delete", "header": "Delete", "minsize": 80, "sticky": "ew"},
+            {"key": "edit_time", "header": "Edit Time", "minsize": 90, "sticky": "ew"},
+            {"key": "elapsed", "header": "Elapsed", "minsize": 80, "sticky": "e"},
+        ]
+
+    def _configure_table_columns(self, frame: tk.Misc) -> None:
+        for idx, spec in enumerate(self._column_specs()):
+            frame.grid_columnconfigure(idx, minsize=spec["minsize"])
 
     def add_task(self) -> None:
         dialog = AddTaskDialog(self.root)
@@ -446,7 +468,8 @@ class TaskTimerApp:
         task = self.service.state.tasks[task_id]
         name_var = StringVar(value=task.name)
         notes_var = StringVar(value=task.notes)
-        container = tk.Frame(self.list_frame, bd=1, relief="solid", padx=2, pady=2)
+        container = tk.Frame(self.rows_frame, bd=1, relief="solid", padx=2, pady=2)
+        self._configure_table_columns(container)
         row: dict[str, Any] = {
             "name_var": name_var,
             "notes_var": notes_var,
@@ -463,14 +486,14 @@ class TaskTimerApp:
         row["edit_btn"] = ttk.Button(container, text="Edit Time", command=lambda t=task_id: self._edit_time(t))
         row["elapsed_label"] = tk.Label(container, text="00:00", width=7)
 
-        row["name_entry"].grid(row=0, column=0, padx=4, pady=2)
-        row["notes_entry"].grid(row=0, column=1, padx=4, pady=2)
-        row["state_label"].grid(row=0, column=2, padx=4, pady=2)
-        row["toggle_btn"].grid(row=0, column=3)
-        row["reset_btn"].grid(row=0, column=4)
-        row["delete_btn"].grid(row=0, column=5)
-        row["edit_btn"].grid(row=0, column=6)
-        row["elapsed_label"].grid(row=0, column=7, padx=4, pady=2)
+        row["name_entry"].grid(row=0, column=0, padx=4, pady=2, sticky="ew")
+        row["notes_entry"].grid(row=0, column=1, padx=4, pady=2, sticky="ew")
+        row["state_label"].grid(row=0, column=2, padx=4, pady=2, sticky="ew")
+        row["toggle_btn"].grid(row=0, column=3, padx=2, pady=2, sticky="ew")
+        row["reset_btn"].grid(row=0, column=4, padx=2, pady=2, sticky="ew")
+        row["delete_btn"].grid(row=0, column=5, padx=2, pady=2, sticky="ew")
+        row["edit_btn"].grid(row=0, column=6, padx=2, pady=2, sticky="ew")
+        row["elapsed_label"].grid(row=0, column=7, padx=4, pady=2, sticky="e")
 
         row["name_entry"].bind("<KeyRelease>", lambda _event, t=task_id: self._mark_dirty(t, "name"))
         row["notes_entry"].bind("<KeyRelease>", lambda _event, t=task_id: self._mark_dirty(t, "notes"))
@@ -481,7 +504,7 @@ class TaskTimerApp:
         return row
 
     def _grid_row(self, row: dict[str, Any], row_index: int) -> None:
-        row["container"].grid(row=row_index, column=0, columnspan=8, padx=2, pady=2, sticky="ew")
+        row["container"].grid(row=row_index, column=0, padx=2, pady=2, sticky="ew")
 
     def refresh_row(self, task_id: str) -> None:
         task = self.service.state.tasks.get(task_id)
@@ -554,9 +577,8 @@ class TaskTimerApp:
         self.refresh_live_values()
 
     def _setup_headers(self) -> None:
-        header = ["Name", "Notes", "State", "Action", "Reset", "Delete", "Edit Time", "Elapsed"]
-        for idx, label in enumerate(header):
-            ttk.Label(self.list_frame, text=label).grid(row=0, column=idx, padx=4, pady=2, sticky="w")
+        for idx, spec in enumerate(self._column_specs()):
+            ttk.Label(self.header_frame, text=spec["header"]).grid(row=0, column=idx, padx=4, pady=2, sticky=spec["sticky"])
 
     def _toggle_task(self, task_id: str) -> None:
         task = self.service.state.tasks.get(task_id)
