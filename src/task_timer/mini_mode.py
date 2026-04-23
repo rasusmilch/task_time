@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 from tkinter import StringVar, Toplevel, ttk
 from typing import Callable
@@ -20,7 +21,7 @@ class MiniModeWindow:
         self.refresh_callback = refresh_callback
         self.window = Toplevel(parent)
         self.window.title("Task Timer Mini")
-        self.window.attributes("-topmost", True)
+        self._configure_window_chrome()
 
         self.task_name_var = StringVar(value="No task selected")
         self.elapsed_var = StringVar(value="00:00")
@@ -44,6 +45,18 @@ class MiniModeWindow:
 
         self.refresh_structure()
         self.refresh_live_values()
+
+    def _configure_window_chrome(self) -> None:
+        self.window.attributes("-topmost", True)
+        self.window.protocol("WM_DELETE_WINDOW", self.restore_main)
+        if not sys.platform.startswith("win"):
+            return
+        try:
+            self.window.wm_attributes("-toolwindow", True)
+        except tk.TclError:
+            # Some Tk/Windows combinations do not support tool-window chrome.
+            # Keep default frame and rely on WM_DELETE_WINDOW override for safe close behavior.
+            pass
 
     def _resolve_display_task_id(self) -> str | None:
         tasks = [task for task in self.service.state.tasks.values() if not task.is_deleted]

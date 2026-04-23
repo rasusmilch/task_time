@@ -2,6 +2,7 @@ from datetime import timezone
 from types import SimpleNamespace
 
 from task_timer.app import STOPPED_COLOR, TaskTimerApp, TaskTimerService
+from task_timer.models import TaskState
 from task_timer.mini_mode import MiniModeWindow
 from task_timer.storage import EventStorage
 from task_timer.time_utils import format_duration_hm
@@ -139,6 +140,69 @@ def test_mini_mode_resolves_running_then_recent_task(tmp_path) -> None:
 
     service.start_task(first)
     assert mini._resolve_display_task_id() == first
+
+
+def test_display_order_uses_casefold_sort_with_stable_task_id_tiebreak(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_b = service.create_task("beta", "")
+    task_a = service.create_task(" Alpha ", "")
+    task_a2 = service.create_task("alpha", "")
+
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.sort_alpha_var = SimpleNamespace(get=lambda: True)
+
+    ordered = TaskTimerApp._get_active_tasks_in_display_order(app)
+    expected = sorted(
+        [service.state.tasks[task_b], service.state.tasks[task_a], service.state.tasks[task_a2]],
+        key=lambda task: (task.name.strip().casefold(), task.task_id),
+    )
+    assert [task.task_id for task in ordered] == [task.task_id for task in expected]
+
+
+def test_commit_row_refreshes_structure_for_rename_sorting(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("Beta", "")
+    task: TaskState = service.state.tasks[task_id]
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.mini_mode_window = None
+    calls: list[str] = []
+    app.refresh_structure = lambda: calls.append("structure")
+    app.refresh_live_values = lambda: calls.append("live")
+    app.rows = {
+        task_id: {
+            "name_var": SimpleNamespace(get=lambda: "Alpha", set=lambda _v: None),
+            "notes_var": SimpleNamespace(get=lambda: task.notes),
+            "name_dirty": True,
+            "notes_dirty": False,
+        }
+    }
+
+    TaskTimerApp._commit_row(app, task_id)
+
+    assert calls == ["structure", "live"]
+    assert service.state.tasks[task_id].name == "Alpha"
+
+
+def test_mini_mode_close_routes_to_restore_main() -> None:
+    calls: list[str] = []
+
+    class _Window:
+        def attributes(self, *_args) -> None:
+            return None
+
+        def protocol(self, _name: str, callback) -> None:
+            self.callback = callback
+
+    mini = MiniModeWindow.__new__(MiniModeWindow)
+    mini.window = _Window()
+    mini.restore_main = lambda: calls.append("restore")
+
+    MiniModeWindow._configure_window_chrome(mini)
+    mini.window.callback()
+
+    assert calls == ["restore"]
 
 
 def _local_dt(value: str):
