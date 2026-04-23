@@ -15,6 +15,7 @@ from .dialogs import AddTaskDialog, EditTimeDialog
 from .exporter import build_export_text, write_export_file
 from .mini_mode import MiniModeWindow
 from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TaskState, event_dict
+from .settings import UISettings, UISettingsStore
 from .storage import EventStorage
 from .time_utils import (
     detect_local_timezone,
@@ -354,6 +355,9 @@ class TaskTimerApp:
         self.rows: dict[str, dict[str, Any]] = {}
         self.daily_var = StringVar()
         self.weekly_var = StringVar()
+        self.ui_settings_store = UISettingsStore(self.service.storage.data_dir)
+        self.ui_settings = self.ui_settings_store.load()
+        self.sort_alpha_var = tk.BooleanVar(value=self.ui_settings.sort_alphabetically)
         self.mini_mode_window: MiniModeWindow | None = None
         self._tick_job: str | None = None
 
@@ -368,6 +372,9 @@ class TaskTimerApp:
         ttk.Button(toolbar, text="Add Task", command=self.add_task).pack(side="left")
         ttk.Button(toolbar, text="Export", command=self.export).pack(side="left", padx=4)
         ttk.Button(toolbar, text="Mini Mode", command=self.open_mini_mode).pack(side="left", padx=4)
+        ttk.Checkbutton(toolbar, text="Sort A–Z", variable=self.sort_alpha_var, command=self._on_sort_toggle).pack(
+            side="left", padx=(8, 0)
+        )
         ttk.Label(toolbar, textvariable=self.daily_var).pack(side="right", padx=4)
         ttk.Label(toolbar, textvariable=self.weekly_var).pack(side="right", padx=4)
 
@@ -406,7 +413,7 @@ class TaskTimerApp:
         self.root.iconify()
 
     def refresh_structure(self) -> None:
-        active_tasks = [task for task in self.service.state.tasks.values() if not task.is_deleted]
+        active_tasks = self._get_active_tasks_in_display_order()
         active_ids = {task.task_id for task in active_tasks}
         for task_id in list(self.rows):
             if task_id not in active_ids:
@@ -422,6 +429,18 @@ class TaskTimerApp:
             row_index += 1
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
             self.mini_mode_window.refresh_structure()
+
+    def _get_active_tasks_in_display_order(self) -> list[TaskState]:
+        active_tasks = [task for task in self.service.state.tasks.values() if not task.is_deleted]
+        if not self.sort_alpha_var.get():
+            return active_tasks
+        return sorted(active_tasks, key=lambda task: (task.name.strip().casefold(), task.task_id))
+
+    def _on_sort_toggle(self) -> None:
+        self.ui_settings = UISettings(sort_alphabetically=self.sort_alpha_var.get())
+        self.ui_settings_store.save(self.ui_settings)
+        self.refresh_structure()
+        self.refresh_live_values()
 
     def _create_row(self, task_id: str) -> dict[str, Any]:
         task = self.service.state.tasks[task_id]
@@ -522,7 +541,7 @@ class TaskTimerApp:
             self.service.update_task(task_id, name, clean_notes)
             row["name_dirty"] = False
             row["notes_dirty"] = False
-            self.refresh_row(task_id)
+            self.refresh_structure()
             self.refresh_live_values()
             if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
                 self.mini_mode_window.refresh_structure()
