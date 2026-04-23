@@ -2,37 +2,18 @@
 
 from __future__ import annotations
 
+import tkinter as tk
 from tkinter import StringVar, Toplevel, ttk
 from typing import Callable
 
 from .time_utils import format_duration_hm, utc_now
 
-
-def build_task_choices(tasks: list[object]) -> tuple[list[str], dict[str, str], dict[str, str]]:
-    """Build display choices and UUID mappings for mini mode."""
-    labels: list[str] = []
-    label_to_id: dict[str, str] = {}
-    id_to_label: dict[str, str] = {}
-    name_counts: dict[str, int] = {}
-    for task in tasks:
-        name = task.name.strip() or "Untitled Task"
-        name_counts[name] = name_counts.get(name, 0) + 1
-    seen_name_counts: dict[str, int] = {}
-    for task in tasks:
-        name = task.name.strip() or "Untitled Task"
-        if name_counts[name] > 1:
-            seen_name_counts[name] = seen_name_counts.get(name, 0) + 1
-            label = f"{name} ({task.task_id[-6:]})"
-        else:
-            label = name
-        labels.append(label)
-        label_to_id[label] = task.task_id
-        id_to_label[task.task_id] = label
-    return labels, label_to_id, id_to_label
+RUNNING_COLOR = "#1f9d55"
+STOPPED_COLOR = "#c62828"
 
 
 class MiniModeWindow:
-    """Compact always-on-top mini window."""
+    """Compact always-on-top mini window for current task context."""
 
     def __init__(self, parent: Toplevel, service: object, refresh_callback: Callable[[], None]) -> None:
         self.service = service
@@ -40,27 +21,49 @@ class MiniModeWindow:
         self.window = Toplevel(parent)
         self.window.title("Task Timer Mini")
         self.window.attributes("-topmost", True)
-        self.selected_task_label = StringVar()
-        self.status_var = StringVar()
-        self.elapsed_var = StringVar()
-        self._label_to_id: dict[str, str] = {}
-        self._id_to_label: dict[str, str] = {}
 
-        ttk.Label(self.window, text="Task").grid(row=0, column=0)
-        self.combo = ttk.Combobox(self.window, textvariable=self.selected_task_label, values=(), width=36, state="readonly")
-        self.combo.grid(row=0, column=1, padx=4, pady=2)
-        ttk.Label(self.window, textvariable=self.status_var).grid(row=1, column=0, columnspan=2)
-        ttk.Label(self.window, textvariable=self.elapsed_var).grid(row=2, column=0, columnspan=2)
-        ttk.Button(self.window, text="Start/Stop", command=self.toggle).grid(row=3, column=0)
-        ttk.Button(self.window, text="Show Main", command=self.restore_main).grid(row=3, column=1)
+        self.task_name_var = StringVar(value="No task selected")
+        self.elapsed_var = StringVar(value="00:00")
+        self.status_var = StringVar(value="Idle")
+        self._display_task_id: str | None = None
+
+        wrapper = tk.Frame(self.window, padx=8, pady=8)
+        wrapper.pack(fill="both", expand=True)
+
+        self.status_label = tk.Label(wrapper, textvariable=self.status_var, fg="white", width=12)
+        self.status_label.pack(fill="x", pady=(0, 4))
+        ttk.Label(wrapper, textvariable=self.task_name_var).pack(fill="x")
+        self.elapsed_label = tk.Label(wrapper, textvariable=self.elapsed_var, font=("TkDefaultFont", 13, "bold"))
+        self.elapsed_label.pack(fill="x", pady=(4, 8))
+
+        actions = ttk.Frame(wrapper)
+        actions.pack(fill="x")
+        self.toggle_btn = ttk.Button(actions, text="Start", command=self.toggle)
+        self.toggle_btn.pack(side="left", expand=True, fill="x")
+        ttk.Button(actions, text="Show Main", command=self.restore_main).pack(side="left", padx=(6, 0), expand=True, fill="x")
+
         self.refresh_structure()
         self.refresh_live_values()
 
+    def _resolve_display_task_id(self) -> str | None:
+        tasks = [task for task in self.service.state.tasks.values() if not task.is_deleted]
+        if not tasks:
+            return None
+        if self.service.state.running_task_id and self.service.state.running_task_id in self.service.state.tasks:
+            running_task = self.service.state.tasks[self.service.state.running_task_id]
+            if not running_task.is_deleted:
+                return running_task.task_id
+        most_recent = max(tasks, key=lambda task: task.updated_at_utc)
+        return most_recent.task_id
+
     def toggle(self) -> None:
-        task_id = self.selected_task_id()
+        task_id = self._display_task_id
         if not task_id:
             return
-        if self.service.state.running_task_id == task_id:
+        task = self.service.state.tasks.get(task_id)
+        if not task:
+            return
+        if task.is_running:
             self.service.stop_task(task_id)
         else:
             self.service.start_task(task_id)
@@ -69,28 +72,28 @@ class MiniModeWindow:
     def restore_main(self) -> None:
         self.window.master.deiconify()
         self.window.master.lift()
-
-    def selected_task_id(self) -> str:
-        return self._label_to_id.get(self.selected_task_label.get().strip(), "")
+        self.window.destroy()
 
     def refresh_structure(self) -> None:
-        tasks = [task for task in self.service.state.tasks.values() if not task.is_deleted]
-        labels, self._label_to_id, self._id_to_label = build_task_choices(tasks)
-        self.combo["values"] = labels
-        preferred_id = self.service.state.running_task_id or self.selected_task_id()
-        if preferred_id and preferred_id in self._id_to_label:
-            self.selected_task_label.set(self._id_to_label[preferred_id])
-        elif labels:
-            self.selected_task_label.set(labels[0])
-        else:
-            self.selected_task_label.set("")
+        self._display_task_id = self._resolve_display_task_id()
 
     def refresh_live_values(self) -> None:
-        task_id = self.selected_task_id()
-        task = self.service.state.tasks.get(task_id)
-        if task:
-            self.status_var.set(f"{task.name} - {'Running' if task.is_running else 'Stopped'}")
-            self.elapsed_var.set(format_duration_hm(self.service.task_elapsed(task, utc_now())))
-        else:
-            self.status_var.set("No task selected")
+        self.refresh_structure()
+        task = self.service.state.tasks.get(self._display_task_id or "") if self._display_task_id else None
+        if not task:
+            self.status_var.set("Idle")
+            self.task_name_var.set("No tasks available")
             self.elapsed_var.set("00:00")
+            self.toggle_btn.state(["disabled"])
+            self.status_label.configure(bg=STOPPED_COLOR)
+            self.elapsed_label.configure(fg=STOPPED_COLOR)
+            return
+        is_running = task.is_running
+        color = RUNNING_COLOR if is_running else STOPPED_COLOR
+        self.status_var.set("Running" if is_running else "Stopped")
+        self.task_name_var.set(task.name.strip() or "Untitled Task")
+        self.elapsed_var.set(format_duration_hm(self.service.task_elapsed(task, utc_now())))
+        self.toggle_btn.configure(text="Stop" if is_running else "Start")
+        self.toggle_btn.state(["!disabled"])
+        self.status_label.configure(bg=color)
+        self.elapsed_label.configure(fg=color)
