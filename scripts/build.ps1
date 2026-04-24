@@ -129,16 +129,28 @@ try {
     if ($OneFile) {
         Write-Host 'Building optional onefile executable ...'
         & $VenvPythonExe -m PyInstaller --noconfirm --clean --windowed --name 'Task Timer' --paths src --onefile $LauncherPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "PyInstaller onefile build failed with exit code $LASTEXITCODE."
+        }
+
         $OutputPath = Join-Path $DistPath 'Task Timer.exe'
     }
     else {
         Write-Host 'Building default onedir distribution via spec ...'
         & $VenvPythonExe -m PyInstaller --noconfirm --clean $SpecPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "PyInstaller onedir build failed with exit code $LASTEXITCODE."
+        }
+
         $OutputPath = Join-Path $DistPath 'Task Timer'
     }
 }
 finally {
     Pop-Location
+}
+
+if (-not (Test-Path $OutputPath)) {
+    throw "Build succeeded but expected output was not found at $OutputPath"
 }
 
 Write-Host ''
