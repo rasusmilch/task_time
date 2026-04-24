@@ -48,6 +48,17 @@ By default data is stored in `~/.task_timer_data`:
 - `archives/*.jsonl`: immutable sealed segments.
 - `state_snapshot.json`: derived state for fast startup.
 - `log_manifest.json`: segment index/metadata.
+- `backup_settings.json`: tunable GFS backup retention values.
+- `backups/sons|fathers|grandfathers`: managed zip backups.
+
+Default backup settings:
+
+- `son_keep_count: 14`
+- `father_keep_count: 8`
+- `grandfather_keep_count: 12`
+- `auto_backup_before_risky_operations: true`
+- `auto_backup_on_app_start: false`
+- `auto_backup_min_interval_minutes: 60`
 
 ## Rotation and archives
 

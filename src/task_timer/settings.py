@@ -6,6 +6,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(slots=True)
@@ -35,6 +36,68 @@ class UISettingsStore:
         self._atomic_write_json({"sort_alphabetically": settings.sort_alphabetically})
 
     def _atomic_write_json(self, payload: dict[str, bool]) -> None:
+        temp_path = self.path.with_suffix(self.path.suffix + ".tmp")
+        with temp_path.open("w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, ensure_ascii=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temp_path.replace(self.path)
+
+
+@dataclass(slots=True)
+class BackupSettings:
+    son_keep_count: int = 14
+    father_keep_count: int = 8
+    grandfather_keep_count: int = 12
+    auto_backup_before_risky_operations: bool = True
+    auto_backup_on_app_start: bool = False
+    auto_backup_min_interval_minutes: int = 60
+
+
+class BackupSettingsStore:
+    """Read/write backup_settings.json with safe defaults."""
+
+    def __init__(self, data_dir: Path) -> None:
+        self.path = data_dir / "backup_settings.json"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+    def load(self) -> BackupSettings:
+        if not self.path.exists():
+            return BackupSettings()
+        try:
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return BackupSettings()
+        return BackupSettings(
+            son_keep_count=self._positive_int(payload.get("son_keep_count"), 14),
+            father_keep_count=self._positive_int(payload.get("father_keep_count"), 8),
+            grandfather_keep_count=self._positive_int(payload.get("grandfather_keep_count"), 12),
+            auto_backup_before_risky_operations=bool(payload.get("auto_backup_before_risky_operations", True)),
+            auto_backup_on_app_start=bool(payload.get("auto_backup_on_app_start", False)),
+            auto_backup_min_interval_minutes=self._positive_int(payload.get("auto_backup_min_interval_minutes"), 60),
+        )
+
+    def save(self, settings: BackupSettings) -> None:
+        self._atomic_write_json(
+            {
+                "son_keep_count": settings.son_keep_count,
+                "father_keep_count": settings.father_keep_count,
+                "grandfather_keep_count": settings.grandfather_keep_count,
+                "auto_backup_before_risky_operations": settings.auto_backup_before_risky_operations,
+                "auto_backup_on_app_start": settings.auto_backup_on_app_start,
+                "auto_backup_min_interval_minutes": settings.auto_backup_min_interval_minutes,
+            }
+        )
+
+    @staticmethod
+    def _positive_int(value: Any, fallback: int) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return fallback
+        return parsed if parsed > 0 else fallback
+
+    def _atomic_write_json(self, payload: dict[str, Any]) -> None:
         temp_path = self.path.with_suffix(self.path.suffix + ".tmp")
         with temp_path.open("w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, ensure_ascii=False)

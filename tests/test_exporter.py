@@ -1,5 +1,7 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+import pytest
 
 from task_timer.app import TaskTimerService
 from task_timer.models import event_dict
@@ -322,3 +324,49 @@ def test_reset_after_export_still_resets_and_keeps_checkpoint_behavior(tmp_path:
     assert service.task_elapsed(service.state.tasks[task_id], parse_utc_z("2026-01-02T00:00:00Z")) == 0
     checkpoints = [e for e in service.events if e["task_id"] == "__app__" and e["event_type"] == "export_checkpoint"]
     assert checkpoints[-1]["payload"]["reset_after"] is True
+
+
+def test_manual_interval_before_checkpoint_rejected(tmp_path: Path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("Task A", "")
+    service._append("__app__", "export_checkpoint", {"path": "x.txt"})  # noqa: SLF001
+    checkpoint = service.find_last_export_checkpoint_utc()
+    assert checkpoint is not None
+    start = checkpoint.astimezone(timezone.utc) - timedelta(hours=2)
+    stop = checkpoint.astimezone(timezone.utc) - timedelta(hours=1)
+    try:
+        service.add_manual_interval(task_id, start.astimezone(), stop.astimezone(), "too old")
+    except ValueError as exc:
+        assert "active export checkpoint" in str(exc)
+    else:
+        raise AssertionError("Expected rejection")
+
+
+def test_manual_duration_checkpoint_validation_and_audit_line(tmp_path: Path, monkeypatch) -> None:
+    storage = EventStorage(tmp_path)
+    service = TaskTimerService(storage)
+    task_id = service.create_task("Task A", "")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: parse_utc_z("2026-01-01T00:00:00Z"))
+    service._append("__app__", "export_checkpoint", {"path": "x.txt"})  # noqa: SLF001
+    checkpoint_date = service.find_last_export_checkpoint_utc().astimezone(service.local_tz).date()  # type: ignore[union-attr]
+    with pytest.raises(ValueError):
+        service.add_manual_duration(task_id, checkpoint_date - timedelta(days=1), 1800, "too old")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: parse_utc_z("2026-01-10T01:00:00Z"))
+    service.add_manual_duration(task_id, checkpoint_date, 5400, "forgot timer")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: parse_utc_z("2026-01-10T02:00:00Z"))
+    out = tmp_path / "out.txt"
+    service.export_report(out, reset_after=False)
+    text = out.read_text(encoding="utf-8")
+    assert "Added manual duration to" in text
+
+
+def test_voiding_latest_checkpoint_reverts_to_previous(tmp_path: Path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    service._append("__app__", "export_checkpoint", {"path": "a.txt"})  # noqa: SLF001
+    first = service.find_active_export_checkpoint()
+    service._append("__app__", "export_checkpoint", {"path": "b.txt"})  # noqa: SLF001
+    second = service.find_active_export_checkpoint()
+    assert second and second["event_id"] != first["event_id"]  # type: ignore[index]
+    service.void_last_export_checkpoint("forgot entry")
+    active = service.find_active_export_checkpoint()
+    assert active and active["event_id"] == first["event_id"]  # type: ignore[index]
