@@ -12,10 +12,32 @@ A local-only Windows-friendly desktop task time tracker built with Python + tkin
 - Resets are logical cut lines for *current* totals (history is preserved).
 - Export to human-readable text with totals and audit history.
 
-## Run
+## Run from source (repo root)
+
+From the repository root, run:
+
+```powershell
+python .\run_task_timer.py
+```
+
+This works directly with the `src/` layout and does **not** require setting `PYTHONPATH`.
+
+Optional for development workflows:
+
+```powershell
+python -m pip install -e .
+```
+
+After an editable install, module execution also works:
 
 ```bash
 python -m task_timer.main
+```
+
+PowerShell helper (uses `.venv\Scripts\python.exe` when present):
+
+```powershell
+./scripts/run.ps1
 ```
 
 ## Data layout
