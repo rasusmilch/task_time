@@ -20,6 +20,94 @@ try:
 except Exception:  # noqa: BLE001
     DateEntry = None
 
+try:
+    import tktimepicker
+except Exception:  # noqa: BLE001
+    tktimepicker = None
+
+
+def _normalize_time_text(value: str) -> str:
+    return " ".join(value.strip().upper().split())
+
+
+class _TimelineTimePicker:
+    """Wrap tkTimePicker spin widgets with graceful fallback parsing."""
+
+    def __init__(self, parent: Toplevel, initial_text: str) -> None:
+        self._initial_text = _normalize_time_text(initial_text)
+        self._picker_widget: Any | None = None
+        self._entry_var = StringVar(value=initial_text)
+        self.widget: Any
+
+        if tktimepicker is None:
+            self.widget = ttk.Entry(parent, textvariable=self._entry_var)
+            return
+
+        picker_cls = getattr(tktimepicker, "SpinTimePickerModern", None) or getattr(tktimepicker, "SpinTimePickerOld", None)
+        constants = getattr(tktimepicker, "constants", None)
+        hours24 = getattr(constants, "HOURS24", None) if constants else None
+        if picker_cls is None or hours24 is None:
+            self.widget = ttk.Entry(parent, textvariable=self._entry_var)
+            return
+        try:
+            self.widget = picker_cls(parent)
+            self._picker_widget = self.widget
+            self._picker_widget.addAll(hours24)
+            self._apply_initial_time()
+        except Exception:  # noqa: BLE001
+            self._picker_widget = None
+            self.widget = ttk.Entry(parent, textvariable=self._entry_var)
+
+    def get_time_text(self) -> str:
+        if self._picker_widget is None:
+            return self._entry_var.get().strip()
+        for attr in ("time", "hours24"):
+            method = getattr(self._picker_widget, attr, None)
+            if callable(method):
+                value = method()
+                rendered = self._render_picker_value(value)
+                if rendered:
+                    return rendered
+        return self._entry_var.get().strip()
+
+    def _render_picker_value(self, value: Any) -> str:
+        if isinstance(value, tuple):
+            parts = [str(part).strip() for part in value if str(part).strip()]
+            if len(parts) >= 2:
+                hour, minute = parts[0], parts[1]
+                if hour.isdigit() and minute.isdigit():
+                    return f"{int(hour):02d}:{int(minute):02d}"
+                return f"{hour}:{minute}"
+            return ""
+        if isinstance(value, str):
+            return value.strip()
+        if value is None:
+            return ""
+        return str(value).strip()
+
+    def _apply_initial_time(self) -> None:
+        if not self._initial_text or self._picker_widget is None:
+            return
+        try:
+            parsed = datetime.strptime(self._initial_text, "%H:%M")
+        except ValueError:
+            try:
+                parsed = datetime.strptime(self._initial_text, "%I:%M %p")
+            except ValueError:
+                return
+        options = {
+            "from_": parsed.hour,
+            "to": parsed.hour,
+            "increment": 1,
+            "wrap": True,
+        }
+        configure_hour = getattr(self._picker_widget, "configure_24HrsTime", None)
+        if callable(configure_hour):
+            configure_hour(**options)
+        configure_minute = getattr(self._picker_widget, "configure_minute", None)
+        if callable(configure_minute):
+            configure_minute(from_=parsed.minute, to=parsed.minute, increment=1, wrap=True)
+
 
 @dataclass(slots=True)
 class TimelineEntryResult:
@@ -60,8 +148,6 @@ class TimelineEntryDialog:
 
         self.mode_var = StringVar(value=default_mode)
         self.date_var = StringVar(value=(initial_date or datetime.now(service.local_tz).date()).isoformat())
-        self.start_var = StringVar(value=initial_start_text)
-        self.stop_var = StringVar(value=initial_stop_text)
         self.duration_var = StringVar(value=initial_duration_text)
         self.reason_var = StringVar(value=initial_reason)
         self.error_var = StringVar(value="")
@@ -95,7 +181,8 @@ class TimelineEntryDialog:
         self.start_row = row
         self.start_label = ttk.Label(self.window, text="Start")
         self.start_label.grid(row=self.start_row, column=0, padx=(8, 4), pady=2, sticky="w")
-        self.start_entry = ttk.Entry(self.window, textvariable=self.start_var)
+        self.start_picker = _TimelineTimePicker(self.window, initial_start_text)
+        self.start_entry = self.start_picker.widget
         self.start_entry.grid(row=self.start_row, column=1, padx=(0, 8), pady=2, sticky="ew")
         row += 1
 
@@ -103,7 +190,8 @@ class TimelineEntryDialog:
         stop_label = "Corrected stop" if force_fix_stop else "Stop"
         self.stop_label = ttk.Label(self.window, text=stop_label)
         self.stop_label.grid(row=self.stop_row, column=0, padx=(8, 4), pady=2, sticky="w")
-        self.stop_entry = ttk.Entry(self.window, textvariable=self.stop_var)
+        self.stop_picker = _TimelineTimePicker(self.window, initial_stop_text)
+        self.stop_entry = self.stop_picker.widget
         self.stop_entry.grid(row=self.stop_row, column=1, padx=(0, 8), pady=2, sticky="ew")
         row += 1
 
@@ -168,10 +256,13 @@ class TimelineEntryDialog:
             if not reason:
                 raise ValueError("Reason is required")
 
+            start_text = self.start_picker.get_time_text().strip()
+            stop_text = self.stop_picker.get_time_text().strip()
+
             if self.force_fix_stop:
-                if not self.stop_var.get().strip():
+                if not stop_text:
                     raise ValueError("Corrected stop time is required")
-                stop_local = self.service.parse_local_datetime_inputs(work_date, self.stop_var.get().strip())
+                stop_local = self.service.parse_local_datetime_inputs(work_date, stop_text)
                 self.result = TimelineEntryResult("fix_stop", work_date, None, stop_local, None, reason)
             elif self.mode_var.get() == "duration":
                 if not self.duration_var.get().strip():
@@ -179,10 +270,10 @@ class TimelineEntryDialog:
                 duration_seconds = self.service.parse_duration_input_seconds(self.duration_var.get().strip())
                 self.result = TimelineEntryResult("duration", work_date, None, None, duration_seconds, reason)
             else:
-                if not self.start_var.get().strip() or not self.stop_var.get().strip():
+                if not start_text or not stop_text:
                     raise ValueError("Start and stop are required")
-                start_local = self.service.parse_local_datetime_inputs(work_date, self.start_var.get().strip())
-                stop_local = self.service.parse_local_datetime_inputs(work_date, self.stop_var.get().strip())
+                start_local = self.service.parse_local_datetime_inputs(work_date, start_text)
+                stop_local = self.service.parse_local_datetime_inputs(work_date, stop_text)
                 if stop_local <= start_local:
                     raise ValueError("Stop must be after start")
                 self.result = TimelineEntryResult("start_end", work_date, start_local, stop_local, None, reason)

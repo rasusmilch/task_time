@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 from task_timer.app import TaskTimerService
-from task_timer.dialogs import EditTimelineDialog, TimelineEntryResult, format_timeline_row
+from task_timer.dialogs import EditTimelineDialog, TimelineEntryResult, _TimelineTimePicker, format_timeline_row
 from task_timer.storage import EventStorage
 
 
@@ -19,6 +19,11 @@ def test_edit_timeline_methods_do_not_use_chained_askstring_for_entry() -> None:
 
 def test_edit_timeline_dialog_includes_local_timezone_label() -> None:
     assert "Times shown in local timezone:" in inspect.getsource(EditTimelineDialog.__init__)
+
+
+def test_timeline_time_picker_normalizes_tuple_output() -> None:
+    picker = _TimelineTimePicker.__new__(_TimelineTimePicker)
+    assert picker._render_picker_value(("9", "5", "AM")) == "09:05"
 
 
 def test_format_timeline_row_same_day_local_times() -> None:

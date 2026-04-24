@@ -9,6 +9,7 @@ description = "Local event-sourced tkinter task timer"
 requires-python = ">=3.11"
 dependencies = [
     "tkcalendar>=1.6.1",
+    "tkTimePicker>=2.0.2",
     "tzlocal>=5",
 ]
 
