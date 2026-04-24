@@ -1,9 +1,12 @@
+import sys
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import pytest
 
 from task_timer.time_utils import (
+    detect_local_timezone,
     interval_seconds_in_local_day,
     interval_seconds_in_local_week,
     parse_duration_seconds,
@@ -93,3 +96,10 @@ def test_parse_duration_seconds_valid(input_text: str, seconds: int) -> None:
 def test_parse_duration_seconds_invalid() -> None:
     with pytest.raises(ValueError):
         parse_duration_seconds("abc")
+
+
+def test_detect_local_timezone_prefers_tzlocal_zoneinfo(monkeypatch) -> None:
+    fake_tzlocal = SimpleNamespace(get_localzone=lambda: SimpleNamespace(key="America/New_York"))
+    monkeypatch.setitem(sys.modules, "tzlocal", fake_tzlocal)
+    detected = detect_local_timezone()
+    assert getattr(detected, "key", "") == "America/New_York"
