@@ -46,18 +46,18 @@ class UISettingsStore:
 
 @dataclass(slots=True)
 class BackupSettings:
-    son_keep_count: int = 14
-    father_keep_count: int = 8
-    grandfather_keep_count: int = 12
+    son_keep_days: int = 14
+    father_keep_days: int = 56
+    grandfather_keep_days: int = 365
     auto_backup_before_risky_operations: bool = True
     auto_backup_on_app_start: bool = False
     auto_backup_min_interval_minutes: int = 60
 
     def to_payload(self) -> dict[str, Any]:
         return {
-            "son_keep_count": self.son_keep_count,
-            "father_keep_count": self.father_keep_count,
-            "grandfather_keep_count": self.grandfather_keep_count,
+            "son_keep_days": self.son_keep_days,
+            "father_keep_days": self.father_keep_days,
+            "grandfather_keep_days": self.grandfather_keep_days,
             "auto_backup_before_risky_operations": self.auto_backup_before_risky_operations,
             "auto_backup_on_app_start": self.auto_backup_on_app_start,
             "auto_backup_min_interval_minutes": self.auto_backup_min_interval_minutes,
@@ -65,7 +65,7 @@ class BackupSettings:
 
 
 class BackupSettingsStore:
-    """Read/write backup_settings.json with safe defaults."""
+    """Read/write backup_settings.json with safe defaults and legacy migration."""
 
     def __init__(self, data_dir: Path) -> None:
         self.path = data_dir / "backup_settings.json"
@@ -82,14 +82,28 @@ class BackupSettingsStore:
             defaults = BackupSettings()
             self.save(defaults)
             return defaults
+
+        migrated = False
+        if "son_keep_days" not in payload and "son_keep_count" in payload:
+            payload["son_keep_days"] = self._positive_int(payload.get("son_keep_count"), 14)
+            migrated = True
+        if "father_keep_days" not in payload and "father_keep_count" in payload:
+            payload["father_keep_days"] = self._positive_int(payload.get("father_keep_count"), 8) * 7
+            migrated = True
+        if "grandfather_keep_days" not in payload and "grandfather_keep_count" in payload:
+            payload["grandfather_keep_days"] = self._positive_int(payload.get("grandfather_keep_count"), 12) * 30
+            migrated = True
+
         settings = BackupSettings(
-            son_keep_count=self._positive_int(payload.get("son_keep_count"), 14),
-            father_keep_count=self._positive_int(payload.get("father_keep_count"), 8),
-            grandfather_keep_count=self._positive_int(payload.get("grandfather_keep_count"), 12),
+            son_keep_days=self._positive_int(payload.get("son_keep_days"), 14),
+            father_keep_days=self._positive_int(payload.get("father_keep_days"), 56),
+            grandfather_keep_days=self._positive_int(payload.get("grandfather_keep_days"), 365),
             auto_backup_before_risky_operations=bool(payload.get("auto_backup_before_risky_operations", True)),
             auto_backup_on_app_start=bool(payload.get("auto_backup_on_app_start", False)),
             auto_backup_min_interval_minutes=self._positive_int(payload.get("auto_backup_min_interval_minutes"), 60),
         )
+        if migrated or any(k in payload for k in ("son_keep_count", "father_keep_count", "grandfather_keep_count")):
+            self.save(settings)
         return settings
 
     def save(self, settings: BackupSettings) -> None:

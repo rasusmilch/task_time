@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import timedelta, timezone
 from types import SimpleNamespace
 
 from task_timer.app import STOPPED_COLOR, TaskTimerApp, TaskTimerService
@@ -210,9 +210,9 @@ def test_mini_mode_close_routes_to_restore_main() -> None:
 def test_backup_settings_dialog_validation_rejects_non_positive_counts() -> None:
     try:
         BackupSettingsDialog.validate_inputs(
-            son_keep_count="0",
-            father_keep_count="1",
-            grandfather_keep_count="1",
+            son_keep_days="0",
+            father_keep_days="1",
+            grandfather_keep_days="1",
             auto_backup_before_risky_operations=True,
             auto_backup_on_app_start=False,
             auto_backup_min_interval_minutes="60",
@@ -245,7 +245,7 @@ def test_auto_backup_on_app_start_and_min_interval(tmp_path, monkeypatch) -> Non
     storage = EventStorage(tmp_path)
     store = storage.data_dir / "backup_settings.json"
     store.write_text(
-        '{\n  "son_keep_count": 14,\n  "father_keep_count": 8,\n  "grandfather_keep_count": 12,\n'
+        '{\n  "son_keep_days": 14,\n  "father_keep_days": 56,\n  "grandfather_keep_days": 365,\n'
         '  "auto_backup_before_risky_operations": true,\n  "auto_backup_on_app_start": true,\n'
         '  "auto_backup_min_interval_minutes": 60\n}\n',
         encoding="utf-8",
@@ -265,9 +265,13 @@ def test_manual_create_backup_now_not_blocked_by_interval_setting(tmp_path, monk
     settings = BackupSettings(auto_backup_on_app_start=False, auto_backup_min_interval_minutes=9999)
     service.save_backup_settings(settings)
     fixed = _local_dt("2026-01-10 10:00").astimezone(timezone.utc)
-    fixed_next = fixed.replace(minute=1)
-    ticks = iter([fixed, fixed_next])
-    monkeypatch.setattr("task_timer.backups.utc_now", lambda: next(ticks))
+    counter = {"i": 0}
+
+    def _tick():
+        counter["i"] += 1
+        return fixed + timedelta(seconds=counter["i"])
+
+    monkeypatch.setattr("task_timer.backups.utc_now", _tick)
     service.backups.create_backup("son", "existing")
     service.create_backup_now("manual backup regardless of interval")
     assert len(service.list_managed_backups()) == 2

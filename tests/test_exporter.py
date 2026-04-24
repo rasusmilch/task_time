@@ -305,7 +305,7 @@ def test_human_readable_audit_lines_known_events(tmp_path: Path, monkeypatch) ->
     assert 'Stopped "Task A+"' in text
     assert 'Added manual interval to "Task A+"' in text
     assert 'Edited interval for "Task A+"' in text
-    assert 'Deleted interval for "Task A+"' in text
+    assert 'Deleted interval from "Task A+"' in text
     assert 'Reset task "Task A+"' in text
 
 
@@ -352,7 +352,7 @@ def test_manual_duration_checkpoint_validation_and_audit_line(tmp_path: Path, mo
     with pytest.raises(ValueError):
         service.add_manual_duration(task_id, checkpoint_date - timedelta(days=1), 1800, "too old")
     monkeypatch.setattr("task_timer.app.utc_now", lambda: parse_utc_z("2026-01-10T01:00:00Z"))
-    service.add_manual_duration(task_id, checkpoint_date, 5400, "forgot timer")
+    service.add_manual_duration(task_id, checkpoint_date + timedelta(days=1), 5400, "forgot timer")
     monkeypatch.setattr("task_timer.app.utc_now", lambda: parse_utc_z("2026-01-10T02:00:00Z"))
     out = tmp_path / "out.txt"
     service.export_report(out, reset_after=False)

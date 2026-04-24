@@ -7,7 +7,7 @@ import os
 import shutil
 import zipfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -75,9 +75,10 @@ class BackupManager:
 
     def apply_retention(self) -> None:
         settings = self.settings_store.load()
-        self._trim_dir(self.sons_dir, settings.son_keep_count)
-        self._trim_dir(self.fathers_dir, settings.father_keep_count)
-        self._trim_dir(self.grandfathers_dir, settings.grandfather_keep_count)
+        now_utc = utc_now().astimezone(timezone.utc)
+        self._trim_dir_by_age(self.sons_dir, settings.son_keep_days, now_utc)
+        self._trim_dir_by_age(self.fathers_dir, settings.father_keep_days, now_utc)
+        self._trim_dir_by_age(self.grandfathers_dir, settings.grandfather_keep_days, now_utc)
 
     def list_backups(self) -> list[BackupEntry]:
         entries: list[BackupEntry] = []
@@ -165,11 +166,36 @@ class BackupManager:
         if now.day == 1:
             self.create_backup("grandfather", f"monthly promotion: {reason}")
 
-    @staticmethod
-    def _trim_dir(directory: Path, keep_count: int) -> None:
-        backups = sorted(directory.glob("*.zip"), key=lambda p: p.name, reverse=True)
-        for path in backups[keep_count:]:
-            path.unlink(missing_ok=True)
+    def _trim_dir_by_age(self, directory: Path, keep_days: int, now_utc: datetime) -> None:
+        cutoff = now_utc - timedelta(days=keep_days)
+        for path in directory.glob("*.zip"):
+            created_utc = self._backup_created_utc(path)
+            if created_utc and created_utc < cutoff:
+                path.unlink(missing_ok=True)
+
+
+    def _backup_created_utc(self, path: Path) -> datetime | None:
+        manifest = self._read_manifest(path)
+        created_raw = manifest.get("backup_created_utc") if manifest else None
+        if isinstance(created_raw, str):
+            try:
+                return datetime.fromisoformat(created_raw.replace("Z", "+00:00")).astimezone(timezone.utc)
+            except ValueError:
+                pass
+
+        stem = path.stem
+        parts = stem.split("_")
+        if len(parts) >= 5:
+            timestamp = "_".join(parts[-3:])
+            try:
+                parsed = datetime.strptime(timestamp, "%Y-%m-%d_%H%M%S_%f")
+                return parsed.replace(tzinfo=timezone.utc)
+            except ValueError:
+                pass
+        try:
+            return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+        except OSError:
+            return None
 
     @staticmethod
     def _read_manifest(path: Path) -> dict[str, Any]:

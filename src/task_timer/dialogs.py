@@ -1,150 +1,187 @@
-"""Dialog windows for manual interval editing."""
+"""Dialog windows for manual interval and timeline editing."""
 
 from __future__ import annotations
 
 from datetime import date, datetime
-from tkinter import BooleanVar, StringVar, Toplevel, messagebox, ttk
+from tkinter import BooleanVar, StringVar, Toplevel, messagebox, simpledialog, ttk
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .models import NOTES_MAX_LENGTH
 from .settings import BackupSettings
+from .time_utils import format_duration_hm
 
 if TYPE_CHECKING:
     from .app import TaskTimerService
 
 
-class EditTimeDialog:
-    """Dialog for add/edit/delete manual intervals on a task."""
+class EditTimelineDialog:
+    """Dialog for append-only timeline corrections on a task."""
 
     def __init__(self, parent: Toplevel, service: "TaskTimerService", task_id: str) -> None:
         self.changed = False
         self.service = service
         self.task_id = task_id
         self.window = Toplevel(parent)
-        self.window.title("Edit Time")
-        self.mode_var = StringVar(value="interval")
-        self.date_var = StringVar(value=date.today().isoformat())
-        self.start_var = StringVar()
-        self.stop_var = StringVar()
-        self.duration_var = StringVar()
+        self.window.title("Edit Timeline")
+        self.window.geometry("980x420")
+        self.window.grid_columnconfigure(0, weight=1)
+        self.window.grid_rowconfigure(1, weight=1)
 
-        ttk.Label(self.window, text="Work date").grid(row=0, column=0, sticky="w")
-        self.date_widget = _build_date_widget(self.window, self.date_var)
-        self.date_widget.grid(row=0, column=1, padx=4, pady=2, sticky="ew")
+        self.include_history_var = BooleanVar(value=False)
+        ttk.Checkbutton(
+            self.window,
+            text="Show intervals before last reset",
+            variable=self.include_history_var,
+            command=self._refresh_table,
+        ).grid(row=0, column=0, sticky="w", padx=6, pady=(6, 2))
 
-        mode_frame = ttk.Frame(self.window)
-        mode_frame.grid(row=1, column=0, columnspan=2, sticky="w", padx=2, pady=2)
-        ttk.Radiobutton(mode_frame, text="Start/End", value="interval", variable=self.mode_var, command=self._refresh_mode).pack(
-            side="left"
-        )
-        ttk.Radiobutton(mode_frame, text="Duration", value="duration", variable=self.mode_var, command=self._refresh_mode).pack(
-            side="left", padx=8
-        )
+        columns = ("date", "start", "stop", "duration", "source", "notes", "interval_id")
+        self.tree = ttk.Treeview(self.window, columns=columns, show="headings", height=12)
+        headings = {
+            "date": "Date",
+            "start": "Start time",
+            "stop": "Stop time",
+            "duration": "Duration",
+            "source": "Source",
+            "notes": "Notes/reason",
+            "interval_id": "Interval ID",
+        }
+        widths = {"date": 90, "start": 150, "stop": 150, "duration": 90, "source": 120, "notes": 280, "interval_id": 180}
+        for key in columns:
+            self.tree.heading(key, text=headings[key])
+            self.tree.column(key, width=widths[key], anchor="w")
+        self.tree.grid(row=1, column=0, sticky="nsew", padx=6, pady=4)
 
-        ttk.Label(self.window, text="Start time").grid(row=2, column=0, sticky="w")
-        ttk.Label(self.window, text="End time").grid(row=3, column=0, sticky="w")
-        ttk.Label(self.window, text="Duration").grid(row=4, column=0, sticky="w")
-        self.start_entry = ttk.Entry(self.window, width=16, textvariable=self.start_var)
-        self.stop_entry = ttk.Entry(self.window, width=16, textvariable=self.stop_var)
-        self.duration_entry = ttk.Entry(self.window, width=16, textvariable=self.duration_var)
-        self.reason_entry = ttk.Entry(self.window, width=40)
-        self.start_entry.grid(row=2, column=1, padx=4, pady=2, sticky="ew")
-        self.stop_entry.grid(row=3, column=1, padx=4, pady=2, sticky="ew")
-        self.duration_entry.grid(row=4, column=1, padx=4, pady=2, sticky="ew")
-        ttk.Label(self.window, text="Reason").grid(row=5, column=0, sticky="w")
-        self.reason_entry.grid(row=5, column=1, padx=4, pady=2)
+        button_bar = ttk.Frame(self.window)
+        button_bar.grid(row=2, column=0, sticky="ew", padx=6, pady=6)
+        ttk.Button(button_bar, text="Add interval", command=self._add_interval).pack(side="left", padx=2)
+        ttk.Button(button_bar, text="Add duration", command=self._add_duration).pack(side="left", padx=2)
+        ttk.Button(button_bar, text="Edit selected interval", command=self._edit_selected).pack(side="left", padx=2)
+        ttk.Button(button_bar, text="Delete selected interval", command=self._delete_selected).pack(side="left", padx=2)
+        ttk.Button(button_bar, text="Fix running/missed stop", command=self._fix_running).pack(side="left", padx=2)
+        ttk.Button(button_bar, text="Close", command=self.window.destroy).pack(side="right", padx=2)
 
-        ttk.Button(self.window, text="Add", command=self._add_interval).grid(row=6, column=0, pady=4)
-        ttk.Button(self.window, text="Edit Last", command=self._edit_last).grid(row=6, column=1, pady=4)
-        ttk.Button(self.window, text="Delete Last", command=self._delete_last).grid(row=7, column=0, pady=4)
-        self._refresh_mode()
-
+        self._refresh_table()
         self.window.transient(parent)
         self.window.grab_set()
         parent.wait_window(self.window)
 
-    def _parse_date(self) -> date:
-        return datetime.strptime(self.date_var.get().strip(), "%Y-%m-%d").date()
+    def _refresh_table(self) -> None:
+        for child in self.tree.get_children():
+            self.tree.delete(child)
+        rows = self.service.get_task_timeline(self.task_id, include_before_reset=self.include_history_var.get())
+        for row in rows:
+            iid = row["interval_id"]
+            self.tree.insert(
+                "",
+                "end",
+                iid=iid,
+                values=(row["date"], row["start"], row["stop"], row["duration"], row["source"], row["notes"], iid),
+            )
 
-    def _parse_interval_entries(self) -> tuple[datetime, datetime, str]:
-        work_date = self._parse_date()
-        start = self.service.parse_local_datetime_inputs(work_date, self.start_entry.get().strip())
-        stop = self.service.parse_local_datetime_inputs(work_date, self.stop_entry.get().strip())
-        reason = self.reason_entry.get().strip()
-        if not reason:
+    def _require_reason(self, title: str) -> str:
+        reason = simpledialog.askstring(title, "Reason:", parent=self.window)
+        if reason is None or not reason.strip():
             raise ValueError("Reason is required")
-        if stop <= start:
-            raise ValueError("Stop must be after start")
-        return start, stop, reason
+        return reason.strip()
 
-    def _parse_duration_entries(self) -> tuple[date, float, str]:
-        work_date = self._parse_date()
-        duration_seconds = self.service.parse_duration_input_seconds(self.duration_entry.get().strip())
-        reason = self.reason_entry.get().strip()
-        if not reason:
-            raise ValueError("Reason is required")
-        return work_date, duration_seconds, reason
-
-    def _last_interval_id(self) -> str:
-        task = self.service.state.tasks[self.task_id]
-        intervals = [i for i in task.intervals.values() if not i.deleted]
-        if not intervals:
-            raise ValueError("No intervals to edit/delete")
-        intervals.sort(key=lambda i: i.stop_utc)
-        return intervals[-1].interval_id
+    def _ask_work_date(self) -> date:
+        raw = simpledialog.askstring("Work date", "Work date (YYYY-MM-DD):", parent=self.window)
+        if not raw:
+            raise ValueError("Work date is required")
+        return datetime.strptime(raw.strip(), "%Y-%m-%d").date()
 
     def _add_interval(self) -> None:
         try:
-            if self.mode_var.get() == "duration":
-                work_date, duration_seconds, reason = self._parse_duration_entries()
-                self.service.add_manual_duration(self.task_id, work_date, duration_seconds, reason)
-            else:
-                start, stop, reason = self._parse_interval_entries()
-                self.service.add_manual_interval(self.task_id, start, stop, reason)
+            work_date = self._ask_work_date()
+            start_raw = simpledialog.askstring("Start", "Start time (e.g., 8:30am):", parent=self.window)
+            stop_raw = simpledialog.askstring("Stop", "Stop time (e.g., 5:10pm):", parent=self.window)
+            if not start_raw or not stop_raw:
+                raise ValueError("Start and stop are required")
+            start = self.service.parse_local_datetime_inputs(work_date, start_raw.strip())
+            stop = self.service.parse_local_datetime_inputs(work_date, stop_raw.strip())
+            reason = self._require_reason("Add interval")
+            self.service.add_manual_interval(self.task_id, start, stop, reason)
             self.changed = True
-            self.window.destroy()
+            self._refresh_table()
         except Exception as exc:  # noqa: BLE001
             messagebox.showerror("Invalid interval", str(exc))
 
-    def _edit_last(self) -> None:
+    def _add_duration(self) -> None:
         try:
-            if self.mode_var.get() == "duration":
-                raise ValueError("Edit last currently supports Start/End mode only")
-            start, stop, reason = self._parse_interval_entries()
-            self.service.edit_interval(self.task_id, self._last_interval_id(), start, stop, reason)
+            work_date = self._ask_work_date()
+            duration_raw = simpledialog.askstring("Duration", "Duration (HH:MM or 1.5h):", parent=self.window)
+            if not duration_raw:
+                raise ValueError("Duration is required")
+            duration_seconds = self.service.parse_duration_input_seconds(duration_raw.strip())
+            reason = self._require_reason("Add duration")
+            self.service.add_manual_duration(self.task_id, work_date, duration_seconds, reason)
             self.changed = True
-            self.window.destroy()
+            self._refresh_table()
+        except Exception as exc:  # noqa: BLE001
+            messagebox.showerror("Invalid duration", str(exc))
+
+    def _selected_interval_id(self) -> str:
+        selected = self.tree.selection()
+        if not selected:
+            raise ValueError("Select an interval first")
+        interval_id = selected[0]
+        if interval_id == "__open__":
+            raise ValueError("Use Fix running/missed stop for running intervals")
+        return interval_id
+
+    def _edit_selected(self) -> None:
+        try:
+            interval_id = self._selected_interval_id()
+            work_date = self._ask_work_date()
+            start_raw = simpledialog.askstring("Start", "Corrected start time:", parent=self.window)
+            stop_raw = simpledialog.askstring("Stop", "Corrected stop time:", parent=self.window)
+            if not start_raw or not stop_raw:
+                raise ValueError("Start and stop are required")
+            start = self.service.parse_local_datetime_inputs(work_date, start_raw.strip())
+            stop = self.service.parse_local_datetime_inputs(work_date, stop_raw.strip())
+            reason = self._require_reason("Edit interval")
+            self.service.edit_interval(self.task_id, interval_id, start, stop, reason)
+            self.changed = True
+            self._refresh_table()
         except Exception as exc:  # noqa: BLE001
             messagebox.showerror("Invalid edit", str(exc))
 
-    def _delete_last(self) -> None:
-        reason = self.reason_entry.get().strip()
-        if not reason:
-            messagebox.showerror("Reason required", "Reason is required for deletion")
-            return
+    def _delete_selected(self) -> None:
         try:
-            self.service.delete_interval(self.task_id, self._last_interval_id(), reason)
+            interval_id = self._selected_interval_id()
+            reason = self._require_reason("Delete interval")
+            if not messagebox.askyesno("Confirm delete", "Delete selected interval from totals?", parent=self.window):
+                return
+            self.service.delete_interval(self.task_id, interval_id, reason)
             self.changed = True
-            self.window.destroy()
+            self._refresh_table()
         except Exception as exc:  # noqa: BLE001
             messagebox.showerror("Delete failed", str(exc))
 
-    def _refresh_mode(self) -> None:
-        interval_mode = self.mode_var.get() == "interval"
-        self.start_entry.configure(state="normal" if interval_mode else "disabled")
-        self.stop_entry.configure(state="normal" if interval_mode else "disabled")
-        self.duration_entry.configure(state="disabled" if interval_mode else "normal")
-
-
-def _build_date_widget(parent: Toplevel, variable: StringVar):  # type: ignore[type-arg]
-    try:
-        from tkcalendar import DateEntry  # type: ignore[import-not-found]
-
-        widget = DateEntry(parent, textvariable=variable, date_pattern="yyyy-mm-dd")
-        return widget
-    except Exception:  # noqa: BLE001
-        return ttk.Entry(parent, textvariable=variable)
+    def _fix_running(self) -> None:
+        try:
+            task = self.service.state.tasks[self.task_id]
+            if not task.is_running or not task.currently_open_interval_start_utc:
+                raise ValueError("Task is not currently running")
+            local_start = task.currently_open_interval_start_utc.astimezone(self.service.local_tz)
+            raw_date = simpledialog.askstring(
+                "Correct stop date",
+                f"Running since {local_start.strftime('%Y-%m-%d %I:%M %p')}.\nCorrected stop date (YYYY-MM-DD):",
+                parent=self.window,
+            )
+            raw_time = simpledialog.askstring("Correct stop time", "Corrected stop time (e.g., 5:10pm):", parent=self.window)
+            if not raw_date or not raw_time:
+                raise ValueError("Corrected stop date/time is required")
+            stop_date = datetime.strptime(raw_date.strip(), "%Y-%m-%d").date()
+            corrected_stop = self.service.parse_local_datetime_inputs(stop_date, raw_time.strip())
+            reason = self._require_reason("Fix missed stop")
+            self.service.correct_running_interval_stop(self.task_id, corrected_stop, reason)
+            self.changed = True
+            self._refresh_table()
+        except Exception as exc:  # noqa: BLE001
+            messagebox.showerror("Fix missed stop failed", str(exc))
 
 
 class AddTaskDialog:
@@ -200,7 +237,7 @@ class BackupSettingsDialog:
     """Dialog for editing managed backup settings."""
 
     def __init__(self, parent: Toplevel, service: "TaskTimerService", initial: BackupSettings) -> None:
-        del service  # dialog validates inputs; save/apply is done by caller
+        del service
         self.confirmed = False
         self.settings: BackupSettings | None = None
         self.window = Toplevel(parent)
@@ -209,32 +246,26 @@ class BackupSettingsDialog:
         self.window.grab_set()
         self.window.grid_columnconfigure(1, weight=1)
 
-        self.son_var = StringVar(value=str(initial.son_keep_count))
-        self.father_var = StringVar(value=str(initial.father_keep_count))
-        self.grandfather_var = StringVar(value=str(initial.grandfather_keep_count))
+        self.son_days_var = StringVar(value=str(initial.son_keep_days))
+        self.father_days_var = StringVar(value=str(initial.father_keep_days))
+        self.grandfather_days_var = StringVar(value=str(initial.grandfather_keep_days))
         self.risky_var = BooleanVar(value=initial.auto_backup_before_risky_operations)
         self.app_start_var = BooleanVar(value=initial.auto_backup_on_app_start)
         self.min_interval_var = StringVar(value=str(initial.auto_backup_min_interval_minutes))
 
-        ttk.Label(self.window, text="Son keep count").grid(row=0, column=0, padx=(6, 4), pady=2, sticky="w")
-        ttk.Entry(self.window, textvariable=self.son_var).grid(row=0, column=1, padx=(0, 6), pady=2, sticky="ew")
-        ttk.Label(self.window, text="Father keep count").grid(row=1, column=0, padx=(6, 4), pady=2, sticky="w")
-        ttk.Entry(self.window, textvariable=self.father_var).grid(row=1, column=1, padx=(0, 6), pady=2, sticky="ew")
-        ttk.Label(self.window, text="Grandfather keep count").grid(row=2, column=0, padx=(6, 4), pady=2, sticky="w")
-        ttk.Entry(self.window, textvariable=self.grandfather_var).grid(row=2, column=1, padx=(0, 6), pady=2, sticky="ew")
-        ttk.Checkbutton(
-            self.window,
-            text="Automatic backup before risky operations",
-            variable=self.risky_var,
-        ).grid(row=3, column=0, columnspan=2, padx=6, pady=2, sticky="w")
-        ttk.Checkbutton(
-            self.window,
-            text="Automatic backup on app start",
-            variable=self.app_start_var,
-        ).grid(row=4, column=0, columnspan=2, padx=6, pady=2, sticky="w")
-        ttk.Label(self.window, text="Minimum minutes between automatic backups").grid(
-            row=5, column=0, padx=(6, 4), pady=2, sticky="w"
+        ttk.Label(self.window, text="Son retention days").grid(row=0, column=0, padx=(6, 4), pady=2, sticky="w")
+        ttk.Entry(self.window, textvariable=self.son_days_var).grid(row=0, column=1, padx=(0, 6), pady=2, sticky="ew")
+        ttk.Label(self.window, text="Father retention days").grid(row=1, column=0, padx=(6, 4), pady=2, sticky="w")
+        ttk.Entry(self.window, textvariable=self.father_days_var).grid(row=1, column=1, padx=(0, 6), pady=2, sticky="ew")
+        ttk.Label(self.window, text="Grandfather retention days").grid(row=2, column=0, padx=(6, 4), pady=2, sticky="w")
+        ttk.Entry(self.window, textvariable=self.grandfather_days_var).grid(row=2, column=1, padx=(0, 6), pady=2, sticky="ew")
+        ttk.Checkbutton(self.window, text="Automatic backup before risky operations", variable=self.risky_var).grid(
+            row=3, column=0, columnspan=2, padx=6, pady=2, sticky="w"
         )
+        ttk.Checkbutton(self.window, text="Automatic backup on app start", variable=self.app_start_var).grid(
+            row=4, column=0, columnspan=2, padx=6, pady=2, sticky="w"
+        )
+        ttk.Label(self.window, text="Minimum minutes between automatic backups").grid(row=5, column=0, padx=(6, 4), pady=2, sticky="w")
         ttk.Entry(self.window, textvariable=self.min_interval_var).grid(row=5, column=1, padx=(0, 6), pady=2, sticky="ew")
 
         button_row = ttk.Frame(self.window)
@@ -247,9 +278,9 @@ class BackupSettingsDialog:
     def _confirm(self) -> None:
         try:
             self.settings = self.validate_inputs(
-                son_keep_count=self.son_var.get(),
-                father_keep_count=self.father_var.get(),
-                grandfather_keep_count=self.grandfather_var.get(),
+                son_keep_days=self.son_days_var.get(),
+                father_keep_days=self.father_days_var.get(),
+                grandfather_keep_days=self.grandfather_days_var.get(),
                 auto_backup_before_risky_operations=self.risky_var.get(),
                 auto_backup_on_app_start=self.app_start_var.get(),
                 auto_backup_min_interval_minutes=self.min_interval_var.get(),
@@ -263,9 +294,9 @@ class BackupSettingsDialog:
     @staticmethod
     def validate_inputs(
         *,
-        son_keep_count: str,
-        father_keep_count: str,
-        grandfather_keep_count: str,
+        son_keep_days: str,
+        father_keep_days: str,
+        grandfather_keep_days: str,
         auto_backup_before_risky_operations: bool,
         auto_backup_on_app_start: bool,
         auto_backup_min_interval_minutes: str,
@@ -280,13 +311,35 @@ class BackupSettingsDialog:
             return parsed
 
         return BackupSettings(
-            son_keep_count=_as_positive_int(son_keep_count, "Son keep count"),
-            father_keep_count=_as_positive_int(father_keep_count, "Father keep count"),
-            grandfather_keep_count=_as_positive_int(grandfather_keep_count, "Grandfather keep count"),
+            son_keep_days=_as_positive_int(son_keep_days, "Son retention days"),
+            father_keep_days=_as_positive_int(father_keep_days, "Father retention days"),
+            grandfather_keep_days=_as_positive_int(grandfather_keep_days, "Grandfather retention days"),
             auto_backup_before_risky_operations=auto_backup_before_risky_operations,
             auto_backup_on_app_start=auto_backup_on_app_start,
-            auto_backup_min_interval_minutes=_as_positive_int(
-                auto_backup_min_interval_minutes,
-                "Minimum minutes between automatic backups",
-            ),
+            auto_backup_min_interval_minutes=_as_positive_int(auto_backup_min_interval_minutes, "Minimum minutes between automatic backups"),
         )
+
+
+def _source_label(source: str) -> str:
+    mapping = {
+        "normal": "normal",
+        "manual": "manual interval",
+        "manual_duration": "manual duration",
+        "edit": "edited",
+        "open": "open",
+    }
+    return mapping.get(source, source)
+
+
+def format_timeline_row(interval: Any, local_tz: Any) -> dict[str, str]:
+    start_local = interval.start_utc.astimezone(local_tz)
+    stop_local = interval.stop_utc.astimezone(local_tz)
+    return {
+        "interval_id": interval.interval_id,
+        "date": start_local.date().isoformat(),
+        "start": start_local.strftime("%Y-%m-%d %I:%M %p"),
+        "stop": stop_local.strftime("%Y-%m-%d %I:%M %p"),
+        "duration": format_duration_hm((interval.stop_utc - interval.start_utc).total_seconds()),
+        "source": _source_label(interval.source),
+        "notes": interval.edit_reason or "",
+    }
