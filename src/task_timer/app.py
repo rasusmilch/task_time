@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import tkinter as tk
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from tkinter import StringVar, Tk, Toplevel, filedialog, messagebox, ttk
 from typing import Any
@@ -23,6 +23,7 @@ from .time_utils import (
     interval_seconds_in_local_day,
     interval_seconds_in_local_week,
     parse_utc_z,
+    sunday_week_start,
     to_utc_z,
     utc_now,
 )
@@ -106,21 +107,35 @@ class TaskTimerService:
 
     def export_report(self, target: Path, reset_after: bool) -> None:
         now_utc = utc_now()
-        now_local = now_utc.astimezone(self.local_tz)
-        today, week, per_task = self.compute_totals(now_utc)
-        history_lines = self.build_history_lines()
+        window_start_utc = self.find_last_export_checkpoint_utc()
+        window_events = self.events_in_window(window_start_utc, now_utc)
+        per_task = self.compute_windowed_task_totals(window_start_utc, now_utc)
+        weekly_ranges = self.collect_week_ranges(per_task)
+        history_lines = self.build_human_audit_lines(window_events, window_end_utc=now_utc)
         content = build_export_text(
             generated_at_utc=now_utc,
             local_timezone=self.local_tz_name,
-            today_total_seconds=today,
-            week_total_seconds=week,
+            window_start_utc=window_start_utc,
+            window_end_utc=now_utc,
+            reset_after=reset_after,
+            weekly_headers=weekly_ranges,
+            weekly_summary_rows=self.build_epicor_weekly_summary_rows(per_task, weekly_ranges),
             per_task_rows=per_task,
             history_lines=history_lines,
             source_segments=self.storage.source_segments(),
-            now_local=now_local,
         )
         write_export_file(target, content)
-        self._append("__app__", "exported", {"path": str(target)})
+        self._append(
+            "__app__",
+            "export_checkpoint",
+            {
+                "path": str(target),
+                "generated_at_utc": to_utc_z(now_utc),
+                "window_start_utc": to_utc_z(window_start_utc) if window_start_utc else None,
+                "window_end_utc": to_utc_z(now_utc),
+                "reset_after": reset_after,
+            },
+        )
         if reset_after:
             self.reset_all_non_deleted_tasks()
 
@@ -168,6 +183,190 @@ class TaskTimerService:
                 f"- {item['timestamp_utc']} [{item['event_type']}] task={item['task_id']} payload={json.dumps(item['payload'], ensure_ascii=False)}"
             )
         return output
+
+    def find_last_export_checkpoint_utc(self) -> datetime | None:
+        for event in sorted(self.events, key=lambda ev: ev["timestamp_utc"], reverse=True):
+            if event["task_id"] == "__app__" and event["event_type"] == "export_checkpoint":
+                return parse_utc_z(event["timestamp_utc"])
+        return None
+
+    def events_in_window(self, window_start_utc: datetime | None, window_end_utc: datetime) -> list[dict[str, Any]]:
+        output: list[dict[str, Any]] = []
+        for event in sorted(self.events, key=lambda ev: ev["timestamp_utc"]):
+            event_ts = parse_utc_z(event["timestamp_utc"])
+            if event_ts > window_end_utc:
+                continue
+            if window_start_utc and event_ts <= window_start_utc:
+                continue
+            output.append(event)
+        return output
+
+    def compute_windowed_task_totals(self, window_start_utc: datetime | None, window_end_utc: datetime) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for task in self.state.tasks.values():
+            if task.is_deleted:
+                continue
+            clipped_intervals = self._windowed_intervals(task, window_start_utc, window_end_utc)
+            day_totals = self._compute_daily_totals(clipped_intervals)
+            week_totals = self._compute_weekly_totals(clipped_intervals)
+            overall_seconds = sum((stop - start).total_seconds() for start, stop in clipped_intervals)
+            rows.append(
+                {
+                    "task_id": task.task_id,
+                    "name": task.name,
+                    "notes": task.notes,
+                    "daily_totals": sorted(day_totals.items()),
+                    "weekly_totals": sorted(week_totals.items()),
+                    "overall_seconds": overall_seconds,
+                }
+            )
+        rows.sort(key=lambda row: (row["name"].strip().casefold(), row["task_id"]))
+        return rows
+
+    def collect_week_ranges(self, per_task_rows: list[dict[str, Any]]) -> list[str]:
+        week_ranges: set[str] = set()
+        for row in per_task_rows:
+            week_ranges.update(week_range for week_range, _ in row["weekly_totals"])
+        return sorted(week_ranges)
+
+    def build_epicor_weekly_summary_rows(
+        self, per_task_rows: list[dict[str, Any]], weekly_ranges: list[str]
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for row in per_task_rows:
+            week_map = dict(row["weekly_totals"])
+            rows.append(
+                {
+                    "task_id": row["task_id"],
+                    "name": row["name"],
+                    "notes": row["notes"],
+                    "weeks": [week_map.get(week_range, 0.0) for week_range in weekly_ranges],
+                }
+            )
+        return rows
+
+    def build_human_audit_lines(self, window_events: list[dict[str, Any]], window_end_utc: datetime) -> list[str]:
+        events_until_end = self.events_in_window(window_start_utc=None, window_end_utc=window_end_utc)
+        name_by_task_id: dict[str, str] = {}
+        notes_by_task_id: dict[str, str] = {}
+        running_starts: dict[str, datetime] = {}
+        formatted_by_event_id: dict[str, str] = {}
+        for event in events_until_end:
+            task_id = event["task_id"]
+            event_type = event["event_type"]
+            payload = event["payload"]
+            event_ts = parse_utc_z(event["timestamp_utc"])
+            local_stamp = event_ts.astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
+            task_name = name_by_task_id.get(task_id, task_id)
+
+            if event_type == "task_created":
+                task_name = payload.get("name", task_name)
+                name_by_task_id[task_id] = task_name
+                notes_by_task_id[task_id] = payload.get("notes", "")
+                line = f'{local_stamp}  Created task "{task_name}"'
+                if notes_by_task_id[task_id]:
+                    line += f" (Notes: {notes_by_task_id[task_id]})"
+            elif event_type == "task_updated":
+                old_name = task_name
+                new_name = payload.get("name", old_name)
+                new_notes = payload.get("notes", notes_by_task_id.get(task_id, ""))
+                name_by_task_id[task_id] = new_name
+                notes_by_task_id[task_id] = new_notes
+                line = f'{local_stamp}  Updated task "{old_name}"'
+                if old_name != new_name:
+                    line += f' to "{new_name}"'
+                if new_notes:
+                    line += f" (Notes: {new_notes})"
+            elif event_type == "started":
+                running_starts[task_id] = event_ts
+                line = f'{local_stamp}  Started "{task_name}"'
+            elif event_type == "stopped":
+                line = f'{local_stamp}  Stopped "{task_name}"'
+                start_ts = running_starts.pop(task_id, None)
+                if start_ts and event_ts > start_ts:
+                    duration = format_duration_hm((event_ts - start_ts).total_seconds())
+                    line += f" (interval {duration})"
+            elif event_type == "reset":
+                line = f'{local_stamp}  Reset task "{task_name}"'
+            elif event_type == "manual_interval_added":
+                start_local = parse_utc_z(payload["start_utc"]).astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
+                stop_local = parse_utc_z(payload["stop_utc"]).astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
+                line = f'{local_stamp}  Added manual interval to "{task_name}": {start_local} to {stop_local}'
+                if payload.get("reason"):
+                    line += f" (Reason: {payload['reason']})"
+            elif event_type == "interval_edited":
+                start_local = parse_utc_z(payload["start_utc"]).astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
+                stop_local = parse_utc_z(payload["stop_utc"]).astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
+                line = (
+                    f'{local_stamp}  Edited interval for "{task_name}": {start_local} to {stop_local} '
+                    f"(replaced {payload.get('interval_id', 'unknown')})"
+                )
+                if payload.get("reason"):
+                    line += f" (Reason: {payload['reason']})"
+            elif event_type == "interval_deleted":
+                line = f'{local_stamp}  Deleted interval for "{task_name}" ({payload.get("interval_id", "unknown")})'
+                if payload.get("reason"):
+                    line += f" (Reason: {payload['reason']})"
+            elif event_type == "task_deleted":
+                line = f'{local_stamp}  Deleted task "{task_name}"'
+            elif event_type == "export_checkpoint":
+                line = f"{local_stamp}  Export checkpoint created"
+            else:
+                line = f'{local_stamp}  {event_type} for "{task_name}"'
+            formatted_by_event_id[event["event_id"]] = line
+        return [formatted_by_event_id[event["event_id"]] for event in window_events if event["event_id"] in formatted_by_event_id]
+
+    def _windowed_intervals(
+        self, task: TaskState, window_start_utc: datetime | None, window_end_utc: datetime
+    ) -> list[tuple[datetime, datetime]]:
+        output: list[tuple[datetime, datetime]] = []
+        for interval in self._effective_intervals(task, window_end_utc):
+            start = interval.start_utc
+            stop = interval.stop_utc
+            if window_start_utc and stop <= window_start_utc:
+                continue
+            if start > window_end_utc:
+                continue
+            clipped_start = max(start, window_start_utc) if window_start_utc else start
+            clipped_stop = min(stop, window_end_utc)
+            if clipped_stop > clipped_start:
+                output.append((clipped_start, clipped_stop))
+        return output
+
+    def _compute_daily_totals(self, intervals: list[tuple[datetime, datetime]]) -> dict[str, float]:
+        totals: dict[str, float] = {}
+        for start_utc, stop_utc in intervals:
+            start_local = start_utc.astimezone(self.local_tz)
+            stop_local = stop_utc.astimezone(self.local_tz)
+            day_cursor = start_local.date()
+            last_day = stop_local.date()
+            while day_cursor <= last_day:
+                day_ref = datetime.combine(day_cursor, time(hour=12), self.local_tz)
+                seconds = interval_seconds_in_local_day(start_utc, stop_utc, self.local_tz, day_ref)
+                if seconds > 0:
+                    key = day_cursor.isoformat()
+                    totals[key] = totals.get(key, 0.0) + seconds
+                day_cursor += timedelta(days=1)
+        return totals
+
+    def _compute_weekly_totals(self, intervals: list[tuple[datetime, datetime]]) -> dict[str, float]:
+        totals: dict[str, float] = {}
+        for start_utc, stop_utc in intervals:
+            start_local = start_utc.astimezone(self.local_tz)
+            stop_local = stop_utc.astimezone(self.local_tz)
+            week_cursor = sunday_week_start(start_local)
+            while week_cursor <= stop_local:
+                week_range = self._week_range_label(week_cursor.date())
+                seconds = interval_seconds_in_local_week(start_utc, stop_utc, self.local_tz, week_cursor)
+                if seconds > 0:
+                    totals[week_range] = totals.get(week_range, 0.0) + seconds
+                week_cursor += timedelta(days=7)
+        return totals
+
+    @staticmethod
+    def _week_range_label(week_start: date) -> str:
+        week_end = week_start + timedelta(days=6)
+        return f"{week_start.isoformat()} to {week_end.isoformat()}"
 
     def snapshot_dict(self) -> dict[str, Any]:
         tasks_payload: dict[str, Any] = {}
