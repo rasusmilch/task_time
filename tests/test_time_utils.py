@@ -1,7 +1,14 @@
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from task_timer.time_utils import interval_seconds_in_local_day, interval_seconds_in_local_week
+import pytest
+
+from task_timer.time_utils import (
+    interval_seconds_in_local_day,
+    interval_seconds_in_local_week,
+    parse_duration_seconds,
+    parse_flexible_time,
+)
 
 
 def test_daily_split_across_midnight() -> None:
@@ -44,3 +51,45 @@ def test_leap_day_handling() -> None:
     stop = datetime(2024, 2, 29, 11, 0, tzinfo=timezone.utc)
     ref = datetime(2024, 2, 29, 12, 0, tzinfo=tz)
     assert interval_seconds_in_local_day(start, stop, tz, ref) == 3600
+
+
+@pytest.mark.parametrize(
+    ("input_text", "hour", "minute"),
+    [
+        ("8", 8, 0),
+        ("8am", 8, 0),
+        ("8:30", 8, 30),
+        ("8:30am", 8, 30),
+        ("13:45", 13, 45),
+    ],
+)
+def test_parse_flexible_time_valid(input_text: str, hour: int, minute: int) -> None:
+    parsed = parse_flexible_time(input_text)
+    assert parsed.hour == hour
+    assert parsed.minute == minute
+
+
+def test_parse_flexible_time_invalid() -> None:
+    with pytest.raises(ValueError):
+        parse_flexible_time("25:61")
+
+
+@pytest.mark.parametrize(
+    ("input_text", "seconds"),
+    [
+        ("1", 3600),
+        ("1h", 3600),
+        ("1.5h", 5400),
+        ("1:30", 5400),
+        ("90m", 5400),
+        ("1h 30m", 5400),
+        ("30m", 1800),
+    ],
+)
+def test_parse_duration_seconds_valid(input_text: str, seconds: int) -> None:
+    assert parse_duration_seconds(input_text) == seconds
+
+
+def test_parse_duration_seconds_invalid() -> None:
+    with pytest.raises(ValueError):
+        parse_duration_seconds("abc")

@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import tkinter as tk
 from dataclasses import asdict
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
-from tkinter import StringVar, Tk, Toplevel, filedialog, messagebox, ttk
+from tkinter import StringVar, Tk, Toplevel, filedialog, messagebox, simpledialog, ttk
 from typing import Any
 from uuid import uuid4
 
+from .backups import BackupManager
 from .dialogs import AddTaskDialog, EditTimeDialog
 from .exporter import build_export_text, write_export_file
 from .mini_mode import MiniModeWindow
@@ -20,8 +23,11 @@ from .storage import EventStorage
 from .time_utils import (
     detect_local_timezone,
     format_duration_hm,
+    combine_local_date_time,
     interval_seconds_in_local_day,
     interval_seconds_in_local_week,
+    parse_duration_seconds,
+    parse_flexible_time,
     parse_utc_z,
     sunday_week_start,
     to_utc_z,
@@ -37,6 +43,7 @@ class TaskTimerService:
 
     def __init__(self, storage: EventStorage) -> None:
         self.storage = storage
+        self.backups = BackupManager(storage.data_dir)
         self.local_tz = detect_local_timezone()
         self.local_tz_name = getattr(self.local_tz, "key", "UTC")
         self.state = AppState()
@@ -73,9 +80,17 @@ class TaskTimerService:
         self.stop_task(task_id)
         self._append(task_id, "reset", {})
 
+    def parse_local_datetime_inputs(self, work_date: date, time_text: str) -> datetime:
+        parsed_time = parse_flexible_time(time_text)
+        return combine_local_date_time(work_date, parsed_time, self.local_tz)
+
+    def parse_duration_input_seconds(self, duration_text: str) -> float:
+        return parse_duration_seconds(duration_text)
+
     def add_manual_interval(self, task_id: str, start_local: datetime, stop_local: datetime, reason: str) -> None:
         if stop_local <= start_local:
             raise ValueError("Stop must be after start")
+        self._validate_interval_against_checkpoint(start_local, stop_local)
         self._append(
             task_id,
             "manual_interval_added",
@@ -90,6 +105,8 @@ class TaskTimerService:
     def edit_interval(self, task_id: str, interval_id: str, start_local: datetime, stop_local: datetime, reason: str) -> None:
         if stop_local <= start_local:
             raise ValueError("Stop must be after start")
+        self.backups.create_safety_backup("before manual interval edit")
+        self._validate_interval_against_checkpoint(start_local, stop_local)
         self._append(
             task_id,
             "interval_edited",
@@ -103,11 +120,32 @@ class TaskTimerService:
         )
 
     def delete_interval(self, task_id: str, interval_id: str, reason: str) -> None:
+        self.backups.create_safety_backup("before manual interval delete")
         self._append(task_id, "interval_deleted", {"interval_id": interval_id, "reason": reason.strip()})
 
+    def add_manual_duration(self, task_id: str, work_date_local: date, duration_seconds: float, reason: str) -> None:
+        self._validate_duration_against_checkpoint(work_date_local)
+        synthetic_start = combine_local_date_time(work_date_local, time(hour=12), self.local_tz).astimezone(timezone.utc)
+        synthetic_stop = synthetic_start + timedelta(seconds=duration_seconds)
+        self._append(
+            task_id,
+            "manual_duration_added",
+            {
+                "interval_id": str(uuid4()),
+                "work_date_local": work_date_local.isoformat(),
+                "duration_seconds": duration_seconds,
+                "entry_mode": "duration",
+                "start_utc": to_utc_z(synthetic_start),
+                "stop_utc": to_utc_z(synthetic_stop),
+                "reason": reason.strip(),
+            },
+        )
+
     def export_report(self, target: Path, reset_after: bool) -> None:
+        self.backups.create_safety_backup("before export")
         now_utc = utc_now()
-        window_start_utc = self.find_last_export_checkpoint_utc()
+        active_checkpoint = self.find_active_export_checkpoint()
+        window_start_utc = parse_utc_z(active_checkpoint["timestamp_utc"]) if active_checkpoint else None
         window_events = self.events_in_window(window_start_utc, now_utc)
         per_task = self.compute_windowed_task_totals(window_start_utc, now_utc)
         weekly_ranges = self.collect_week_ranges(per_task)
@@ -185,10 +223,46 @@ class TaskTimerService:
         return output
 
     def find_last_export_checkpoint_utc(self) -> datetime | None:
-        for event in sorted(self.events, key=lambda ev: ev["timestamp_utc"], reverse=True):
-            if event["task_id"] == "__app__" and event["event_type"] == "export_checkpoint":
-                return parse_utc_z(event["timestamp_utc"])
+        active = self.find_active_export_checkpoint()
+        if active:
+            return parse_utc_z(active["timestamp_utc"])
         return None
+
+    def find_active_export_checkpoint(self) -> dict[str, Any] | None:
+        checkpoints: list[dict[str, Any]] = []
+        voided_event_ids: set[str] = set()
+        for event in sorted(self.events, key=lambda ev: ev["timestamp_utc"]):
+            if event["task_id"] != "__app__":
+                continue
+            if event["event_type"] == "export_checkpoint":
+                checkpoints.append(event)
+            elif event["event_type"] == "export_checkpoint_voided":
+                payload = event.get("payload", {})
+                if payload.get("voided_checkpoint_event_id"):
+                    voided_event_ids.add(payload["voided_checkpoint_event_id"])
+        for checkpoint in reversed(checkpoints):
+            if checkpoint["event_id"] in voided_event_ids:
+                continue
+            return checkpoint
+        return None
+
+    def void_last_export_checkpoint(self, reason: str) -> None:
+        if not reason.strip():
+            raise ValueError("Reason is required")
+        active = self.find_active_export_checkpoint()
+        if not active:
+            raise ValueError("No active export checkpoint to reopen")
+        self.backups.create_safety_backup("before checkpoint reopen")
+        self._append(
+            "__app__",
+            "export_checkpoint_voided",
+            {
+                "voided_checkpoint_event_id": active["event_id"],
+                "voided_checkpoint_timestamp_utc": active["timestamp_utc"],
+                "reason": reason.strip(),
+                "previous_checkpoint_timestamp_utc": active.get("payload", {}).get("window_start_utc"),
+            },
+        )
 
     def events_in_window(self, window_start_utc: datetime | None, window_end_utc: datetime) -> list[dict[str, Any]]:
         output: list[dict[str, Any]] = []
@@ -307,14 +381,70 @@ class TaskTimerService:
                 line = f'{local_stamp}  Deleted interval for "{task_name}" ({payload.get("interval_id", "unknown")})'
                 if payload.get("reason"):
                     line += f" (Reason: {payload['reason']})"
+            elif event_type == "manual_duration_added":
+                duration_label = format_duration_hm(payload.get("duration_seconds", 0.0))
+                line = (
+                    f'{local_stamp}  Added manual duration to "{task_name}": {duration_label} '
+                    f'on {payload.get("work_date_local", "unknown date")}'
+                )
+                if payload.get("reason"):
+                    line += f" (Reason: {payload['reason']})"
             elif event_type == "task_deleted":
                 line = f'{local_stamp}  Deleted task "{task_name}"'
             elif event_type == "export_checkpoint":
                 line = f"{local_stamp}  Export checkpoint created"
+            elif event_type == "export_checkpoint_voided":
+                checkpoint_local = parse_utc_z(payload["voided_checkpoint_timestamp_utc"]).astimezone(self.local_tz).strftime(
+                    "%Y-%m-%d %I:%M %p"
+                )
+                line = f"{local_stamp}  Reopened export checkpoint from {checkpoint_local}"
+                if payload.get("reason"):
+                    line += f" (Reason: {payload['reason']})"
             else:
                 line = f'{local_stamp}  {event_type} for "{task_name}"'
             formatted_by_event_id[event["event_id"]] = line
         return [formatted_by_event_id[event["event_id"]] for event in window_events if event["event_id"] in formatted_by_event_id]
+
+    def create_backup_now(self, reason: str = "manual backup") -> Path:
+        return self.backups.create_backup("son", reason)
+
+    def list_managed_backups(self) -> list[Any]:
+        return self.backups.list_backups()
+
+    def restore_from_backup(self, backup_path: Path) -> None:
+        self.backups.restore_backup(backup_path)
+        self.events = self.storage.iter_all_events()
+        self._rebuild_state(self.events)
+        self._save_snapshot()
+
+    def rebuild_snapshot_from_journal(self) -> None:
+        self.backups.create_safety_backup("before rebuild snapshot from journal")
+        self.events = self.storage.iter_all_events()
+        self._rebuild_state(self.events)
+        self._save_snapshot()
+
+    def _checkpoint_reject_message(self) -> str:
+        return (
+            "This manual time is before the active export checkpoint and will not be included in the next export. "
+            "Reopen or void the last checkpoint before adding this correction."
+        )
+
+    def _validate_interval_against_checkpoint(self, start_local: datetime, stop_local: datetime) -> None:
+        checkpoint_utc = self.find_last_export_checkpoint_utc()
+        if not checkpoint_utc:
+            return
+        start_utc = start_local.astimezone(timezone.utc)
+        stop_utc = stop_local.astimezone(timezone.utc)
+        if stop_utc <= checkpoint_utc or start_utc <= checkpoint_utc:
+            raise ValueError(self._checkpoint_reject_message())
+
+    def _validate_duration_against_checkpoint(self, work_date_local: date) -> None:
+        checkpoint_utc = self.find_last_export_checkpoint_utc()
+        if not checkpoint_utc:
+            return
+        checkpoint_local_date = checkpoint_utc.astimezone(self.local_tz).date()
+        if work_date_local < checkpoint_local_date:
+            raise ValueError(self._checkpoint_reject_message())
 
     def _windowed_intervals(
         self, task: TaskState, window_start_utc: datetime | None, window_end_utc: datetime
@@ -391,6 +521,9 @@ class TaskTimerService:
                         "start_utc": to_utc_z(interval.start_utc),
                         "stop_utc": to_utc_z(interval.stop_utc),
                         "source": interval.source,
+                        "entry_mode": interval.entry_mode,
+                        "work_date_local": interval.work_date_local,
+                        "duration_seconds": interval.duration_seconds,
                         "replaced_interval_id": interval.replaced_interval_id,
                         "edit_reason": interval.edit_reason,
                         "deleted": interval.deleted,
@@ -440,10 +573,13 @@ class TaskTimerService:
                             task_id=interval.task_id,
                             start_utc=task.last_reset_utc,
                             stop_utc=interval.stop_utc,
-                            source=interval.source,
-                            replaced_interval_id=interval.replaced_interval_id,
-                            edit_reason=interval.edit_reason,
-                            deleted=interval.deleted,
+                    source=interval.source,
+                    entry_mode=interval.entry_mode,
+                    work_date_local=interval.work_date_local,
+                    duration_seconds=interval.duration_seconds,
+                    replaced_interval_id=interval.replaced_interval_id,
+                    edit_reason=interval.edit_reason,
+                    deleted=interval.deleted,
                         )
                     )
                 else:
@@ -516,6 +652,22 @@ class TaskTimerService:
                 start_utc=parse_utc_z(payload["start_utc"]),
                 stop_utc=parse_utc_z(payload["stop_utc"]),
                 source="manual",
+                entry_mode=payload.get("entry_mode", "interval"),
+                work_date_local=payload.get("work_date_local"),
+                duration_seconds=payload.get("duration_seconds"),
+                edit_reason=payload.get("reason"),
+            )
+            task.intervals[interval.interval_id] = interval
+        elif event_type == "manual_duration_added":
+            interval = IntervalRecord(
+                interval_id=payload["interval_id"],
+                task_id=task_id,
+                start_utc=parse_utc_z(payload["start_utc"]),
+                stop_utc=parse_utc_z(payload["stop_utc"]),
+                source="manual_duration",
+                entry_mode="duration",
+                work_date_local=payload.get("work_date_local"),
+                duration_seconds=payload.get("duration_seconds"),
                 edit_reason=payload.get("reason"),
             )
             task.intervals[interval.interval_id] = interval
@@ -529,6 +681,7 @@ class TaskTimerService:
                 start_utc=parse_utc_z(payload["start_utc"]),
                 stop_utc=parse_utc_z(payload["stop_utc"]),
                 source="edit",
+                entry_mode="interval",
                 replaced_interval_id=payload["interval_id"],
                 edit_reason=payload.get("reason"),
             )
@@ -566,6 +719,7 @@ class TaskTimerApp:
         self._tick()
 
     def _build_ui(self) -> None:
+        self._build_menus()
         toolbar = ttk.Frame(self.root)
         toolbar.pack(fill="x", padx=8, pady=8)
         ttk.Button(toolbar, text="Add Task", command=self.add_task).pack(side="left")
@@ -586,6 +740,21 @@ class TaskTimerApp:
         self._configure_table_columns(self.header_frame)
         self.rows_frame.grid_columnconfigure(0, weight=1)
         self._setup_headers()
+
+    def _build_menus(self) -> None:
+        menubar = tk.Menu(self.root)
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="Create Backup Now", command=self._create_backup_now)
+        file_menu.add_command(label="Open Data Folder", command=self._open_data_folder)
+        file_menu.add_command(label="Open Backup Folder", command=self._open_backup_folder)
+        file_menu.add_command(label="Restore From Backup", command=self._restore_from_backup)
+        file_menu.add_command(label="Rebuild Snapshot From Journal", command=self._rebuild_snapshot_from_journal)
+        menubar.add_cascade(label="File", menu=file_menu)
+
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(label="Reopen Last Export Checkpoint", command=self._reopen_last_export_checkpoint)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        self.root.configure(menu=menubar)
 
     def _column_specs(self) -> list[dict[str, Any]]:
         return [
@@ -805,6 +974,82 @@ class TaskTimerApp:
         dialog = EditTimeDialog(self.root, self.service, task_id)
         if dialog.changed:
             self._after_state_change()
+
+    def _create_backup_now(self) -> None:
+        backup_path = self.service.create_backup_now("manual backup from UI")
+        messagebox.showinfo("Backup Created", f"Backup created:\n{backup_path}")
+
+    def _open_data_folder(self) -> None:
+        self._open_folder(self.service.storage.data_dir)
+
+    def _open_backup_folder(self) -> None:
+        self._open_folder(self.service.backups.open_backup_folder())
+
+    def _restore_from_backup(self) -> None:
+        backups = self.service.list_managed_backups()
+        if not backups:
+            messagebox.showinfo("Restore", "No managed backups are available.")
+            return
+        options = [
+            f"{idx + 1}. {item.created_utc} [{item.backup_type}] {item.reason} :: {item.path.name}"
+            for idx, item in enumerate(backups[:25])
+        ]
+        choice = simpledialog.askinteger(
+            "Restore From Backup",
+            "Select backup number to restore:\n\n" + "\n".join(options),
+            minvalue=1,
+            maxvalue=len(options),
+        )
+        if not choice:
+            return
+        selected = backups[choice - 1]
+        if not messagebox.askyesno(
+            "Confirm restore",
+            "A safety backup of current data will be created first.\nContinue restore?",
+        ):
+            return
+        self.service.restore_from_backup(selected.path)
+        self._after_state_change()
+        messagebox.showinfo("Restore", f"Restore complete from:\n{selected.path.name}")
+
+    def _rebuild_snapshot_from_journal(self) -> None:
+        if not messagebox.askyesno(
+            "Rebuild Snapshot",
+            "This will create a safety backup and rebuild state_snapshot.json from journal events. Continue?",
+        ):
+            return
+        self.service.rebuild_snapshot_from_journal()
+        self._after_state_change()
+        messagebox.showinfo("Rebuild complete", "Snapshot rebuilt from journal.")
+
+    def _reopen_last_export_checkpoint(self) -> None:
+        reason = simpledialog.askstring(
+            "Reopen Export Checkpoint",
+            "Reason/comment for reopening the last export checkpoint:",
+        )
+        if reason is None:
+            return
+        if not messagebox.askyesno(
+            "Confirm Reopen",
+            "This will void/reopen the active export checkpoint.\n"
+            "It will not delete old export files and the action is journaled.\nContinue?",
+        ):
+            return
+        try:
+            self.service.void_last_export_checkpoint(reason)
+            messagebox.showinfo("Checkpoint reopened", "The active export checkpoint was reopened.")
+        except Exception as exc:  # noqa: BLE001
+            messagebox.showerror("Reopen failed", str(exc))
+
+    @staticmethod
+    def _open_folder(path: Path) -> None:
+        try:
+            if os.name == "nt":
+                os.startfile(str(path))  # type: ignore[attr-defined]
+            elif os.name == "posix":
+                subprocess.Popen(["xdg-open", str(path)])  # noqa: S603,S607
+        except Exception:  # noqa: BLE001
+            messagebox.showinfo("Folder", f"Folder path:\n{path}")
 
     def _tick(self) -> None:
         self.refresh_live_values()

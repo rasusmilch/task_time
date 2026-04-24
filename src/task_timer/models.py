@@ -20,6 +20,9 @@ class IntervalRecord:
     start_utc: datetime
     stop_utc: datetime
     source: str
+    entry_mode: str = "interval"
+    work_date_local: str | None = None
+    duration_seconds: float | None = None
     replaced_interval_id: str | None = None
     edit_reason: str | None = None
     deleted: bool = False

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone, time, timedelta
+import re
+from datetime import date, datetime, timezone, time, timedelta
 from zoneinfo import ZoneInfo
 
 
@@ -108,3 +109,58 @@ def interval_seconds_in_local_week(
     if overlap_end <= overlap_start:
         return 0.0
     return (overlap_end - overlap_start).total_seconds()
+
+
+def parse_flexible_time(value: str) -> time:
+    """Parse permissive time input like `8`, `8am`, `8:30`, `8:30am`, `13:45`."""
+    text = value.strip().lower().replace(" ", "")
+    if not text:
+        raise ValueError("Time is required")
+    match = re.fullmatch(r"(\d{1,2})(?::(\d{2}))?([ap]m)?", text)
+    if not match:
+        raise ValueError(f"Invalid time format: {value}")
+    hour = int(match.group(1))
+    minute = int(match.group(2) or "0")
+    meridiem = match.group(3)
+    if minute > 59:
+        raise ValueError(f"Invalid minute in time: {value}")
+    if meridiem:
+        if hour < 1 or hour > 12:
+            raise ValueError(f"Invalid 12-hour time: {value}")
+        if meridiem == "am":
+            hour = 0 if hour == 12 else hour
+        else:
+            hour = 12 if hour == 12 else hour + 12
+    elif hour > 23:
+        raise ValueError(f"Invalid 24-hour time: {value}")
+    return time(hour=hour, minute=minute)
+
+
+def parse_duration_seconds(value: str) -> float:
+    """Parse flexible duration text into seconds."""
+    text = value.strip().lower()
+    if not text:
+        raise ValueError("Duration is required")
+    if re.fullmatch(r"\d+(?::\d{1,2})", text):
+        hours, minutes = text.split(":", 1)
+        mins_int = int(minutes)
+        if mins_int > 59:
+            raise ValueError(f"Invalid duration minutes: {value}")
+        return float(int(hours) * 3600 + mins_int * 60)
+    if re.fullmatch(r"\d+(\.\d+)?", text):
+        return float(text) * 3600
+
+    total_seconds = 0.0
+    unit_matches = re.findall(r"(\d+(?:\.\d+)?)\s*([hm])", text)
+    compact = "".join(f"{num}{unit}" for num, unit in unit_matches)
+    if unit_matches and compact == text.replace(" ", ""):
+        for amount, unit in unit_matches:
+            val = float(amount)
+            total_seconds += val * (3600 if unit == "h" else 60)
+        return total_seconds
+    raise ValueError(f"Invalid duration format: {value}")
+
+
+def combine_local_date_time(work_date: date, clock_time: time, local_tz: ZoneInfo) -> datetime:
+    """Return aware local datetime from local date + local time."""
+    return datetime.combine(work_date, clock_time, local_tz)
