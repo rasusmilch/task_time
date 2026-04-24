@@ -57,3 +57,17 @@ Default reset scope is all non-deleted tasks.
 - Every state-changing action appends + flushes + fsyncs event log.
 - Snapshot and manifest writes are atomic temp-write + replace.
 - UI timer refresh never writes files.
+
+## Backups
+
+- Managed backups are stored under `~/.task_timer_data/backups` in GFS-style buckets:
+  - `sons/`
+  - `fathers/`
+  - `grandfathers/`
+- `backup_settings.json` is auto-created with defaults on first run and is user-editable from **File → Backup Settings**.
+- Retention trims each bucket to configured keep counts after backup creation.
+- Restore always takes a forced safety backup before data replacement.
+- Other risky-operation safety backups are controlled by `auto_backup_before_risky_operations`.
+- Optional app-start auto backups are controlled by:
+  - `auto_backup_on_app_start`
+  - `auto_backup_min_interval_minutes`
