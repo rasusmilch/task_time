@@ -13,3 +13,4 @@ dist/
 
 # Local packaging artifacts
 *.zip
+src/task_timer.egg-info/*
