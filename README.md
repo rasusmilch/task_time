@@ -49,3 +49,9 @@ Export is plain text and includes:
 - Notes are single-line and capped at **160 characters**.
 - UI is intentionally utilitarian.
 - This is a local desktop app; no network/cloud/account features.
+
+## Windows executable packaging
+
+For internal Windows executable packaging with PyInstaller (default `onedir` output), see [`BUILDING.md`](BUILDING.md).
+
+Distribution guidance: ship the entire `dist\Task Timer\` folder and run `Task Timer.exe` from that folder. User data remains external in `~/.task_timer_data`.

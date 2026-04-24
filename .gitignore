@@ -1,2 +1,15 @@
-*.zip
+# Python cache/build artifacts
+__pycache__/
 *.pyc
+
+# Local virtual environment
+.venv/
+
+# PyInstaller/build outputs
+build/
+dist/
+*.pyo
+*.pyd
+
+# Local packaging artifacts
+*.zip
