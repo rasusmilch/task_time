@@ -3,7 +3,10 @@
 
 from pathlib import Path
 
-repo_root = Path(__file__).resolve().parent
+try:
+    repo_root = Path(SPECPATH).resolve()
+except NameError:
+    repo_root = Path.cwd().resolve()
 
 # Keep analysis focused on project sources under src/.
 a = Analysis(
