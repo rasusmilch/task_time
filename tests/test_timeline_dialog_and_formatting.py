@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 from task_timer.app import TaskTimerService
-from task_timer.dialogs import EditTimelineDialog, TimelineEntryResult, _TimelineTimePicker, format_timeline_row
+from task_timer.dialogs import EditTimelineDialog, TimelineEntryResult, _TimePickerPopupDialog, _TimelineTimePicker, format_timeline_row
 from task_timer.storage import EventStorage
 
 
@@ -21,9 +21,124 @@ def test_edit_timeline_dialog_includes_local_timezone_label() -> None:
     assert "Times shown in local timezone:" in inspect.getsource(EditTimelineDialog.__init__)
 
 
-def test_timeline_time_picker_normalizes_tuple_output() -> None:
+def test_timeline_time_picker_widget_contains_entry_and_pick_button(monkeypatch) -> None:
+    class FakeStringVar:
+        def __init__(self, value: str = "") -> None:
+            self._value = value
+
+        def get(self) -> str:
+            return self._value
+
+        def set(self, value: str) -> None:
+            self._value = value
+
+    class FakeFrame:
+        def __init__(self, *_args, **_kwargs) -> None:
+            pass
+
+        def grid_columnconfigure(self, *_args, **_kwargs) -> None:
+            pass
+
+    class FakeEntry:
+        def __init__(self, parent, textvariable=None, width=None) -> None:  # noqa: ANN001
+            del parent, width
+            self.textvariable = textvariable
+            self.gridded = False
+
+        def grid(self, *_args, **_kwargs) -> None:
+            self.gridded = True
+
+    class FakeButton:
+        def __init__(self, parent, text: str = "", command=None) -> None:  # noqa: ANN001
+            del parent
+            self.text = text
+            self.command = command
+            self.states: list[tuple[str, ...]] = []
+
+        def grid(self, *_args, **_kwargs) -> None:
+            pass
+
+        def state(self, values: list[str]) -> None:
+            self.states.append(tuple(values))
+
+        def configure(self, **_kwargs) -> None:
+            pass
+
+    monkeypatch.setattr("task_timer.dialogs.StringVar", FakeStringVar)
+    monkeypatch.setattr("task_timer.dialogs.ttk.Frame", FakeFrame)
+    monkeypatch.setattr("task_timer.dialogs.ttk.Entry", FakeEntry)
+    monkeypatch.setattr("task_timer.dialogs.ttk.Button", FakeButton)
+    monkeypatch.setattr("task_timer.dialogs.AnalogPicker", None)
+    monkeypatch.setattr("task_timer.dialogs.constants", None)
+
+    picker = _TimelineTimePicker(SimpleNamespace(), "8:30 AM")
+
+    assert isinstance(picker.widget, FakeFrame)
+    assert isinstance(picker.entry, FakeEntry)
+    assert isinstance(picker.pick_button, FakeButton)
+    assert picker.pick_button.text == "Pick..."
+    assert ("disabled",) in picker.pick_button.states
+
+
+def test_timeline_time_picker_open_popup_uses_popup_dialog(monkeypatch) -> None:
     picker = _TimelineTimePicker.__new__(_TimelineTimePicker)
-    assert picker._render_picker_value(("9", "5", "AM")) == "09:05"
+    picker.popup_available = True
+    picker.parent = SimpleNamespace()
+    picker.get_time_text = lambda: "8:30 AM"
+    picker._entry_var = SimpleNamespace(set=lambda value: setattr(picker, "_picked_value", value))
+    picker._picked_value = None
+    monkeypatch.setattr("task_timer.dialogs._TimePickerPopupDialog", lambda *_args, **_kwargs: SimpleNamespace(result="9:15 AM"))
+
+    _TimelineTimePicker._open_popup(picker)
+
+    assert picker._picked_value == "9:15 AM"
+
+
+def test_timeline_time_picker_open_popup_cancel_keeps_value(monkeypatch) -> None:
+    picker = _TimelineTimePicker.__new__(_TimelineTimePicker)
+    picker.popup_available = True
+    picker.parent = SimpleNamespace()
+    picker.get_time_text = lambda: "8:30 AM"
+    picker._picked_value = "8:30 AM"
+    picker._entry_var = SimpleNamespace(set=lambda value: setattr(picker, "_picked_value", value))
+    monkeypatch.setattr("task_timer.dialogs._TimePickerPopupDialog", lambda *_args, **_kwargs: SimpleNamespace(result=None))
+
+    _TimelineTimePicker._open_popup(picker)
+
+    assert picker._picked_value == "8:30 AM"
+
+
+def test_time_picker_popup_parse_supports_am_pm_and_24h() -> None:
+    popup = _TimePickerPopupDialog.__new__(_TimePickerPopupDialog)
+    assert popup._parse_time("8:30 AM").strftime("%H:%M") == "08:30"
+    assert popup._parse_time("8:30 PM").strftime("%H:%M") == "20:30"
+    assert popup._parse_time("13:45").strftime("%H:%M") == "13:45"
+    assert popup._parse_time("8").strftime("%H:%M") == "08:00"
+
+
+def test_time_picker_popup_parse_midnight_noon() -> None:
+    popup = _TimePickerPopupDialog.__new__(_TimePickerPopupDialog)
+    assert popup._parse_time("12:00 AM").strftime("%H:%M") == "00:00"
+    assert popup._parse_time("12:00 PM").strftime("%H:%M") == "12:00"
+
+
+def test_time_picker_popup_confirm_formats_selection() -> None:
+    popup = _TimePickerPopupDialog.__new__(_TimePickerPopupDialog)
+    popup.picker = SimpleNamespace(time=lambda: "20:05")
+    popup.window = SimpleNamespace(destroy=lambda: None)
+    popup.result = None
+
+    _TimePickerPopupDialog._confirm(popup)
+
+    assert popup.result == "8:05 PM"
+
+
+def test_time_picker_popup_confirm_cancel_path_keeps_none() -> None:
+    picker = _TimelineTimePicker.__new__(_TimelineTimePicker)
+    picker.popup_available = False
+    picker._entry_var = SimpleNamespace(get=lambda: "8:30 AM")
+
+    assert picker.get_time_text() == "8:30 AM"
 
 
 def test_format_timeline_row_same_day_local_times() -> None:

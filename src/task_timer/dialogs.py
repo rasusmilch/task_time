@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from .models import NOTES_MAX_LENGTH
 from .settings import BackupSettings
-from .time_utils import format_duration_hm
+from .time_utils import format_duration_hm, parse_flexible_time
 
 if TYPE_CHECKING:
     from .app import TaskTimerService
@@ -21,9 +21,11 @@ except Exception:  # noqa: BLE001
     DateEntry = None
 
 try:
-    import tktimepicker
+    from tktimepicker import AnalogPicker, AnalogThemes, constants
 except Exception:  # noqa: BLE001
-    tktimepicker = None
+    AnalogPicker = None
+    AnalogThemes = None
+    constants = None
 
 
 def _normalize_time_text(value: str) -> str:
@@ -31,82 +33,98 @@ def _normalize_time_text(value: str) -> str:
 
 
 class _TimelineTimePicker:
-    """Wrap tkTimePicker spin widgets with graceful fallback parsing."""
+    """Time text entry with optional popup tkTimePicker analog selector."""
 
     def __init__(self, parent: Toplevel, initial_text: str) -> None:
-        self._initial_text = _normalize_time_text(initial_text)
-        self._picker_widget: Any | None = None
+        self.parent = parent
         self._entry_var = StringVar(value=initial_text)
-        self.widget: Any
-
-        if tktimepicker is None:
-            self.widget = ttk.Entry(parent, textvariable=self._entry_var)
-            return
-
-        picker_cls = getattr(tktimepicker, "SpinTimePickerModern", None) or getattr(tktimepicker, "SpinTimePickerOld", None)
-        constants = getattr(tktimepicker, "constants", None)
-        hours24 = getattr(constants, "HOURS24", None) if constants else None
-        if picker_cls is None or hours24 is None:
-            self.widget = ttk.Entry(parent, textvariable=self._entry_var)
-            return
-        try:
-            self.widget = picker_cls(parent)
-            self._picker_widget = self.widget
-            self._picker_widget.addAll(hours24)
-            self._apply_initial_time()
-        except Exception:  # noqa: BLE001
-            self._picker_widget = None
-            self.widget = ttk.Entry(parent, textvariable=self._entry_var)
+        self.widget = ttk.Frame(parent)
+        self.entry = ttk.Entry(self.widget, textvariable=self._entry_var, width=12)
+        self.entry.grid(row=0, column=0, sticky="ew")
+        self.pick_button = ttk.Button(self.widget, text="Pick...", command=self._open_popup)
+        self.pick_button.grid(row=0, column=1, padx=(4, 0))
+        self.widget.grid_columnconfigure(0, weight=1)
+        self.popup_available = AnalogPicker is not None and constants is not None
+        if not self.popup_available:
+            self.pick_button.state(["disabled"])
+            self.pick_button.configure(takefocus=False)
 
     def get_time_text(self) -> str:
-        if self._picker_widget is None:
-            return self._entry_var.get().strip()
-        for attr in ("time", "hours24"):
-            method = getattr(self._picker_widget, attr, None)
-            if callable(method):
-                value = method()
-                rendered = self._render_picker_value(value)
-                if rendered:
-                    return rendered
         return self._entry_var.get().strip()
 
-    def _render_picker_value(self, value: Any) -> str:
-        if isinstance(value, tuple):
-            parts = [str(part).strip() for part in value if str(part).strip()]
-            if len(parts) >= 2:
-                hour, minute = parts[0], parts[1]
-                if hour.isdigit() and minute.isdigit():
-                    return f"{int(hour):02d}:{int(minute):02d}"
-                return f"{hour}:{minute}"
-            return ""
-        if isinstance(value, str):
-            return value.strip()
-        if value is None:
-            return ""
-        return str(value).strip()
-
-    def _apply_initial_time(self) -> None:
-        if not self._initial_text or self._picker_widget is None:
+    def _open_popup(self) -> None:
+        if not self.popup_available:
             return
+        selected_time = _TimePickerPopupDialog(self.parent, self.get_time_text()).result
+        if selected_time:
+            self._entry_var.set(selected_time)
+
+
+class _TimePickerPopupDialog:
+    """Modal popup wrapper around tkTimePicker.AnalogPicker."""
+
+    def __init__(self, parent: Toplevel, initial_time_text: str) -> None:
+        self.result: str | None = None
+        self.window = Toplevel(parent)
+        self.window.title("Pick time")
+        self.window.transient(parent)
+        self.window.grab_set()
+        self.window.resizable(False, False)
+        self.window.grid_columnconfigure(0, weight=1)
+
+        self.picker = AnalogPicker(self.window)
+        self.picker.grid(row=0, column=0, padx=8, pady=(8, 4), sticky="nsew")
+
+        theme = AnalogThemes(self.picker)
+        set_navy_blue = getattr(theme, "setNavyBlue", None)
+        if callable(set_navy_blue):
+            set_navy_blue()
+
+        self._apply_initial_time(initial_time_text)
+
+        button_bar = ttk.Frame(self.window)
+        button_bar.grid(row=1, column=0, sticky="e", padx=8, pady=(0, 8))
+        ttk.Button(button_bar, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
+        ttk.Button(button_bar, text="OK", command=self._confirm).pack(side="right")
+
+        self.window.bind("<Return>", lambda _event: self._confirm())
+        self.window.bind("<Escape>", lambda _event: self.window.destroy())
+        parent.wait_window(self.window)
+
+    def _apply_initial_time(self, initial_time_text: str) -> None:
+        parsed = self._parse_time(initial_time_text)
+        if parsed is None:
+            return
+        set_hours = getattr(self.picker, "setHours", None)
+        if callable(set_hours):
+            set_hours(parsed.hour)
+        set_minutes = getattr(self.picker, "setMinutes", None)
+        if callable(set_minutes):
+            set_minutes(parsed.minute)
+        set_meridiem = getattr(self.picker, "setMeridiem", None)
+        if callable(set_meridiem) and constants is not None:
+            am_value = getattr(constants, "AM", "AM")
+            pm_value = getattr(constants, "PM", "PM")
+            set_meridiem(am_value if parsed.hour < 12 else pm_value)
+
+    def _parse_time(self, value: str) -> datetime | None:
+        text = _normalize_time_text(value)
+        if not text:
+            return None
         try:
-            parsed = datetime.strptime(self._initial_text, "%H:%M")
-        except ValueError:
-            try:
-                parsed = datetime.strptime(self._initial_text, "%I:%M %p")
-            except ValueError:
-                return
-        options = {
-            "from_": parsed.hour,
-            "to": parsed.hour,
-            "increment": 1,
-            "wrap": True,
-        }
-        configure_hour = getattr(self._picker_widget, "configure_24HrsTime", None)
-        if callable(configure_hour):
-            configure_hour(**options)
-        configure_minute = getattr(self._picker_widget, "configure_minute", None)
-        if callable(configure_minute):
-            configure_minute(from_=parsed.minute, to=parsed.minute, increment=1, wrap=True)
+            parsed = parse_flexible_time(text)
+            return datetime(2000, 1, 1, parsed.hour, parsed.minute)
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _confirm(self) -> None:
+        picker_time = self.picker.time()
+        parsed = self._parse_time(str(picker_time))
+        if parsed is None:
+            self.result = str(picker_time).strip()
+        else:
+            self.result = parsed.strftime("%I:%M %p").lstrip("0")
+        self.window.destroy()
 
 
 @dataclass(slots=True)
