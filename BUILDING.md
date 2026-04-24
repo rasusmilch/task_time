@@ -8,6 +8,20 @@ This repository includes a Windows-focused PyInstaller setup for internal distri
 - **Python:** 3.11+
 - **PowerShell:** Windows PowerShell 5.1+ or PowerShell 7+
 
+## Run from source (repo root)
+
+You can launch Task Timer directly from the repository root without an editable install:
+
+```powershell
+python .\run_task_timer.py
+```
+
+Optional development install:
+
+```powershell
+python -m pip install -e .
+```
+
 ## One-command build (recommended)
 
 From the repository root in PowerShell:
