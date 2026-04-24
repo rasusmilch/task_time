@@ -14,7 +14,7 @@ from typing import Any
 from uuid import uuid4
 
 from .backups import BackupManager
-from .dialogs import AddTaskDialog, BackupSettingsDialog, EditTimeDialog
+from .dialogs import AddTaskDialog, BackupSettingsDialog, EditTimelineDialog, format_timeline_row
 from .exporter import build_export_text, write_export_file
 from .mini_mode import MiniModeWindow
 from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TaskState, event_dict
@@ -91,6 +91,8 @@ class TaskTimerService:
     def add_manual_interval(self, task_id: str, start_local: datetime, stop_local: datetime, reason: str) -> None:
         if stop_local <= start_local:
             raise ValueError("Stop must be after start")
+        if not reason.strip():
+            raise ValueError("Reason is required")
         self._validate_interval_against_checkpoint(start_local, stop_local)
         self._append(
             task_id,
@@ -106,8 +108,16 @@ class TaskTimerService:
     def edit_interval(self, task_id: str, interval_id: str, start_local: datetime, stop_local: datetime, reason: str) -> None:
         if stop_local <= start_local:
             raise ValueError("Stop must be after start")
+        if not reason.strip():
+            raise ValueError("Reason is required")
+        task = self.state.tasks.get(task_id)
+        if not task or interval_id not in task.intervals:
+            raise ValueError("Interval not found")
         self._create_risky_operation_backup("before manual interval edit")
         self._validate_interval_against_checkpoint(start_local, stop_local)
+        prior = task.intervals[interval_id]
+        prior_start = prior.start_utc.astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
+        prior_stop = prior.stop_utc.astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
         self._append(
             task_id,
             "interval_edited",
@@ -116,15 +126,35 @@ class TaskTimerService:
                 "new_interval_id": str(uuid4()),
                 "start_utc": to_utc_z(start_local.astimezone(timezone.utc)),
                 "stop_utc": to_utc_z(stop_local.astimezone(timezone.utc)),
+                "prior_interval_label": f"{prior_start} to {prior_stop}",
                 "reason": reason.strip(),
             },
         )
 
     def delete_interval(self, task_id: str, interval_id: str, reason: str) -> None:
+        if not reason.strip():
+            raise ValueError("Reason is required")
+        task = self.state.tasks.get(task_id)
+        if not task or interval_id not in task.intervals:
+            raise ValueError("Interval not found")
+        interval = task.intervals[interval_id]
+        checkpoint_utc = self.find_last_export_checkpoint_utc()
+        if checkpoint_utc and interval.start_utc <= checkpoint_utc:
+            raise ValueError(self._checkpoint_reject_message())
+        interval_label = (
+            f"{interval.start_utc.astimezone(self.local_tz).strftime('%Y-%m-%d %I:%M %p')} "
+            f"to {interval.stop_utc.astimezone(self.local_tz).strftime('%Y-%m-%d %I:%M %p')}"
+        )
         self._create_risky_operation_backup("before manual interval delete")
-        self._append(task_id, "interval_deleted", {"interval_id": interval_id, "reason": reason.strip()})
+        self._append(
+            task_id,
+            "interval_deleted",
+            {"interval_id": interval_id, "interval_label": interval_label, "reason": reason.strip()},
+        )
 
     def add_manual_duration(self, task_id: str, work_date_local: date, duration_seconds: float, reason: str) -> None:
+        if not reason.strip():
+            raise ValueError("Reason is required")
         self._validate_duration_against_checkpoint(work_date_local)
         synthetic_start = combine_local_date_time(work_date_local, time(hour=12), self.local_tz).astimezone(timezone.utc)
         synthetic_stop = synthetic_start + timedelta(seconds=duration_seconds)
@@ -141,6 +171,39 @@ class TaskTimerService:
                 "reason": reason.strip(),
             },
         )
+
+    def correct_running_interval_stop(self, task_id: str, corrected_stop_local: datetime, reason: str) -> None:
+        if not reason.strip():
+            raise ValueError("Reason is required")
+        task = self.state.tasks.get(task_id)
+        if not task or not task.is_running or not task.currently_open_interval_start_utc:
+            raise ValueError("Task is not currently running")
+        corrected_stop_utc = corrected_stop_local.astimezone(timezone.utc)
+        if corrected_stop_utc <= task.currently_open_interval_start_utc:
+            raise ValueError("Corrected stop must be after the running start")
+        checkpoint_utc = self.find_last_export_checkpoint_utc()
+        if checkpoint_utc and task.currently_open_interval_start_utc <= checkpoint_utc:
+            raise ValueError(self._checkpoint_reject_message())
+        if checkpoint_utc and corrected_stop_utc <= checkpoint_utc:
+            raise ValueError(self._checkpoint_reject_message())
+        self._create_risky_operation_backup("before missed stop correction")
+        self._append(
+            task_id,
+            "missed_stop_corrected",
+            {
+                "interval_id": str(uuid4()),
+                "original_open_start_utc": to_utc_z(task.currently_open_interval_start_utc),
+                "corrected_stop_utc": to_utc_z(corrected_stop_utc),
+                "reason": reason.strip(),
+            },
+        )
+
+    def get_task_timeline(self, task_id: str, include_before_reset: bool = False, now_utc: datetime | None = None) -> list[dict[str, str]]:
+        task = self.state.tasks[task_id]
+        check_now = now_utc or utc_now()
+        intervals = self._all_intervals(task, check_now) if include_before_reset else self._effective_intervals(task, check_now)
+        intervals = sorted(intervals, key=lambda i: (i.start_utc, i.stop_utc, i.interval_id))
+        return [format_timeline_row(interval, self.local_tz) for interval in intervals]
 
     def export_report(self, target: Path, reset_after: bool) -> None:
         self._create_risky_operation_backup("before export")
@@ -372,14 +435,18 @@ class TaskTimerService:
             elif event_type == "interval_edited":
                 start_local = parse_utc_z(payload["start_utc"]).astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
                 stop_local = parse_utc_z(payload["stop_utc"]).astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
+                prior_label = payload.get("prior_interval_label") or payload.get("interval_id", "unknown")
                 line = (
                     f'{local_stamp}  Edited interval for "{task_name}": {start_local} to {stop_local} '
-                    f"(replaced {payload.get('interval_id', 'unknown')})"
+                    f"replaced prior interval {prior_label}"
                 )
                 if payload.get("reason"):
                     line += f" (Reason: {payload['reason']})"
             elif event_type == "interval_deleted":
-                line = f'{local_stamp}  Deleted interval for "{task_name}" ({payload.get("interval_id", "unknown")})'
+                line = (
+                    f'{local_stamp}  Deleted interval from "{task_name}": '
+                    f'{payload.get("interval_label", payload.get("interval_id", "unknown"))}'
+                )
                 if payload.get("reason"):
                     line += f" (Reason: {payload['reason']})"
             elif event_type == "manual_duration_added":
@@ -399,6 +466,14 @@ class TaskTimerService:
                     "%Y-%m-%d %I:%M %p"
                 )
                 line = f"{local_stamp}  Reopened export checkpoint from {checkpoint_local}"
+                if payload.get("reason"):
+                    line += f" (Reason: {payload['reason']})"
+            elif event_type == "missed_stop_corrected":
+                started_local = parse_utc_z(payload["original_open_start_utc"]).astimezone(self.local_tz).strftime(
+                    "%Y-%m-%d %I:%M %p"
+                )
+                stop_local = parse_utc_z(payload["corrected_stop_utc"]).astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
+                line = f'{local_stamp}  Corrected missed stop for "{task_name}": started {started_local}, corrected stop {stop_local}'
                 if payload.get("reason"):
                     line += f" (Reason: {payload['reason']})"
             else:
@@ -466,7 +541,7 @@ class TaskTimerService:
         if not checkpoint_utc:
             return
         checkpoint_local_date = checkpoint_utc.astimezone(self.local_tz).date()
-        if work_date_local < checkpoint_local_date:
+        if work_date_local <= checkpoint_local_date:
             raise ValueError(self._checkpoint_reject_message())
 
     def _windowed_intervals(
@@ -573,10 +648,10 @@ class TaskTimerService:
     def _save_snapshot(self) -> None:
         self.storage.save_snapshot(self.snapshot_dict())
 
-    def _effective_intervals(self, task: TaskState, now_utc: datetime) -> list[IntervalRecord]:
-        effective = [interval for interval in task.intervals.values() if not interval.deleted]
+    def _all_intervals(self, task: TaskState, now_utc: datetime) -> list[IntervalRecord]:
+        intervals = [interval for interval in task.intervals.values() if not interval.deleted]
         if task.is_running and task.currently_open_interval_start_utc:
-            effective.append(
+            intervals.append(
                 IntervalRecord(
                     interval_id="__open__",
                     task_id=task.task_id,
@@ -585,6 +660,10 @@ class TaskTimerService:
                     source="open",
                 )
             )
+        return intervals
+
+    def _effective_intervals(self, task: TaskState, now_utc: datetime) -> list[IntervalRecord]:
+        effective = self._all_intervals(task, now_utc)
         if task.last_reset_utc:
             effective = [interval for interval in effective if interval.stop_utc > task.last_reset_utc]
             clipped: list[IntervalRecord] = []
@@ -596,13 +675,13 @@ class TaskTimerService:
                             task_id=interval.task_id,
                             start_utc=task.last_reset_utc,
                             stop_utc=interval.stop_utc,
-                    source=interval.source,
-                    entry_mode=interval.entry_mode,
-                    work_date_local=interval.work_date_local,
-                    duration_seconds=interval.duration_seconds,
-                    replaced_interval_id=interval.replaced_interval_id,
-                    edit_reason=interval.edit_reason,
-                    deleted=interval.deleted,
+                            source=interval.source,
+                            entry_mode=interval.entry_mode,
+                            work_date_local=interval.work_date_local,
+                            duration_seconds=interval.duration_seconds,
+                            replaced_interval_id=interval.replaced_interval_id,
+                            edit_reason=interval.edit_reason,
+                            deleted=interval.deleted,
                         )
                     )
                 else:
@@ -714,6 +793,25 @@ class TaskTimerService:
             if interval:
                 interval.deleted = True
                 interval.edit_reason = payload.get("reason")
+        elif event_type == "missed_stop_corrected":
+            original_open_start = parse_utc_z(payload["original_open_start_utc"])
+            corrected_stop = parse_utc_z(payload["corrected_stop_utc"])
+            if task.is_running and task.currently_open_interval_start_utc == original_open_start and corrected_stop > original_open_start:
+                interval = IntervalRecord(
+                    interval_id=payload.get("interval_id", str(uuid4())),
+                    task_id=task_id,
+                    start_utc=original_open_start,
+                    stop_utc=corrected_stop,
+                    source="edit",
+                    entry_mode="interval",
+                    edit_reason=payload.get("reason"),
+                )
+                task.intervals[interval.interval_id] = interval
+                task.is_running = False
+                task.currently_open_interval_start_utc = None
+                task.display_color = "neutral"
+                if self.state.running_task_id == task_id:
+                    self.state.running_task_id = None
 
     @staticmethod
     def _clean_notes(notes: str) -> str:
@@ -788,7 +886,7 @@ class TaskTimerApp:
             {"key": "action", "header": "Action", "minsize": 80, "sticky": "ew"},
             {"key": "reset", "header": "Reset", "minsize": 80, "sticky": "ew"},
             {"key": "delete", "header": "Delete", "minsize": 80, "sticky": "ew"},
-            {"key": "edit_time", "header": "Edit Time", "minsize": 90, "sticky": "ew"},
+            {"key": "edit_time", "header": "Edit Timeline", "minsize": 110, "sticky": "ew"},
             {"key": "elapsed", "header": "Elapsed", "minsize": 80, "sticky": "e"},
         ]
 
@@ -875,7 +973,7 @@ class TaskTimerApp:
         row["toggle_btn"] = ttk.Button(container, text="Start", command=lambda t=task_id: self._toggle_task(t))
         row["reset_btn"] = ttk.Button(container, text="Reset", command=lambda t=task_id: self._reset_task(t))
         row["delete_btn"] = ttk.Button(container, text="Delete", command=lambda t=task_id: self._delete_task(t))
-        row["edit_btn"] = ttk.Button(container, text="Edit Time", command=lambda t=task_id: self._edit_time(t))
+        row["edit_btn"] = ttk.Button(container, text="Edit Timeline", command=lambda t=task_id: self._edit_time(t))
         row["elapsed_label"] = tk.Label(container, text="00:00", width=7)
 
         row["name_entry"].grid(row=0, column=0, padx=4, pady=2, sticky="ew")
@@ -995,7 +1093,7 @@ class TaskTimerApp:
             self._after_state_change()
 
     def _edit_time(self, task_id: str) -> None:
-        dialog = EditTimeDialog(self.root, self.service, task_id)
+        dialog = EditTimelineDialog(self.root, self.service, task_id)
         if dialog.changed:
             self._after_state_change()
 
