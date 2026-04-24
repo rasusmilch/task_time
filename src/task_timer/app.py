@@ -45,7 +45,7 @@ class TaskTimerService:
         self.storage = storage
         self.backups = BackupManager(storage.data_dir)
         self.local_tz = detect_local_timezone()
-        self.local_tz_name = getattr(self.local_tz, "key", "UTC")
+        self.local_tz_name = getattr(self.local_tz, "key", None) or getattr(self.local_tz, "zone", None) or str(self.local_tz)
         self.state = AppState()
         self.events = self.storage.iter_all_events()
         self._rebuild_state(self.events)
@@ -127,6 +127,39 @@ class TaskTimerService:
                 "start_utc": to_utc_z(start_local.astimezone(timezone.utc)),
                 "stop_utc": to_utc_z(stop_local.astimezone(timezone.utc)),
                 "prior_interval_label": f"{prior_start} to {prior_stop}",
+                "entry_mode": "interval",
+                "reason": reason.strip(),
+            },
+        )
+
+    def edit_duration_interval(
+        self, task_id: str, interval_id: str, work_date_local: date, duration_seconds: float, reason: str
+    ) -> None:
+        if duration_seconds <= 0:
+            raise ValueError("Duration must be greater than zero")
+        if not reason.strip():
+            raise ValueError("Reason is required")
+        task = self.state.tasks.get(task_id)
+        if not task or interval_id not in task.intervals:
+            raise ValueError("Interval not found")
+        self._create_risky_operation_backup("before manual duration edit")
+        self._validate_duration_against_checkpoint(work_date_local)
+        synthetic_start = combine_local_date_time(work_date_local, time(hour=12), self.local_tz).astimezone(timezone.utc)
+        synthetic_stop = synthetic_start + timedelta(seconds=duration_seconds)
+        prior = task.intervals[interval_id]
+        prior_label = f"{prior.work_date_local or prior.start_utc.astimezone(self.local_tz).date().isoformat()} ({format_duration_hm(prior.duration_seconds or 0.0)})"
+        self._append(
+            task_id,
+            "interval_edited",
+            {
+                "interval_id": interval_id,
+                "new_interval_id": str(uuid4()),
+                "start_utc": to_utc_z(synthetic_start),
+                "stop_utc": to_utc_z(synthetic_stop),
+                "entry_mode": "duration",
+                "work_date_local": work_date_local.isoformat(),
+                "duration_seconds": duration_seconds,
+                "prior_interval_label": prior_label,
                 "reason": reason.strip(),
             },
         )
@@ -783,7 +816,9 @@ class TaskTimerService:
                 start_utc=parse_utc_z(payload["start_utc"]),
                 stop_utc=parse_utc_z(payload["stop_utc"]),
                 source="edit",
-                entry_mode="interval",
+                entry_mode=payload.get("entry_mode", "interval"),
+                work_date_local=payload.get("work_date_local"),
+                duration_seconds=payload.get("duration_seconds"),
                 replaced_interval_id=payload["interval_id"],
                 edit_reason=payload.get("reason"),
             )

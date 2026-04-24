@@ -7,7 +7,10 @@ name = "task-timer"
 version = "0.1.0"
 description = "Local event-sourced tkinter task timer"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "tkcalendar>=1.6.1",
+    "tzlocal>=5",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

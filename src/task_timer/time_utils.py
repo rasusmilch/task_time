@@ -4,15 +4,36 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime, timezone, time, timedelta
+from datetime import tzinfo as tzinfo_type
 from zoneinfo import ZoneInfo
 
 
-def detect_local_timezone() -> ZoneInfo:
-    """Return the local timezone as a ZoneInfo instance."""
+def detect_local_timezone() -> tzinfo_type:
+    """Return best-effort local timezone, preferring a real IANA zone."""
+    try:
+        from tzlocal import get_localzone
+
+        local_zone = get_localzone()
+        zone_key = getattr(local_zone, "key", None) or getattr(local_zone, "zone", None)
+        if zone_key:
+            try:
+                return ZoneInfo(zone_key)
+            except Exception:  # noqa: BLE001
+                pass
+        if local_zone is not None:
+            return local_zone
+    except Exception:  # noqa: BLE001
+        pass
+
     now_local = datetime.now().astimezone()
-    tz_name = getattr(now_local.tzinfo, "key", None)
-    if tz_name:
-        return ZoneInfo(tz_name)
+    fallback_name = getattr(now_local.tzinfo, "key", None) or getattr(now_local.tzinfo, "zone", None)
+    if fallback_name:
+        try:
+            return ZoneInfo(fallback_name)
+        except Exception:  # noqa: BLE001
+            pass
+    if now_local.tzinfo is not None:
+        return now_local.tzinfo
     return ZoneInfo("UTC")
 
 
