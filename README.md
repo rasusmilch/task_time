@@ -60,6 +60,29 @@ Default backup settings:
 - `auto_backup_on_app_start: false`
 - `auto_backup_min_interval_minutes: 60`
 
+`backup_settings.json` is created automatically on first app start (or first backup manager use) and is written as human-readable JSON.
+
+Backup settings can be edited in-app via **File → Backup Settings**.
+
+## Backup behavior
+
+- **Manual backup** (`File → Create Backup Now`) always creates a backup immediately.
+- **Retention** runs after backup creation and keeps only the configured counts:
+  - sons: newest N son backups
+  - fathers: newest N father backups
+  - grandfathers: newest N grandfather backups
+- **Risky-operation safety backups**:
+  - Restore always creates a safety backup first (forced).
+  - Other risky operations obey `auto_backup_before_risky_operations`:
+    - checkpoint reopen/void
+    - export
+    - manual interval edit/delete
+    - rebuild snapshot from journal
+- **Automatic backup on app start**:
+  - Controlled by `auto_backup_on_app_start`.
+  - Creates a son backup with reason `automatic backup on app start`.
+  - Respects `auto_backup_min_interval_minutes` using the newest managed backup timestamp.
+
 ## Rotation and archives
 
 - Active log rotates when size/event thresholds are reached.

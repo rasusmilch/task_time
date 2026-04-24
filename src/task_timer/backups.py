@@ -39,6 +39,7 @@ class BackupManager:
         self.sons_dir.mkdir(parents=True, exist_ok=True)
         self.fathers_dir.mkdir(parents=True, exist_ok=True)
         self.grandfathers_dir.mkdir(parents=True, exist_ok=True)
+        self.settings_store.load()
 
     def create_backup(self, backup_type: str, reason: str) -> Path:
         now = utc_now()
@@ -66,6 +67,12 @@ class BackupManager:
     def create_safety_backup(self, reason: str) -> Path:
         return self.create_backup("son", f"safety: {reason}")
 
+    def load_settings(self) -> BackupSettings:
+        return self.settings_store.load()
+
+    def save_settings(self, settings: BackupSettings) -> None:
+        self.settings_store.save(settings)
+
     def apply_retention(self) -> None:
         settings = self.settings_store.load()
         self._trim_dir(self.sons_dir, settings.son_keep_count)
@@ -88,6 +95,16 @@ class BackupManager:
                 )
         entries.sort(key=lambda item: item.created_utc, reverse=True)
         return entries
+
+    def should_create_automatic_backup(self, reason: str, now_utc: datetime | None = None) -> bool:
+        del reason  # reserved for future reason-specific policy
+        settings = self.settings_store.load()
+        now = (now_utc or utc_now()).astimezone(timezone.utc)
+        newest = self._newest_backup_created_utc()
+        if newest is None:
+            return True
+        elapsed_seconds = (now - newest).total_seconds()
+        return elapsed_seconds >= settings.auto_backup_min_interval_minutes * 60
 
     def restore_backup(self, backup_zip: Path) -> None:
         manifest = self._read_manifest(backup_zip)
@@ -162,6 +179,17 @@ class BackupManager:
                     return json.loads(handle.read().decode("utf-8"))
         except Exception:  # noqa: BLE001
             return {}
+
+    def _newest_backup_created_utc(self) -> datetime | None:
+        newest: datetime | None = None
+        for entry in self.list_backups():
+            try:
+                created = datetime.fromisoformat(entry.created_utc.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if newest is None or created > newest:
+                newest = created
+        return newest
 
     def _backup_dir(self, backup_type: str) -> Path:
         if backup_type == "son":

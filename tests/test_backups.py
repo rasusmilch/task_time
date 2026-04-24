@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import zipfile
+from datetime import datetime, timedelta, timezone
 
 from task_timer.backups import BackupManager
-from task_timer.settings import BackupSettingsStore
+from task_timer.settings import BackupSettings, BackupSettingsStore
 
 
 def test_create_backup_contains_manifest_and_core_files(tmp_path) -> None:
@@ -52,6 +53,22 @@ def test_corrupt_backup_settings_falls_back_to_defaults(tmp_path) -> None:
     assert loaded.grandfather_keep_count == 12
 
 
+def test_backup_manager_initialization_creates_backup_settings_file(tmp_path) -> None:
+    assert not (tmp_path / "backup_settings.json").exists()
+    BackupManager(tmp_path)
+    assert (tmp_path / "backup_settings.json").exists()
+
+
+def test_backup_settings_persist_and_reload(tmp_path) -> None:
+    manager = BackupManager(tmp_path)
+    settings = BackupSettings(son_keep_count=3, father_keep_count=4, grandfather_keep_count=5)
+    manager.save_settings(settings)
+    reloaded = manager.load_settings()
+    assert reloaded.son_keep_count == 3
+    assert reloaded.father_keep_count == 4
+    assert reloaded.grandfather_keep_count == 5
+
+
 def test_restore_rejects_invalid_backup_zip(tmp_path) -> None:
     manager = BackupManager(tmp_path)
     invalid_zip = tmp_path / "backups" / "sons" / "bad.zip"
@@ -64,3 +81,17 @@ def test_restore_rejects_invalid_backup_zip(tmp_path) -> None:
         assert "Invalid backup zip" in str(exc)
     else:
         raise AssertionError("Expected restore rejection")
+
+
+def test_should_create_automatic_backup_respects_min_interval(tmp_path, monkeypatch) -> None:
+    manager = BackupManager(tmp_path)
+    settings = manager.load_settings()
+    settings.auto_backup_min_interval_minutes = 60
+    manager.save_settings(settings)
+    assert manager.should_create_automatic_backup("automatic backup on app start") is True
+
+    base = datetime(2026, 1, 10, 12, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr("task_timer.backups.utc_now", lambda: base)
+    manager.create_backup("son", "seed")
+    assert manager.should_create_automatic_backup("automatic backup on app start", now_utc=base + timedelta(minutes=30)) is False
+    assert manager.should_create_automatic_backup("automatic backup on app start", now_utc=base + timedelta(minutes=61)) is True

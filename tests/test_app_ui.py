@@ -2,8 +2,10 @@ from datetime import timezone
 from types import SimpleNamespace
 
 from task_timer.app import STOPPED_COLOR, TaskTimerApp, TaskTimerService
+from task_timer.dialogs import BackupSettingsDialog
 from task_timer.models import TaskState
 from task_timer.mini_mode import MiniModeWindow
+from task_timer.settings import BackupSettings
 from task_timer.storage import EventStorage
 from task_timer.time_utils import format_duration_hm
 
@@ -203,6 +205,72 @@ def test_mini_mode_close_routes_to_restore_main() -> None:
     mini.window.callback()
 
     assert calls == ["restore"]
+
+
+def test_backup_settings_dialog_validation_rejects_non_positive_counts() -> None:
+    try:
+        BackupSettingsDialog.validate_inputs(
+            son_keep_count="0",
+            father_keep_count="1",
+            grandfather_keep_count="1",
+            auto_backup_before_risky_operations=True,
+            auto_backup_on_app_start=False,
+            auto_backup_min_interval_minutes="60",
+        )
+    except ValueError as exc:
+        assert "positive integer" in str(exc)
+    else:
+        raise AssertionError("Expected validation failure")
+
+
+def test_auto_backup_before_risky_operations_false_skips_non_restore_safety_backup(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("Task", "")
+    start = _local_dt("2026-01-01 10:00")
+    stop = _local_dt("2026-01-01 11:00")
+    service.add_manual_interval(task_id, start, stop, "seed")
+    interval_id = next(iter(service.state.tasks[task_id].intervals))
+
+    settings = service.load_backup_settings()
+    settings.auto_backup_before_risky_operations = False
+    service.save_backup_settings(settings)
+
+    calls: list[str] = []
+    service.backups.create_safety_backup = lambda reason: calls.append(reason)  # type: ignore[method-assign]
+    service.edit_interval(task_id, interval_id, _local_dt("2026-01-01 12:00"), _local_dt("2026-01-01 13:00"), "fix")
+    assert calls == []
+
+
+def test_auto_backup_on_app_start_and_min_interval(tmp_path, monkeypatch) -> None:
+    storage = EventStorage(tmp_path)
+    store = storage.data_dir / "backup_settings.json"
+    store.write_text(
+        '{\n  "son_keep_count": 14,\n  "father_keep_count": 8,\n  "grandfather_keep_count": 12,\n'
+        '  "auto_backup_before_risky_operations": true,\n  "auto_backup_on_app_start": true,\n'
+        '  "auto_backup_min_interval_minutes": 60\n}\n',
+        encoding="utf-8",
+    )
+    fixed = _local_dt("2026-01-10 10:00").astimezone(timezone.utc)
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: fixed)
+    monkeypatch.setattr("task_timer.backups.utc_now", lambda: fixed)
+    service = TaskTimerService(storage)
+    assert len(service.list_managed_backups()) == 1
+
+    service_2 = TaskTimerService(storage)
+    assert len(service_2.list_managed_backups()) == 1
+
+
+def test_manual_create_backup_now_not_blocked_by_interval_setting(tmp_path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    settings = BackupSettings(auto_backup_on_app_start=False, auto_backup_min_interval_minutes=9999)
+    service.save_backup_settings(settings)
+    fixed = _local_dt("2026-01-10 10:00").astimezone(timezone.utc)
+    fixed_next = fixed.replace(minute=1)
+    ticks = iter([fixed, fixed_next])
+    monkeypatch.setattr("task_timer.backups.utc_now", lambda: next(ticks))
+    service.backups.create_backup("son", "existing")
+    service.create_backup_now("manual backup regardless of interval")
+    assert len(service.list_managed_backups()) == 2
 
 
 def _local_dt(value: str):

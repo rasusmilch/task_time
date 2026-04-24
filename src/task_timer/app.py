@@ -14,11 +14,11 @@ from typing import Any
 from uuid import uuid4
 
 from .backups import BackupManager
-from .dialogs import AddTaskDialog, EditTimeDialog
+from .dialogs import AddTaskDialog, BackupSettingsDialog, EditTimeDialog
 from .exporter import build_export_text, write_export_file
 from .mini_mode import MiniModeWindow
 from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TaskState, event_dict
-from .settings import UISettings, UISettingsStore
+from .settings import BackupSettings, UISettings, UISettingsStore
 from .storage import EventStorage
 from .time_utils import (
     detect_local_timezone,
@@ -50,6 +50,7 @@ class TaskTimerService:
         self.events = self.storage.iter_all_events()
         self._rebuild_state(self.events)
         self._save_snapshot()
+        self._maybe_create_app_start_backup()
 
     def create_task(self, name: str, notes: str) -> str:
         task_id = str(uuid4())
@@ -105,7 +106,7 @@ class TaskTimerService:
     def edit_interval(self, task_id: str, interval_id: str, start_local: datetime, stop_local: datetime, reason: str) -> None:
         if stop_local <= start_local:
             raise ValueError("Stop must be after start")
-        self.backups.create_safety_backup("before manual interval edit")
+        self._create_risky_operation_backup("before manual interval edit")
         self._validate_interval_against_checkpoint(start_local, stop_local)
         self._append(
             task_id,
@@ -120,7 +121,7 @@ class TaskTimerService:
         )
 
     def delete_interval(self, task_id: str, interval_id: str, reason: str) -> None:
-        self.backups.create_safety_backup("before manual interval delete")
+        self._create_risky_operation_backup("before manual interval delete")
         self._append(task_id, "interval_deleted", {"interval_id": interval_id, "reason": reason.strip()})
 
     def add_manual_duration(self, task_id: str, work_date_local: date, duration_seconds: float, reason: str) -> None:
@@ -142,7 +143,7 @@ class TaskTimerService:
         )
 
     def export_report(self, target: Path, reset_after: bool) -> None:
-        self.backups.create_safety_backup("before export")
+        self._create_risky_operation_backup("before export")
         now_utc = utc_now()
         active_checkpoint = self.find_active_export_checkpoint()
         window_start_utc = parse_utc_z(active_checkpoint["timestamp_utc"]) if active_checkpoint else None
@@ -252,7 +253,7 @@ class TaskTimerService:
         active = self.find_active_export_checkpoint()
         if not active:
             raise ValueError("No active export checkpoint to reopen")
-        self.backups.create_safety_backup("before checkpoint reopen")
+        self._create_risky_operation_backup("before checkpoint reopen")
         self._append(
             "__app__",
             "export_checkpoint_voided",
@@ -412,16 +413,38 @@ class TaskTimerService:
         return self.backups.list_backups()
 
     def restore_from_backup(self, backup_path: Path) -> None:
+        # Restore always forces a safety backup regardless of user setting.
         self.backups.restore_backup(backup_path)
         self.events = self.storage.iter_all_events()
         self._rebuild_state(self.events)
         self._save_snapshot()
 
     def rebuild_snapshot_from_journal(self) -> None:
-        self.backups.create_safety_backup("before rebuild snapshot from journal")
+        self._create_risky_operation_backup("before rebuild snapshot from journal")
         self.events = self.storage.iter_all_events()
         self._rebuild_state(self.events)
         self._save_snapshot()
+
+    def load_backup_settings(self) -> BackupSettings:
+        return self.backups.load_settings()
+
+    def save_backup_settings(self, settings: BackupSettings) -> None:
+        self.backups.save_settings(settings)
+
+    def apply_backup_retention(self) -> None:
+        self.backups.apply_retention()
+
+    def _create_risky_operation_backup(self, reason: str) -> None:
+        if self.load_backup_settings().auto_backup_before_risky_operations:
+            self.backups.create_safety_backup(reason)
+
+    def _maybe_create_app_start_backup(self) -> None:
+        settings = self.load_backup_settings()
+        if not settings.auto_backup_on_app_start:
+            return
+        if not self.backups.should_create_automatic_backup("automatic backup on app start"):
+            return
+        self.backups.create_backup("son", "automatic backup on app start")
 
     def _checkpoint_reject_message(self) -> str:
         return (
@@ -745,6 +768,7 @@ class TaskTimerApp:
         menubar = tk.Menu(self.root)
         file_menu = tk.Menu(menubar, tearoff=0)
         file_menu.add_command(label="Create Backup Now", command=self._create_backup_now)
+        file_menu.add_command(label="Backup Settings", command=self._open_backup_settings)
         file_menu.add_command(label="Open Data Folder", command=self._open_data_folder)
         file_menu.add_command(label="Open Backup Folder", command=self._open_backup_folder)
         file_menu.add_command(label="Restore From Backup", command=self._restore_from_backup)
@@ -978,6 +1002,14 @@ class TaskTimerApp:
     def _create_backup_now(self) -> None:
         backup_path = self.service.create_backup_now("manual backup from UI")
         messagebox.showinfo("Backup Created", f"Backup created:\n{backup_path}")
+
+    def _open_backup_settings(self) -> None:
+        dialog = BackupSettingsDialog(self.root, self.service, self.service.load_backup_settings())
+        if not dialog.confirmed or dialog.settings is None:
+            return
+        self.service.save_backup_settings(dialog.settings)
+        self.service.apply_backup_retention()
+        messagebox.showinfo("Backup Settings", "Backup settings saved.")
 
     def _open_data_folder(self) -> None:
         self._open_folder(self.service.storage.data_dir)

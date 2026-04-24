@@ -53,6 +53,16 @@ class BackupSettings:
     auto_backup_on_app_start: bool = False
     auto_backup_min_interval_minutes: int = 60
 
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "son_keep_count": self.son_keep_count,
+            "father_keep_count": self.father_keep_count,
+            "grandfather_keep_count": self.grandfather_keep_count,
+            "auto_backup_before_risky_operations": self.auto_backup_before_risky_operations,
+            "auto_backup_on_app_start": self.auto_backup_on_app_start,
+            "auto_backup_min_interval_minutes": self.auto_backup_min_interval_minutes,
+        }
+
 
 class BackupSettingsStore:
     """Read/write backup_settings.json with safe defaults."""
@@ -63,12 +73,16 @@ class BackupSettingsStore:
 
     def load(self) -> BackupSettings:
         if not self.path.exists():
-            return BackupSettings()
+            defaults = BackupSettings()
+            self.save(defaults)
+            return defaults
         try:
             payload = json.loads(self.path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
-            return BackupSettings()
-        return BackupSettings(
+            defaults = BackupSettings()
+            self.save(defaults)
+            return defaults
+        settings = BackupSettings(
             son_keep_count=self._positive_int(payload.get("son_keep_count"), 14),
             father_keep_count=self._positive_int(payload.get("father_keep_count"), 8),
             grandfather_keep_count=self._positive_int(payload.get("grandfather_keep_count"), 12),
@@ -76,18 +90,10 @@ class BackupSettingsStore:
             auto_backup_on_app_start=bool(payload.get("auto_backup_on_app_start", False)),
             auto_backup_min_interval_minutes=self._positive_int(payload.get("auto_backup_min_interval_minutes"), 60),
         )
+        return settings
 
     def save(self, settings: BackupSettings) -> None:
-        self._atomic_write_json(
-            {
-                "son_keep_count": settings.son_keep_count,
-                "father_keep_count": settings.father_keep_count,
-                "grandfather_keep_count": settings.grandfather_keep_count,
-                "auto_backup_before_risky_operations": settings.auto_backup_before_risky_operations,
-                "auto_backup_on_app_start": settings.auto_backup_on_app_start,
-                "auto_backup_min_interval_minutes": settings.auto_backup_min_interval_minutes,
-            }
-        )
+        self._atomic_write_json(settings.to_payload())
 
     @staticmethod
     def _positive_int(value: Any, fallback: int) -> int:

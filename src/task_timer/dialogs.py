@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from tkinter import StringVar, Toplevel, messagebox, ttk
+from tkinter import BooleanVar, StringVar, Toplevel, messagebox, ttk
 
 from typing import TYPE_CHECKING
 
 from .models import NOTES_MAX_LENGTH
+from .settings import BackupSettings
 
 if TYPE_CHECKING:
     from .app import TaskTimerService
@@ -193,3 +194,99 @@ class AddTaskDialog:
         self.notes = notes
         self.confirmed = True
         self.window.destroy()
+
+
+class BackupSettingsDialog:
+    """Dialog for editing managed backup settings."""
+
+    def __init__(self, parent: Toplevel, service: "TaskTimerService", initial: BackupSettings) -> None:
+        del service  # dialog validates inputs; save/apply is done by caller
+        self.confirmed = False
+        self.settings: BackupSettings | None = None
+        self.window = Toplevel(parent)
+        self.window.title("Backup Settings")
+        self.window.transient(parent)
+        self.window.grab_set()
+        self.window.grid_columnconfigure(1, weight=1)
+
+        self.son_var = StringVar(value=str(initial.son_keep_count))
+        self.father_var = StringVar(value=str(initial.father_keep_count))
+        self.grandfather_var = StringVar(value=str(initial.grandfather_keep_count))
+        self.risky_var = BooleanVar(value=initial.auto_backup_before_risky_operations)
+        self.app_start_var = BooleanVar(value=initial.auto_backup_on_app_start)
+        self.min_interval_var = StringVar(value=str(initial.auto_backup_min_interval_minutes))
+
+        ttk.Label(self.window, text="Son keep count").grid(row=0, column=0, padx=(6, 4), pady=2, sticky="w")
+        ttk.Entry(self.window, textvariable=self.son_var).grid(row=0, column=1, padx=(0, 6), pady=2, sticky="ew")
+        ttk.Label(self.window, text="Father keep count").grid(row=1, column=0, padx=(6, 4), pady=2, sticky="w")
+        ttk.Entry(self.window, textvariable=self.father_var).grid(row=1, column=1, padx=(0, 6), pady=2, sticky="ew")
+        ttk.Label(self.window, text="Grandfather keep count").grid(row=2, column=0, padx=(6, 4), pady=2, sticky="w")
+        ttk.Entry(self.window, textvariable=self.grandfather_var).grid(row=2, column=1, padx=(0, 6), pady=2, sticky="ew")
+        ttk.Checkbutton(
+            self.window,
+            text="Automatic backup before risky operations",
+            variable=self.risky_var,
+        ).grid(row=3, column=0, columnspan=2, padx=6, pady=2, sticky="w")
+        ttk.Checkbutton(
+            self.window,
+            text="Automatic backup on app start",
+            variable=self.app_start_var,
+        ).grid(row=4, column=0, columnspan=2, padx=6, pady=2, sticky="w")
+        ttk.Label(self.window, text="Minimum minutes between automatic backups").grid(
+            row=5, column=0, padx=(6, 4), pady=2, sticky="w"
+        )
+        ttk.Entry(self.window, textvariable=self.min_interval_var).grid(row=5, column=1, padx=(0, 6), pady=2, sticky="ew")
+
+        button_row = ttk.Frame(self.window)
+        button_row.grid(row=6, column=0, columnspan=2, padx=6, pady=6, sticky="e")
+        ttk.Button(button_row, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
+        ttk.Button(button_row, text="Save", command=self._confirm).pack(side="right")
+
+        parent.wait_window(self.window)
+
+    def _confirm(self) -> None:
+        try:
+            self.settings = self.validate_inputs(
+                son_keep_count=self.son_var.get(),
+                father_keep_count=self.father_var.get(),
+                grandfather_keep_count=self.grandfather_var.get(),
+                auto_backup_before_risky_operations=self.risky_var.get(),
+                auto_backup_on_app_start=self.app_start_var.get(),
+                auto_backup_min_interval_minutes=self.min_interval_var.get(),
+            )
+        except ValueError as exc:
+            messagebox.showerror("Invalid backup settings", str(exc))
+            return
+        self.confirmed = True
+        self.window.destroy()
+
+    @staticmethod
+    def validate_inputs(
+        *,
+        son_keep_count: str,
+        father_keep_count: str,
+        grandfather_keep_count: str,
+        auto_backup_before_risky_operations: bool,
+        auto_backup_on_app_start: bool,
+        auto_backup_min_interval_minutes: str,
+    ) -> BackupSettings:
+        def _as_positive_int(raw: str, label: str) -> int:
+            try:
+                parsed = int(raw)
+            except ValueError as exc:
+                raise ValueError(f"{label} must be a positive integer") from exc
+            if parsed <= 0:
+                raise ValueError(f"{label} must be a positive integer")
+            return parsed
+
+        return BackupSettings(
+            son_keep_count=_as_positive_int(son_keep_count, "Son keep count"),
+            father_keep_count=_as_positive_int(father_keep_count, "Father keep count"),
+            grandfather_keep_count=_as_positive_int(grandfather_keep_count, "Grandfather keep count"),
+            auto_backup_before_risky_operations=auto_backup_before_risky_operations,
+            auto_backup_on_app_start=auto_backup_on_app_start,
+            auto_backup_min_interval_minutes=_as_positive_int(
+                auto_backup_min_interval_minutes,
+                "Minimum minutes between automatic backups",
+            ),
+        )
