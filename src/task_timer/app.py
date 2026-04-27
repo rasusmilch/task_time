@@ -28,6 +28,7 @@ from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TaskState, event
 from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
 from .storage import EventStorage
+from .window_chrome import disable_snap_maximize, install_zoom_guard
 from .time_utils import (
     detect_local_timezone,
     format_duration_hm,
@@ -869,6 +870,8 @@ class TaskTimerApp:
         self.root = root
         self.service = service
         self.root.title("Task Timer")
+        disable_snap_maximize(self.root)
+        install_zoom_guard(self.root)
         self.rows: dict[str, dict[str, Any]] = {}
         self.daily_var = StringVar()
         self.weekly_var = StringVar()

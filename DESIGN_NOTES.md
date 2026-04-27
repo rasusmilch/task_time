@@ -71,3 +71,7 @@ Default reset scope is all non-deleted tasks.
 - Optional app-start auto backups are controlled by:
   - `auto_backup_on_app_start`
   - `auto_backup_min_interval_minutes`
+
+## Window snap behavior on Windows
+
+Windows Aero Snap behavior is owned by the operating system. The app reduces accidental top-edge maximize by making the main and mini windows non-maximizable/non-resizable while keeping normal title bars and drag behavior. If a future version needs fully resizable main windows while still blocking only top-edge snap maximize, that will require deeper Win32 style handling or custom window chrome tradeoffs.

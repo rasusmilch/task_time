@@ -197,6 +197,9 @@ def test_mini_mode_close_routes_to_restore_main() -> None:
         def protocol(self, _name: str, callback) -> None:
             self.callback = callback
 
+        def resizable(self, *_args) -> None:
+            return None
+
     mini = MiniModeWindow.__new__(MiniModeWindow)
     mini.window = _Window()
     mini.restore_main = lambda: calls.append("restore")
@@ -396,6 +399,27 @@ def test_manual_create_backup_now_not_blocked_by_interval_setting(tmp_path, monk
     service.backups.create_backup("son", "existing")
     service.create_backup_now("manual backup regardless of interval")
     assert len(service.list_managed_backups()) == 2
+
+
+def test_mini_mode_configure_window_chrome_applies_snap_guard(monkeypatch) -> None:
+    calls: list[str] = []
+
+    class _Window:
+        def attributes(self, *_args) -> None:
+            calls.append("topmost")
+
+        def protocol(self, _name: str, callback) -> None:
+            self.callback = callback
+
+    mini = MiniModeWindow.__new__(MiniModeWindow)
+    mini.window = _Window()
+    mini.restore_main = lambda: None
+    monkeypatch.setattr("task_timer.mini_mode.disable_snap_maximize", lambda _w: calls.append("disable"))
+    monkeypatch.setattr("task_timer.mini_mode.install_zoom_guard", lambda _w: calls.append("guard"))
+
+    MiniModeWindow._configure_window_chrome(mini)
+
+    assert calls[:3] == ["topmost", "disable", "guard"]
 
 
 def _local_dt(value: str):
