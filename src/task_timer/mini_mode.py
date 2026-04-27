@@ -8,6 +8,7 @@ from tkinter import StringVar, Toplevel, ttk
 from typing import Callable
 
 from .time_utils import format_duration_hm, utc_now
+from .window_chrome import disable_snap_maximize, install_zoom_guard
 
 RUNNING_COLOR = "#1f9d55"
 STOPPED_COLOR = "#c62828"
@@ -65,6 +66,8 @@ class MiniModeWindow:
     def _configure_window_chrome(self) -> None:
         self.window.attributes("-topmost", True)
         self.window.protocol("WM_DELETE_WINDOW", self.restore_main)
+        disable_snap_maximize(self.window)
+        install_zoom_guard(self.window)
         if not sys.platform.startswith("win"):
             return
         try:
