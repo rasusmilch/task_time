@@ -25,17 +25,19 @@ class MiniModeWindow:
 
         self.task_name_var = StringVar(value="No task selected")
         self.elapsed_var = StringVar(value="00:00")
-        self.status_var = StringVar(value="Idle")
         self._display_task_id: str | None = None
 
-        wrapper = tk.Frame(self.window, padx=8, pady=8)
+        wrapper = tk.Frame(self.window, padx=6, pady=6)
         wrapper.pack(fill="both", expand=True)
 
-        self.status_label = tk.Label(wrapper, textvariable=self.status_var, fg="white", width=12)
-        self.status_label.pack(fill="x", pady=(0, 4))
         ttk.Label(wrapper, textvariable=self.task_name_var).pack(fill="x")
-        self.elapsed_label = tk.Label(wrapper, textvariable=self.elapsed_var, font=("TkDefaultFont", 13, "bold"))
-        self.elapsed_label.pack(fill="x", pady=(4, 8))
+        self.elapsed_bar_label = tk.Label(
+            wrapper,
+            textvariable=self.elapsed_var,
+            fg="white",
+            font=("TkDefaultFont", 11, "bold"),
+        )
+        self.elapsed_bar_label.pack(fill="x", pady=(4, 6))
 
         actions = ttk.Frame(wrapper)
         actions.pack(fill="x")
@@ -94,19 +96,16 @@ class MiniModeWindow:
         self.refresh_structure()
         task = self.service.state.tasks.get(self._display_task_id or "") if self._display_task_id else None
         if not task:
-            self.status_var.set("Idle")
             self.task_name_var.set("No tasks available")
             self.elapsed_var.set("00:00")
+            self.toggle_btn.configure(text="Start")
             self.toggle_btn.state(["disabled"])
-            self.status_label.configure(bg=STOPPED_COLOR)
-            self.elapsed_label.configure(fg=STOPPED_COLOR)
+            self.elapsed_bar_label.configure(bg=STOPPED_COLOR)
             return
         is_running = task.is_running
         color = RUNNING_COLOR if is_running else STOPPED_COLOR
-        self.status_var.set("Running" if is_running else "Stopped")
         self.task_name_var.set(task.name.strip() or "Untitled Task")
         self.elapsed_var.set(format_duration_hm(self.service.task_elapsed(task, utc_now())))
         self.toggle_btn.configure(text="Stop" if is_running else "Start")
         self.toggle_btn.state(["!disabled"])
-        self.status_label.configure(bg=color)
-        self.elapsed_label.configure(fg=color)
+        self.elapsed_bar_label.configure(bg=color)
