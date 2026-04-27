@@ -7,6 +7,7 @@ def test_settings_round_trip_persists_sort_flag(tmp_path) -> None:
 
     loaded = store.load()
     assert loaded.sort_alphabetically is True
+    assert loaded.month_end_reminder_enabled is False
 
 
 def test_settings_load_falls_back_when_missing_or_invalid_json(tmp_path) -> None:
@@ -15,6 +16,37 @@ def test_settings_load_falls_back_when_missing_or_invalid_json(tmp_path) -> None
 
     store.path.write_text("{invalid", encoding="utf-8")
     assert store.load().sort_alphabetically is False
+    assert store.load().month_end_reminder_enabled is False
+
+
+def test_settings_month_end_reminder_persists(tmp_path) -> None:
+    store = UISettingsStore(tmp_path)
+    store.save(
+        UISettings(
+            sort_alphabetically=True,
+            month_end_reminder_enabled=True,
+            month_end_reminder_show_startup_notice=False,
+            month_end_reminder_show_close_notice=True,
+            month_end_reminder_last_dismissed_local_date="2026-04-30",
+        )
+    )
+    loaded = store.load()
+    assert loaded.sort_alphabetically is True
+    assert loaded.month_end_reminder_enabled is True
+    assert loaded.month_end_reminder_show_startup_notice is False
+    assert loaded.month_end_reminder_show_close_notice is True
+    assert loaded.month_end_reminder_last_dismissed_local_date == "2026-04-30"
+
+
+def test_existing_sort_setting_not_lost_when_reminder_settings_saved(tmp_path) -> None:
+    store = UISettingsStore(tmp_path)
+    store.path.write_text('{"sort_alphabetically": true}', encoding="utf-8")
+    loaded = store.load()
+    loaded.month_end_reminder_enabled = True
+    store.save(loaded)
+    reloaded = store.load()
+    assert reloaded.sort_alphabetically is True
+    assert reloaded.month_end_reminder_enabled is True
 
 
 def test_backup_settings_created_automatically_on_first_load(tmp_path) -> None:

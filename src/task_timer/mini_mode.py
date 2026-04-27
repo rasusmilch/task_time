@@ -16,9 +16,16 @@ STOPPED_COLOR = "#c62828"
 class MiniModeWindow:
     """Compact always-on-top mini window for current task context."""
 
-    def __init__(self, parent: Toplevel, service: object, refresh_callback: Callable[[], None]) -> None:
+    def __init__(
+        self,
+        parent: Toplevel,
+        service: object,
+        refresh_callback: Callable[[], None],
+        month_end_due_provider: Callable[[], bool] | None = None,
+    ) -> None:
         self.service = service
         self.refresh_callback = refresh_callback
+        self.month_end_due_provider = month_end_due_provider
         self.window = Toplevel(parent)
         self.window.title("Task Timer Mini")
         self._configure_window_chrome()
@@ -38,6 +45,13 @@ class MiniModeWindow:
             font=("TkDefaultFont", 11, "bold"),
         )
         self.elapsed_bar_label.pack(fill="x", pady=(4, 6))
+        self.reminder_label = tk.Label(
+            wrapper,
+            text="Month-end time due",
+            bg="#b26a00",
+            fg="white",
+            font=("TkDefaultFont", 9, "bold"),
+        )
 
         actions = ttk.Frame(wrapper)
         actions.pack(fill="x")
@@ -94,6 +108,7 @@ class MiniModeWindow:
 
     def refresh_live_values(self) -> None:
         self.refresh_structure()
+        self._sync_reminder_indicator()
         task = self.service.state.tasks.get(self._display_task_id or "") if self._display_task_id else None
         if not task:
             self.task_name_var.set("No tasks available")
@@ -109,3 +124,13 @@ class MiniModeWindow:
         self.toggle_btn.configure(text="Stop" if is_running else "Start")
         self.toggle_btn.state(["!disabled"])
         self.elapsed_bar_label.configure(bg=color)
+
+    def _sync_reminder_indicator(self) -> None:
+        if not hasattr(self, "reminder_label"):
+            return
+        provider = getattr(self, "month_end_due_provider", None)
+        due = provider() if provider else False
+        if due:
+            self.reminder_label.pack(fill="x", pady=(0, 4))
+        else:
+            self.reminder_label.pack_forget()
