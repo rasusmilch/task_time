@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from task_timer.app import STOPPED_COLOR, TaskTimerApp, TaskTimerService
 from task_timer.dialogs import BackupSettingsDialog
 from task_timer.models import TaskState
-from task_timer.mini_mode import MiniModeWindow
+from task_timer.mini_mode import MiniModeWindow, RUNNING_COLOR, STOPPED_COLOR as MINI_STOPPED_COLOR
 from task_timer.settings import BackupSettings
 from task_timer.storage import EventStorage
 from task_timer.time_utils import format_duration_hm
@@ -205,6 +205,127 @@ def test_mini_mode_close_routes_to_restore_main() -> None:
     mini.window.callback()
 
     assert calls == ["restore"]
+
+
+def test_mini_mode_refresh_live_values_running_uses_elapsed_bar() -> None:
+    task_id = "task-1"
+    task = SimpleNamespace(task_id=task_id, is_running=True, name=" Focus ")
+
+    class _Var:
+        def __init__(self) -> None:
+            self.value = ""
+
+        def set(self, value: str) -> None:
+            self.value = value
+
+    class _Widget:
+        def __init__(self) -> None:
+            self.config: dict[str, object] = {}
+            self.states: list[list[str]] = []
+
+        def configure(self, **kwargs: object) -> None:
+            self.config.update(kwargs)
+
+        def state(self, values: list[str]) -> None:
+            self.states.append(values)
+
+    mini = MiniModeWindow.__new__(MiniModeWindow)
+    mini.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={task_id: task}),
+        task_elapsed=lambda _task, _now=None: 3900,
+    )
+    mini.task_name_var = _Var()
+    mini.elapsed_var = _Var()
+    mini.toggle_btn = _Widget()
+    mini.elapsed_bar_label = _Widget()
+    mini.refresh_structure = lambda: setattr(mini, "_display_task_id", task_id)
+    mini._display_task_id = None
+
+    MiniModeWindow.refresh_live_values(mini)
+
+    assert mini.task_name_var.value == "Focus"
+    assert mini.elapsed_var.value == "01:05"
+    assert mini.toggle_btn.config["text"] == "Stop"
+    assert mini.elapsed_bar_label.config["bg"] == RUNNING_COLOR
+    assert ["!disabled"] in mini.toggle_btn.states
+
+
+def test_mini_mode_refresh_live_values_stopped_uses_red_elapsed_bar() -> None:
+    task_id = "task-1"
+    task = SimpleNamespace(task_id=task_id, is_running=False, name="Task")
+
+    class _Var:
+        def __init__(self) -> None:
+            self.value = ""
+
+        def set(self, value: str) -> None:
+            self.value = value
+
+    class _Widget:
+        def __init__(self) -> None:
+            self.config: dict[str, object] = {}
+            self.states: list[list[str]] = []
+
+        def configure(self, **kwargs: object) -> None:
+            self.config.update(kwargs)
+
+        def state(self, values: list[str]) -> None:
+            self.states.append(values)
+
+    mini = MiniModeWindow.__new__(MiniModeWindow)
+    mini.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={task_id: task}),
+        task_elapsed=lambda _task, _now=None: 2580,
+    )
+    mini.task_name_var = _Var()
+    mini.elapsed_var = _Var()
+    mini.toggle_btn = _Widget()
+    mini.elapsed_bar_label = _Widget()
+    mini.refresh_structure = lambda: setattr(mini, "_display_task_id", task_id)
+    mini._display_task_id = None
+
+    MiniModeWindow.refresh_live_values(mini)
+
+    assert mini.elapsed_var.value == "00:43"
+    assert mini.toggle_btn.config["text"] == "Start"
+    assert mini.elapsed_bar_label.config["bg"] == MINI_STOPPED_COLOR
+
+
+def test_mini_mode_refresh_live_values_no_task_sets_default_and_disables_toggle() -> None:
+    class _Var:
+        def __init__(self) -> None:
+            self.value = ""
+
+        def set(self, value: str) -> None:
+            self.value = value
+
+    class _Widget:
+        def __init__(self) -> None:
+            self.config: dict[str, object] = {}
+            self.states: list[list[str]] = []
+
+        def configure(self, **kwargs: object) -> None:
+            self.config.update(kwargs)
+
+        def state(self, values: list[str]) -> None:
+            self.states.append(values)
+
+    mini = MiniModeWindow.__new__(MiniModeWindow)
+    mini.service = SimpleNamespace(state=SimpleNamespace(tasks={}))
+    mini.task_name_var = _Var()
+    mini.elapsed_var = _Var()
+    mini.toggle_btn = _Widget()
+    mini.elapsed_bar_label = _Widget()
+    mini.refresh_structure = lambda: setattr(mini, "_display_task_id", None)
+    mini._display_task_id = None
+
+    MiniModeWindow.refresh_live_values(mini)
+
+    assert mini.task_name_var.value == "No tasks available"
+    assert mini.elapsed_var.value == "00:00"
+    assert mini.toggle_btn.config["text"] == "Start"
+    assert mini.elapsed_bar_label.config["bg"] == MINI_STOPPED_COLOR
+    assert ["disabled"] in mini.toggle_btn.states
 
 
 def test_backup_settings_dialog_validation_rejects_non_positive_counts() -> None:
