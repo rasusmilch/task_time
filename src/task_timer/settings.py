@@ -14,6 +14,11 @@ class UISettings:
     """Small set of UI-only preferences."""
 
     sort_alphabetically: bool = False
+    month_end_reminder_enabled: bool = False
+    month_end_reminder_show_startup_notice: bool = True
+    month_end_reminder_show_close_notice: bool = True
+    month_end_reminder_last_dismissed_local_date: str | None = None
+    month_end_reminder_last_export_prompted_local_date: str | None = None
 
 
 class UISettingsStore:
@@ -30,12 +35,41 @@ class UISettingsStore:
             payload = json.loads(self.path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             return UISettings()
-        return UISettings(sort_alphabetically=bool(payload.get("sort_alphabetically", False)))
+        return UISettings(
+            sort_alphabetically=bool(payload.get("sort_alphabetically", False)),
+            month_end_reminder_enabled=bool(payload.get("month_end_reminder_enabled", False)),
+            month_end_reminder_show_startup_notice=bool(payload.get("month_end_reminder_show_startup_notice", True)),
+            month_end_reminder_show_close_notice=bool(payload.get("month_end_reminder_show_close_notice", True)),
+            month_end_reminder_last_dismissed_local_date=self._optional_str(
+                payload.get("month_end_reminder_last_dismissed_local_date")
+            ),
+            month_end_reminder_last_export_prompted_local_date=self._optional_str(
+                payload.get("month_end_reminder_last_export_prompted_local_date")
+            ),
+        )
 
     def save(self, settings: UISettings) -> None:
-        self._atomic_write_json({"sort_alphabetically": settings.sort_alphabetically})
+        self._atomic_write_json(
+            {
+                "sort_alphabetically": settings.sort_alphabetically,
+                "month_end_reminder_enabled": settings.month_end_reminder_enabled,
+                "month_end_reminder_show_startup_notice": settings.month_end_reminder_show_startup_notice,
+                "month_end_reminder_show_close_notice": settings.month_end_reminder_show_close_notice,
+                "month_end_reminder_last_dismissed_local_date": settings.month_end_reminder_last_dismissed_local_date,
+                "month_end_reminder_last_export_prompted_local_date": settings.month_end_reminder_last_export_prompted_local_date,
+            }
+        )
 
-    def _atomic_write_json(self, payload: dict[str, bool]) -> None:
+    @staticmethod
+    def _optional_str(value: Any) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            text = value.strip()
+            return text or None
+        return None
+
+    def _atomic_write_json(self, payload: dict[str, Any]) -> None:
         temp_path = self.path.with_suffix(self.path.suffix + ".tmp")
         with temp_path.open("w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, ensure_ascii=False)

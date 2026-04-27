@@ -9,7 +9,7 @@ from tkinter import BooleanVar, StringVar, Toplevel, messagebox, simpledialog, t
 from typing import TYPE_CHECKING, Any
 
 from .models import NOTES_MAX_LENGTH
-from .settings import BackupSettings
+from .settings import BackupSettings, UISettings
 from .time_utils import format_duration_hm
 
 if TYPE_CHECKING:
@@ -503,6 +503,81 @@ class BackupSettingsDialog:
             auto_backup_on_app_start=auto_backup_on_app_start,
             auto_backup_min_interval_minutes=_as_positive_int(auto_backup_min_interval_minutes, "Minimum minutes between automatic backups"),
         )
+
+
+class MonthEndReminderSettingsDialog:
+    """Dialog for month-end reminder preferences."""
+
+    def __init__(self, parent: Toplevel, initial: UISettings) -> None:
+        self.confirmed = False
+        self.window = Toplevel(parent)
+        self.window.title("Month-End Reminder Settings")
+        self.window.transient(parent)
+        self.window.grab_set()
+
+        self.enabled_var = BooleanVar(value=initial.month_end_reminder_enabled)
+        self.startup_var = BooleanVar(value=initial.month_end_reminder_show_startup_notice)
+        self.close_var = BooleanVar(value=initial.month_end_reminder_show_close_notice)
+
+        ttk.Checkbutton(self.window, text="Enable month-end time-entry reminder", variable=self.enabled_var).pack(
+            fill="x", padx=10, pady=(10, 4)
+        )
+        ttk.Checkbutton(self.window, text="Show reminder when app starts on reminder day", variable=self.startup_var).pack(
+            fill="x", padx=10, pady=4
+        )
+        ttk.Checkbutton(self.window, text="Show reminder when closing app on reminder day", variable=self.close_var).pack(
+            fill="x", padx=10, pady=(4, 10)
+        )
+
+        actions = ttk.Frame(self.window)
+        actions.pack(fill="x", padx=10, pady=(0, 10))
+        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
+        ttk.Button(actions, text="Save", command=self._confirm).pack(side="right")
+
+        parent.wait_window(self.window)
+
+    def _confirm(self) -> None:
+        self.confirmed = True
+        self.window.destroy()
+
+
+class MonthEndCloseReminderDialog:
+    """Three-action close reminder shown on month-end reminder day."""
+
+    def __init__(self, parent: Toplevel) -> None:
+        self.choice = "return"
+        self.window = Toplevel(parent)
+        self.window.title("Month-End Reminder")
+        self.window.transient(parent)
+        self.window.grab_set()
+        self.window.resizable(False, False)
+        self.window.protocol("WM_DELETE_WINDOW", self._return)
+
+        ttk.Label(
+            self.window,
+            text="Today is the last business day of the month.\nHave you entered/exported your time?",
+            justify="left",
+        ).pack(fill="x", padx=10, pady=(10, 8))
+
+        actions = ttk.Frame(self.window)
+        actions.pack(fill="x", padx=10, pady=(0, 10))
+        ttk.Button(actions, text="Export Time", command=self._export).pack(side="left")
+        ttk.Button(actions, text="Return to App", command=self._return).pack(side="left", padx=6)
+        ttk.Button(actions, text="Close Anyway", command=self._close).pack(side="right")
+
+        parent.wait_window(self.window)
+
+    def _export(self) -> None:
+        self.choice = "export"
+        self.window.destroy()
+
+    def _return(self) -> None:
+        self.choice = "return"
+        self.window.destroy()
+
+    def _close(self) -> None:
+        self.choice = "close"
+        self.window.destroy()
 
 
 def _source_label(source: str) -> str:

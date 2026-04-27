@@ -14,15 +14,24 @@ from typing import Any
 from uuid import uuid4
 
 from .backups import BackupManager
-from .dialogs import AddTaskDialog, BackupSettingsDialog, EditTimelineDialog, format_timeline_row
+from .dialogs import (
+    AddTaskDialog,
+    BackupSettingsDialog,
+    EditTimelineDialog,
+    MonthEndCloseReminderDialog,
+    MonthEndReminderSettingsDialog,
+    format_timeline_row,
+)
 from .exporter import build_export_text, write_export_file
 from .mini_mode import MiniModeWindow
 from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TaskState, event_dict
+from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
 from .storage import EventStorage
 from .time_utils import (
     detect_local_timezone,
     format_duration_hm,
+    is_last_business_day,
     combine_local_date_time,
     interval_seconds_in_local_day,
     interval_seconds_in_local_week,
@@ -868,9 +877,13 @@ class TaskTimerApp:
         self.sort_alpha_var = tk.BooleanVar(value=self.ui_settings.sort_alphabetically)
         self.mini_mode_window: MiniModeWindow | None = None
         self._tick_job: str | None = None
+        self._startup_reminder_prompted_date: str | None = None
 
         self._build_ui()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close_request)
         self.refresh_structure()
+        self._refresh_month_end_reminder_ui()
+        self._maybe_show_startup_reminder_popup()
         self.refresh_live_values()
         self._tick()
 
@@ -886,6 +899,17 @@ class TaskTimerApp:
         )
         ttk.Label(toolbar, textvariable=self.daily_var).pack(side="right", padx=4)
         ttk.Label(toolbar, textvariable=self.weekly_var).pack(side="right", padx=4)
+
+        self.reminder_banner = tk.Frame(self.root, bg="#ffcc80", padx=8, pady=6)
+        self.reminder_banner_text = tk.Label(
+            self.reminder_banner,
+            text="Month-end reminder: enter/export your time today.",
+            bg="#ffcc80",
+            fg="#3e2723",
+        )
+        self.reminder_banner_text.pack(side="left")
+        ttk.Button(self.reminder_banner, text="Export", command=self._on_reminder_export).pack(side="right", padx=(6, 0))
+        ttk.Button(self.reminder_banner, text="Dismiss", command=self._dismiss_month_end_reminder_today).pack(side="right")
 
         self.table_frame = ttk.Frame(self.root)
         self.table_frame.pack(fill="both", expand=True, padx=8, pady=8)
@@ -910,6 +934,8 @@ class TaskTimerApp:
 
         tools_menu = tk.Menu(menubar, tearoff=0)
         tools_menu.add_command(label="Reopen Last Export Checkpoint", command=self._reopen_last_export_checkpoint)
+        tools_menu.add_separator()
+        tools_menu.add_command(label="Month-End Reminder Settings", command=self._open_month_end_reminder_settings)
         menubar.add_cascade(label="Tools", menu=tools_menu)
         self.root.configure(menu=menubar)
 
@@ -940,23 +966,26 @@ class TaskTimerApp:
         if name_entry:
             name_entry.focus_set()
 
-    def export(self) -> None:
+    def export(self) -> bool:
         target = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text", "*.txt")])
         if not target:
-            return
+            return False
         self.service.export_report(Path(target), reset_after=False)
+        self.mark_month_end_reminder_handled_today()
         should_reset = messagebox.askyesno("Reset after export", "Export done. Reset all non-deleted task timers?")
         if should_reset:
             self.service.reset_all_non_deleted_tasks()
         self.refresh_structure()
         self.refresh_live_values()
+        self._refresh_month_end_reminder_ui()
+        return True
 
     def open_mini_mode(self) -> None:
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
             self.mini_mode_window.window.lift()
             self.root.iconify()
             return
-        self.mini_mode_window = MiniModeWindow(self.root, self.service, self._after_state_change)
+        self.mini_mode_window = MiniModeWindow(self.root, self.service, self._after_state_change, self._is_month_end_reminder_due_today)
         self.root.iconify()
 
     def refresh_structure(self) -> None:
@@ -984,7 +1013,7 @@ class TaskTimerApp:
         return sorted(active_tasks, key=lambda task: (task.name.strip().casefold(), task.task_id))
 
     def _on_sort_toggle(self) -> None:
-        self.ui_settings = UISettings(sort_alphabetically=self.sort_alpha_var.get())
+        self.ui_settings.sort_alphabetically = self.sort_alpha_var.get()
         self.ui_settings_store.save(self.ui_settings)
         self.refresh_structure()
         self.refresh_live_values()
@@ -1100,6 +1129,7 @@ class TaskTimerApp:
     def _after_state_change(self) -> None:
         self.refresh_structure()
         self.refresh_live_values()
+        self._refresh_month_end_reminder_ui()
 
     def _setup_headers(self) -> None:
         for idx, spec in enumerate(self._column_specs()):
@@ -1215,6 +1245,88 @@ class TaskTimerApp:
                 subprocess.Popen(["xdg-open", str(path)])  # noqa: S603,S607
         except Exception:  # noqa: BLE001
             messagebox.showinfo("Folder", f"Folder path:\n{path}")
+
+    def _local_today(self) -> date:
+        return datetime.now().astimezone(self.service.local_tz).date()
+
+    def _is_month_end_reminder_due_today(self) -> bool:
+        return should_show_month_end_banner(self.ui_settings, self._local_today())
+
+    def mark_month_end_reminder_handled_today(self) -> None:
+        today_iso = self._local_today().isoformat()
+        self.ui_settings.month_end_reminder_last_dismissed_local_date = today_iso
+        self.ui_settings.month_end_reminder_last_export_prompted_local_date = today_iso
+        self.ui_settings_store.save(self.ui_settings)
+
+    def _dismiss_month_end_reminder_today(self) -> None:
+        self.mark_month_end_reminder_handled_today()
+        self._refresh_month_end_reminder_ui()
+
+    def _on_reminder_export(self) -> None:
+        self.export()
+        self._refresh_month_end_reminder_ui()
+
+    def _refresh_month_end_reminder_ui(self) -> None:
+        should_show = self._is_month_end_reminder_due_today()
+        if should_show:
+            if not self.reminder_banner.winfo_ismapped():
+                self.reminder_banner.pack(fill="x", padx=8, pady=(0, 4))
+        elif self.reminder_banner.winfo_ismapped():
+            self.reminder_banner.pack_forget()
+        if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
+            self.mini_mode_window.refresh_live_values()
+
+    def _maybe_show_startup_reminder_popup(self) -> None:
+        if not self.ui_settings.month_end_reminder_enabled:
+            return
+        if not self.ui_settings.month_end_reminder_show_startup_notice:
+            return
+        today = self._local_today()
+        today_iso = today.isoformat()
+        if not is_last_business_day(today):
+            return
+        if self.ui_settings.month_end_reminder_last_dismissed_local_date == today_iso:
+            return
+        if self.ui_settings.month_end_reminder_last_export_prompted_local_date == today_iso:
+            return
+        if self._startup_reminder_prompted_date == today_iso:
+            return
+        self._startup_reminder_prompted_date = today_iso
+        messagebox.showinfo("Month-End Reminder", "Month-end reminder: enter/export your time today.")
+        self.ui_settings.month_end_reminder_last_export_prompted_local_date = today_iso
+        self.ui_settings_store.save(self.ui_settings)
+        self.root.lift()
+
+    def _open_month_end_reminder_settings(self) -> None:
+        dialog = MonthEndReminderSettingsDialog(self.root, self.ui_settings)
+        if not dialog.confirmed:
+            return
+        self.ui_settings.month_end_reminder_enabled = dialog.enabled_var.get()
+        self.ui_settings.month_end_reminder_show_startup_notice = dialog.startup_var.get()
+        self.ui_settings.month_end_reminder_show_close_notice = dialog.close_var.get()
+        self.ui_settings_store.save(self.ui_settings)
+        self._refresh_month_end_reminder_ui()
+
+    def _on_close_request(self) -> None:
+        if (
+            not self.ui_settings.month_end_reminder_enabled
+            or not self.ui_settings.month_end_reminder_show_close_notice
+            or not is_last_business_day(self._local_today())
+        ):
+            self.root.destroy()
+            return
+        dialog = MonthEndCloseReminderDialog(self.root)
+        if dialog.choice == "return":
+            self.root.deiconify()
+            self.root.lift()
+            self.root.focus_force()
+            return
+        if dialog.choice == "export":
+            self.export()
+            self.root.deiconify()
+            self.root.lift()
+            return
+        self.root.destroy()
 
     def _tick(self) -> None:
         self.refresh_live_values()

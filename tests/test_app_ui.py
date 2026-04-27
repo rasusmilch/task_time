@@ -5,7 +5,7 @@ from task_timer.app import STOPPED_COLOR, TaskTimerApp, TaskTimerService
 from task_timer.dialogs import BackupSettingsDialog
 from task_timer.models import TaskState
 from task_timer.mini_mode import MiniModeWindow, RUNNING_COLOR, STOPPED_COLOR as MINI_STOPPED_COLOR
-from task_timer.settings import BackupSettings
+from task_timer.settings import BackupSettings, UISettings
 from task_timer.storage import EventStorage
 from task_timer.time_utils import format_duration_hm
 
@@ -402,3 +402,122 @@ def _local_dt(value: str):
     from datetime import datetime
 
     return datetime.strptime(value, "%Y-%m-%d %H:%M").astimezone()
+
+
+def test_close_request_with_reminder_disabled_closes(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+
+    class _Root:
+        destroyed = False
+
+        def destroy(self):
+            self.destroyed = True
+
+    app.root = _Root()
+    app.ui_settings = UISettings(month_end_reminder_enabled=False)
+    app._local_today = lambda: _local_dt("2026-04-30 12:00").date()
+    TaskTimerApp._on_close_request(app)
+    assert app.root.destroyed is True
+
+
+def test_close_request_non_reminder_day_closes(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+
+    class _Root:
+        destroyed = False
+
+        def destroy(self):
+            self.destroyed = True
+
+    app.root = _Root()
+    app.ui_settings = UISettings(month_end_reminder_enabled=True, month_end_reminder_show_close_notice=True)
+    app._local_today = lambda: _local_dt("2026-04-29 12:00").date()
+    monkeypatch.setattr("task_timer.app.is_last_business_day", lambda _d: False)
+    TaskTimerApp._on_close_request(app)
+    assert app.root.destroyed is True
+
+
+def test_close_request_reminder_day_return_to_app_cancels_close(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    events: list[str] = []
+
+    class _Root:
+        destroyed = False
+
+        def destroy(self):
+            self.destroyed = True
+
+        def deiconify(self):
+            events.append("deiconify")
+
+        def lift(self):
+            events.append("lift")
+
+        def focus_force(self):
+            events.append("focus")
+
+    class _Dialog:
+        def __init__(self, _parent):
+            self.choice = "return"
+
+    app.root = _Root()
+    app.ui_settings = UISettings(month_end_reminder_enabled=True, month_end_reminder_show_close_notice=True)
+    app._local_today = lambda: _local_dt("2026-04-30 12:00").date()
+    monkeypatch.setattr("task_timer.app.is_last_business_day", lambda _d: True)
+    monkeypatch.setattr("task_timer.app.MonthEndCloseReminderDialog", _Dialog)
+    TaskTimerApp._on_close_request(app)
+    assert app.root.destroyed is False
+    assert events == ["deiconify", "lift", "focus"]
+
+
+def test_close_request_reminder_day_close_anyway_closes(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+
+    class _Root:
+        destroyed = False
+
+        def destroy(self):
+            self.destroyed = True
+
+    class _Dialog:
+        def __init__(self, _parent):
+            self.choice = "close"
+
+    app.root = _Root()
+    app.ui_settings = UISettings(month_end_reminder_enabled=True, month_end_reminder_show_close_notice=True)
+    app._local_today = lambda: _local_dt("2026-04-30 12:00").date()
+    monkeypatch.setattr("task_timer.app.is_last_business_day", lambda _d: True)
+    monkeypatch.setattr("task_timer.app.MonthEndCloseReminderDialog", _Dialog)
+    TaskTimerApp._on_close_request(app)
+    assert app.root.destroyed is True
+
+
+def test_close_request_reminder_day_export_invokes_export(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    calls: list[str] = []
+
+    class _Root:
+        destroyed = False
+
+        def destroy(self):
+            self.destroyed = True
+
+        def deiconify(self):
+            calls.append("deiconify")
+
+        def lift(self):
+            calls.append("lift")
+
+    class _Dialog:
+        def __init__(self, _parent):
+            self.choice = "export"
+
+    app.root = _Root()
+    app.export = lambda: calls.append("export")
+    app.ui_settings = UISettings(month_end_reminder_enabled=True, month_end_reminder_show_close_notice=True)
+    app._local_today = lambda: _local_dt("2026-04-30 12:00").date()
+    monkeypatch.setattr("task_timer.app.is_last_business_day", lambda _d: True)
+    monkeypatch.setattr("task_timer.app.MonthEndCloseReminderDialog", _Dialog)
+    TaskTimerApp._on_close_request(app)
+    assert app.root.destroyed is False
+    assert "export" in calls

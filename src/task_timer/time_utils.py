@@ -185,3 +185,19 @@ def parse_duration_seconds(value: str) -> float:
 def combine_local_date_time(work_date: date, clock_time: time, local_tz: ZoneInfo) -> datetime:
     """Return aware local datetime from local date + local time."""
     return datetime.combine(work_date, clock_time, local_tz)
+
+
+def last_business_day_of_month(local_date: date) -> date:
+    """Return the last Monday-Friday date for the month containing local_date."""
+    next_month = (local_date.replace(day=28) + timedelta(days=4)).replace(day=1)
+    last_day = next_month - timedelta(days=1)
+    if last_day.weekday() == 5:
+        return last_day - timedelta(days=1)
+    if last_day.weekday() == 6:
+        return last_day - timedelta(days=2)
+    return last_day
+
+
+def is_last_business_day(local_date: date) -> bool:
+    """Return True when local_date is the month's last business day."""
+    return local_date == last_business_day_of_month(local_date)
