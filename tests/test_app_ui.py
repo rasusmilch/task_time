@@ -121,6 +121,51 @@ def test_row_refresh_sets_toggle_text_and_color() -> None:
     task.is_running = True
     TaskTimerApp.refresh_row(app, task_id)
     assert app.rows[task_id]["toggle_btn"].config["text"] == "Stop"
+    assert app.rows[task_id]["name_label"].config["text"] == "Name"
+    assert app.rows[task_id]["notes_label"].config["text"] == "Notes"
+
+
+def test_clip_table_text_truncates_and_normalizes() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+
+    assert TaskTimerApp._clip_table_text(app, "Short", 10) == "Short"
+    assert TaskTimerApp._clip_table_text(app, "Line 1\nLine 2", 20) == "Line 1 Line 2"
+    assert TaskTimerApp._clip_table_text(app, "123456", 5) == "1234…"
+
+
+def test_refresh_row_uses_clipped_display_text_without_mutating_task() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    task_id = "task-1"
+    long_name = "Task Name That Is Definitely Too Long For The Table"
+    long_notes = "Reports, documentation, rework, questions"
+    task = SimpleNamespace(is_running=False, name=long_name, notes=long_notes)
+    app.service = SimpleNamespace(state=SimpleNamespace(tasks={task_id: task}))
+
+    class _Widget:
+        def __init__(self) -> None:
+            self.config: dict[str, object] = {}
+
+        def configure(self, **kwargs: object) -> None:
+            self.config.update(kwargs)
+
+    app.rows = {
+        task_id: {
+            "state_label": _Widget(),
+            "elapsed_label": _Widget(),
+            "toggle_btn": _Widget(),
+            "container": _Widget(),
+            "name_label": _Widget(),
+            "notes_label": _Widget(),
+        }
+    }
+    app.root = SimpleNamespace(focus_get=lambda: None)
+
+    TaskTimerApp.refresh_row(app, task_id)
+
+    assert str(app.rows[task_id]["name_label"].config["text"]).endswith("…")
+    assert str(app.rows[task_id]["notes_label"].config["text"]).endswith("…")
+    assert task.name == long_name
+    assert task.notes == long_notes
 
 
 def test_open_mini_mode_minimizes_main_window() -> None:
