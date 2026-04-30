@@ -1169,6 +1169,18 @@ class TaskTimerApp:
             {"key": "elapsed", "header": "Elapsed", "minsize": 80, "sticky": "e"},
         ]
 
+    def _clip_table_text(self, text: str, max_chars: int) -> str:
+        normalized = text.replace("\n", " ").strip()
+        if len(normalized) <= max_chars:
+            return normalized
+        return f"{normalized[: max_chars - 1]}…"
+
+    def _display_task_name(self, name: str) -> str:
+        return self._clip_table_text(name, max_chars=26)
+
+    def _display_task_notes(self, notes: str) -> str:
+        return self._clip_table_text(notes, max_chars=36)
+
     def _configure_table_columns(self, frame: tk.Misc) -> None:
         for idx, spec in enumerate(self._column_specs()):
             frame.grid_columnconfigure(idx, minsize=spec["minsize"])
@@ -1243,8 +1255,8 @@ class TaskTimerApp:
             
             "container": container,
         }
-        row["name_label"] = ttk.Label(container, text=task.name)
-        row["notes_label"] = ttk.Label(container, text=task.notes)
+        row["name_label"] = ttk.Label(container, text=self._display_task_name(task.name), width=26, anchor="w")
+        row["notes_label"] = ttk.Label(container, text=self._display_task_notes(task.notes), width=36, anchor="w")
         row["state_label"] = tk.Label(container, text="", width=9)
         row["toggle_btn"] = ttk.Button(container, text="Start", command=lambda t=task_id: self._toggle_task(t))
         row["reset_btn"] = ttk.Button(container, text="Reset", command=lambda t=task_id: self._reset_task(t))
@@ -1277,8 +1289,8 @@ class TaskTimerApp:
         row["elapsed_label"].configure(fg=state_color)
         row["toggle_btn"].configure(text="Stop" if is_running else "Start")
         row["container"].configure(bg="#e9f7ef" if is_running else "#fdecea")
-        row["name_label"].configure(text=task.name)
-        row["notes_label"].configure(text=task.notes)
+        row["name_label"].configure(text=self._display_task_name(task.name))
+        row["notes_label"].configure(text=self._display_task_notes(task.notes))
 
     def refresh_live_values(self) -> None:
         now_utc = utc_now()
