@@ -542,3 +542,22 @@ def test_normal_export_submission_marker_legend_present(tmp_path: Path, monkeypa
     service.export_report(out, reset_after=False)
     text = out.read_text(encoding="utf-8")
     assert "* = fully already entered through selected-task submission" in text
+
+
+def test_find_submission_overlaps_cases(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    t1 = service.create_task("A", "")
+    t2 = service.create_task("B", "")
+    mark_end = parse_utc_z("2026-01-31T00:00:00Z")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: mark_end)
+    service.create_time_submission_marker([t1], parse_utc_z("2026-01-10T00:00:00Z"), parse_utc_z("2026-01-20T00:00:00Z"), "closing", None)
+
+    no_overlap = service.find_submission_overlaps([t1], parse_utc_z("2026-01-20T00:00:00Z"), parse_utc_z("2026-01-21T00:00:00Z"))
+    assert no_overlap == []
+
+    same_task_overlap = service.find_submission_overlaps([t1], parse_utc_z("2026-01-15T00:00:00Z"), parse_utc_z("2026-01-16T00:00:00Z"))
+    assert len(same_task_overlap) == 1
+    assert same_task_overlap[0]["task_id"] == t1
+
+    different_task_overlap = service.find_submission_overlaps([t2], parse_utc_z("2026-01-15T00:00:00Z"), parse_utc_z("2026-01-16T00:00:00Z"))
+    assert different_task_overlap == []

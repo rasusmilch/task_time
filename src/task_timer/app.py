@@ -618,6 +618,34 @@ class TaskTimerService:
                 submitted = max(submitted, (overlap_end - overlap_start).total_seconds())
         return {"already_submitted_seconds": submitted, "total_seconds": total, "is_fully_submitted": submitted >= total and total > 0, "is_partially_submitted": 0 < submitted < total}
 
+    def find_submission_overlaps(
+        self, task_ids: list[str], window_start_utc: datetime | None, window_end_utc: datetime
+    ) -> list[dict[str, Any]]:
+        selected = set(task_ids)
+        overlaps: list[dict[str, Any]] = []
+        for marker in self.list_time_submissions():
+            shared = marker.task_ids & selected
+            if not shared:
+                continue
+            marker_start = marker.window_start_utc or datetime.min.replace(tzinfo=timezone.utc)
+            overlap_start = max(marker_start, window_start_utc) if window_start_utc else marker_start
+            overlap_end = min(marker.window_end_utc, window_end_utc)
+            if overlap_end <= overlap_start:
+                continue
+            for task_id in sorted(shared):
+                task = self.state.tasks.get(task_id)
+                overlaps.append(
+                    {
+                        "task_id": task_id,
+                        "task_name": task.name if task else task_id,
+                        "existing_submission_id": marker.submission_id,
+                        "overlap_start_utc": overlap_start,
+                        "overlap_end_utc": overlap_end,
+                        "existing_reason": marker.reason,
+                    }
+                )
+        return overlaps
+
     def _apply_submission_flags(self, per_task_rows: list[dict[str, Any]], window_start_utc: datetime | None, window_end_utc: datetime) -> None:
         for row in per_task_rows:
             week_flags: dict[str, dict[str, Any]] = {}
@@ -1329,6 +1357,29 @@ class TaskTimerApp:
         dialog = SelectedTaskExportDialog(self.root, self.service)
         if not dialog.result:
             return False
+        if dialog.result.mark_submitted:
+            overlaps = self.service.find_submission_overlaps(
+                dialog.result.task_ids, dialog.result.window_start_utc, dialog.result.window_end_utc
+            )
+            if overlaps:
+                lines = [
+                    "Some selected time may already have been entered in Epicor.",
+                    "",
+                    "Overlaps:",
+                ]
+                for item in overlaps:
+                    start = item["overlap_start_utc"].astimezone(self.service.local_tz).strftime("%Y-%m-%d %I:%M %p")
+                    end = item["overlap_end_utc"].astimezone(self.service.local_tz).strftime("%Y-%m-%d %I:%M %p")
+                    reason = item["existing_reason"] or "n/a"
+                    lines.append(
+                        f'- {item["task_name"]}: {start} to {end} (submission {item["existing_submission_id"]}, reason: {reason})'
+                    )
+                proceed = messagebox.askyesno(
+                    "Possible duplicate Epicor entry",
+                    "\n".join(lines) + "\n\nContinue and Mark Anyway?",
+                )
+                if not proceed:
+                    return False
         target = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text", "*.txt")])
         if not target:
             return False

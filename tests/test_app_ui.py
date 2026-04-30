@@ -1,4 +1,4 @@
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from task_timer.app import STOPPED_COLOR, TaskTimerApp, TaskTimerService
@@ -950,3 +950,63 @@ def test_selected_export_handler_uses_selected_service_not_normal_export(monkeyp
     assert called["normal"] == 0
     assert called["reset"] == 0
     assert called["month"] == 0
+
+
+def test_selected_export_mark_submitted_overlap_cancel_prevents_marker(monkeypatch, tmp_path) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = object()
+    called = {"selected": 0}
+    app.service = SimpleNamespace(
+        local_tz=timezone.utc,
+        find_submission_overlaps=lambda *a, **k: [
+            {
+                "task_id": "t1",
+                "task_name": "A",
+                "existing_submission_id": "s1",
+                "overlap_start_utc": datetime(2026, 1, 10, tzinfo=timezone.utc),
+                "overlap_end_utc": datetime(2026, 1, 11, tzinfo=timezone.utc),
+                "existing_reason": "closing",
+            }
+        ],
+        export_selected_tasks_report=lambda *a, **k: called.__setitem__("selected", called["selected"] + 1),
+    )
+    app.refresh_structure = lambda: None
+    app.refresh_live_values = lambda: None
+    import task_timer.app as app_module
+    app_module.SelectedTaskExportDialog = lambda _root, _service: SimpleNamespace(
+        result=SimpleNamespace(task_ids=["t1"], window_start_utc=None, window_end_utc=datetime(2026, 1, 31, tzinfo=timezone.utc), mark_submitted=True, reason="r")
+    )
+    app_module.messagebox.askyesno = lambda *a, **k: False
+    assert TaskTimerApp.export_selected_tasks(app) is False
+    assert called["selected"] == 0
+
+
+def test_selected_export_mark_submitted_overlap_continue_appends_marker(monkeypatch, tmp_path) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = object()
+    called = {"selected": 0}
+    app.service = SimpleNamespace(
+        local_tz=timezone.utc,
+        find_submission_overlaps=lambda *a, **k: [
+            {
+                "task_id": "t1",
+                "task_name": "A",
+                "existing_submission_id": "s1",
+                "overlap_start_utc": datetime(2026, 1, 10, tzinfo=timezone.utc),
+                "overlap_end_utc": datetime(2026, 1, 11, tzinfo=timezone.utc),
+                "existing_reason": "closing",
+            }
+        ],
+        export_selected_tasks_report=lambda *a, **k: called.__setitem__("selected", called["selected"] + 1),
+    )
+    app.refresh_structure = lambda: None
+    app.refresh_live_values = lambda: None
+    import task_timer.app as app_module
+    app_module.SelectedTaskExportDialog = lambda _root, _service: SimpleNamespace(
+        result=SimpleNamespace(task_ids=["t1"], window_start_utc=None, window_end_utc=datetime(2026, 1, 31, tzinfo=timezone.utc), mark_submitted=True, reason="r")
+    )
+    app_module.messagebox.askyesno = lambda *a, **k: True
+    app_module.filedialog.asksaveasfilename = lambda **_k: str(tmp_path / "x.txt")
+    app_module.messagebox.showinfo = lambda *a, **k: None
+    assert TaskTimerApp.export_selected_tasks(app) is True
+    assert called["selected"] == 1
