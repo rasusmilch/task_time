@@ -68,6 +68,27 @@ def test_starting_one_task_stops_prior_running_task(tmp_path) -> None:
     assert service.state.running_task_id == task_2
 
 
+def test_reset_all_non_deleted_tasks_skips_deleted_and_stops_running(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    keep = service.create_task("Keep", "")
+    deleted = service.create_task("Deleted", "")
+    service.start_task(keep)
+    service.delete_task(deleted)
+
+    before_keep_events = len([e for e in service.events if e["task_id"] == keep])
+    before_deleted_events = len([e for e in service.events if e["task_id"] == deleted])
+    service.reset_all_non_deleted_tasks()
+
+    assert service.state.tasks[keep].is_running is False
+    assert service.state.running_task_id is None
+    keep_events = [e for e in service.events if e["task_id"] == keep]
+    deleted_events = [e for e in service.events if e["task_id"] == deleted]
+    assert len(keep_events) > before_keep_events
+    assert any(e["event_type"] == "reset" for e in keep_events)
+    assert len(deleted_events) == before_deleted_events
+    assert not any(e["event_type"] == "reset" for e in deleted_events)
+
+
 def test_row_refresh_sets_toggle_text_and_color() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     task_id = "task-1"
@@ -582,6 +603,104 @@ def test_build_ui_creates_reminder_banner_and_toolbar_widgets(monkeypatch) -> No
     assert "Export" in toolbar_texts
     assert "Mini Mode" in toolbar_texts
     assert "Sort A-Z" in toolbar_texts
+
+
+def test_build_menus_tools_contains_reset_all_item(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+
+    class _FakeMenu:
+        def __init__(self, _parent=None, **_kwargs) -> None:
+            self.commands: list[str] = []
+            self.cascades: dict[str, object] = {}
+
+        def add_command(self, label: str, command=None) -> None:
+            self.commands.append(label)
+
+        def add_separator(self) -> None:
+            self.commands.append("---")
+
+        def add_cascade(self, label: str, menu) -> None:
+            self.cascades[label] = menu
+
+    class _Root:
+        def configure(self, **kwargs) -> None:
+            self.menu = kwargs.get("menu")
+
+    import task_timer.app as app_module
+
+    monkeypatch.setattr(app_module.tk, "Menu", _FakeMenu)
+    app.root = _Root()
+    app._reopen_last_export_checkpoint = lambda: None
+    app._reset_all_task_timers = lambda: None
+    app._manage_tags = lambda: None
+    app._open_month_end_reminder_settings = lambda: None
+    app._create_backup_now = lambda: None
+    app._open_backup_settings = lambda: None
+    app._open_data_folder = lambda: None
+    app._open_backup_folder = lambda: None
+    app._restore_from_backup = lambda: None
+    app._rebuild_snapshot_from_journal = lambda: None
+
+    TaskTimerApp._build_menus(app)
+
+    tools_menu = app.root.menu.cascades["Tools"]
+    assert "Reset All Task Timers..." in tools_menu.commands
+
+
+def test_reset_all_task_timers_requires_confirmation_and_handles_cancel(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = SimpleNamespace(state=SimpleNamespace(tasks={"t1": SimpleNamespace(is_deleted=False)}))
+    calls: list[str] = []
+    app._create_risky_operation_backup = lambda _reason: calls.append("backup")
+    app._after_state_change = lambda: calls.append("refresh")
+    app.service.reset_all_non_deleted_tasks = lambda: calls.append("reset")
+
+    import task_timer.app as app_module
+
+    monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *_a, **_k: False)
+    monkeypatch.setattr(app_module.messagebox, "showinfo", lambda *_a, **_k: calls.append("info"))
+
+    TaskTimerApp._reset_all_task_timers(app)
+    assert calls == []
+
+
+def test_reset_all_task_timers_confirmed_runs_backup_reset_refresh(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = SimpleNamespace(state=SimpleNamespace(tasks={"t1": SimpleNamespace(is_deleted=False)}))
+    calls: list[str] = []
+    app._create_risky_operation_backup = lambda reason: calls.append(f"backup:{reason}")
+    app._after_state_change = lambda: calls.append("refresh")
+    app.service.reset_all_non_deleted_tasks = lambda: calls.append("reset")
+
+    import task_timer.app as app_module
+
+    monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *_a, **_k: True)
+    monkeypatch.setattr(app_module.messagebox, "showinfo", lambda *_a, **_k: calls.append("info"))
+
+    TaskTimerApp._reset_all_task_timers(app)
+    assert calls == [
+        "backup:before reset all task timers",
+        "reset",
+        "refresh",
+        "info",
+    ]
+
+
+def test_reset_all_task_timers_no_active_tasks_shows_message(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = SimpleNamespace(state=SimpleNamespace(tasks={"t1": SimpleNamespace(is_deleted=True)}))
+    calls: list[str] = []
+    app._create_risky_operation_backup = lambda _reason: calls.append("backup")
+    app._after_state_change = lambda: calls.append("refresh")
+    app.service.reset_all_non_deleted_tasks = lambda: calls.append("reset")
+
+    import task_timer.app as app_module
+
+    monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *_a, **_k: True)
+    monkeypatch.setattr(app_module.messagebox, "showinfo", lambda *_a, **_k: calls.append("info"))
+
+    TaskTimerApp._reset_all_task_timers(app)
+    assert calls == ["info"]
 
 
 def test_refresh_month_end_reminder_ui_safe_before_banner_exists() -> None:
