@@ -2,8 +2,7 @@ from datetime import timedelta, timezone
 from types import SimpleNamespace
 
 from task_timer.app import STOPPED_COLOR, TaskTimerApp, TaskTimerService
-from task_timer.dialogs import BackupSettingsDialog
-from task_timer.models import TaskState
+from task_timer.dialogs import AddTaskDialog, BackupSettingsDialog, EditTaskDialog
 from task_timer.mini_mode import MiniModeWindow, RUNNING_COLOR, STOPPED_COLOR as MINI_STOPPED_COLOR
 from task_timer.settings import BackupSettings, UISettings
 from task_timer.storage import EventStorage
@@ -88,12 +87,8 @@ def test_row_refresh_sets_toggle_text_and_color() -> None:
             "elapsed_label": _Widget(),
             "toggle_btn": _Widget(),
             "container": _Widget(),
-            "name_var": SimpleNamespace(get=lambda: "Name", set=lambda x: None),
-            "notes_var": SimpleNamespace(get=lambda: "Notes", set=lambda x: None),
-            "name_dirty": False,
-            "notes_dirty": False,
-            "name_entry": object(),
-            "notes_entry": object(),
+            "name_label": _Widget(),
+            "notes_label": _Widget(),
         }
     }
     app.root = SimpleNamespace(focus_get=lambda: None)
@@ -160,31 +155,6 @@ def test_display_order_uses_casefold_sort_with_stable_task_id_tiebreak(tmp_path)
         key=lambda task: (task.name.strip().casefold(), task.task_id),
     )
     assert [task.task_id for task in ordered] == [task.task_id for task in expected]
-
-
-def test_commit_row_refreshes_structure_for_rename_sorting(tmp_path) -> None:
-    service = TaskTimerService(EventStorage(tmp_path))
-    task_id = service.create_task("Beta", "")
-    task: TaskState = service.state.tasks[task_id]
-    app = TaskTimerApp.__new__(TaskTimerApp)
-    app.service = service
-    app.mini_mode_window = None
-    calls: list[str] = []
-    app.refresh_structure = lambda: calls.append("structure")
-    app.refresh_live_values = lambda: calls.append("live")
-    app.rows = {
-        task_id: {
-            "name_var": SimpleNamespace(get=lambda: "Alpha", set=lambda _v: None),
-            "notes_var": SimpleNamespace(get=lambda: task.notes),
-            "name_dirty": True,
-            "notes_dirty": False,
-        }
-    }
-
-    TaskTimerApp._commit_row(app, task_id)
-
-    assert calls == ["structure", "live"]
-    assert service.state.tasks[task_id].name == "Alpha"
 
 
 def test_mini_mode_close_routes_to_restore_main() -> None:
@@ -649,3 +619,139 @@ def test_refresh_month_end_reminder_ui_shows_banner_before_toolbar_when_due() ->
     assert app.reminder_banner.mapped is True
     assert app.reminder_banner.pack_kwargs is not None
     assert app.reminder_banner.pack_kwargs["before"] is app.toolbar_frame
+
+
+def test_add_task_dialog_confirm_uses_selected_tags() -> None:
+    dialog = AddTaskDialog.__new__(AddTaskDialog)
+    dialog.name_var = SimpleNamespace(get=lambda: "New Task")
+    dialog.notes_var = SimpleNamespace(get=lambda: "Note")
+    dialog.tag_selector = SimpleNamespace(get_selected_tags=lambda: ["alpha", "beta"])
+    dialog.window = SimpleNamespace(destroy=lambda: None)
+    dialog.confirmed = False
+
+    AddTaskDialog._confirm(dialog)
+
+    assert dialog.confirmed is True
+    assert dialog.tags == ["alpha", "beta"]
+
+
+def test_add_task_passes_tags_to_service() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = object()
+    calls: list[tuple[str, str, list[str]]] = []
+    app.service = SimpleNamespace(create_task=lambda n, no, t: calls.append((n, no, t)))
+    app.refresh_structure = lambda: None
+    app.refresh_live_values = lambda: None
+
+    import task_timer.app as app_module
+
+    original = app_module.AddTaskDialog
+
+    class _Dialog:
+        def __init__(self, *_args) -> None:
+            self.confirmed = True
+            self.name = "Task"
+            self.notes = "Note"
+            self.tags = ["alpha"]
+
+    app_module.AddTaskDialog = _Dialog
+    try:
+        TaskTimerApp.add_task(app)
+    finally:
+        app_module.AddTaskDialog = original
+
+    assert calls == [("Task", "Note", ["alpha"])]
+
+
+def test_edit_task_dialog_save_updates_task_and_tags_and_marks_changed() -> None:
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.task_id = "task-1"
+    dialog.name_var = SimpleNamespace(get=lambda: " Renamed ")
+    dialog.notes_var = SimpleNamespace(get=lambda: "New note")
+    dialog.tag_selector = SimpleNamespace(get_selected_tags=lambda: ["beta"])
+    dialog.service = SimpleNamespace(
+        update_task=lambda *args: calls.append(("update_task", args)),
+        update_task_tags=lambda *args: calls.append(("update_task_tags", args)),
+    )
+    dialog.window = SimpleNamespace(destroy=lambda: None)
+    dialog.changed = False
+
+    EditTaskDialog._save(dialog)
+
+    assert dialog.changed is True
+    assert calls == [
+        ("update_task", ("task-1", "Renamed", "New note")),
+        ("update_task_tags", ("task-1", ["beta"])),
+    ]
+
+
+def test_edit_task_dialog_timeline_marks_changed_when_dialog_changed() -> None:
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.service = object()
+    dialog.task_id = "task-1"
+    dialog.window = object()
+    dialog.changed = False
+
+    import task_timer.dialogs as dialogs_module
+
+    original = dialogs_module.EditTimelineDialog
+
+    class _Timeline:
+        def __init__(self, *_args) -> None:
+            self.changed = True
+
+    dialogs_module.EditTimelineDialog = _Timeline
+    try:
+        EditTaskDialog._edit_timeline(dialog)
+    finally:
+        dialogs_module.EditTimelineDialog = original
+
+    assert dialog.changed is True
+
+
+def test_edit_task_dialog_loads_existing_tags_from_task() -> None:
+    task = SimpleNamespace(name="Task", notes="", tags={"zeta", "alpha"})
+    service = SimpleNamespace(state=SimpleNamespace(tasks={"t1": task}))
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.service = service
+    dialog.task_id = "t1"
+    dialog.tag_selector = SimpleNamespace(get_selected_tags=lambda: ["alpha", "zeta"])
+    assert sorted(service.state.tasks["t1"].tags) == ["alpha", "zeta"]
+
+
+def test_edit_task_button_triggers_edit_flow() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    calls: list[str] = []
+    app.root = object()
+    app.service = object()
+    app._after_state_change = lambda: calls.append("refresh")
+
+    import task_timer.app as app_module
+
+    original = app_module.EditTaskDialog
+
+    class _Dialog:
+        def __init__(self, *_args) -> None:
+            self.changed = True
+
+    app_module.EditTaskDialog = _Dialog
+    try:
+        TaskTimerApp._edit_task(app, "t1")
+    finally:
+        app_module.EditTaskDialog = original
+
+    assert calls == ["refresh"]
+
+
+def test_rename_task_preserves_uuid_history_and_tags(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("Original", "n1", ["alpha"])
+    service.add_manual_interval(task_id, start_local=_local_dt("2026-01-01 10:00"), stop_local=_local_dt("2026-01-01 11:00"), reason="seed")
+    before = service.task_elapsed(service.state.tasks[task_id])
+    service.update_task(task_id, "Renamed", "n2")
+
+    assert task_id in service.state.tasks
+    assert service.state.tasks[task_id].name == "Renamed"
+    assert service.state.tasks[task_id].tags == {"alpha"}
+    assert service.task_elapsed(service.state.tasks[task_id]) >= before
