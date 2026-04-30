@@ -65,6 +65,19 @@ class AppState:
     global_tags: dict[str, TagMeta] = field(default_factory=dict)
 
 
+@dataclass(slots=True)
+class TimeSubmission:
+    """Append-only marker for selected task time submitted externally."""
+
+    submission_id: str
+    submitted_at_utc: datetime
+    window_start_utc: datetime | None
+    window_end_utc: datetime
+    task_ids: set[str]
+    reason: str
+    export_path: str | None = None
+
+
 def event_dict(
     *,
     timestamp_utc: str,

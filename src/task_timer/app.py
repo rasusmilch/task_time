@@ -26,7 +26,7 @@ from .dialogs import (
 )
 from .exporter import build_export_text, write_export_file
 from .mini_mode import MiniModeWindow
-from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TagMeta, TaskState, event_dict
+from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TagMeta, TaskState, TimeSubmission, event_dict
 from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
 from .storage import EventStorage
@@ -353,6 +353,7 @@ class TaskTimerService:
         window_start_utc = parse_utc_z(active_checkpoint["timestamp_utc"]) if active_checkpoint else None
         window_events = self.events_in_window(window_start_utc, now_utc)
         per_task = self.compute_windowed_task_totals(window_start_utc, now_utc)
+        self._apply_submission_flags(per_task, window_start_utc, now_utc)
         weekly_ranges = self.collect_week_ranges(per_task)
         history_lines = self.build_human_audit_lines(window_events, window_end_utc=now_utc)
         tag_daily, tag_weekly = self.compute_tag_totals(window_start_utc, now_utc)
@@ -505,6 +506,13 @@ class TaskTimerService:
         rows.sort(key=lambda row: (row["name"].strip().casefold(), row["task_id"]))
         return rows
 
+    def compute_selected_task_totals(
+        self, task_ids: list[str], window_start_utc: datetime | None, window_end_utc: datetime
+    ) -> list[dict[str, Any]]:
+        wanted = set(task_ids)
+        rows = self.compute_windowed_task_totals(window_start_utc, window_end_utc)
+        return [row for row in rows if row["task_id"] in wanted]
+
     def collect_week_ranges(self, per_task_rows: list[dict[str, Any]]) -> list[str]:
         week_ranges: set[str] = set()
         for row in per_task_rows:
@@ -517,15 +525,112 @@ class TaskTimerService:
         rows: list[dict[str, Any]] = []
         for row in per_task_rows:
             week_map = dict(row["weekly_totals"])
+            week_flags = row.get("weekly_submission_flags", {})
+            week_values: list[str] = []
+            for week_range in weekly_ranges:
+                marker = week_flags.get(week_range, {}).get("marker", "")
+                week_values.append(marker)
             rows.append(
                 {
                     "task_id": row["task_id"],
                     "name": row["name"],
                     "notes": row["notes"],
                     "weeks": [week_map.get(week_range, 0.0) for week_range in weekly_ranges],
+                    "week_markers": week_values,
                 }
             )
         return rows
+
+    def list_time_submissions(self) -> list[TimeSubmission]:
+        output: list[TimeSubmission] = []
+        for event in sorted(self.events, key=lambda ev: ev["timestamp_utc"]):
+            if event["task_id"] != "__app__" or event["event_type"] != "time_submission_created":
+                continue
+            payload = event.get("payload", {})
+            output.append(
+                TimeSubmission(
+                    submission_id=payload.get("submission_id", event["event_id"]),
+                    submitted_at_utc=parse_utc_z(payload.get("submitted_at_utc", event["timestamp_utc"])),
+                    window_start_utc=parse_utc_z(payload["window_start_utc"]) if payload.get("window_start_utc") else None,
+                    window_end_utc=parse_utc_z(payload.get("window_end_utc", event["timestamp_utc"])),
+                    task_ids=set(payload.get("task_ids", [])),
+                    reason=payload.get("reason", ""),
+                    export_path=payload.get("export_path"),
+                )
+            )
+        return output
+
+    def create_time_submission_marker(
+        self, task_ids: list[str], window_start_utc: datetime | None, window_end_utc: datetime, reason: str, export_path: Path | None
+    ) -> str:
+        if window_start_utc and window_end_utc <= window_start_utc:
+            raise ValueError("Window end must be after window start")
+        selected = list(dict.fromkeys(task_ids))
+        if not selected:
+            raise ValueError("At least one task must be selected")
+        valid = [tid for tid in selected if tid in self.state.tasks]
+        if len(valid) != len(selected):
+            raise ValueError("One or more selected task IDs do not exist")
+        if not any(not self.state.tasks[tid].is_deleted for tid in valid):
+            raise ValueError("At least one selected task must be non-deleted")
+        submission_id = str(uuid4())
+        snapshots = [{"task_id": tid, "task_name": self.state.tasks[tid].name, "notes": self.state.tasks[tid].notes, "tags": sorted(self.state.tasks[tid].tags)} for tid in valid]
+        self._append("__app__", "time_submission_created", {"submission_id": submission_id, "submitted_at_utc": to_utc_z(utc_now()), "window_start_utc": to_utc_z(window_start_utc) if window_start_utc else None, "window_end_utc": to_utc_z(window_end_utc), "task_ids": valid, "reason": reason.strip(), "export_path": str(export_path) if export_path else None, "task_snapshots": snapshots})
+        return submission_id
+
+    def export_selected_tasks_report(
+        self, target: Path, task_ids: list[str], window_start_utc: datetime | None, window_end_utc: datetime, mark_submitted: bool, reason: str
+    ) -> None:
+        self._create_risky_operation_backup("before selected export")
+        per_task = self.compute_selected_task_totals(task_ids, window_start_utc, window_end_utc)
+        self._apply_submission_flags(per_task, window_start_utc, window_end_utc)
+        weekly_ranges = self.collect_week_ranges(per_task)
+        content = build_export_text(
+            generated_at_utc=utc_now(),
+            local_timezone=self.local_tz_name,
+            window_start_utc=window_start_utc,
+            window_end_utc=window_end_utc,
+            reset_after=False,
+            weekly_headers=weekly_ranges,
+            weekly_summary_rows=self.build_epicor_weekly_summary_rows(per_task, weekly_ranges),
+            per_task_rows=per_task,
+            history_lines=[],
+            source_segments=self.storage.source_segments(),
+            tag_daily={},
+            tag_weekly={},
+        )
+        write_export_file(target, content)
+        if mark_submitted:
+            self.create_time_submission_marker(task_ids, window_start_utc, window_end_utc, reason, target)
+
+    def find_submitted_seconds_for_task_window(
+        self, task_id: str, bucket_start_utc: datetime, bucket_end_utc: datetime
+    ) -> dict[str, Any]:
+        total = max(0.0, (bucket_end_utc - bucket_start_utc).total_seconds())
+        submitted = 0.0
+        for marker in self.list_time_submissions():
+            if task_id not in marker.task_ids:
+                continue
+            marker_start = marker.window_start_utc or datetime.min.replace(tzinfo=timezone.utc)
+            overlap_start = max(bucket_start_utc, marker_start)
+            overlap_end = min(bucket_end_utc, marker.window_end_utc)
+            if overlap_end > overlap_start:
+                submitted = max(submitted, (overlap_end - overlap_start).total_seconds())
+        return {"already_submitted_seconds": submitted, "total_seconds": total, "is_fully_submitted": submitted >= total and total > 0, "is_partially_submitted": 0 < submitted < total}
+
+    def _apply_submission_flags(self, per_task_rows: list[dict[str, Any]], window_start_utc: datetime | None, window_end_utc: datetime) -> None:
+        for row in per_task_rows:
+            week_flags: dict[str, dict[str, Any]] = {}
+            for week_range, seconds in row["weekly_totals"]:
+                start_s, end_s = week_range.split(" to ")
+                week_start_local = datetime.combine(date.fromisoformat(start_s), time.min, self.local_tz)
+                week_end_local = datetime.combine(date.fromisoformat(end_s), time.max, self.local_tz)
+                info = self.find_submitted_seconds_for_task_window(row["task_id"], week_start_local.astimezone(timezone.utc), week_end_local.astimezone(timezone.utc))
+                marker = "*" if info["already_submitted_seconds"] > 0 else ""
+                if info["is_partially_submitted"]:
+                    marker = "~"
+                week_flags[week_range] = {**info, "marker": marker, "week_seconds": seconds}
+            row["weekly_submission_flags"] = week_flags
 
     def build_human_audit_lines(self, window_events: list[dict[str, Any]], window_end_utc: datetime) -> list[str]:
         events_until_end = self.events_in_window(window_start_utc=None, window_end_utc=window_end_utc)
@@ -618,6 +723,16 @@ class TaskTimerService:
                 )
                 stop_local = parse_utc_z(payload["corrected_stop_utc"]).astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
                 line = f'{local_stamp}  Corrected missed stop for "{task_name}": started {started_local}, corrected stop {stop_local}'
+                if payload.get("reason"):
+                    line += f" (Reason: {payload['reason']})"
+            elif event_type == "time_submission_created":
+                task_list = ", ".join(payload.get("task_ids", []))
+                start_label = payload.get("window_start_utc", "beginning")
+                end_label = payload.get("window_end_utc", "unknown")
+                line = (
+                    f"{local_stamp}  Marked selected task time as entered: {task_list}; "
+                    f"window {start_label} to {end_label}"
+                )
                 if payload.get("reason"):
                     line += f" (Reason: {payload['reason']})"
             else:
