@@ -881,6 +881,21 @@ class TaskTimerService:
         for event in sorted(events, key=lambda ev: (ev["timestamp_utc"], ev.get("_read_sequence", 0))):
             self._apply_event(event)
 
+    @staticmethod
+    def _normalize_tags_for_replay(raw_tags: Any) -> set[str]:
+        """Best-effort tag normalization for historical event replay."""
+        if not isinstance(raw_tags, list):
+            return set()
+        normalized: set[str] = set()
+        for raw_tag in raw_tags:
+            if not isinstance(raw_tag, str):
+                continue
+            try:
+                normalized.add(normalize_tag(raw_tag))
+            except ValueError:
+                continue
+        return normalized
+
     def _apply_event(self, event: dict[str, Any]) -> None:
         task_id = event["task_id"]
         event_type = event["event_type"]
@@ -888,20 +903,37 @@ class TaskTimerService:
         timestamp = parse_utc_z(event["timestamp_utc"])
         if task_id == "__app__":
             if event_type == "tag_created":
-                key = normalize_tag(payload["key"])
+                try:
+                    key = normalize_tag(payload["key"])
+                except (KeyError, TypeError, ValueError):
+                    return
                 existing = self.state.global_tags.get(key)
                 if not existing:
                     self.state.global_tags[key] = TagMeta(key=key, archived=False, created_at_utc=timestamp, updated_at_utc=timestamp)
             elif event_type == "tag_archived":
-                key = normalize_tag(payload["key"]);
+                try:
+                    key = normalize_tag(payload["key"])
+                except (KeyError, TypeError, ValueError):
+                    return
                 if key in self.state.global_tags: self.state.global_tags[key].archived=True; self.state.global_tags[key].updated_at_utc=timestamp
             elif event_type == "tag_unarchived":
-                key = normalize_tag(payload["key"]);
+                try:
+                    key = normalize_tag(payload["key"])
+                except (KeyError, TypeError, ValueError):
+                    return
                 if key in self.state.global_tags: self.state.global_tags[key].archived=False; self.state.global_tags[key].updated_at_utc=timestamp
             elif event_type == "tag_deleted":
-                key = normalize_tag(payload["key"]); self.state.global_tags.pop(key, None)
+                try:
+                    key = normalize_tag(payload["key"])
+                except (KeyError, TypeError, ValueError):
+                    return
+                self.state.global_tags.pop(key, None)
             elif event_type == "tag_renamed":
-                old=normalize_tag(payload["old_key"]); new=normalize_tag(payload["new_key"])
+                try:
+                    old = normalize_tag(payload["old_key"])
+                    new = normalize_tag(payload["new_key"])
+                except (KeyError, TypeError, ValueError):
+                    return
                 if old in self.state.global_tags and new not in self.state.global_tags:
                     meta=self.state.global_tags.pop(old); meta.key=new; meta.updated_at_utc=timestamp; self.state.global_tags[new]=meta
                 for t in self.state.tasks.values():
@@ -909,7 +941,7 @@ class TaskTimerService:
                         t.tags.discard(old); t.tags.add(new)
             return
         if event_type == "task_created":
-            tags = set(normalize_tag_list(payload.get("tags", [])))
+            tags = self._normalize_tags_for_replay(payload.get("tags", []))
             self.state.tasks[task_id] = TaskState(
                 task_id=task_id,
                 name=payload.get("name", "Task"),
@@ -960,7 +992,7 @@ class TaskTimerService:
         elif event_type == "reset":
             task.last_reset_utc = timestamp
         elif event_type == "task_tags_updated":
-            tags = set(normalize_tag_list(payload.get("tags", [])))
+            tags = self._normalize_tags_for_replay(payload.get("tags", []))
             task.tags = tags
             for key in tags:
                 if key not in self.state.global_tags:
