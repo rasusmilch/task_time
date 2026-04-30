@@ -919,3 +919,34 @@ def test_rename_task_preserves_uuid_history_and_tags(tmp_path) -> None:
     assert service.state.tasks[task_id].name == "Renamed"
     assert service.state.tasks[task_id].tags == {"alpha"}
     assert service.task_elapsed(service.state.tasks[task_id]) >= before
+
+def test_selected_export_menu_item_exists_in_build_menus() -> None:
+    import inspect
+    assert "Export Selected Tasks..." in inspect.getsource(TaskTimerApp._build_menus)
+
+
+def test_selected_export_handler_uses_selected_service_not_normal_export(monkeypatch, tmp_path) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = object()
+    called = {"selected": 0, "normal": 0, "reset": 0, "month": 0}
+    app.service = SimpleNamespace(
+        export_selected_tasks_report=lambda *a, **k: called.__setitem__("selected", called["selected"] + 1),
+        export_report=lambda *a, **k: called.__setitem__("normal", called["normal"] + 1),
+        reset_all_non_deleted_tasks=lambda: called.__setitem__("reset", called["reset"] + 1),
+    )
+    app.mark_month_end_reminder_handled_today = lambda: called.__setitem__("month", called["month"] + 1)
+    app.refresh_structure = lambda: None
+    app.refresh_live_values = lambda: None
+
+    import task_timer.app as app_module
+    app_module.SelectedTaskExportDialog = lambda _root, _service: SimpleNamespace(
+        result=SimpleNamespace(task_ids=["t1"], window_start_utc=None, window_end_utc=_local_dt("2026-01-31 00:00").astimezone(timezone.utc), mark_submitted=False, reason="")
+    )
+    app_module.filedialog.asksaveasfilename = lambda **_k: str(tmp_path / "x.txt")
+    app_module.messagebox.showinfo = lambda *a, **k: None
+
+    assert TaskTimerApp.export_selected_tasks(app) is True
+    assert called["selected"] == 1
+    assert called["normal"] == 0
+    assert called["reset"] == 0
+    assert called["month"] == 0
