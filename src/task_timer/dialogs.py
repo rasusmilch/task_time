@@ -376,6 +376,7 @@ class AddTaskDialog:
         self.confirmed = False
         self.name = ""
         self.notes = ""
+        self.tags: list[str] = []
         self.window = Toplevel(parent)
         self.window.title("Add Task")
         self.window.transient(parent)
@@ -394,8 +395,12 @@ class AddTaskDialog:
         self.notes_entry = ttk.Entry(self.window, textvariable=self.notes_var)
         self.notes_entry.grid(row=1, column=1, padx=(0, 6), pady=2, sticky="ew")
 
+        ttk.Label(self.window, text="Tags (comma-separated)").grid(row=2, column=0, padx=(6, 4), pady=2, sticky="w")
+        self.tags_var = StringVar()
+        ttk.Entry(self.window, textvariable=self.tags_var).grid(row=2, column=1, padx=(0, 6), pady=2, sticky="ew")
+
         button_row = ttk.Frame(self.window)
-        button_row.grid(row=2, column=0, columnspan=2, padx=6, pady=6, sticky="e")
+        button_row.grid(row=3, column=0, columnspan=2, padx=6, pady=6, sticky="e")
         ttk.Button(button_row, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(button_row, text="Create", command=self._confirm).pack(side="right")
 
@@ -414,6 +419,7 @@ class AddTaskDialog:
             return
         self.name = name
         self.notes = notes
+        self.tags = [item.strip() for item in self.tags_var.get().split(",") if item.strip()]
         self.confirmed = True
         self.window.destroy()
 
@@ -617,3 +623,39 @@ def format_timeline_row(interval: Any, local_tz: Any) -> dict[str, str]:
         "source": _source_label(interval.source),
         "notes": interval.edit_reason or "",
     }
+
+
+class EditTaskDialog:
+    def __init__(self, parent: Toplevel, service: "TaskTimerService", task_id: str) -> None:
+        self.changed=False
+        self.service=service
+        self.task_id=task_id
+        task=service.state.tasks[task_id]
+        self.window=Toplevel(parent); self.window.title("Edit Task"); self.window.transient(parent); self.window.grab_set
+        self.name_var=StringVar(value=task.name); self.notes_var=StringVar(value=task.notes)
+        self.tags_var=StringVar(value=", ".join(sorted(task.tags)))
+        ttk.Label(self.window,text="Task name").grid(row=0,column=0,sticky="w"); ttk.Entry(self.window,textvariable=self.name_var).grid(row=0,column=1,sticky="ew")
+        ttk.Label(self.window,text="Task note").grid(row=1,column=0,sticky="w"); ttk.Entry(self.window,textvariable=self.notes_var).grid(row=1,column=1,sticky="ew")
+        ttk.Label(self.window,text="Tags (comma-separated)").grid(row=2,column=0,sticky="w"); ttk.Entry(self.window,textvariable=self.tags_var).grid(row=2,column=1,sticky="ew")
+        bar=ttk.Frame(self.window); bar.grid(row=3,column=0,columnspan=2,sticky="e")
+        ttk.Button(bar,text="Edit Timeline",command=self._edit_timeline).pack(side="left")
+        ttk.Button(bar,text="Cancel",command=self.window.destroy).pack(side="right"); ttk.Button(bar,text="Save",command=self._save).pack(side="right")
+        self.window.grid_columnconfigure(1,weight=1)
+        parent.wait_window(self.window)
+    def _edit_timeline(self):
+        EditTimelineDialog(self.window, self.service, self.task_id)
+    def _save(self):
+        name=self.name_var.get().strip();
+        if not name: messagebox.showerror("Name required","Task name is required"); return
+        notes=self.notes_var.get().replace("\n"," ").strip()[:NOTES_MAX_LENGTH]
+        tags=[t for t in [x.strip() for x in self.tags_var.get().split(",")] if t]
+        self.service.update_task(self.task_id,name,notes); self.service.update_task_tags(self.task_id,tags)
+        self.changed=True; self.window.destroy()
+
+class ManageTagsDialog:
+    def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
+        self.changed=False
+        self.window=Toplevel(parent); self.window.title("Manage Tags")
+        ttk.Label(self.window,text="Use edit task to assign tags; global actions not fully implemented in UI.").pack(padx=8,pady=8)
+        ttk.Button(self.window,text="Close",command=self.window.destroy).pack(pady=6)
+        parent.wait_window(self.window)
