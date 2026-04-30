@@ -1150,6 +1150,8 @@ class TaskTimerApp:
         tools_menu = tk.Menu(menubar, tearoff=0)
         tools_menu.add_command(label="Reopen Last Export Checkpoint", command=self._reopen_last_export_checkpoint)
         tools_menu.add_separator()
+        tools_menu.add_command(label="Reset All Task Timers...", command=self._reset_all_task_timers)
+        tools_menu.add_separator()
         tools_menu.add_command(label="Manage Tags", command=self._manage_tags)
         tools_menu.add_command(label="Month-End Reminder Settings", command=self._open_month_end_reminder_settings)
         menubar.add_cascade(label="Tools", menu=tools_menu)
@@ -1317,6 +1319,24 @@ class TaskTimerApp:
         if messagebox.askyesno("Confirm reset", "Reset this task timer to zero?"):
             self.service.reset_task(task_id)
             self._after_state_change()
+
+    def _reset_all_task_timers(self) -> None:
+        should_reset = messagebox.askyesno(
+            "Confirm Reset All Timers",
+            "Reset elapsed time for all active tasks to zero?\n\n"
+            "This will record reset events for every non-deleted task.\n\n"
+            "Task history will remain in the journal, but current elapsed totals will restart from this point.",
+        )
+        if not should_reset:
+            return
+        has_active = any(not task.is_deleted for task in self.service.state.tasks.values())
+        if not has_active:
+            messagebox.showinfo("Reset All Task Timers", "There are no active tasks to reset.")
+            return
+        self._create_risky_operation_backup("before reset all task timers")
+        self.service.reset_all_non_deleted_tasks()
+        self._after_state_change()
+        messagebox.showinfo("Reset All Task Timers", "All active task timers were reset.")
 
     def _delete_task(self, task_id: str) -> None:
         if messagebox.askyesno("Confirm delete", "Delete this task from active view?"):
