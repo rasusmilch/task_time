@@ -967,6 +967,33 @@ class TaskTimerApp:
 
     def _build_ui(self) -> None:
         self._build_menus()
+        self.reminder_banner = tk.Frame(self.root, bg="#fff4e5", bd=1, relief="solid")
+        reminder_label = tk.Label(
+            self.reminder_banner,
+            text="Month-end reminder: enter/export your time today.",
+            bg="#fff4e5",
+            anchor="w",
+        )
+        reminder_label.pack(side="left", fill="x", expand=True, padx=(8, 4), pady=4)
+        ttk.Button(self.reminder_banner, text="Export", command=self._on_reminder_export).pack(side="left", padx=4, pady=4)
+        ttk.Button(self.reminder_banner, text="Dismiss", command=self._dismiss_month_end_reminder_today).pack(
+            side="left", padx=(0, 8), pady=4
+        )
+
+        self.toolbar_frame = ttk.Frame(self.root)
+        self.toolbar_frame.pack(fill="x", padx=8, pady=(8, 4))
+        ttk.Button(self.toolbar_frame, text="Add Task", command=self.add_task).pack(side="left", padx=(0, 4))
+        ttk.Button(self.toolbar_frame, text="Export", command=self.export).pack(side="left", padx=4)
+        ttk.Button(self.toolbar_frame, text="Mini Mode", command=self.open_mini_mode).pack(side="left", padx=4)
+        self.sort_alpha_checkbox = ttk.Checkbutton(
+            self.toolbar_frame, text="Sort A-Z", variable=self.sort_alpha_var, command=self._on_sort_toggle
+        )
+        self.sort_alpha_checkbox.pack(side="left", padx=(10, 4))
+        self.daily_total_label = ttk.Label(self.toolbar_frame, textvariable=self.daily_var)
+        self.daily_total_label.pack(side="left", padx=(12, 4))
+        self.weekly_total_label = ttk.Label(self.toolbar_frame, textvariable=self.weekly_var)
+        self.weekly_total_label.pack(side="left", padx=4)
+
         self.table_frame = ttk.Frame(self.root)
         self.table_frame.pack(fill="both", expand=True, padx=8, pady=8)
         self.header_frame = ttk.Frame(self.table_frame)
@@ -1279,10 +1306,15 @@ class TaskTimerApp:
         self._refresh_month_end_reminder_ui()
 
     def _refresh_month_end_reminder_ui(self) -> None:
+        if not hasattr(self, "reminder_banner"):
+            return
         should_show = self._is_month_end_reminder_due_today()
         if should_show:
             if not self.reminder_banner.winfo_ismapped():
-                self.reminder_banner.pack(fill="x", padx=8, pady=(0, 4))
+                if hasattr(self, "toolbar_frame"):
+                    self.reminder_banner.pack(fill="x", padx=8, pady=(8, 4), before=self.toolbar_frame)
+                else:
+                    self.reminder_banner.pack(fill="x", padx=8, pady=(8, 4))
         elif self.reminder_banner.winfo_ismapped():
             self.reminder_banner.pack_forget()
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
