@@ -140,6 +140,72 @@ def build_export_text(
     return "\n".join(lines) + "\n"
 
 
+
+def build_selected_tasks_export_text(
+    *,
+    generated_at_utc: datetime,
+    local_timezone: str,
+    window_start_utc: datetime | None,
+    window_end_utc: datetime,
+    source_segments: list[str],
+    weekly_headers: list[str],
+    weekly_summary_rows: list[dict[str, Any]],
+    per_task_rows: list[dict[str, Any]],
+    history_lines: list[str],
+    mark_submitted: bool,
+    reason: str,
+) -> str:
+    lines: list[str] = []
+    lines.append("Task Timer Selected Task Export")
+    lines.append("=" * 88)
+    lines.append(f"Generated UTC: {to_utc_z(generated_at_utc)}")
+    lines.append(f"Local timezone: {local_timezone}")
+    lines.append(f"Window start (exclusive): {to_utc_z(window_start_utc) if window_start_utc else 'Beginning of recorded history'}")
+    lines.append(f"Window end (inclusive): {to_utc_z(window_end_utc)}")
+    lines.append(f"Selected task count: {len(per_task_rows)}")
+    lines.append(f"Marked as already entered: {'Yes' if mark_submitted else 'No'}")
+    if mark_submitted:
+        lines.append("This selected export was marked as already entered into Epicor.")
+        lines.append(f"Reason: {reason}")
+    else:
+        lines.append("This selected export was not marked as already entered.")
+    lines.append("Source segments:")
+    for seg in source_segments:
+        lines.append(f"  - {seg}")
+    lines.append("")
+
+    lines.append("Epicor-friendly weekly summary (selected tasks)")
+    headers=["Task","Notes",*weekly_headers]
+    rows=[]
+    for row in weekly_summary_rows:
+        rows.append([row['name'], row['notes'], *[format_duration(v) for v in row['weeks']]])
+    lines.extend(_render_table(headers, rows) if rows else ["No selected tasks found for this export window."])
+    lines.append("")
+
+    lines.append("Per-task totals for selected tasks")
+    for row in per_task_rows:
+        lines.append(f"- {row['name']}")
+        lines.append(f"  Notes: {row['notes']}")
+        lines.append("  Daily totals:")
+        if row['daily_totals']:
+            for day, seconds in row['daily_totals']:
+                lines.append(f"    - {day}: {format_duration(seconds)}")
+        else:
+            lines.append("    - None")
+        lines.append("  Weekly totals:")
+        if row['weekly_totals']:
+            for week_range, seconds in row['weekly_totals']:
+                lines.append(f"    - {week_range}: {format_duration(seconds)}")
+        else:
+            lines.append("    - None")
+    lines.append("")
+    lines.append("Selected export audit history")
+    if history_lines:
+        lines.extend(f"- {line}" for line in history_lines)
+    else:
+        lines.append("- No events in selected export window.")
+    return "\n".join(lines) + "\n"
+
 def write_export_file(target_path: Path, content: str) -> None:
     """Write export content to a text file."""
     target_path.write_text(content, encoding="utf-8")

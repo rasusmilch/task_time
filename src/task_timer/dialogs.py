@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time, timezone
 from tkinter import BooleanVar, StringVar, Toplevel, messagebox, simpledialog, ttk
+import tkinter as tk
 
 from typing import TYPE_CHECKING, Any
 
@@ -12,7 +13,7 @@ from .models import NOTES_MAX_LENGTH
 from .settings import BackupSettings, UISettings
 from .tag_dialogs import TagSelectionFrame
 from .tags import normalize_tag
-from .time_utils import format_duration_hm
+from .time_utils import combine_local_date_time, format_duration_hm, parse_utc_z, utc_now
 
 if TYPE_CHECKING:
     from .app import TaskTimerService
@@ -584,6 +585,128 @@ class MonthEndCloseReminderDialog:
 
     def _close(self) -> None:
         self.choice = "close"
+        self.window.destroy()
+
+
+@dataclass(slots=True)
+class SelectedTaskExportResult:
+    window_start_utc: datetime | None
+    window_end_utc: datetime
+    task_ids: list[str]
+    mark_submitted: bool
+    reason: str
+
+
+class SelectedTaskExportDialog:
+    def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
+        self.service = service
+        self.result: SelectedTaskExportResult | None = None
+        self.window = Toplevel(parent)
+        self.window.title("Export Selected Tasks")
+        self.window.transient(parent)
+        self.window.grab_set()
+
+        self.window_mode_var = StringVar(value="checkpoint")
+        self.mark_submitted_var = BooleanVar(value=True)
+        self.reason_var = StringVar(value="Job closing / entered into Epicor")
+
+        today = datetime.now(service.local_tz).date().isoformat()
+        self.start_date_var = StringVar(value=today)
+        self.end_date_var = StringVar(value=today)
+
+        self._task_vars: dict[str, BooleanVar] = {}
+
+        frame = ttk.Frame(self.window)
+        frame.pack(fill="both", expand=True, padx=8, pady=8)
+
+        ttk.Label(frame, text="Date/window").pack(anchor="w")
+        ttk.Radiobutton(frame, text="Since last export checkpoint", variable=self.window_mode_var, value="checkpoint").pack(anchor="w")
+        ttk.Radiobutton(frame, text="Custom date range", variable=self.window_mode_var, value="custom").pack(anchor="w")
+        dates = ttk.Frame(frame)
+        dates.pack(fill="x", pady=(2, 8))
+        ttk.Label(dates, text="Start date (YYYY-MM-DD)").grid(row=0, column=0, sticky="w")
+        ttk.Entry(dates, textvariable=self.start_date_var).grid(row=0, column=1, sticky="ew", padx=(6, 0))
+        ttk.Label(dates, text="End date (YYYY-MM-DD)").grid(row=1, column=0, sticky="w")
+        ttk.Entry(dates, textvariable=self.end_date_var).grid(row=1, column=1, sticky="ew", padx=(6, 0))
+        dates.grid_columnconfigure(1, weight=1)
+
+        ttk.Label(frame, text="Tasks").pack(anchor="w")
+        canvas = tk.Canvas(frame, height=170)
+        scroll = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
+        list_frame = ttk.Frame(canvas)
+        list_frame.bind("<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=list_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scroll.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
+
+        for task in sorted([t for t in service.state.tasks.values() if not t.is_deleted], key=lambda t: (t.name.strip().casefold(), t.task_id)):
+            var = BooleanVar(value=False)
+            self._task_vars[task.task_id] = var
+            ttk.Checkbutton(list_frame, text=f"{task.name} — {task.notes}", variable=var).pack(anchor="w")
+
+        task_btns = ttk.Frame(frame)
+        task_btns.pack(fill="x", pady=(4, 8))
+        ttk.Button(task_btns, text="Select All", command=self.select_all_tasks).pack(side="left")
+        ttk.Button(task_btns, text="Clear All", command=self.clear_all_tasks).pack(side="left", padx=4)
+
+        ttk.Checkbutton(frame, text="Mark exported selected time as already entered into Epicor", variable=self.mark_submitted_var).pack(anchor="w")
+        ttk.Label(frame, text="Reason").pack(anchor="w")
+        ttk.Entry(frame, textvariable=self.reason_var).pack(fill="x")
+
+        actions = ttk.Frame(frame)
+        actions.pack(fill="x", pady=(8, 0))
+        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
+        ttk.Button(actions, text="Export Selected", command=self._confirm).pack(side="right")
+
+        parent.wait_window(self.window)
+
+    def select_all_tasks(self) -> None:
+        for var in self._task_vars.values():
+            var.set(True)
+
+    def clear_all_tasks(self) -> None:
+        for var in self._task_vars.values():
+            var.set(False)
+
+    @staticmethod
+    def validate_inputs(*, selected_task_ids: list[str], window_mode: str, start_date_text: str, end_date_text: str, mark_submitted: bool, reason: str, service: "TaskTimerService") -> SelectedTaskExportResult:
+        if not selected_task_ids:
+            raise ValueError("Select at least one task")
+        now = utc_now()
+        if window_mode == "checkpoint":
+            checkpoint = service.find_active_export_checkpoint()
+            start = parse_utc_z(checkpoint["timestamp_utc"]) if checkpoint else None
+            end = now
+        else:
+            start_date = datetime.strptime(start_date_text.strip(), "%Y-%m-%d").date()
+            end_date = datetime.strptime(end_date_text.strip(), "%Y-%m-%d").date()
+            start_local = combine_local_date_time(start_date, time.min, service.local_tz)
+            end_local = combine_local_date_time(end_date, time.max, service.local_tz)
+            start = start_local.astimezone(timezone.utc)
+            end = end_local.astimezone(timezone.utc)
+            if end <= start:
+                raise ValueError("End must be after start")
+        clean_reason = reason.strip()
+        if mark_submitted and not clean_reason:
+            raise ValueError("Reason is required when marking as entered")
+        return SelectedTaskExportResult(window_start_utc=start, window_end_utc=end, task_ids=selected_task_ids, mark_submitted=mark_submitted, reason=clean_reason)
+
+    def _confirm(self) -> None:
+        selected = [task_id for task_id, var in self._task_vars.items() if var.get()]
+        try:
+            self.result = self.validate_inputs(
+                selected_task_ids=selected,
+                window_mode=self.window_mode_var.get(),
+                start_date_text=self.start_date_var.get(),
+                end_date_text=self.end_date_var.get(),
+                mark_submitted=self.mark_submitted_var.get(),
+                reason=self.reason_var.get(),
+                service=self.service,
+            )
+        except Exception as exc:  # noqa: BLE001
+            messagebox.showerror("Export Selected Tasks", str(exc), parent=self.window)
+            return
         self.window.destroy()
 
 

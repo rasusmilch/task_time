@@ -22,9 +22,10 @@ from .dialogs import (
     EditTimelineDialog,
     MonthEndCloseReminderDialog,
     MonthEndReminderSettingsDialog,
+    SelectedTaskExportDialog,
     format_timeline_row,
 )
-from .exporter import build_export_text, write_export_file
+from .exporter import build_export_text, build_selected_tasks_export_text, write_export_file
 from .mini_mode import MiniModeWindow
 from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TagMeta, TaskState, TimeSubmission, event_dict
 from .reminders import should_show_month_end_banner
@@ -585,19 +586,18 @@ class TaskTimerService:
         per_task = self.compute_selected_task_totals(task_ids, window_start_utc, window_end_utc)
         self._apply_submission_flags(per_task, window_start_utc, window_end_utc)
         weekly_ranges = self.collect_week_ranges(per_task)
-        content = build_export_text(
+        content = build_selected_tasks_export_text(
             generated_at_utc=utc_now(),
             local_timezone=self.local_tz_name,
             window_start_utc=window_start_utc,
             window_end_utc=window_end_utc,
-            reset_after=False,
             weekly_headers=weekly_ranges,
             weekly_summary_rows=self.build_epicor_weekly_summary_rows(per_task, weekly_ranges),
             per_task_rows=per_task,
-            history_lines=[],
+            history_lines=self.build_human_audit_lines(self.events_in_window(window_start_utc, window_end_utc), window_end_utc=window_end_utc),
             source_segments=self.storage.source_segments(),
-            tag_daily={},
-            tag_weekly={},
+            mark_submitted=mark_submitted,
+            reason=reason,
         )
         write_export_file(target, content)
         if mark_submitted:
@@ -1258,6 +1258,7 @@ class TaskTimerApp:
         file_menu.add_command(label="Backup Settings", command=self._open_backup_settings)
         file_menu.add_command(label="Open Data Folder", command=self._open_data_folder)
         file_menu.add_command(label="Open Backup Folder", command=self._open_backup_folder)
+        file_menu.add_command(label="Export Selected Tasks...", command=self.export_selected_tasks)
         file_menu.add_command(label="Restore From Backup", command=self._restore_from_backup)
         file_menu.add_command(label="Rebuild Snapshot From Journal", command=self._rebuild_snapshot_from_journal)
         menubar.add_cascade(label="File", menu=file_menu)
@@ -1321,6 +1322,27 @@ class TaskTimerApp:
         self.refresh_structure()
         self.refresh_live_values()
         self._refresh_month_end_reminder_ui()
+        return True
+
+
+    def export_selected_tasks(self) -> bool:
+        dialog = SelectedTaskExportDialog(self.root, self.service)
+        if not dialog.result:
+            return False
+        target = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text", "*.txt")])
+        if not target:
+            return False
+        self.service.export_selected_tasks_report(
+            Path(target),
+            dialog.result.task_ids,
+            dialog.result.window_start_utc,
+            dialog.result.window_end_utc,
+            mark_submitted=dialog.result.mark_submitted,
+            reason=dialog.result.reason,
+        )
+        messagebox.showinfo("Export Selected Tasks", "Selected-task export complete.")
+        self.refresh_structure()
+        self.refresh_live_values()
         return True
 
     def open_mini_mode(self) -> None:
