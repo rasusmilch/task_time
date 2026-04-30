@@ -545,3 +545,107 @@ def test_close_request_reminder_day_export_invokes_export(monkeypatch) -> None:
     TaskTimerApp._on_close_request(app)
     assert app.root.destroyed is False
     assert "export" in calls
+
+
+def test_build_ui_creates_reminder_banner_and_toolbar_widgets(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+
+    class _FakeWidget:
+        def __init__(self, parent=None, **kwargs) -> None:
+            self.parent = parent
+            self.kwargs = kwargs
+            self.packed = False
+            self.pack_calls: list[dict[str, object]] = []
+            self.children: list[_FakeWidget] = []
+            if parent is not None and hasattr(parent, "children"):
+                parent.children.append(self)
+
+        def pack(self, **kwargs) -> None:
+            self.packed = True
+            self.pack_calls.append(kwargs)
+
+        def grid(self, **_kwargs) -> None:
+            return None
+
+        def grid_columnconfigure(self, *_args, **_kwargs) -> None:
+            return None
+
+        def winfo_ismapped(self) -> bool:
+            return self.packed
+
+        def pack_forget(self) -> None:
+            self.packed = False
+
+    class _FakeRoot(_FakeWidget):
+        def configure(self, **_kwargs) -> None:
+            return None
+
+    import task_timer.app as app_module
+
+    monkeypatch.setattr(app_module.tk, "Frame", _FakeWidget)
+    monkeypatch.setattr(app_module.tk, "Label", _FakeWidget)
+    monkeypatch.setattr(app_module.ttk, "Frame", _FakeWidget)
+    monkeypatch.setattr(app_module.ttk, "Button", _FakeWidget)
+    monkeypatch.setattr(app_module.ttk, "Checkbutton", _FakeWidget)
+    monkeypatch.setattr(app_module.ttk, "Label", _FakeWidget)
+    app._build_menus = lambda: None
+    app._configure_table_columns = lambda _frame: None
+    app._setup_headers = lambda: None
+    app.root = _FakeRoot()
+    app.sort_alpha_var = object()
+    app.daily_var = object()
+    app.weekly_var = object()
+    app.add_task = lambda: None
+    app.export = lambda: True
+    app.open_mini_mode = lambda: None
+    app._on_sort_toggle = lambda: None
+    app._on_reminder_export = lambda: None
+    app._dismiss_month_end_reminder_today = lambda: None
+
+    TaskTimerApp._build_ui(app)
+
+    assert hasattr(app, "reminder_banner")
+    assert app.reminder_banner.winfo_ismapped() is False
+    assert hasattr(app, "toolbar_frame")
+    toolbar_texts = [child.kwargs.get("text") for child in app.toolbar_frame.children]
+    assert "Add Task" in toolbar_texts
+    assert "Export" in toolbar_texts
+    assert "Mini Mode" in toolbar_texts
+    assert "Sort A-Z" in toolbar_texts
+
+
+def test_refresh_month_end_reminder_ui_safe_before_banner_exists() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app._is_month_end_reminder_due_today = lambda: True
+    app.mini_mode_window = None
+    TaskTimerApp._refresh_month_end_reminder_ui(app)
+
+
+def test_refresh_month_end_reminder_ui_shows_banner_before_toolbar_when_due() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+
+    class _Widget:
+        def __init__(self) -> None:
+            self.mapped = False
+            self.pack_kwargs: dict[str, object] | None = None
+
+        def winfo_ismapped(self) -> bool:
+            return self.mapped
+
+        def pack(self, **kwargs) -> None:
+            self.mapped = True
+            self.pack_kwargs = kwargs
+
+        def pack_forget(self) -> None:
+            self.mapped = False
+
+    app.reminder_banner = _Widget()
+    app.toolbar_frame = object()
+    app._is_month_end_reminder_due_today = lambda: True
+    app.mini_mode_window = None
+
+    TaskTimerApp._refresh_month_end_reminder_ui(app)
+
+    assert app.reminder_banner.mapped is True
+    assert app.reminder_banner.pack_kwargs is not None
+    assert app.reminder_banner.pack_kwargs["before"] is app.toolbar_frame
