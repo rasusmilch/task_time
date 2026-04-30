@@ -63,12 +63,19 @@ class EventStorage:
         """Load all events from archived segments plus active segment."""
         manifest = self.load_manifest()
         events: list[dict[str, Any]] = []
+        read_sequence = 0
         for segment in manifest.get("archives", []):
             seg_path = self.data_dir / segment["path"]
             if seg_path.exists():
-                events.extend(self._read_jsonl(seg_path))
-        events.extend(self._read_jsonl(self.active_path))
-        events.sort(key=lambda item: item["timestamp_utc"])
+                for event in self._read_jsonl(seg_path):
+                    event["_read_sequence"] = read_sequence
+                    read_sequence += 1
+                    events.append(event)
+        for event in self._read_jsonl(self.active_path):
+            event["_read_sequence"] = read_sequence
+            read_sequence += 1
+            events.append(event)
+        events.sort(key=lambda item: (item["timestamp_utc"], item.get("_read_sequence", 0)))
         return events
 
     def source_segments(self) -> list[str]:

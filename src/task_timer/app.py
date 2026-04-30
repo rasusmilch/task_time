@@ -91,6 +91,83 @@ class TaskTimerService:
             raise ValueError(f"Tag '{k}' is archived. Unarchive it from Manage Tags.")
         self._append("__app__", "tag_created", {"key": k})
 
+    def list_global_tags(self, include_archived: bool = True) -> list[TagMeta]:
+        tags = sorted(self.state.global_tags.values(), key=lambda meta: meta.key)
+        if include_archived:
+            return tags
+        return [meta for meta in tags if not meta.archived]
+
+    def tag_usage_counts(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for task in self.state.tasks.values():
+            if task.is_deleted:
+                continue
+            for key in task.tags:
+                counts[key] = counts.get(key, 0) + 1
+        return counts
+
+    def create_tag(self, key: str) -> None:
+        norm = normalize_tag(key)
+        meta = self.state.global_tags.get(norm)
+        if meta and not meta.archived:
+            raise ValueError(f"Tag '{norm}' already exists")
+        if meta and meta.archived:
+            raise ValueError(f"Tag '{norm}' is archived. Unarchive it instead.")
+        self._append("__app__", "tag_created", {"key": norm})
+
+    def rename_tag(self, old_key: str, new_key: str) -> None:
+        old_norm = normalize_tag(old_key)
+        new_norm = normalize_tag(new_key)
+        if old_norm == new_norm:
+            return
+        if old_norm not in self.state.global_tags:
+            raise ValueError(f"Tag '{old_norm}' does not exist")
+        if new_norm in self.state.global_tags:
+            raise ValueError(f"Tag '{new_norm}' already exists")
+        self._append("__app__", "tag_renamed", {"old_key": old_norm, "new_key": new_norm})
+
+    def archive_tag(self, key: str) -> None:
+        norm = normalize_tag(key)
+        meta = self.state.global_tags.get(norm)
+        if not meta:
+            raise ValueError(f"Tag '{norm}' does not exist")
+        if meta.archived:
+            return
+        if self.tag_usage_counts().get(norm, 0) > 0:
+            raise ValueError(f"Tag '{norm}' is in use and cannot be archived")
+        self._append("__app__", "tag_archived", {"key": norm})
+
+    def unarchive_tag(self, key: str) -> None:
+        norm = normalize_tag(key)
+        meta = self.state.global_tags.get(norm)
+        if not meta:
+            raise ValueError(f"Tag '{norm}' does not exist")
+        if not meta.archived:
+            return
+        self._append("__app__", "tag_unarchived", {"key": norm})
+
+    def delete_tag(self, key: str) -> None:
+        norm = normalize_tag(key)
+        meta = self.state.global_tags.get(norm)
+        if not meta:
+            raise ValueError(f"Tag '{norm}' does not exist")
+        if self.tag_usage_counts().get(norm, 0) > 0:
+            raise ValueError(f"Tag '{norm}' is in use and cannot be deleted")
+        if not meta.archived:
+            raise ValueError(f"Tag '{norm}' must be archived before deleting")
+        self._append("__app__", "tag_deleted", {"key": norm})
+
+    def available_tags_for_task(self, task_id: str) -> list[str]:
+        if task_id not in self.state.tasks:
+            raise ValueError("Task not found")
+        return [meta.key for meta in self.list_global_tags(include_archived=False)]
+
+    def assigned_tags_for_task(self, task_id: str) -> list[str]:
+        task = self.state.tasks.get(task_id)
+        if not task:
+            raise ValueError("Task not found")
+        return sorted(task.tags)
+
     def delete_task(self, task_id: str) -> None:
         self.stop_task(task_id)
         self._append(task_id, "task_deleted", {})
@@ -789,7 +866,7 @@ class TaskTimerService:
 
     def _rebuild_state(self, events: list[dict[str, Any]]) -> None:
         self.state = AppState()
-        for event in sorted(events, key=lambda ev: ev["timestamp_utc"]):
+        for event in sorted(events, key=lambda ev: (ev["timestamp_utc"], ev.get("_read_sequence", 0))):
             self._apply_event(event)
 
     def _apply_event(self, event: dict[str, Any]) -> None:
@@ -820,6 +897,7 @@ class TaskTimerService:
                         t.tags.discard(old); t.tags.add(new)
             return
         if event_type == "task_created":
+            tags = set(normalize_tag_list(payload.get("tags", [])))
             self.state.tasks[task_id] = TaskState(
                 task_id=task_id,
                 name=payload.get("name", "Task"),
@@ -828,7 +906,11 @@ class TaskTimerService:
                 is_running=False,
                 created_at_utc=timestamp,
                 updated_at_utc=timestamp,
+                tags=tags,
             )
+            for key in tags:
+                if key not in self.state.global_tags:
+                    self.state.global_tags[key] = TagMeta(key=key, archived=False, created_at_utc=timestamp, updated_at_utc=timestamp)
             return
         task = self.state.tasks.get(task_id)
         if not task:
@@ -865,6 +947,12 @@ class TaskTimerService:
                 self.state.running_task_id = None
         elif event_type == "reset":
             task.last_reset_utc = timestamp
+        elif event_type == "task_tags_updated":
+            tags = set(normalize_tag_list(payload.get("tags", [])))
+            task.tags = tags
+            for key in tags:
+                if key not in self.state.global_tags:
+                    self.state.global_tags[key] = TagMeta(key=key, archived=False, created_at_utc=timestamp, updated_at_utc=timestamp)
         elif event_type == "manual_interval_added":
             interval = IntervalRecord(
                 interval_id=payload["interval_id"],
