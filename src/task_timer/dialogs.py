@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from .models import NOTES_MAX_LENGTH
 from .settings import BackupSettings, UISettings
 from .tag_dialogs import TagSelectionFrame
+from .tags import normalize_tag
 from .time_utils import format_duration_hm
 
 if TYPE_CHECKING:
@@ -672,8 +673,117 @@ class EditTaskDialog:
 
 class ManageTagsDialog:
     def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
-        self.changed=False
-        self.window=Toplevel(parent); self.window.title("Manage Tags")
-        ttk.Label(self.window,text="Use edit task to assign tags; global actions not fully implemented in UI.").pack(padx=8,pady=8)
-        ttk.Button(self.window,text="Close",command=self.window.destroy).pack(pady=6)
+        self.changed = False
+        self.service = service
+        self.window = Toplevel(parent)
+        self.window.title("Manage Tags")
+        self.window.geometry("620x380")
+        self.window.transient(parent)
+        self.window.grab_set()
+
+        self.tree = ttk.Treeview(self.window, columns=("tag", "status", "usage"), show="headings", height=12)
+        self.tree.heading("tag", text="Tag")
+        self.tree.heading("status", text="Status")
+        self.tree.heading("usage", text="Usage count")
+        self.tree.column("tag", width=320, anchor="w")
+        self.tree.column("status", width=120, anchor="center")
+        self.tree.column("usage", width=120, anchor="e")
+        self.tree.grid(row=0, column=0, sticky="nsew", padx=(8, 0), pady=8)
+
+        scroll = ttk.Scrollbar(self.window, orient="vertical", command=self.tree.yview)
+        scroll.grid(row=0, column=1, sticky="ns", padx=(0, 8), pady=8)
+        self.tree.configure(yscrollcommand=scroll.set)
+
+        controls = ttk.Frame(self.window)
+        controls.grid(row=1, column=0, columnspan=2, sticky="ew", padx=8, pady=(0, 8))
+        ttk.Button(controls, text="Add", command=self._add_tag).pack(side="left", padx=2)
+        ttk.Button(controls, text="Rename", command=self._rename_tag).pack(side="left", padx=2)
+        ttk.Button(controls, text="Archive", command=self._archive_tag).pack(side="left", padx=2)
+        ttk.Button(controls, text="Unarchive", command=self._unarchive_tag).pack(side="left", padx=2)
+        ttk.Button(controls, text="Delete", command=self._delete_tag).pack(side="left", padx=2)
+        ttk.Button(controls, text="Close", command=self.window.destroy).pack(side="right", padx=2)
+
+        self.window.grid_columnconfigure(0, weight=1)
+        self.window.grid_rowconfigure(0, weight=1)
+        self.refresh_table()
         parent.wait_window(self.window)
+
+    def _selected_tag(self) -> str:
+        selection = self.tree.selection()
+        if not selection:
+            raise ValueError("Select a tag first")
+        return str(selection[0])
+
+    def refresh_table(self, selected_key: str | None = None) -> None:
+        usage_counts = self.service.tag_usage_counts()
+        previous_key = selected_key
+        if previous_key is None:
+            current = self.tree.selection()
+            previous_key = str(current[0]) if current else None
+        for child in self.tree.get_children():
+            self.tree.delete(child)
+        for meta in self.service.list_global_tags(include_archived=True):
+            status = "archived" if meta.archived else "active"
+            usage = usage_counts.get(meta.key, 0)
+            self.tree.insert("", "end", iid=meta.key, values=(meta.key, status, str(usage)))
+        if previous_key and self.tree.exists(previous_key):
+            self.tree.selection_set(previous_key)
+            self.tree.focus(previous_key)
+
+    def _add_tag(self) -> None:
+        raw = simpledialog.askstring("Add Tag", "Tag key:", parent=self.window)
+        if raw is None:
+            return
+        try:
+            self.service.create_tag(raw)
+        except Exception as exc:  # noqa: BLE001
+            messagebox.showerror("Add Tag", str(exc), parent=self.window)
+            return
+        self.changed = True
+        self.refresh_table()
+
+    def _rename_tag(self) -> None:
+        try:
+            old_key = self._selected_tag()
+            raw_new = simpledialog.askstring("Rename Tag", "New tag key:", initialvalue=old_key, parent=self.window)
+            if raw_new is None:
+                return
+            self.service.rename_tag(old_key, raw_new)
+            new_key = normalize_tag(raw_new)
+        except Exception as exc:  # noqa: BLE001
+            messagebox.showerror("Rename Tag", str(exc), parent=self.window)
+            return
+        self.changed = True
+        self.refresh_table(selected_key=new_key)
+
+    def _archive_tag(self) -> None:
+        try:
+            key = self._selected_tag()
+            self.service.archive_tag(key)
+        except Exception as exc:  # noqa: BLE001
+            messagebox.showerror("Archive Tag", str(exc), parent=self.window)
+            return
+        self.changed = True
+        self.refresh_table(selected_key=key)
+
+    def _unarchive_tag(self) -> None:
+        try:
+            key = self._selected_tag()
+            self.service.unarchive_tag(key)
+        except Exception as exc:  # noqa: BLE001
+            messagebox.showerror("Unarchive Tag", str(exc), parent=self.window)
+            return
+        self.changed = True
+        self.refresh_table(selected_key=key)
+
+    def _delete_tag(self) -> None:
+        try:
+            key = self._selected_tag()
+            if not messagebox.askyesno("Delete Tag", f"Delete tag '{key}'? This cannot be undone.", parent=self.window):
+                return
+            self.service.delete_tag(key)
+        except Exception as exc:  # noqa: BLE001
+            messagebox.showerror("Delete Tag", str(exc), parent=self.window)
+            return
+        self.changed = True
+        self.refresh_table()
