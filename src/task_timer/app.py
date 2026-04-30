@@ -741,33 +741,45 @@ class TaskTimerService:
         return f"{week_start.isoformat()} to {week_end.isoformat()}"
 
 
-    def compute_tag_totals(self, window_start_utc: datetime | None, window_end_utc: datetime):
-        daily = {}
-        weekly = {}
+    def compute_tag_totals(
+        self, window_start_utc: datetime | None, window_end_utc: datetime
+    ) -> tuple[dict[str, dict[str, dict[str, Any]]], dict[str, dict[str, dict[str, Any]]]]:
+        daily: dict[str, dict[str, dict[str, Any]]] = {}
+        weekly: dict[str, dict[str, dict[str, Any]]] = {}
         for task in self.state.tasks.values():
-            intervals = self._window_intervals_for_task(task, window_start_utc, window_end_utc)
+            intervals = self._windowed_intervals(task, window_start_utc, window_end_utc)
             if not intervals:
                 continue
-            tags = sorted(task.tags) or ["untagged"]
-            for start, stop in intervals:
-                day = start.astimezone(self.local_tz).date()
-                while day <= stop.astimezone(self.local_tz).date():
-                    day_ref=datetime.combine(day,time(hour=12),self.local_tz)
-                    secs=interval_seconds_in_local_day(start,stop,self.local_tz,day_ref)
-                    if secs>0:
-                        dkey=day.isoformat(); daily.setdefault(dkey,{})
-                        for tg in tags:
-                            ent=daily[dkey].setdefault(tg,{"seconds":0.0,"tasks":set()}); ent["seconds"]+=secs; ent["tasks"].add(task.name)
-                    day += timedelta(days=1)
-                wk = sunday_week_start(start.astimezone(self.local_tz)).date()
-                while wk <= stop.astimezone(self.local_tz).date():
-                    wlabel=self._week_range_label(wk); wref=datetime.combine(wk,time(hour=12),self.local_tz)
-                    secs=interval_seconds_in_local_week(start,stop,self.local_tz,wref)
-                    if secs>0:
-                        weekly.setdefault(wlabel,{})
-                        for tg in tags:
-                            ent=weekly[wlabel].setdefault(tg,{"seconds":0.0,"tasks":set()}); ent["seconds"]+=secs; ent["tasks"].add(task.name)
-                    wk += timedelta(days=7)
+            tags = tuple(sorted(task.tags)) or ("untagged",)
+            task_name = task.name.strip() or task.task_id
+            for start_utc, stop_utc in intervals:
+                start_local = start_utc.astimezone(self.local_tz)
+                stop_local = stop_utc.astimezone(self.local_tz)
+                day_cursor = start_local.date()
+                last_day = stop_local.date()
+                while day_cursor <= last_day:
+                    day_ref = datetime.combine(day_cursor, time(hour=12), self.local_tz)
+                    seconds = interval_seconds_in_local_day(start_utc, stop_utc, self.local_tz, day_ref)
+                    if seconds > 0:
+                        day_key = day_cursor.isoformat()
+                        day_bucket = daily.setdefault(day_key, {})
+                        for tag in tags:
+                            entry = day_bucket.setdefault(tag, {"seconds": 0.0, "tasks": set()})
+                            entry["seconds"] += seconds
+                            entry["tasks"].add(task_name)
+                    day_cursor += timedelta(days=1)
+
+                week_cursor = sunday_week_start(start_local)
+                while week_cursor <= stop_local:
+                    week_label = self._week_range_label(week_cursor.date())
+                    seconds = interval_seconds_in_local_week(start_utc, stop_utc, self.local_tz, week_cursor)
+                    if seconds > 0:
+                        week_bucket = weekly.setdefault(week_label, {})
+                        for tag in tags:
+                            entry = week_bucket.setdefault(tag, {"seconds": 0.0, "tasks": set()})
+                            entry["seconds"] += seconds
+                            entry["tasks"].add(task_name)
+                    week_cursor += timedelta(days=7)
         return daily, weekly
 
     def snapshot_dict(self) -> dict[str, Any]:

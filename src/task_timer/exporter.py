@@ -22,6 +22,21 @@ def _render_table(headers: list[str], rows: list[list[str]]) -> list[str]:
     return output
 
 
+def _truncate_task_name(name: str, max_len: int = 28) -> str:
+    cleaned = " ".join(name.split())
+    if len(cleaned) <= max_len:
+        return cleaned
+    return f"{cleaned[: max_len - 1]}…"
+
+
+def _format_contributing_tasks(tasks: set[str], visible_count: int = 3) -> str:
+    names = sorted(_truncate_task_name(name) for name in tasks)
+    if len(names) <= visible_count:
+        return ", ".join(names)
+    shown = ", ".join(names[:visible_count])
+    return f"{shown}, +{len(names) - visible_count} more"
+
+
 def build_export_text(
     *,
     generated_at_utc: datetime,
@@ -73,7 +88,7 @@ def build_export_text(
         rows=[]
         for tag in sorted(tag_weekly[week], key=lambda t: (t=="untagged", t)):
             info=tag_weekly[week][tag]
-            rows.append([tag, format_duration(info["seconds"]), ", ".join(sorted(info["tasks"]))])
+            rows.append([tag, format_duration(info["seconds"]), _format_contributing_tasks(info["tasks"])])
         lines.extend(_render_table(["Tag","Total","Contributing tasks"], rows))
     lines.append("")
 
@@ -85,7 +100,7 @@ def build_export_text(
         rows=[]
         for tag in sorted(tag_daily[day], key=lambda t: (t=="untagged", t)):
             info=tag_daily[day][tag]
-            rows.append([tag, format_duration(info["seconds"]), ", ".join(sorted(info["tasks"]))])
+            rows.append([tag, format_duration(info["seconds"]), _format_contributing_tasks(info["tasks"])])
         lines.extend(_render_table(["Tag","Total","Contributing tasks"], rows))
     lines.append("")
 

@@ -370,3 +370,90 @@ def test_voiding_latest_checkpoint_reverts_to_previous(tmp_path: Path) -> None:
     service.void_last_export_checkpoint("forgot entry")
     active = service.find_active_export_checkpoint()
     assert active and active["event_id"] == first["event_id"]  # type: ignore[index]
+
+
+def test_tag_sections_include_disclaimer_and_non_exclusive_totals(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    alpha = service.create_task("Alpha task", "")
+    beta = service.create_task("Beta task with very long name for truncation checks", "")
+    gamma = service.create_task("Gamma", "")
+    empty = service.create_task("No Time Task", "")
+    delta = service.create_task("Delta", "")
+    epsilon = service.create_task("Epsilon", "")
+    service.update_task_tags(alpha, ["backend"])
+    service.update_task_tags(beta, ["backend", "ops"])
+    service.update_task_tags(delta, ["backend"])
+    service.update_task_tags(epsilon, ["backend"])
+    service.add_manual_interval(
+        alpha,
+        datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc).astimezone(),
+        datetime(2026, 1, 5, 11, 0, tzinfo=timezone.utc).astimezone(),
+        "a",
+    )
+    service.add_manual_interval(
+        beta,
+        datetime(2026, 1, 5, 12, 0, tzinfo=timezone.utc).astimezone(),
+        datetime(2026, 1, 5, 14, 0, tzinfo=timezone.utc).astimezone(),
+        "b",
+    )
+    service.add_manual_duration(gamma, datetime(2026, 1, 6, tzinfo=timezone.utc).date(), 1800, "duration")
+    service.add_manual_interval(
+        delta,
+        datetime(2026, 1, 5, 14, 0, tzinfo=timezone.utc).astimezone(),
+        datetime(2026, 1, 5, 14, 30, tzinfo=timezone.utc).astimezone(),
+        "d",
+    )
+    service.add_manual_interval(
+        epsilon,
+        datetime(2026, 1, 5, 14, 30, tzinfo=timezone.utc).astimezone(),
+        datetime(2026, 1, 5, 15, 0, tzinfo=timezone.utc).astimezone(),
+        "e",
+    )
+    service.delete_task(empty)
+
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: parse_utc_z("2026-01-08T00:00:00Z"))
+    out = tmp_path / "out.txt"
+    service.export_report(out, reset_after=False)
+    text = out.read_text(encoding="utf-8")
+
+    assert "Tag totals by week" in text
+    assert "Tag totals by day" in text
+    assert "Tag totals are non-exclusive label totals" in text
+    assert "backend" in text and "04:00:00" in text
+    assert "ops" in text and "02:00:00" in text
+    assert "untagged" in text and "00:30:00" in text
+    assert "Overall total since checkpoint: 04:00:00" not in text
+    assert "No Time Task" not in text
+    assert "Beta task with very long name" in text
+    assert "+" in text and "more" in text
+
+
+def test_tag_totals_respect_checkpoint_reset_deleted_and_interval_edits(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("Edited Task", "")
+    service.update_task_tags(task_id, ["tag1"])
+    service.add_manual_interval(
+        task_id,
+        datetime(2026, 1, 4, 23, 30, tzinfo=timezone.utc).astimezone(),
+        datetime(2026, 1, 5, 0, 30, tzinfo=timezone.utc).astimezone(),
+        "x",
+    )
+    interval_id = next(iter(service.state.tasks[task_id].intervals))
+    service.edit_interval(
+        task_id,
+        interval_id,
+        datetime(2026, 1, 4, 23, 45, tzinfo=timezone.utc).astimezone(),
+        datetime(2026, 1, 5, 0, 30, tzinfo=timezone.utc).astimezone(),
+        "fix",
+    )
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: parse_utc_z("2026-01-05T00:00:00Z"))
+    service.export_report(tmp_path / "first.txt", reset_after=False)
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: parse_utc_z("2026-01-06T00:00:00Z"))
+    service.add_manual_duration(task_id, datetime(2026, 1, 6, tzinfo=timezone.utc).date(), 3600, "d")
+    service.delete_task(task_id)
+    daily, weekly = service.compute_tag_totals(parse_utc_z("2026-01-05T00:00:00Z"), parse_utc_z("2026-01-08T00:00:00Z"))
+
+    assert "2026-01-06" in daily
+    assert daily["2026-01-06"]["tag1"]["seconds"] == 3600
+    assert "2026-01-04" not in daily
+    assert any("2026-01-04 to 2026-01-10" == wk for wk in weekly)
