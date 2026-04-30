@@ -128,7 +128,7 @@ class TagSelectionFrame(ttk.Frame):
             if meta.key != normalized:
                 continue
             if meta.archived:
-                raise ValueError(f"Tag '{normalized}' is archived. Unarchive it in Manage Tags.")
+                raise ValueError(f"Tag '{normalized}' is archived. Unarchive it from Manage Tags.")
             self._selected_tags.add(normalized)
             return self.get_selected_tags()
         self.service.create_tag(normalized)
