@@ -43,6 +43,17 @@ class TaskState:
     currently_open_interval_start_utc: datetime | None = None
     last_reset_utc: datetime | None = None
     intervals: dict[str, IntervalRecord] = field(default_factory=dict)
+    tags: set[str] = field(default_factory=set)
+
+
+@dataclass(slots=True)
+class TagMeta:
+    """Global canonical tag metadata."""
+
+    key: str
+    archived: bool
+    created_at_utc: datetime
+    updated_at_utc: datetime
 
 
 @dataclass(slots=True)
@@ -51,6 +62,7 @@ class AppState:
 
     tasks: dict[str, TaskState] = field(default_factory=dict)
     running_task_id: str | None = None
+    global_tags: dict[str, TagMeta] = field(default_factory=dict)
 
 
 def event_dict(

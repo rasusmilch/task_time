@@ -34,6 +34,8 @@ def build_export_text(
     weekly_summary_rows: list[dict[str, Any]],
     per_task_rows: list[dict[str, Any]],
     history_lines: list[str],
+    tag_daily: dict[str, dict[str, Any]],
+    tag_weekly: dict[str, dict[str, Any]],
 ) -> str:
     """Build human-readable export text content."""
     lines: list[str] = []
@@ -60,6 +62,31 @@ def build_export_text(
         lines.extend(_render_table(weekly_table_headers, weekly_table_rows))
     else:
         lines.append("No non-deleted tasks found for this export window.")
+    lines.append("")
+
+    lines.append("Tag totals by week")
+    lines.append("=" * 72)
+    lines.append("Note: Tag totals are non-exclusive label totals. If a task has multiple tags, its full time is counted under each tag. Tag totals may exceed overall tracked time.")
+    for week in sorted(tag_weekly):
+        lines.append("")
+        lines.append(f"Week: {week}")
+        rows=[]
+        for tag in sorted(tag_weekly[week], key=lambda t: (t=="untagged", t)):
+            info=tag_weekly[week][tag]
+            rows.append([tag, format_duration(info["seconds"]), ", ".join(sorted(info["tasks"]))])
+        lines.extend(_render_table(["Tag","Total","Contributing tasks"], rows))
+    lines.append("")
+
+    lines.append("Tag totals by day")
+    lines.append("=" * 72)
+    for day in sorted(tag_daily):
+        lines.append("")
+        lines.append(f"Date: {day}")
+        rows=[]
+        for tag in sorted(tag_daily[day], key=lambda t: (t=="untagged", t)):
+            info=tag_daily[day][tag]
+            rows.append([tag, format_duration(info["seconds"]), ", ".join(sorted(info["tasks"]))])
+        lines.extend(_render_table(["Tag","Total","Contributing tasks"], rows))
     lines.append("")
 
     lines.append("Per-task totals since checkpoint")

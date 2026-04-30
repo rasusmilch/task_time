@@ -16,6 +16,8 @@ from uuid import uuid4
 from .backups import BackupManager
 from .dialogs import (
     AddTaskDialog,
+    EditTaskDialog,
+    ManageTagsDialog,
     BackupSettingsDialog,
     EditTimelineDialog,
     MonthEndCloseReminderDialog,
@@ -24,11 +26,12 @@ from .dialogs import (
 )
 from .exporter import build_export_text, write_export_file
 from .mini_mode import MiniModeWindow
-from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TaskState, event_dict
+from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TagMeta, TaskState, event_dict
 from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
 from .storage import EventStorage
 from .window_chrome import disable_snap_maximize, install_zoom_guard
+from .tags import normalize_tag, normalize_tag_list
 from .time_utils import (
     detect_local_timezone,
     format_duration_hm,
@@ -62,13 +65,31 @@ class TaskTimerService:
         self._save_snapshot()
         self._maybe_create_app_start_backup()
 
-    def create_task(self, name: str, notes: str) -> str:
+    def create_task(self, name: str, notes: str, tags: list[str] | None = None) -> str:
         task_id = str(uuid4())
-        self._append(task_id, "task_created", {"name": name.strip(), "notes": self._clean_notes(notes)})
+        tag_list = normalize_tag_list(tags or [])
+        self._append(task_id, "task_created", {"name": name.strip(), "notes": self._clean_notes(notes), "tags": tag_list})
+        for key in tag_list:
+            self.ensure_tag_exists(key)
         return task_id
 
     def update_task(self, task_id: str, name: str, notes: str) -> None:
         self._append(task_id, "task_updated", {"name": name.strip(), "notes": self._clean_notes(notes)})
+
+    def update_task_tags(self, task_id: str, tags: list[str]) -> None:
+        norm = normalize_tag_list(tags)
+        for key in norm:
+            self.ensure_tag_exists(key)
+        self._append(task_id, "task_tags_updated", {"tags": norm})
+
+    def ensure_tag_exists(self, key: str) -> None:
+        k = normalize_tag(key)
+        meta = self.state.global_tags.get(k)
+        if meta and not meta.archived:
+            return
+        if meta and meta.archived:
+            raise ValueError(f"Tag '{k}' is archived. Unarchive it from Manage Tags.")
+        self._append("__app__", "tag_created", {"key": k})
 
     def delete_task(self, task_id: str) -> None:
         self.stop_task(task_id)
@@ -257,6 +278,7 @@ class TaskTimerService:
         per_task = self.compute_windowed_task_totals(window_start_utc, now_utc)
         weekly_ranges = self.collect_week_ranges(per_task)
         history_lines = self.build_human_audit_lines(window_events, window_end_utc=now_utc)
+        tag_daily, tag_weekly = self.compute_tag_totals(window_start_utc, now_utc)
         content = build_export_text(
             generated_at_utc=now_utc,
             local_timezone=self.local_tz_name,
@@ -268,6 +290,8 @@ class TaskTimerService:
             per_task_rows=per_task,
             history_lines=history_lines,
             source_segments=self.storage.source_segments(),
+            tag_daily=tag_daily,
+            tag_weekly=tag_weekly,
         )
         write_export_file(target, content)
         self._append(
@@ -639,6 +663,36 @@ class TaskTimerService:
         week_end = week_start + timedelta(days=6)
         return f"{week_start.isoformat()} to {week_end.isoformat()}"
 
+
+    def compute_tag_totals(self, window_start_utc: datetime | None, window_end_utc: datetime):
+        daily = {}
+        weekly = {}
+        for task in self.state.tasks.values():
+            intervals = self._window_intervals_for_task(task, window_start_utc, window_end_utc)
+            if not intervals:
+                continue
+            tags = sorted(task.tags) or ["untagged"]
+            for start, stop in intervals:
+                day = start.astimezone(self.local_tz).date()
+                while day <= stop.astimezone(self.local_tz).date():
+                    day_ref=datetime.combine(day,time(hour=12),self.local_tz)
+                    secs=interval_seconds_in_local_day(start,stop,self.local_tz,day_ref)
+                    if secs>0:
+                        dkey=day.isoformat(); daily.setdefault(dkey,{})
+                        for tg in tags:
+                            ent=daily[dkey].setdefault(tg,{"seconds":0.0,"tasks":set()}); ent["seconds"]+=secs; ent["tasks"].add(task.name)
+                    day += timedelta(days=1)
+                wk = sunday_week_start(start.astimezone(self.local_tz)).date()
+                while wk <= stop.astimezone(self.local_tz).date():
+                    wlabel=self._week_range_label(wk); wref=datetime.combine(wk,time(hour=12),self.local_tz)
+                    secs=interval_seconds_in_local_week(start,stop,self.local_tz,wref)
+                    if secs>0:
+                        weekly.setdefault(wlabel,{})
+                        for tg in tags:
+                            ent=weekly[wlabel].setdefault(tg,{"seconds":0.0,"tasks":set()}); ent["seconds"]+=secs; ent["tasks"].add(task.name)
+                    wk += timedelta(days=7)
+        return daily, weekly
+
     def snapshot_dict(self) -> dict[str, Any]:
         tasks_payload: dict[str, Any] = {}
         for task_id, task in self.state.tasks.items():
@@ -655,6 +709,7 @@ class TaskTimerService:
                 if task.currently_open_interval_start_utc
                 else None,
                 "last_reset_utc": to_utc_z(task.last_reset_utc) if task.last_reset_utc else None,
+                "tags": sorted(task.tags),
                 "intervals": [
                     {
                         "interval_id": interval.interval_id,
@@ -672,7 +727,7 @@ class TaskTimerService:
                     for interval in task.intervals.values()
                 ],
             }
-        return {"tasks": tasks_payload, "running_task_id": self.state.running_task_id}
+        return {"tasks": tasks_payload, "running_task_id": self.state.running_task_id, "global_tags": {k:{"key":v.key,"archived":v.archived,"created_at_utc":to_utc_z(v.created_at_utc),"updated_at_utc":to_utc_z(v.updated_at_utc)} for k,v in self.state.global_tags.items()}}
 
     def _append(self, task_id: str, event_type: str, payload: dict[str, Any]) -> None:
         event = event_dict(
@@ -743,6 +798,26 @@ class TaskTimerService:
         payload = event["payload"]
         timestamp = parse_utc_z(event["timestamp_utc"])
         if task_id == "__app__":
+            if event_type == "tag_created":
+                key = normalize_tag(payload["key"])
+                existing = self.state.global_tags.get(key)
+                if not existing:
+                    self.state.global_tags[key] = TagMeta(key=key, archived=False, created_at_utc=timestamp, updated_at_utc=timestamp)
+            elif event_type == "tag_archived":
+                key = normalize_tag(payload["key"]);
+                if key in self.state.global_tags: self.state.global_tags[key].archived=True; self.state.global_tags[key].updated_at_utc=timestamp
+            elif event_type == "tag_unarchived":
+                key = normalize_tag(payload["key"]);
+                if key in self.state.global_tags: self.state.global_tags[key].archived=False; self.state.global_tags[key].updated_at_utc=timestamp
+            elif event_type == "tag_deleted":
+                key = normalize_tag(payload["key"]); self.state.global_tags.pop(key, None)
+            elif event_type == "tag_renamed":
+                old=normalize_tag(payload["old_key"]); new=normalize_tag(payload["new_key"])
+                if old in self.state.global_tags and new not in self.state.global_tags:
+                    meta=self.state.global_tags.pop(old); meta.key=new; meta.updated_at_utc=timestamp; self.state.global_tags[new]=meta
+                for t in self.state.tasks.values():
+                    if old in t.tags:
+                        t.tags.discard(old); t.tags.add(new)
             return
         if event_type == "task_created":
             self.state.tasks[task_id] = TaskState(
@@ -892,28 +967,6 @@ class TaskTimerApp:
 
     def _build_ui(self) -> None:
         self._build_menus()
-        toolbar = ttk.Frame(self.root)
-        toolbar.pack(fill="x", padx=8, pady=8)
-        ttk.Button(toolbar, text="Add Task", command=self.add_task).pack(side="left")
-        ttk.Button(toolbar, text="Export", command=self.export).pack(side="left", padx=4)
-        ttk.Button(toolbar, text="Mini Mode", command=self.open_mini_mode).pack(side="left", padx=4)
-        ttk.Checkbutton(toolbar, text="Sort A–Z", variable=self.sort_alpha_var, command=self._on_sort_toggle).pack(
-            side="left", padx=(8, 0)
-        )
-        ttk.Label(toolbar, textvariable=self.daily_var).pack(side="right", padx=4)
-        ttk.Label(toolbar, textvariable=self.weekly_var).pack(side="right", padx=4)
-
-        self.reminder_banner = tk.Frame(self.root, bg="#ffcc80", padx=8, pady=6)
-        self.reminder_banner_text = tk.Label(
-            self.reminder_banner,
-            text="Month-end reminder: enter/export your time today.",
-            bg="#ffcc80",
-            fg="#3e2723",
-        )
-        self.reminder_banner_text.pack(side="left")
-        ttk.Button(self.reminder_banner, text="Export", command=self._on_reminder_export).pack(side="right", padx=(6, 0))
-        ttk.Button(self.reminder_banner, text="Dismiss", command=self._dismiss_month_end_reminder_today).pack(side="right")
-
         self.table_frame = ttk.Frame(self.root)
         self.table_frame.pack(fill="both", expand=True, padx=8, pady=8)
         self.header_frame = ttk.Frame(self.table_frame)
@@ -938,6 +991,7 @@ class TaskTimerApp:
         tools_menu = tk.Menu(menubar, tearoff=0)
         tools_menu.add_command(label="Reopen Last Export Checkpoint", command=self._reopen_last_export_checkpoint)
         tools_menu.add_separator()
+        tools_menu.add_command(label="Manage Tags", command=self._manage_tags)
         tools_menu.add_command(label="Month-End Reminder Settings", command=self._open_month_end_reminder_settings)
         menubar.add_cascade(label="Tools", menu=tools_menu)
         self.root.configure(menu=menubar)
@@ -950,7 +1004,7 @@ class TaskTimerApp:
             {"key": "action", "header": "Action", "minsize": 80, "sticky": "ew"},
             {"key": "reset", "header": "Reset", "minsize": 80, "sticky": "ew"},
             {"key": "delete", "header": "Delete", "minsize": 80, "sticky": "ew"},
-            {"key": "edit_time", "header": "Edit Timeline", "minsize": 110, "sticky": "ew"},
+            {"key": "edit_task", "header": "Edit Task", "minsize": 100, "sticky": "ew"},
             {"key": "elapsed", "header": "Elapsed", "minsize": 80, "sticky": "e"},
         ]
 
@@ -962,12 +1016,10 @@ class TaskTimerApp:
         dialog = AddTaskDialog(self.root)
         if not dialog.confirmed:
             return
-        task_id = self.service.create_task(dialog.name, dialog.notes)
+        task_id = self.service.create_task(dialog.name, dialog.notes, dialog.tags)
         self.refresh_structure()
         self.refresh_live_values()
-        name_entry = self.rows.get(task_id, {}).get("name_entry")
-        if name_entry:
-            name_entry.focus_set()
+        
 
     def export(self) -> bool:
         target = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text", "*.txt")])
@@ -1023,41 +1075,30 @@ class TaskTimerApp:
 
     def _create_row(self, task_id: str) -> dict[str, Any]:
         task = self.service.state.tasks[task_id]
-        name_var = StringVar(value=task.name)
-        notes_var = StringVar(value=task.notes)
+        
         container = tk.Frame(self.rows_frame, bd=1, relief="solid", padx=2, pady=2)
         self._configure_table_columns(container)
         row: dict[str, Any] = {
-            "name_var": name_var,
-            "notes_var": notes_var,
-            "name_dirty": False,
-            "notes_dirty": False,
+            
             "container": container,
         }
-        row["name_entry"] = ttk.Entry(container, textvariable=name_var, width=20)
-        row["notes_entry"] = ttk.Entry(container, textvariable=notes_var, width=30)
+        row["name_label"] = ttk.Label(container, text=task.name)
+        row["notes_label"] = ttk.Label(container, text=task.notes)
         row["state_label"] = tk.Label(container, text="", width=9)
         row["toggle_btn"] = ttk.Button(container, text="Start", command=lambda t=task_id: self._toggle_task(t))
         row["reset_btn"] = ttk.Button(container, text="Reset", command=lambda t=task_id: self._reset_task(t))
         row["delete_btn"] = ttk.Button(container, text="Delete", command=lambda t=task_id: self._delete_task(t))
-        row["edit_btn"] = ttk.Button(container, text="Edit Timeline", command=lambda t=task_id: self._edit_time(t))
+        row["edit_btn"] = ttk.Button(container, text="Edit Task", command=lambda t=task_id: self._edit_task(t))
         row["elapsed_label"] = tk.Label(container, text="00:00", width=7)
 
-        row["name_entry"].grid(row=0, column=0, padx=4, pady=2, sticky="ew")
-        row["notes_entry"].grid(row=0, column=1, padx=4, pady=2, sticky="ew")
+        row["name_label"].grid(row=0, column=0, padx=4, pady=2, sticky="w")
+        row["notes_label"].grid(row=0, column=1, padx=4, pady=2, sticky="w")
         row["state_label"].grid(row=0, column=2, padx=4, pady=2, sticky="ew")
         row["toggle_btn"].grid(row=0, column=3, padx=2, pady=2, sticky="ew")
         row["reset_btn"].grid(row=0, column=4, padx=2, pady=2, sticky="ew")
         row["delete_btn"].grid(row=0, column=5, padx=2, pady=2, sticky="ew")
         row["edit_btn"].grid(row=0, column=6, padx=2, pady=2, sticky="ew")
         row["elapsed_label"].grid(row=0, column=7, padx=4, pady=2, sticky="e")
-
-        row["name_entry"].bind("<KeyRelease>", lambda _event, t=task_id: self._mark_dirty(t, "name"))
-        row["notes_entry"].bind("<KeyRelease>", lambda _event, t=task_id: self._mark_dirty(t, "notes"))
-        row["name_entry"].bind("<FocusOut>", lambda _event, t=task_id: self._commit_row(t))
-        row["notes_entry"].bind("<FocusOut>", lambda _event, t=task_id: self._commit_row(t))
-        row["name_entry"].bind("<Return>", lambda _event, t=task_id: self._commit_row(t))
-        row["notes_entry"].bind("<Return>", lambda _event, t=task_id: self._commit_row(t))
         return row
 
     def _grid_row(self, row: dict[str, Any], row_index: int) -> None:
@@ -1075,15 +1116,8 @@ class TaskTimerApp:
         row["elapsed_label"].configure(fg=state_color)
         row["toggle_btn"].configure(text="Stop" if is_running else "Start")
         row["container"].configure(bg="#e9f7ef" if is_running else "#fdecea")
-        self._sync_entry_var(task_id, "name_var", "name_dirty", "name_entry", task.name)
-        self._sync_entry_var(task_id, "notes_var", "notes_dirty", "notes_entry", task.notes)
-
-    def _sync_entry_var(self, task_id: str, var_key: str, dirty_key: str, entry_key: str, state_value: str) -> None:
-        row = self.rows[task_id]
-        entry = row[entry_key]
-        has_focus = self.root.focus_get() == entry
-        if not row[dirty_key] and not has_focus and row[var_key].get() != state_value:
-            row[var_key].set(state_value)
+        row["name_label"].configure(text=task.name)
+        row["notes_label"].configure(text=task.notes)
 
     def refresh_live_values(self) -> None:
         now_utc = utc_now()
@@ -1098,36 +1132,6 @@ class TaskTimerApp:
         self.weekly_var.set(f"Weekly Total: {format_duration_hm(weekly)}")
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
             self.mini_mode_window.refresh_live_values()
-
-    def _mark_dirty(self, task_id: str, field: str) -> None:
-        row = self.rows.get(task_id)
-        if row:
-            row[f"{field}_dirty"] = True
-
-    def _commit_row(self, task_id: str) -> None:
-        task = self.service.state.tasks.get(task_id)
-        row = self.rows.get(task_id)
-        if not task or not row:
-            return
-        name = row["name_var"].get().strip()
-        notes = row["notes_var"].get()
-        if not name:
-            row["name_var"].set(task.name)
-            row["name_dirty"] = False
-            messagebox.showerror("Name required", "Task name is required")
-            return
-        clean_notes = notes.replace("\n", " ").strip()[:NOTES_MAX_LENGTH]
-        if name != task.name or clean_notes != task.notes:
-            self.service.update_task(task_id, name, clean_notes)
-            row["name_dirty"] = False
-            row["notes_dirty"] = False
-            self.refresh_structure()
-            self.refresh_live_values()
-            if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
-                self.mini_mode_window.refresh_structure()
-            return
-        row["name_dirty"] = False
-        row["notes_dirty"] = False
 
     def _after_state_change(self) -> None:
         self.refresh_structure()
@@ -1160,8 +1164,13 @@ class TaskTimerApp:
             self.service.delete_task(task_id)
             self._after_state_change()
 
-    def _edit_time(self, task_id: str) -> None:
-        dialog = EditTimelineDialog(self.root, self.service, task_id)
+    def _edit_task(self, task_id: str) -> None:
+        dialog = EditTaskDialog(self.root, self.service, task_id)
+        if dialog.changed:
+            self._after_state_change()
+
+    def _manage_tags(self) -> None:
+        dialog = ManageTagsDialog(self.root, self.service)
         if dialog.changed:
             self._after_state_change()
 
