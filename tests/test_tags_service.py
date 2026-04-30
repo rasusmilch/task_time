@@ -67,6 +67,17 @@ def test_rename_appends_event_and_keeps_journal_lines(tmp_path) -> None:
     assert '"event_type": "tag_renamed"' in after
 
 
+def test_delete_appends_event_and_keeps_journal_lines(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    service.create_tag("alpha")
+    service.archive_tag("alpha")
+    before = (tmp_path / "active_events.jsonl").read_text(encoding="utf-8")
+    service.delete_tag("alpha")
+    after = (tmp_path / "active_events.jsonl").read_text(encoding="utf-8")
+    assert before in after
+    assert '"event_type": "tag_deleted"' in after
+
+
 def test_same_timestamp_replay_order_deterministic(tmp_path) -> None:
     storage = EventStorage(tmp_path)
     ts = "2026-01-01T00:00:00Z"
