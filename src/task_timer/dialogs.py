@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from .models import NOTES_MAX_LENGTH
 from .settings import BackupSettings, UISettings
+from .tag_dialogs import TagSelectionFrame
 from .time_utils import format_duration_hm
 
 if TYPE_CHECKING:
@@ -372,7 +373,7 @@ class EditTimelineDialog:
 class AddTaskDialog:
     """Dialog prompting for initial task name and notes."""
 
-    def __init__(self, parent: Toplevel) -> None:
+    def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
         self.confirmed = False
         self.name = ""
         self.notes = ""
@@ -395,9 +396,8 @@ class AddTaskDialog:
         self.notes_entry = ttk.Entry(self.window, textvariable=self.notes_var)
         self.notes_entry.grid(row=1, column=1, padx=(0, 6), pady=2, sticky="ew")
 
-        ttk.Label(self.window, text="Tags (comma-separated)").grid(row=2, column=0, padx=(6, 4), pady=2, sticky="w")
-        self.tags_var = StringVar()
-        ttk.Entry(self.window, textvariable=self.tags_var).grid(row=2, column=1, padx=(0, 6), pady=2, sticky="ew")
+        self.tag_selector = TagSelectionFrame(self.window, service, initial_tags=[])
+        self.tag_selector.grid(row=2, column=0, columnspan=2, padx=6, pady=4, sticky="nsew")
 
         button_row = ttk.Frame(self.window)
         button_row.grid(row=3, column=0, columnspan=2, padx=6, pady=6, sticky="e")
@@ -419,7 +419,7 @@ class AddTaskDialog:
             return
         self.name = name
         self.notes = notes
-        self.tags = [item.strip() for item in self.tags_var.get().split(",") if item.strip()]
+        self.tags = self.tag_selector.get_selected_tags()
         self.confirmed = True
         self.window.destroy()
 
@@ -627,30 +627,46 @@ def format_timeline_row(interval: Any, local_tz: Any) -> dict[str, str]:
 
 class EditTaskDialog:
     def __init__(self, parent: Toplevel, service: "TaskTimerService", task_id: str) -> None:
-        self.changed=False
-        self.service=service
-        self.task_id=task_id
-        task=service.state.tasks[task_id]
-        self.window=Toplevel(parent); self.window.title("Edit Task"); self.window.transient(parent); self.window.grab_set
-        self.name_var=StringVar(value=task.name); self.notes_var=StringVar(value=task.notes)
-        self.tags_var=StringVar(value=", ".join(sorted(task.tags)))
-        ttk.Label(self.window,text="Task name").grid(row=0,column=0,sticky="w"); ttk.Entry(self.window,textvariable=self.name_var).grid(row=0,column=1,sticky="ew")
-        ttk.Label(self.window,text="Task note").grid(row=1,column=0,sticky="w"); ttk.Entry(self.window,textvariable=self.notes_var).grid(row=1,column=1,sticky="ew")
-        ttk.Label(self.window,text="Tags (comma-separated)").grid(row=2,column=0,sticky="w"); ttk.Entry(self.window,textvariable=self.tags_var).grid(row=2,column=1,sticky="ew")
-        bar=ttk.Frame(self.window); bar.grid(row=3,column=0,columnspan=2,sticky="e")
-        ttk.Button(bar,text="Edit Timeline",command=self._edit_timeline).pack(side="left")
-        ttk.Button(bar,text="Cancel",command=self.window.destroy).pack(side="right"); ttk.Button(bar,text="Save",command=self._save).pack(side="right")
-        self.window.grid_columnconfigure(1,weight=1)
+        self.changed = False
+        self.service = service
+        self.task_id = task_id
+        task = service.state.tasks[task_id]
+        self.window = Toplevel(parent)
+        self.window.title("Edit Task")
+        self.window.transient(parent)
+        self.window.grab_set()
+        self.name_var = StringVar(value=task.name)
+        self.notes_var = StringVar(value=task.notes)
+        ttk.Label(self.window, text="Task name").grid(row=0, column=0, sticky="w")
+        ttk.Entry(self.window, textvariable=self.name_var).grid(row=0, column=1, sticky="ew")
+        ttk.Label(self.window, text="Task note").grid(row=1, column=0, sticky="w")
+        ttk.Entry(self.window, textvariable=self.notes_var).grid(row=1, column=1, sticky="ew")
+
+        self.tag_selector = TagSelectionFrame(self.window, service, initial_tags=task.tags)
+        self.tag_selector.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=4)
+
+        bar = ttk.Frame(self.window)
+        bar.grid(row=3, column=0, columnspan=2, sticky="e")
+        ttk.Button(bar, text="Edit Timeline", command=self._edit_timeline).pack(side="left")
+        ttk.Button(bar, text="Cancel", command=self.window.destroy).pack(side="right")
+        ttk.Button(bar, text="Save", command=self._save).pack(side="right")
+        self.window.grid_columnconfigure(1, weight=1)
         parent.wait_window(self.window)
-    def _edit_timeline(self):
+
+    def _edit_timeline(self) -> None:
         EditTimelineDialog(self.window, self.service, self.task_id)
-    def _save(self):
-        name=self.name_var.get().strip();
-        if not name: messagebox.showerror("Name required","Task name is required"); return
-        notes=self.notes_var.get().replace("\n"," ").strip()[:NOTES_MAX_LENGTH]
-        tags=[t for t in [x.strip() for x in self.tags_var.get().split(",")] if t]
-        self.service.update_task(self.task_id,name,notes); self.service.update_task_tags(self.task_id,tags)
-        self.changed=True; self.window.destroy()
+
+    def _save(self) -> None:
+        name = self.name_var.get().strip()
+        if not name:
+            messagebox.showerror("Name required", "Task name is required")
+            return
+        notes = self.notes_var.get().replace("\n", " ").strip()[:NOTES_MAX_LENGTH]
+        tags = self.tag_selector.get_selected_tags()
+        self.service.update_task(self.task_id, name, notes)
+        self.service.update_task_tags(self.task_id, tags)
+        self.changed = True
+        self.window.destroy()
 
 class ManageTagsDialog:
     def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:

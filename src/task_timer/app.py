@@ -1128,7 +1128,7 @@ class TaskTimerApp:
             frame.grid_columnconfigure(idx, minsize=spec["minsize"])
 
     def add_task(self) -> None:
-        dialog = AddTaskDialog(self.root)
+        dialog = AddTaskDialog(self.root, self.service)
         if not dialog.confirmed:
             return
         task_id = self.service.create_task(dialog.name, dialog.notes, dialog.tags)
