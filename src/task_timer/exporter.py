@@ -72,11 +72,18 @@ def build_export_text(
     weekly_table_headers = ["Task", "Notes", *weekly_headers]
     weekly_table_rows = []
     for row in weekly_summary_rows:
-        weekly_table_rows.append([row["name"], row["notes"], *[format_duration(value) for value in row["weeks"]]])
+        cells = []
+        for idx, value in enumerate(row["weeks"]):
+            marker = row.get("week_markers", [""] * len(row["weeks"]))[idx]
+            cells.append(f"{format_duration(value)}{marker}")
+        weekly_table_rows.append([row["name"], row["notes"], *cells])
     if weekly_table_rows:
         lines.extend(_render_table(weekly_table_headers, weekly_table_rows))
     else:
         lines.append("No non-deleted tasks found for this export window.")
+    lines.append("")
+    lines.append("* = fully already entered through selected-task submission")
+    lines.append("~ = partially already entered through selected-task submission")
     lines.append("")
 
     lines.append("Tag totals by week")

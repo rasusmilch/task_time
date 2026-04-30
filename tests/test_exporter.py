@@ -457,3 +457,58 @@ def test_tag_totals_respect_checkpoint_reset_deleted_and_interval_edits(tmp_path
     assert daily["2026-01-06"]["tag1"]["seconds"] == 3600
     assert "2026-01-04" not in daily
     assert any("2026-01-04 to 2026-01-10" == wk for wk in weekly)
+
+def test_create_time_submission_marker_appends_event_without_checkpoint_or_reset(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("A", "n")
+    service.add_manual_interval(task_id, datetime(2026, 1, 10, 10, tzinfo=timezone.utc).astimezone(), datetime(2026, 1, 10, 11, tzinfo=timezone.utc).astimezone(), "r")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: parse_utc_z("2026-01-31T00:00:00Z"))
+    sid = service.create_time_submission_marker([task_id], None, parse_utc_z("2026-01-31T00:00:00Z"), "job closing", None)
+    assert sid
+    assert any(e["event_type"] == "time_submission_created" for e in service.events)
+    assert not any(e["event_type"] == "export_checkpoint" and e["payload"].get("reason") == "job closing" for e in service.events)
+
+
+def test_export_selected_tasks_report_mark_submitted_behavior(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    t1 = service.create_task("A", "")
+    t2 = service.create_task("B", "")
+    service.add_manual_interval(t1, datetime(2026, 1, 10, 10, tzinfo=timezone.utc).astimezone(), datetime(2026, 1, 10, 11, tzinfo=timezone.utc).astimezone(), "r")
+    service.add_manual_interval(t2, datetime(2026, 1, 10, 12, tzinfo=timezone.utc).astimezone(), datetime(2026, 1, 10, 13, tzinfo=timezone.utc).astimezone(), "r")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: parse_utc_z("2026-01-31T00:00:00Z"))
+
+    out = tmp_path / "selected.txt"
+    service.export_selected_tasks_report(out, [t1], None, parse_utc_z("2026-01-31T00:00:00Z"), mark_submitted=False, reason="")
+    text = out.read_text(encoding="utf-8")
+    assert "- A" in text
+    assert "- B" not in text
+    assert not any(e["event_type"] == "time_submission_created" for e in service.events)
+
+    service.export_selected_tasks_report(out, [t1], None, parse_utc_z("2026-01-31T00:00:00Z"), mark_submitted=True, reason="closing")
+    assert any(e["event_type"] == "time_submission_created" for e in service.events)
+
+
+def test_normal_export_marks_submitted_week(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    t1 = service.create_task("A", "")
+    service.add_manual_interval(t1, datetime(2026, 1, 10, 10, tzinfo=timezone.utc).astimezone(), datetime(2026, 1, 10, 11, tzinfo=timezone.utc).astimezone(), "r")
+    end = parse_utc_z("2026-01-31T00:00:00Z")
+    service.create_time_submission_marker([t1], None, end, "closing", None)
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    out = tmp_path / "out.txt"
+    service.export_report(out, reset_after=False)
+    text = out.read_text(encoding="utf-8")
+    assert "* = fully already entered" in text or "~ = partially already entered" in text
+    assert "01:00:00" in text
+
+
+def test_time_submission_audit_line_human_readable(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    t1 = service.create_task("A", "")
+    end = parse_utc_z("2026-01-31T00:00:00Z")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    service.create_time_submission_marker([t1], None, end, "job closing", None)
+    out = tmp_path / "out.txt"
+    service.export_report(out, reset_after=False)
+    text = out.read_text(encoding="utf-8")
+    assert "Marked selected task time as entered" in text
