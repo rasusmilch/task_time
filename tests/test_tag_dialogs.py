@@ -147,6 +147,21 @@ def test_add_and_remove_selected_tag_moves_between_lists_logic() -> None:
     assert available_after_remove == ["alpha", "beta"]
 
 
+
+
+def test_dialog_sources_do_not_use_comma_separated_tag_entry() -> None:
+    import inspect
+
+    from task_timer import dialogs as dialogs_src
+
+    combined = "\n".join(
+        [
+            inspect.getsource(dialogs_src.AddTaskDialog),
+            inspect.getsource(dialogs_src.EditTaskDialog),
+        ]
+    )
+    assert "Tags (comma-separated)" not in combined
+    assert '.split(",")' not in combined
 def test_manage_tags_dialog_not_placeholder() -> None:
     import inspect
 
