@@ -654,7 +654,9 @@ class EditTaskDialog:
         parent.wait_window(self.window)
 
     def _edit_timeline(self) -> None:
-        EditTimelineDialog(self.window, self.service, self.task_id)
+        timeline_dialog = EditTimelineDialog(self.window, self.service, self.task_id)
+        if timeline_dialog.changed:
+            self.changed = True
 
     def _save(self) -> None:
         name = self.name_var.get().strip()
