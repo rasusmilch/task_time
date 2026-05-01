@@ -485,6 +485,33 @@ class TaskTimerService:
             output.append(event)
         return output
 
+    def events_in_window_for_tasks(
+        self,
+        task_ids: set[str],
+        window_start_utc: datetime | None,
+        window_end_utc: datetime,
+        include_related_app_events: bool = True,
+        related_submission_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        selected_events: list[dict[str, Any]] = []
+        for event in self.events_in_window(window_start_utc, window_end_utc):
+            task_id = event["task_id"]
+            if task_id in task_ids:
+                selected_events.append(event)
+                continue
+            if not include_related_app_events or task_id != "__app__":
+                continue
+            if event["event_type"] != "time_submission_created":
+                continue
+            payload = event.get("payload", {})
+            payload_task_ids = set(payload.get("task_ids", []))
+            if payload_task_ids & task_ids:
+                selected_events.append(event)
+                continue
+            if related_submission_id and payload.get("submission_id") == related_submission_id:
+                selected_events.append(event)
+        return selected_events
+
     def compute_windowed_task_totals(self, window_start_utc: datetime | None, window_end_utc: datetime) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         for task in self.state.tasks.values():
@@ -586,6 +613,13 @@ class TaskTimerService:
         per_task = self.compute_selected_task_totals(task_ids, window_start_utc, window_end_utc)
         self._apply_submission_flags(per_task, window_start_utc, window_end_utc)
         weekly_ranges = self.collect_week_ranges(per_task)
+        selected_ids = set(task_ids)
+        selected_window_events = self.events_in_window_for_tasks(
+            selected_ids,
+            window_start_utc,
+            window_end_utc,
+            include_related_app_events=True,
+        )
         content = build_selected_tasks_export_text(
             generated_at_utc=utc_now(),
             local_timezone=self.local_tz_name,
@@ -594,7 +628,7 @@ class TaskTimerService:
             weekly_headers=weekly_ranges,
             weekly_summary_rows=self.build_epicor_weekly_summary_rows(per_task, weekly_ranges),
             per_task_rows=per_task,
-            history_lines=self.build_human_audit_lines(self.events_in_window(window_start_utc, window_end_utc), window_end_utc=window_end_utc),
+            history_lines=self.build_human_audit_lines(selected_window_events, window_end_utc=window_end_utc),
             source_segments=self.storage.source_segments(),
             mark_submitted=mark_submitted,
             reason=reason,
@@ -754,7 +788,10 @@ class TaskTimerService:
                 if payload.get("reason"):
                     line += f" (Reason: {payload['reason']})"
             elif event_type == "time_submission_created":
-                task_list = ", ".join(payload.get("task_ids", []))
+                task_names = []
+                for submitted_task_id in payload.get("task_ids", []):
+                    task_names.append(name_by_task_id.get(submitted_task_id, submitted_task_id))
+                task_list = ", ".join(task_names)
                 start_label = payload.get("window_start_utc", "beginning")
                 end_label = payload.get("window_end_utc", "unknown")
                 line = (

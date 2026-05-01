@@ -199,7 +199,7 @@ def build_selected_tasks_export_text(
         else:
             lines.append("    - None")
     lines.append("")
-    lines.append("Selected export audit history")
+    lines.append("Selected task audit history")
     if history_lines:
         lines.extend(f"- {line}" for line in history_lines)
     else:
