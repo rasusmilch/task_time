@@ -492,7 +492,7 @@ def test_normal_export_marks_submitted_week(tmp_path: Path, monkeypatch) -> None
     service = TaskTimerService(EventStorage(tmp_path))
     t1 = service.create_task("A", "")
     service.add_manual_interval(t1, datetime(2026, 1, 10, 10, tzinfo=timezone.utc).astimezone(), datetime(2026, 1, 10, 11, tzinfo=timezone.utc).astimezone(), "r")
-    end = parse_utc_z("2026-01-31T00:00:00Z")
+    end = parse_utc_z("2026-12-31T00:00:00Z")
     service.create_time_submission_marker([t1], None, end, "closing", None)
     monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
     out = tmp_path / "out.txt"
@@ -505,7 +505,7 @@ def test_normal_export_marks_submitted_week(tmp_path: Path, monkeypatch) -> None
 def test_time_submission_audit_line_human_readable(tmp_path: Path, monkeypatch) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     t1 = service.create_task("A", "")
-    end = parse_utc_z("2026-01-31T00:00:00Z")
+    end = parse_utc_z("2026-12-31T00:00:00Z")
     monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
     service.create_time_submission_marker([t1], None, end, "job closing", None)
     out = tmp_path / "out.txt"
@@ -529,6 +529,41 @@ def test_selected_export_text_header_and_marking(tmp_path: Path, monkeypatch) ->
     assert "Reason: Job closing" in text
     assert "- A" in text
     assert "- B" not in text
+    assert "Selected task audit history" in text
+
+
+def test_selected_export_audit_history_is_scoped_to_selected_tasks(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    selected = service.create_task("AS-0433-001", "selected")
+    other = service.create_task("ZZ-9999-001", "other")
+    service.update_task(selected, "AS-0433-001", "updated selected")
+    service.update_task(other, "ZZ-9999-001", "updated other")
+    service.reset_task(selected)
+    service.reset_task(other)
+    service.delete_task(other)
+    other_active = service.create_task("ZZ-8888-001", "other active")
+    service.add_manual_interval(selected, datetime(2026, 1, 10, 10, tzinfo=timezone.utc).astimezone(), datetime(2026, 1, 10, 11, tzinfo=timezone.utc).astimezone(), "sel")
+    service.add_manual_interval(other, datetime(2026, 1, 10, 12, tzinfo=timezone.utc).astimezone(), datetime(2026, 1, 10, 13, tzinfo=timezone.utc).astimezone(), "other")
+    end = parse_utc_z("2026-12-31T00:00:00Z")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    service.create_time_submission_marker([other_active], None, end, "unrelated", None)
+    service.create_time_submission_marker([selected], None, end, "selected submission", None)
+
+    out = tmp_path / "selected-audit.txt"
+    service.export_selected_tasks_report(out, [selected], None, end, mark_submitted=True, reason="Job closing / entered into Epicor")
+    text = out.read_text(encoding="utf-8")
+
+    assert 'Reset task "AS-0433-001"' in text
+    assert 'Added manual interval to "AS-0433-001"' in text
+    assert 'Updated task "AS-0433-001"' in text
+    assert "Marked selected task time as entered: AS-0433-001" in text
+    assert "Reason: selected submission" in text
+
+    assert 'Reset task "ZZ-9999-001"' not in text
+    assert 'Deleted task "ZZ-9999-001"' not in text
+    assert 'Added manual interval to "ZZ-9999-001"' not in text
+    assert 'Updated task "ZZ-9999-001"' not in text
+    assert "Reason: unrelated" not in text
 
 
 def test_normal_export_submission_marker_legend_present(tmp_path: Path, monkeypatch) -> None:
