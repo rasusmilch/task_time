@@ -596,3 +596,36 @@ def test_find_submission_overlaps_cases(tmp_path: Path, monkeypatch) -> None:
 
     different_task_overlap = service.find_submission_overlaps([t2], parse_utc_z("2026-01-15T00:00:00Z"), parse_utc_z("2026-01-16T00:00:00Z"))
     assert different_task_overlap == []
+
+
+def test_global_export_includes_selected_submitted_task_even_if_deleted_or_reset(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("AS-0433-001", "EBJI63222-18")
+    start = parse_utc_z("2026-05-01T00:00:00Z")
+    end = parse_utc_z("2026-05-02T00:00:00Z")
+    service.add_manual_interval(task_id, parse_utc_z("2026-05-01T10:00:00Z").astimezone(), parse_utc_z("2026-05-01T12:10:28Z").astimezone(), "r")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    service.create_time_submission_marker([task_id], start, end, "submit", None)
+    service.reset_task(task_id)
+    service.delete_task(task_id)
+    out = tmp_path / "out.txt"
+    service.export_report(out, reset_after=False)
+    text = out.read_text(encoding="utf-8")
+    assert "AS-0433-001" in text
+    assert "already entered through selected export" in text
+    assert "task later deleted" in text
+    assert "task later reset" in text
+    assert "* = already entered through selected-task export" in text
+
+
+def test_time_submission_marker_stores_daily_weekly_and_overall_totals(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("A", "n")
+    service.add_manual_interval(task_id, parse_utc_z("2026-01-10T10:00:00Z").astimezone(), parse_utc_z("2026-01-10T11:00:00Z").astimezone(), "r")
+    end = parse_utc_z("2026-01-31T00:00:00Z")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    service.create_time_submission_marker([task_id], None, end, "closing", None)
+    marker = [e for e in service.events if e["event_type"] == "time_submission_created"][-1]["payload"]
+    assert marker["submitted_daily_totals_by_task"][task_id]["2026-01-10"] == 3600
+    assert marker["submitted_weekly_totals_by_task"][task_id]
+    assert marker["submitted_overall_totals_by_task"][task_id] == 3600
