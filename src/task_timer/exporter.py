@@ -82,7 +82,7 @@ def build_export_text(
     else:
         lines.append("No non-deleted tasks found for this export window.")
     lines.append("")
-    lines.append("* = fully already entered through selected-task submission")
+    lines.append("* = already entered through selected-task export")
     lines.append("~ = partially already entered through selected-task submission")
     lines.append("")
 
@@ -117,10 +117,13 @@ def build_export_text(
     for row in per_task_rows:
         lines.append(f"- {row['name']}")
         lines.append(f"  Notes: {row['notes']}")
+        if row.get("status_notes"):
+            lines.append(f"  Status notes: {'; '.join(row['status_notes'])}")
         lines.append("  Daily totals:")
         if row["daily_totals"]:
             for day, seconds in row["daily_totals"]:
-                lines.append(f"    - {day}: {format_duration(seconds)}")
+                marker = "*" if any("already entered" in note for note in row.get("status_notes", [])) else ""
+                lines.append(f"    - {day}: {format_duration(seconds)}{marker}")
         else:
             lines.append("    - None")
         lines.append("  Weekly totals (Sunday start):")

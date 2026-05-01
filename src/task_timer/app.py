@@ -354,7 +354,7 @@ class TaskTimerService:
         active_checkpoint = self.find_active_export_checkpoint()
         window_start_utc = parse_utc_z(active_checkpoint["timestamp_utc"]) if active_checkpoint else None
         window_events = self.events_in_window(window_start_utc, now_utc)
-        per_task = self.compute_windowed_task_totals(window_start_utc, now_utc)
+        per_task = self.compute_global_export_task_totals(window_start_utc, now_utc)
         self._apply_submission_flags(per_task, window_start_utc, now_utc)
         weekly_ranges = self.collect_week_ranges(per_task)
         history_lines = self.build_human_audit_lines(window_events, window_end_utc=now_utc)
@@ -547,6 +547,72 @@ class TaskTimerService:
         rows.sort(key=lambda row: (row["name"].strip().casefold(), row["task_id"]))
         return rows
 
+    def compute_global_export_task_totals(self, window_start_utc: datetime | None, window_end_utc: datetime) -> list[dict[str, Any]]:
+        by_id: dict[str, dict[str, Any]] = {}
+        for task in self.state.tasks.values():
+            clipped_intervals = self._windowed_intervals(task, window_start_utc, window_end_utc)
+            day_totals = self._compute_daily_totals(clipped_intervals)
+            week_totals = self._compute_weekly_totals(clipped_intervals)
+            overall_seconds = sum((stop - start).total_seconds() for start, stop in clipped_intervals)
+            if overall_seconds <= 0:
+                continue
+            by_id[task.task_id] = {
+                "task_id": task.task_id,
+                "name": task.name,
+                "notes": task.notes,
+                "daily_totals": sorted(day_totals.items()),
+                "weekly_totals": sorted(week_totals.items()),
+                "overall_seconds": overall_seconds,
+                "status_notes": ["task later deleted"] if task.is_deleted else [],
+            }
+
+        for event in self.events:
+            if event["task_id"] != "__app__" or event["event_type"] != "time_submission_created":
+                continue
+            payload = event.get("payload", {})
+            marker_end = parse_utc_z(payload.get("window_end_utc", event["timestamp_utc"]))
+            for snapshot in payload.get("task_snapshots", []):
+                task_id = snapshot.get("task_id")
+                if not task_id:
+                    continue
+                task = self.state.tasks.get(task_id)
+                row = by_id.get(task_id)
+                if row is None:
+                    row = {
+                        "task_id": task_id,
+                        "name": snapshot.get("task_name", task.name if task else task_id),
+                        "notes": snapshot.get("notes", task.notes if task else ""),
+                        "daily_totals": [],
+                        "weekly_totals": [],
+                        "overall_seconds": 0.0,
+                        "status_notes": [],
+                    }
+                    by_id[task_id] = row
+                row["status_notes"].append("already entered through selected export")
+                if task and task.is_deleted:
+                    row["status_notes"].append("task later deleted")
+                if task and task.last_reset_utc and task.last_reset_utc >= marker_end:
+                    row["status_notes"].append("task later reset")
+                daily = payload.get("submitted_daily_totals_by_task", {}).get(task_id, {})
+                weekly = payload.get("submitted_weekly_totals_by_task", {}).get(task_id, {})
+                overall = float(payload.get("submitted_overall_totals_by_task", {}).get(task_id, 0.0))
+                if daily:
+                    merged = dict(row["daily_totals"])
+                    for day, seconds in daily.items():
+                        merged[day] = merged.get(day, 0.0) + float(seconds)
+                    row["daily_totals"] = sorted(merged.items())
+                if weekly:
+                    merged_w = dict(row["weekly_totals"])
+                    for week, seconds in weekly.items():
+                        merged_w[week] = merged_w.get(week, 0.0) + float(seconds)
+                    row["weekly_totals"] = sorted(merged_w.items())
+                row["overall_seconds"] += overall
+        output = [row for row in by_id.values() if row["overall_seconds"] > 0]
+        for row in output:
+            row["status_notes"] = sorted(set(row.get("status_notes", [])))
+        output.sort(key=lambda row: (row["name"].strip().casefold(), row["task_id"]))
+        return output
+
     def compute_selected_task_totals(
         self, task_ids: list[str], window_start_utc: datetime | None, window_end_utc: datetime
     ) -> list[dict[str, Any]]:
@@ -616,7 +682,8 @@ class TaskTimerService:
             raise ValueError("At least one selected task must be non-deleted")
         submission_id = str(uuid4())
         snapshots = [{"task_id": tid, "task_name": self.state.tasks[tid].name, "notes": self.state.tasks[tid].notes, "tags": sorted(self.state.tasks[tid].tags)} for tid in valid]
-        self._append("__app__", "time_submission_created", {"submission_id": submission_id, "submitted_at_utc": to_utc_z(utc_now()), "window_start_utc": to_utc_z(window_start_utc) if window_start_utc else None, "window_end_utc": to_utc_z(window_end_utc), "task_ids": valid, "reason": reason.strip(), "export_path": str(export_path) if export_path else None, "task_snapshots": snapshots})
+        per_task = self.compute_selected_task_totals(valid, window_start_utc, window_end_utc)
+        self._append("__app__", "time_submission_created", {"submission_id": submission_id, "submitted_at_utc": to_utc_z(utc_now()), "window_start_utc": to_utc_z(window_start_utc) if window_start_utc else None, "window_end_utc": to_utc_z(window_end_utc), "task_ids": valid, "reason": reason.strip(), "export_path": str(export_path) if export_path else None, "task_snapshots": snapshots, "submitted_daily_totals_by_task": {row["task_id"]: {day: seconds for day, seconds in row["daily_totals"]} for row in per_task}, "submitted_weekly_totals_by_task": {row["task_id"]: {week: seconds for week, seconds in row["weekly_totals"]} for row in per_task}, "submitted_overall_totals_by_task": {row["task_id"]: row["overall_seconds"] for row in per_task}})
         return submission_id
 
     def export_selected_tasks_report(
