@@ -928,9 +928,11 @@ def test_selected_export_menu_item_exists_in_build_menus() -> None:
 def test_selected_export_handler_uses_selected_service_not_normal_export(monkeypatch, tmp_path) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     app.root = object()
-    called = {"selected": 0, "normal": 0, "reset": 0, "month": 0}
+    called = {"selected": 0, "normal": 0, "reset": 0, "month": 0, "selected_reset": 0, "selected_delete": 0}
     app.service = SimpleNamespace(
         export_selected_tasks_report=lambda *a, **k: called.__setitem__("selected", called["selected"] + 1),
+        reset_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_reset", called["selected_reset"] + 1),
+        delete_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_delete", called["selected_delete"] + 1),
         export_report=lambda *a, **k: called.__setitem__("normal", called["normal"] + 1),
         reset_all_non_deleted_tasks=lambda: called.__setitem__("reset", called["reset"] + 1),
     )
@@ -943,6 +945,7 @@ def test_selected_export_handler_uses_selected_service_not_normal_export(monkeyp
         result=SimpleNamespace(task_ids=["t1"], window_start_utc=None, window_end_utc=_local_dt("2026-01-31 00:00").astimezone(timezone.utc), mark_submitted=False, reason="")
     )
     app_module.filedialog.asksaveasfilename = lambda **_k: str(tmp_path / "x.txt")
+    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(choice="leave")
     app_module.messagebox.showinfo = lambda *a, **k: None
 
     assert TaskTimerApp.export_selected_tasks(app) is True
@@ -955,7 +958,7 @@ def test_selected_export_handler_uses_selected_service_not_normal_export(monkeyp
 def test_selected_export_mark_submitted_overlap_cancel_prevents_marker(monkeypatch, tmp_path) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     app.root = object()
-    called = {"selected": 0}
+    called = {"selected": 0, "selected_reset": 0, "selected_delete": 0}
     app.service = SimpleNamespace(
         local_tz=timezone.utc,
         find_submission_overlaps=lambda *a, **k: [
@@ -969,6 +972,8 @@ def test_selected_export_mark_submitted_overlap_cancel_prevents_marker(monkeypat
             }
         ],
         export_selected_tasks_report=lambda *a, **k: called.__setitem__("selected", called["selected"] + 1),
+        reset_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_reset", called["selected_reset"] + 1),
+        delete_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_delete", called["selected_delete"] + 1),
     )
     app.refresh_structure = lambda: None
     app.refresh_live_values = lambda: None
@@ -984,7 +989,7 @@ def test_selected_export_mark_submitted_overlap_cancel_prevents_marker(monkeypat
 def test_selected_export_mark_submitted_overlap_continue_appends_marker(monkeypatch, tmp_path) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     app.root = object()
-    called = {"selected": 0}
+    called = {"selected": 0, "selected_reset": 0, "selected_delete": 0}
     app.service = SimpleNamespace(
         local_tz=timezone.utc,
         find_submission_overlaps=lambda *a, **k: [
@@ -998,6 +1003,8 @@ def test_selected_export_mark_submitted_overlap_continue_appends_marker(monkeypa
             }
         ],
         export_selected_tasks_report=lambda *a, **k: called.__setitem__("selected", called["selected"] + 1),
+        reset_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_reset", called["selected_reset"] + 1),
+        delete_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_delete", called["selected_delete"] + 1),
     )
     app.refresh_structure = lambda: None
     app.refresh_live_values = lambda: None
@@ -1007,6 +1014,64 @@ def test_selected_export_mark_submitted_overlap_continue_appends_marker(monkeypa
     )
     app_module.messagebox.askyesno = lambda *a, **k: True
     app_module.filedialog.asksaveasfilename = lambda **_k: str(tmp_path / "x.txt")
+    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(choice="leave")
     app_module.messagebox.showinfo = lambda *a, **k: None
     assert TaskTimerApp.export_selected_tasks(app) is True
     assert called["selected"] == 1
+
+def test_selected_export_post_action_reset_creates_single_backup_and_resets_selected(tmp_path) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = object()
+    calls = {"backup": 0, "reset": None, "delete": None, "refresh": 0}
+    app.service = SimpleNamespace(
+        local_tz=timezone.utc,
+        find_submission_overlaps=lambda *a, **k: [],
+        export_selected_tasks_report=lambda *a, **k: None,
+        reset_selected_tasks=lambda ids: calls.__setitem__("reset", ids),
+        delete_selected_tasks=lambda ids: calls.__setitem__("delete", ids),
+    )
+    app._create_risky_operation_backup = lambda _reason: calls.__setitem__("backup", calls["backup"] + 1)
+    app.refresh_structure = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
+    app.refresh_live_values = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
+
+    import task_timer.app as app_module
+    app_module.SelectedTaskExportDialog = lambda _root, _service: SimpleNamespace(
+        result=SimpleNamespace(task_ids=["t1", "t2"], window_start_utc=None, window_end_utc=datetime(2026, 1, 31, tzinfo=timezone.utc), mark_submitted=False, reason="")
+    )
+    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(choice="reset")
+    app_module.filedialog.asksaveasfilename = lambda **_k: str(tmp_path / "x.txt")
+    app_module.messagebox.showinfo = lambda *a, **k: None
+
+    assert TaskTimerApp.export_selected_tasks(app) is True
+    assert calls["backup"] == 1
+    assert calls["reset"] == ["t1", "t2"]
+    assert calls["delete"] is None
+
+
+def test_selected_export_post_action_delete_creates_single_backup_and_deletes_selected(tmp_path) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = object()
+    calls = {"backup": 0, "reset": None, "delete": None}
+    app.service = SimpleNamespace(
+        local_tz=timezone.utc,
+        find_submission_overlaps=lambda *a, **k: [],
+        export_selected_tasks_report=lambda *a, **k: None,
+        reset_selected_tasks=lambda ids: calls.__setitem__("reset", ids),
+        delete_selected_tasks=lambda ids: calls.__setitem__("delete", ids),
+    )
+    app._create_risky_operation_backup = lambda _reason: calls.__setitem__("backup", calls["backup"] + 1)
+    app.refresh_structure = lambda: None
+    app.refresh_live_values = lambda: None
+
+    import task_timer.app as app_module
+    app_module.SelectedTaskExportDialog = lambda _root, _service: SimpleNamespace(
+        result=SimpleNamespace(task_ids=["t1"], window_start_utc=None, window_end_utc=datetime(2026, 1, 31, tzinfo=timezone.utc), mark_submitted=False, reason="")
+    )
+    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(choice="delete")
+    app_module.filedialog.asksaveasfilename = lambda **_k: str(tmp_path / "x.txt")
+    app_module.messagebox.showinfo = lambda *a, **k: None
+
+    assert TaskTimerApp.export_selected_tasks(app) is True
+    assert calls["backup"] == 1
+    assert calls["reset"] is None
+    assert calls["delete"] == ["t1"]

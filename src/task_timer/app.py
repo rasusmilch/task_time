@@ -22,6 +22,7 @@ from .dialogs import (
     EditTimelineDialog,
     MonthEndCloseReminderDialog,
     MonthEndReminderSettingsDialog,
+    PostSelectedExportActionDialog,
     SelectedTaskExportDialog,
     format_timeline_row,
 )
@@ -392,6 +393,18 @@ class TaskTimerService:
         for task in list(self.state.tasks.values()):
             if not task.is_deleted:
                 self.reset_task(task.task_id)
+
+    def reset_selected_tasks(self, task_ids: list[str]) -> None:
+        for task_id in list(dict.fromkeys(task_ids)):
+            task = self.state.tasks.get(task_id)
+            if task and not task.is_deleted:
+                self.reset_task(task_id)
+
+    def delete_selected_tasks(self, task_ids: list[str]) -> None:
+        for task_id in list(dict.fromkeys(task_ids)):
+            task = self.state.tasks.get(task_id)
+            if task and not task.is_deleted:
+                self.delete_task(task_id)
 
     def compute_totals(self, now_utc: datetime | None = None) -> tuple[float, float, list[dict[str, Any]]]:
         check_now = now_utc or utc_now()
@@ -1428,9 +1441,20 @@ class TaskTimerApp:
             mark_submitted=dialog.result.mark_submitted,
             reason=dialog.result.reason,
         )
+
+        post_action = PostSelectedExportActionDialog(self.root).choice
+        if post_action == "reset":
+            self._create_risky_operation_backup("before resetting selected exported tasks")
+            self.service.reset_selected_tasks(dialog.result.task_ids)
+            self.refresh_structure()
+            self.refresh_live_values()
+        elif post_action == "delete":
+            self._create_risky_operation_backup("before deleting selected exported tasks")
+            self.service.delete_selected_tasks(dialog.result.task_ids)
+            self.refresh_structure()
+            self.refresh_live_values()
+
         messagebox.showinfo("Export Selected Tasks", "Selected-task export complete.")
-        self.refresh_structure()
-        self.refresh_live_values()
         return True
 
     def open_mini_mode(self) -> None:
