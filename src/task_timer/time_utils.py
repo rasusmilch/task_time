@@ -68,6 +68,17 @@ def format_duration_hm(total_seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}"
 
 
+def format_decimal_hours(total_seconds: float) -> str:
+    """Format seconds as decimal hours with two decimal places."""
+    seconds = max(float(total_seconds), 0.0)
+    return f"{seconds / 3600:.2f}"
+
+
+def format_duration_hm_and_decimal(total_seconds: float) -> str:
+    """Format seconds as HH:MM and decimal hours."""
+    return f"{format_duration_hm(total_seconds)} ({format_decimal_hours(total_seconds)} h)"
+
+
 def _split_interval_by_local_boundaries(
     start_utc: datetime,
     stop_utc: datetime,

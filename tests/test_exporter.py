@@ -127,7 +127,7 @@ def test_export_without_prior_checkpoint_uses_full_history(tmp_path: Path, monke
     text = output.read_text(encoding="utf-8")
 
     assert "Beginning of recorded history" in text
-    assert "2026-01-02: 01:00:00" in text
+    assert "2026-01-02: 01:00 (1.00 h)" in text
 
 
 def test_export_with_prior_checkpoint_starts_after_checkpoint(tmp_path: Path, monkeypatch) -> None:
@@ -142,7 +142,7 @@ def test_export_with_prior_checkpoint_starts_after_checkpoint(tmp_path: Path, mo
 
     assert "Checkpoint window start (exclusive): 2026-01-05T00:00:00Z" in text
     assert "2026-01-04: 01:00:00" not in text
-    assert "2026-01-06: 01:30:00" in text
+    assert "2026-01-06: 01:30 (1.50 h)" in text
 
 
 def test_successful_export_appends_new_checkpoint_event(tmp_path: Path, monkeypatch) -> None:
@@ -194,10 +194,10 @@ def test_per_task_daily_and_weekly_totals_are_windowed(tmp_path: Path, monkeypat
     service.export_report(tmp_path / "out.txt", reset_after=False)
     text = (tmp_path / "out.txt").read_text(encoding="utf-8")
 
-    assert "2026-01-06: 01:30:00" in text
-    assert "2026-01-13: 01:00:00" in text
+    assert "2026-01-06: 01:30 (1.50 h)" in text
+    assert "2026-01-13: 01:00 (1.00 h)" in text
     assert "2026-01-04: 01:00:00" not in text
-    assert "Overall total since checkpoint: 02:30:00" in text
+    assert "Overall total since checkpoint: 02:30 (2.50 h)" in text
 
 
 def test_state_not_present_in_export_totals(tmp_path: Path, monkeypatch) -> None:
@@ -419,9 +419,9 @@ def test_tag_sections_include_disclaimer_and_non_exclusive_totals(tmp_path: Path
     assert "Tag totals by week" in text
     assert "Tag totals by day" in text
     assert "Tag totals are non-exclusive label totals" in text
-    assert "backend" in text and "04:00:00" in text
-    assert "ops" in text and "02:00:00" in text
-    assert "untagged" in text and "00:30:00" in text
+    assert "backend" in text and "04:00 (4.00 h)" in text
+    assert "ops" in text and "02:00 (2.00 h)" in text
+    assert "untagged" in text and "00:30 (0.50 h)" in text
     assert "Overall total since checkpoint: 04:00:00" not in text
     assert "No Time Task" not in text
     assert "Beta task with very long name" in text
@@ -499,7 +499,7 @@ def test_normal_export_marks_submitted_week(tmp_path: Path, monkeypatch) -> None
     service.export_report(out, reset_after=False)
     text = out.read_text(encoding="utf-8")
     assert "* = fully already entered" in text or "~ = partially already entered" in text
-    assert "01:00:00" in text
+    assert "01:00 (1.00 h)" in text
 
 
 def test_time_submission_audit_line_human_readable(tmp_path: Path, monkeypatch) -> None:
@@ -576,7 +576,7 @@ def test_normal_export_submission_marker_legend_present(tmp_path: Path, monkeypa
     out = tmp_path / "out.txt"
     service.export_report(out, reset_after=False)
     text = out.read_text(encoding="utf-8")
-    assert "* = fully already entered through selected-task submission" in text
+    assert "* = already entered through selected-task export" in text
 
 
 def test_find_submission_overlaps_cases(tmp_path: Path, monkeypatch) -> None:
@@ -629,3 +629,55 @@ def test_time_submission_marker_stores_daily_weekly_and_overall_totals(tmp_path:
     assert marker["submitted_daily_totals_by_task"][task_id]["2026-01-10"] == 3600
     assert marker["submitted_weekly_totals_by_task"][task_id]
     assert marker["submitted_overall_totals_by_task"][task_id] == 3600
+
+def test_parent_export_aggregates_subtasks_and_formats_decimal(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    parent = service.create_task("AS-0123", "Create test for assembly")
+    child1 = service.create_subtask(parent, "Create test adapter", "")
+    child2 = service.create_subtask(parent, "Research specifications", "")
+    service.add_manual_interval(parent, parse_utc_z("2026-01-10T10:00:00Z").astimezone(), parse_utc_z("2026-01-10T11:15:00Z").astimezone(), "p")
+    service.add_manual_interval(child1, parse_utc_z("2026-01-10T11:30:00Z").astimezone(), parse_utc_z("2026-01-10T14:30:00Z").astimezone(), "c1")
+    service.add_manual_interval(child2, parse_utc_z("2026-01-10T15:00:00Z").astimezone(), parse_utc_z("2026-01-10T17:10:00Z").astimezone(), "c2")
+    end = parse_utc_z("2026-01-31T00:00:00Z")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    out = tmp_path / "out.txt"
+    service.export_report(out, reset_after=False)
+    text = out.read_text(encoding="utf-8")
+    assert "06:25 (6.42 h)" in text
+    assert "Parent/general: 01:15 (1.25 h)" in text
+    assert "Create test adapter: 03:00 (3.00 h)" in text
+    assert "Research specifications: 02:10 (2.17 h)" in text
+
+
+def test_selected_parent_includes_subtasks_and_no_double_count(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    parent = service.create_task("Parent", "")
+    child = service.create_subtask(parent, "Child", "")
+    service.add_manual_interval(parent, parse_utc_z("2026-01-10T10:00:00Z").astimezone(), parse_utc_z("2026-01-10T11:00:00Z").astimezone(), "p")
+    service.add_manual_interval(child, parse_utc_z("2026-01-10T11:00:00Z").astimezone(), parse_utc_z("2026-01-10T12:00:00Z").astimezone(), "c")
+    end = parse_utc_z("2026-01-31T00:00:00Z")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    out = tmp_path / "sel.txt"
+    service.export_selected_tasks_report(out, [parent, child], None, end, mark_submitted=False, reason="")
+    text = out.read_text(encoding="utf-8")
+    assert "- Parent" in text
+    assert "Selected parent tasks include their subtasks." in text
+    assert "02:00 (2.00 h)" in text
+
+
+def test_subtask_alone_selected_does_not_include_parent_and_inherits_parent_tags(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    parent = service.create_task("Parent", "")
+    child = service.create_subtask(parent, "Child", "")
+    service.update_task_tags(parent, ["alpha"])
+    service.update_task_tags(child, ["beta"])
+    service.add_manual_interval(child, parse_utc_z("2026-01-10T11:00:00Z").astimezone(), parse_utc_z("2026-01-10T12:00:00Z").astimezone(), "c")
+    end = parse_utc_z("2026-01-31T00:00:00Z")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    out = tmp_path / "sel.txt"
+    service.export_selected_tasks_report(out, [child], None, end, mark_submitted=False, reason="")
+    text = out.read_text(encoding="utf-8")
+    assert "- Child" in text and "- Parent" not in text
+    service.export_report(tmp_path / "global.txt", reset_after=False)
+    g = (tmp_path / "global.txt").read_text(encoding="utf-8")
+    assert "alpha" in g and "beta" in g

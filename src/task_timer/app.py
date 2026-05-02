@@ -699,17 +699,54 @@ class TaskTimerService:
                     row["weekly_totals"] = sorted(merged_w.items())
                 row["overall_seconds"] += overall
         output = [row for row in by_id.values() if row["overall_seconds"] > 0]
+        output = self._aggregate_parent_rows(output)
         for row in output:
             row["status_notes"] = sorted(set(row.get("status_notes", [])))
         output.sort(key=lambda row: (row["name"].strip().casefold(), row["task_id"]))
         return output
 
+    def _expand_selected_task_ids(self, task_ids: list[str]) -> set[str]:
+        selected = set(task_ids)
+        expanded = set(selected)
+        for task_id in list(selected):
+            task = self.state.tasks.get(task_id)
+            if task and task.parent_task_id is None:
+                expanded.update(child.task_id for child in self.child_tasks(task_id, include_deleted=True))
+        return expanded
+
+    def _aggregate_parent_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        row_by_id = {r["task_id"]: r for r in rows}
+        out=[]
+        for row in rows:
+            task=self.state.tasks.get(row["task_id"])
+            if task and task.parent_task_id is not None:
+                continue
+            children=[r for r in rows if (self.state.tasks.get(r["task_id"]) and self.state.tasks[r["task_id"]].parent_task_id==row["task_id"])]
+            if not children:
+                row["breakdown"]=[("Parent/general", row["overall_seconds"])]
+                out.append(row); continue
+            daily=dict(row["daily_totals"]); weekly=dict(row["weekly_totals"])
+            total=row["overall_seconds"]
+            breakdown=[("Parent/general", row["overall_seconds"])]
+            for c in children:
+                total += c["overall_seconds"]
+                breakdown.append((c["name"], c["overall_seconds"]))
+                for k,v in c["daily_totals"]: daily[k]=daily.get(k,0)+v
+                for k,v in c["weekly_totals"]: weekly[k]=weekly.get(k,0)+v
+            merged=dict(row); merged["daily_totals"]=sorted(daily.items()); merged["weekly_totals"]=sorted(weekly.items()); merged["overall_seconds"]=total; merged["breakdown"]=breakdown
+            out.append(merged)
+        return out
+
     def compute_selected_task_totals(
         self, task_ids: list[str], window_start_utc: datetime | None, window_end_utc: datetime
     ) -> list[dict[str, Any]]:
-        wanted = set(task_ids)
+        wanted = self._expand_selected_task_ids(task_ids)
         rows = self.compute_windowed_task_totals(window_start_utc, window_end_utc)
-        return [row for row in rows if row["task_id"] in wanted]
+        filtered = [row for row in rows if row["task_id"] in wanted]
+        selected_set=set(task_ids)
+        if any((self.state.tasks.get(tid) and self.state.tasks[tid].parent_task_id is None) for tid in selected_set):
+            return self._aggregate_parent_rows(filtered)
+        return filtered
 
     def collect_week_ranges(self, per_task_rows: list[dict[str, Any]]) -> list[str]:
         week_ranges: set[str] = set()
@@ -764,9 +801,10 @@ class TaskTimerService:
         if window_start_utc and window_end_utc <= window_start_utc:
             raise ValueError("Window end must be after window start")
         selected = list(dict.fromkeys(task_ids))
+        expanded = list(dict.fromkeys(self._expand_selected_task_ids(selected)))
         if not selected:
             raise ValueError("At least one task must be selected")
-        valid = [tid for tid in selected if tid in self.state.tasks]
+        valid = [tid for tid in expanded if tid in self.state.tasks]
         if len(valid) != len(selected):
             raise ValueError("One or more selected task IDs do not exist")
         if not any(not self.state.tasks[tid].is_deleted for tid in valid):
@@ -784,7 +822,7 @@ class TaskTimerService:
         per_task = self.compute_selected_task_totals(task_ids, window_start_utc, window_end_utc)
         self._apply_submission_flags(per_task, window_start_utc, window_end_utc)
         weekly_ranges = self.collect_week_ranges(per_task)
-        selected_ids = set(task_ids)
+        selected_ids = self._expand_selected_task_ids(task_ids)
         selected_window_events = self.events_in_window_for_tasks(
             selected_ids,
             window_start_utc,
@@ -1101,7 +1139,10 @@ class TaskTimerService:
             intervals = self._windowed_intervals(task, window_start_utc, window_end_utc)
             if not intervals:
                 continue
-            tags = tuple(sorted(task.tags)) or ("untagged",)
+            effective_tags = set(task.tags)
+            if task.parent_task_id and task.parent_task_id in self.state.tasks:
+                effective_tags |= self.state.tasks[task.parent_task_id].tags
+            tags = tuple(sorted(effective_tags)) or ("untagged",)
             task_name = task.name.strip() or task.task_id
             for start_utc, stop_utc in intervals:
                 start_local = start_utc.astimezone(self.local_tz)
