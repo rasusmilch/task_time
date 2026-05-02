@@ -33,3 +33,8 @@ def test_dialog_select_all_and_clear_all() -> None:
     assert dlg.a is True and dlg.b is True
     SelectedTaskExportDialog.clear_all_tasks(dlg)
     assert dlg.a is False and dlg.b is False
+
+
+def test_dialog_explanatory_text_present() -> None:
+    source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
+    assert "Selecting a parent task includes its subtasks. Selecting an individual subtask exports only that subtask." in source

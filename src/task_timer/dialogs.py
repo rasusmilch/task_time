@@ -615,6 +615,8 @@ class SelectedTaskExportDialog:
         self.end_date_var = StringVar(value=today)
 
         self._task_vars: dict[str, BooleanVar] = {}
+        self._included_labels: dict[str, ttk.Label] = {}
+        self._child_parent: dict[str, str] = {}
 
         frame = ttk.Frame(self.window)
         frame.pack(fill="both", expand=True, padx=8, pady=8)
@@ -631,6 +633,12 @@ class SelectedTaskExportDialog:
         dates.grid_columnconfigure(1, weight=1)
 
         ttk.Label(frame, text="Tasks").pack(anchor="w")
+        ttk.Label(
+            frame,
+            text="Selecting a parent task includes its subtasks. Selecting an individual subtask exports only that subtask.",
+            wraplength=520,
+            justify="left",
+        ).pack(anchor="w", pady=(0, 4))
         canvas = tk.Canvas(frame, height=170)
         scroll = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
         list_frame = ttk.Frame(canvas)
@@ -640,10 +648,26 @@ class SelectedTaskExportDialog:
         canvas.pack(side="left", fill="both", expand=True)
         scroll.pack(side="right", fill="y")
 
-        for task in sorted([t for t in service.state.tasks.values() if not t.is_deleted], key=lambda t: (t.name.strip().casefold(), t.task_id)):
+        active_tasks = [t for t in service.state.tasks.values() if not t.is_deleted]
+        roots = sorted([t for t in active_tasks if t.parent_task_id is None], key=lambda t: (t.name.strip().casefold(), t.task_id))
+        children_by_parent = {t.task_id: sorted(service.child_tasks(t.task_id), key=lambda c: (c.name.strip().casefold(), c.task_id)) for t in roots}
+        for task in roots:
             var = BooleanVar(value=False)
             self._task_vars[task.task_id] = var
-            ttk.Checkbutton(list_frame, text=f"{task.name} — {task.notes}", variable=var).pack(anchor="w")
+            parent_cb = ttk.Checkbutton(list_frame, text=f"{task.name} — {task.notes} (includes subtasks)", variable=var, command=lambda tid=task.task_id: self._on_parent_toggle(tid))
+            parent_cb.pack(anchor="w")
+            for child in children_by_parent.get(task.task_id, []):
+                cvar = BooleanVar(value=False)
+                self._task_vars[child.task_id] = cvar
+                self._child_parent[child.task_id] = task.task_id
+                row = ttk.Frame(list_frame)
+                row.pack(fill="x", anchor="w", padx=(18, 0))
+                ttk.Checkbutton(row, text=f"↳ {child.name} — {child.notes}", variable=cvar).pack(side="left", anchor="w")
+                label = ttk.Label(row, text="")
+                label.pack(side="left", padx=(6, 0))
+                self._included_labels[child.task_id] = label
+
+        self._refresh_included_states()
 
         task_btns = ttk.Frame(frame)
         task_btns.pack(fill="x", pady=(4, 8))
@@ -664,10 +688,27 @@ class SelectedTaskExportDialog:
     def select_all_tasks(self) -> None:
         for var in self._task_vars.values():
             var.set(True)
+        self._refresh_included_states()
 
     def clear_all_tasks(self) -> None:
         for var in self._task_vars.values():
             var.set(False)
+        self._refresh_included_states()
+
+    def _on_parent_toggle(self, _task_id: str) -> None:
+        self._refresh_included_states()
+
+    def _refresh_included_states(self) -> None:
+        for child_id, parent_id in getattr(self, "_child_parent", {}).items():
+            parent_selected = self._task_vars[parent_id].get()
+            if parent_selected:
+                self._task_vars[child_id].set(True)
+                label = self._included_labels.get(child_id)
+                if label is not None:
+                    label.configure(text="included via parent")
+            else:
+                if child_id in self._included_labels:
+                    self._included_labels[child_id].configure(text="")
 
     @staticmethod
     def validate_inputs(*, selected_task_ids: list[str], window_mode: str, start_date_text: str, end_date_text: str, mark_submitted: bool, reason: str, service: "TaskTimerService") -> SelectedTaskExportResult:
