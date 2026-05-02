@@ -792,25 +792,60 @@ def format_timeline_row(interval: Any, local_tz: Any) -> dict[str, str]:
 class EditTaskDialog:
     def __init__(self, parent: Toplevel, service: "TaskTimerService", task_id: str) -> None:
         self.changed = False
+        self.added_subtask = False
         self.service = service
         self.task_id = task_id
         task = service.state.tasks[task_id]
+        self.task = task
+        self.is_subtask = bool(task.parent_task_id)
         self.window = Toplevel(parent)
         self.window.title("Edit Task")
         self.window.transient(parent)
         self.window.grab_set()
         self.name_var = StringVar(value=task.name)
         self.notes_var = StringVar(value=task.notes)
-        ttk.Label(self.window, text="Task name").grid(row=0, column=0, sticky="w")
-        ttk.Entry(self.window, textvariable=self.name_var).grid(row=0, column=1, sticky="ew")
-        ttk.Label(self.window, text="Task note").grid(row=1, column=0, sticky="w")
-        ttk.Entry(self.window, textvariable=self.notes_var).grid(row=1, column=1, sticky="ew")
+        row = 0
+        ttk.Label(self.window, text="Task name").grid(row=row, column=0, sticky="w")
+        ttk.Entry(self.window, textvariable=self.name_var).grid(row=row, column=1, sticky="ew")
+        row += 1
+        ttk.Label(self.window, text="Task note").grid(row=row, column=0, sticky="w")
+        ttk.Entry(self.window, textvariable=self.notes_var).grid(row=row, column=1, sticky="ew")
+        row += 1
+        if self.is_subtask:
+            parent_name = self.service.state.tasks[task.parent_task_id].name
+            ttk.Label(self.window, text=f"Parent task: {parent_name}").grid(row=row, column=0, columnspan=2, sticky="w", pady=(2, 4))
+            row += 1
 
         self.tag_selector = TagSelectionFrame(self.window, service, initial_tags=task.tags)
-        self.tag_selector.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=4)
+        self.tag_selector.grid(row=row, column=0, columnspan=2, sticky="nsew", pady=4)
+        row += 1
+
+        if not self.is_subtask:
+            subtask_frame = ttk.LabelFrame(self.window, text="Subtasks")
+            subtask_frame.grid(row=row, column=0, columnspan=2, sticky="nsew", pady=4)
+            subtask_frame.grid_columnconfigure(0, weight=1)
+            self.subtask_tree = ttk.Treeview(subtask_frame, columns=("name", "notes", "tags"), show="headings", height=6)
+            self.subtask_tree.heading("name", text="Name")
+            self.subtask_tree.heading("notes", text="Notes")
+            self.subtask_tree.heading("tags", text="Tags")
+            self.subtask_tree.column("name", width=180, anchor="w")
+            self.subtask_tree.column("notes", width=260, anchor="w")
+            self.subtask_tree.column("tags", width=80, anchor="center")
+            self.subtask_tree.grid(row=0, column=0, sticky="nsew", padx=(0, 4), pady=4)
+            subtask_scroll = ttk.Scrollbar(subtask_frame, orient="vertical", command=self.subtask_tree.yview)
+            subtask_scroll.grid(row=0, column=1, sticky="ns", pady=4)
+            self.subtask_tree.configure(yscrollcommand=subtask_scroll.set)
+            subtask_buttons = ttk.Frame(subtask_frame)
+            subtask_buttons.grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 4))
+            ttk.Button(subtask_buttons, text="Add Subtask", command=self._add_subtask).pack(side="left", padx=(0, 4))
+            ttk.Button(subtask_buttons, text="Edit Selected Subtask", command=self._edit_selected_subtask).pack(side="left", padx=4)
+            ttk.Button(subtask_buttons, text="Delete Selected Subtask", command=self._delete_selected_subtask).pack(side="left", padx=4)
+            self.subtask_tree.bind("<Double-1>", lambda _event: self._edit_selected_subtask())
+            self._refresh_subtasks()
+            row += 1
 
         bar = ttk.Frame(self.window)
-        bar.grid(row=3, column=0, columnspan=2, sticky="e")
+        bar.grid(row=row, column=0, columnspan=2, sticky="e")
         ttk.Button(bar, text="Edit Timeline", command=self._edit_timeline).pack(side="left")
         ttk.Button(bar, text="Cancel", command=self.window.destroy).pack(side="right")
         ttk.Button(bar, text="Save", command=self._save).pack(side="right")
@@ -821,6 +856,50 @@ class EditTaskDialog:
         timeline_dialog = EditTimelineDialog(self.window, self.service, self.task_id)
         if timeline_dialog.changed:
             self.changed = True
+
+    def _refresh_subtasks(self) -> None:
+        for item in self.subtask_tree.get_children():
+            self.subtask_tree.delete(item)
+        for child in self.service.child_tasks(self.task_id, include_deleted=False):
+            self.subtask_tree.insert("", "end", iid=child.task_id, values=(child.name, child.notes, str(len(child.tags))))
+
+    def _selected_subtask_id(self) -> str:
+        selected = self.subtask_tree.selection()
+        if not selected:
+            raise ValueError("Select a subtask first")
+        return str(selected[0])
+
+    def _add_subtask(self) -> None:
+        dialog = AddTaskDialog(self.window, self.service)
+        if not dialog.confirmed:
+            return
+        self.service.create_subtask(self.task_id, dialog.name, dialog.notes, dialog.tags)
+        self.added_subtask = True
+        self.changed = True
+        self._refresh_subtasks()
+
+    def _edit_selected_subtask(self) -> None:
+        try:
+            subtask_id = self._selected_subtask_id()
+        except Exception as exc:  # noqa: BLE001
+            messagebox.showerror("Edit Subtask", str(exc), parent=self.window)
+            return
+        dialog = EditTaskDialog(self.window, self.service, subtask_id)
+        if dialog.changed:
+            self.changed = True
+            self._refresh_subtasks()
+
+    def _delete_selected_subtask(self) -> None:
+        try:
+            subtask_id = self._selected_subtask_id()
+        except Exception as exc:  # noqa: BLE001
+            messagebox.showerror("Delete Subtask", str(exc), parent=self.window)
+            return
+        if not messagebox.askyesno("Delete Subtask", "Delete selected subtask?", parent=self.window):
+            return
+        self.service.delete_task(subtask_id)
+        self.changed = True
+        self._refresh_subtasks()
 
     def _save(self) -> None:
         name = self.name_var.get().strip()

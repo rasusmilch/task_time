@@ -944,6 +944,65 @@ def test_edit_task_button_triggers_edit_flow() -> None:
     assert calls == ["refresh"]
 
 
+def test_edit_task_button_expands_parent_when_subtask_added() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = object()
+    app.service = object()
+    app.expanded_parents = set()
+    calls: list[str] = []
+    app._after_state_change = lambda: calls.append("refresh")
+
+    import task_timer.app as app_module
+
+    original = app_module.EditTaskDialog
+
+    class _Dialog:
+        def __init__(self, *_args) -> None:
+            self.changed = True
+            self.added_subtask = True
+
+    app_module.EditTaskDialog = _Dialog
+    try:
+        TaskTimerApp._edit_task(app, "parent-1")
+    finally:
+        app_module.EditTaskDialog = original
+
+    assert "parent-1" in app.expanded_parents
+    assert calls == ["refresh"]
+
+
+def test_edit_task_dialog_add_subtask_passes_parent_and_tags() -> None:
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.task_id = "parent-1"
+    dialog.changed = False
+    dialog.added_subtask = False
+    dialog.window = object()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    dialog._refresh_subtasks = lambda: calls.append(("refresh", tuple()))
+    dialog.service = SimpleNamespace(create_subtask=lambda *args: calls.append(("create_subtask", args)))
+
+    import task_timer.dialogs as dialogs_module
+
+    original = dialogs_module.AddTaskDialog
+
+    class _Dialog:
+        def __init__(self, *_args) -> None:
+            self.confirmed = True
+            self.name = "Child"
+            self.notes = "Note"
+            self.tags = ["alpha"]
+
+    dialogs_module.AddTaskDialog = _Dialog
+    try:
+        EditTaskDialog._add_subtask(dialog)
+    finally:
+        dialogs_module.AddTaskDialog = original
+
+    assert ("create_subtask", ("parent-1", "Child", "Note", ["alpha"])) in calls
+    assert dialog.changed is True
+    assert dialog.added_subtask is True
+
+
 def test_rename_task_preserves_uuid_history_and_tags(tmp_path) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     task_id = service.create_task("Original", "n1", ["alpha"])
