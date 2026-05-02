@@ -70,10 +70,62 @@ class TaskTimerService:
     def create_task(self, name: str, notes: str, tags: list[str] | None = None) -> str:
         task_id = str(uuid4())
         tag_list = normalize_tag_list(tags or [])
-        self._append(task_id, "task_created", {"name": name.strip(), "notes": self._clean_notes(notes), "tags": tag_list})
+        self._append(task_id, "task_created", {"name": name.strip(), "notes": self._clean_notes(notes), "tags": tag_list, "parent_task_id": None})
         for key in tag_list:
             self.ensure_tag_exists(key)
         return task_id
+
+
+    def create_subtask(self, parent_task_id: str, name: str, notes: str, tags: list[str] | None = None) -> str:
+        parent = self.state.tasks.get(parent_task_id)
+        if not parent:
+            raise ValueError("Parent task not found")
+        if parent.is_deleted:
+            raise ValueError("Parent task is deleted")
+        if parent.parent_task_id is not None:
+            raise ValueError("Cannot create subtask under another subtask")
+        if not name.strip():
+            raise ValueError("Task name is required")
+        task_id = str(uuid4())
+        tag_list = normalize_tag_list(tags or [])
+        self._append(task_id, "task_created", {"name": name.strip(), "notes": self._clean_notes(notes), "tags": tag_list, "parent_task_id": parent_task_id})
+        for key in tag_list:
+            self.ensure_tag_exists(key)
+        return task_id
+
+    def child_tasks(self, parent_task_id: str, include_deleted: bool = False) -> list[TaskState]:
+        children = [t for t in self.state.tasks.values() if t.parent_task_id == parent_task_id]
+        if not include_deleted:
+            children = [t for t in children if not t.is_deleted]
+        return sorted(children, key=lambda t: (t.created_at_utc, t.task_id))
+
+    def parent_task(self, task_id: str) -> TaskState | None:
+        task = self.state.tasks.get(task_id)
+        if not task or task.parent_task_id is None:
+            return None
+        return self.state.tasks.get(task.parent_task_id)
+
+    def is_subtask(self, task_id: str) -> bool:
+        task = self.state.tasks.get(task_id)
+        return bool(task and task.parent_task_id is not None)
+
+    def root_tasks(self, include_deleted: bool = False) -> list[TaskState]:
+        roots = [t for t in self.state.tasks.values() if t.parent_task_id is None]
+        if not include_deleted:
+            roots = [t for t in roots if not t.is_deleted]
+        return sorted(roots, key=lambda t: (t.created_at_utc, t.task_id))
+
+    def task_tree_children_map(self, include_deleted: bool = False) -> dict[str, list[TaskState]]:
+        output: dict[str, list[TaskState]] = {}
+        for task in self.state.tasks.values():
+            if task.parent_task_id is None:
+                continue
+            if not include_deleted and task.is_deleted:
+                continue
+            output.setdefault(task.parent_task_id, []).append(task)
+        for children in output.values():
+            children.sort(key=lambda t: (t.created_at_utc, t.task_id))
+        return output
 
     def update_task(self, task_id: str, name: str, notes: str) -> None:
         self._append(task_id, "task_updated", {"name": name.strip(), "notes": self._clean_notes(notes)})
@@ -171,6 +223,16 @@ class TaskTimerService:
         return sorted(task.tags)
 
     def delete_task(self, task_id: str) -> None:
+        self.delete_task_tree(task_id)
+
+    def delete_task_tree(self, task_id: str) -> None:
+        task = self.state.tasks.get(task_id)
+        if not task or task.is_deleted:
+            return
+        if task.parent_task_id is None:
+            for child in self.child_tasks(task_id):
+                self.stop_task(child.task_id)
+                self._append(child.task_id, "task_deleted", {})
         self.stop_task(task_id)
         self._append(task_id, "task_deleted", {})
 
@@ -188,8 +250,20 @@ class TaskTimerService:
         self._append(task_id, "stopped", {"interval_id": str(uuid4())})
 
     def reset_task(self, task_id: str) -> None:
+        self.reset_task_only(task_id)
+
+    def reset_task_only(self, task_id: str) -> None:
         self.stop_task(task_id)
         self._append(task_id, "reset", {})
+
+    def reset_task_tree(self, task_id: str) -> None:
+        task = self.state.tasks.get(task_id)
+        if not task:
+            return
+        if task.parent_task_id is None:
+            for child in self.child_tasks(task_id):
+                self.reset_task_only(child.task_id)
+        self.reset_task_only(task_id)
 
     def parse_local_datetime_inputs(self, work_date: date, time_text: str) -> datetime:
         parsed_time = parse_flexible_time(time_text)
@@ -1059,6 +1133,7 @@ class TaskTimerService:
                 else None,
                 "last_reset_utc": to_utc_z(task.last_reset_utc) if task.last_reset_utc else None,
                 "tags": sorted(task.tags),
+                "parent_task_id": task.parent_task_id,
                 "intervals": [
                     {
                         "interval_id": interval.interval_id,
@@ -1211,6 +1286,7 @@ class TaskTimerService:
                 created_at_utc=timestamp,
                 updated_at_utc=timestamp,
                 tags=tags,
+                parent_task_id=payload.get("parent_task_id"),
             )
             for key in tags:
                 if key not in self.state.global_tags:
