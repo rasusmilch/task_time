@@ -1,4 +1,4 @@
-"""Export generation for task timer data."""
+"""Export generation for Chronicle data."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def build_export_text(
 ) -> str:
     """Build human-readable export text content."""
     lines: list[str] = []
-    lines.append("Task Timer Export")
+    lines.append("Chronicle Export")
     lines.append("=" * 88)
     lines.append(f"Generated UTC: {to_utc_z(generated_at_utc)}")
     lines.append(f"Local timezone: {local_timezone}")
@@ -163,7 +163,7 @@ def build_selected_tasks_export_text(
     reason: str,
 ) -> str:
     lines: list[str] = []
-    lines.append("Task Timer Selected Task Export")
+    lines.append("Chronicle Selected Task Export")
     lines.append("=" * 88)
     lines.append(f"Generated UTC: {to_utc_z(generated_at_utc)}")
     lines.append(f"Local timezone: {local_timezone}")

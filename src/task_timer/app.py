@@ -1,4 +1,4 @@
-"""Business logic and tkinter UI for task timer."""
+"""Business logic and tkinter UI for Chronicle."""
 
 from __future__ import annotations
 
@@ -1491,7 +1491,7 @@ class TaskTimerApp:
     def __init__(self, root: Tk, service: TaskTimerService) -> None:
         self.root = root
         self.service = service
-        self.root.title("Task Timer")
+        self.root.title("Chronicle")
         disable_snap_maximize(self.root)
         install_zoom_guard(self.root)
         self.rows: dict[str, dict[str, Any]] = {}

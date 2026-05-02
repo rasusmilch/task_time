@@ -1,4 +1,4 @@
-# Building Task Timer for Windows (PyInstaller)
+# Building Chronicle for Windows (PyInstaller)
 
 This repository includes a Windows-focused PyInstaller setup for internal distribution.
 
@@ -10,10 +10,10 @@ This repository includes a Windows-focused PyInstaller setup for internal distri
 
 ## Run from source (repo root)
 
-You can launch Task Timer directly from the repository root without an editable install:
+You can launch Chronicle directly from the repository root without an editable install:
 
 ```powershell
-python .\run_task_timer.py
+python .\run_chronicle.py
 ```
 
 Optional development install:
@@ -36,11 +36,11 @@ What this script does:
 2. Upgrades `pip`.
 3. Installs project + `pyinstaller` in the virtual environment.
 4. Removes prior `build/` and `dist/` directories.
-5. Runs PyInstaller with `task_timer.spec`.
+5. Runs PyInstaller with `chronicle.spec`.
 
 Default output:
 
-- `dist\Task Timer\` (**onedir**, recommended for internal distribution)
+- `dist\Chronicle\` (**onedir**, recommended for internal distribution)
 
 Optional onefile output:
 
@@ -50,7 +50,7 @@ Optional onefile output:
 
 Onefile output:
 
-- `dist\Task Timer.exe`
+- `dist\Chronicle.exe`
 
 ## Manual venv activation (optional)
 
@@ -61,19 +61,19 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -e . pyinstaller
-python -m PyInstaller --noconfirm --clean task_timer.spec
+python -m PyInstaller --noconfirm --clean chronicle.spec
 ```
 
 ## Internal distribution guidance
 
-- The default supported artifact is the full folder: **`dist\Task Timer\`**.
+- The default supported artifact is the full folder: **`dist\Chronicle\`**.
 - Distribute that entire folder internally (zip/copy as a unit).
-- End users should run: **`Task Timer.exe`** from inside that folder.
+- End users should run: **`Chronicle.exe`** from inside that folder.
 - For future releases, replacing the app folder does **not** delete user data, because data is stored outside the app directory.
 
 ## User data location (unchanged)
 
-Task Timer continues to read/write user data in the per-user home directory:
+Chronicle continues to read/write user data in the per-user home directory:
 
 - `%USERPROFILE%\.task_timer_data`
 

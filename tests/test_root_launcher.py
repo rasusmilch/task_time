@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_root_launcher_imports_package_from_src_layout(monkeypatch) -> None:
-    launcher = REPO_ROOT / "run_task_timer.py"
+    launcher = REPO_ROOT / "run_chronicle.py"
 
     src_paths = {str(REPO_ROOT / "src"), str((REPO_ROOT / "src").resolve())}
     cleaned_path = [entry for entry in sys.path if entry not in src_paths]

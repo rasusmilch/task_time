@@ -1,4 +1,4 @@
-# Task Timer (tkinter)
+# Chronicle (tkinter)
 
 A local-only Windows-friendly desktop task time tracker built with Python + tkinter.
 
@@ -17,7 +17,7 @@ A local-only Windows-friendly desktop task time tracker built with Python + tkin
 From the repository root, run:
 
 ```powershell
-python .\run_task_timer.py
+python .\run_chronicle.py
 ```
 
 This works directly with the `src/` layout and does **not** require setting `PYTHONPATH`.
@@ -110,4 +110,4 @@ Export is plain text and includes:
 
 For internal Windows executable packaging with PyInstaller (default `onedir` output), see [`BUILDING.md`](BUILDING.md).
 
-Distribution guidance: ship the entire `dist\Task Timer\` folder and run `Task Timer.exe` from that folder. User data remains external in `~/.task_timer_data`.
+Distribution guidance: ship the entire `dist\Chronicle\` folder and run `Chronicle.exe` from that folder. User data remains external in `~/.task_timer_data`.

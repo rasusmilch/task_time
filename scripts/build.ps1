@@ -86,8 +86,8 @@ $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 $VenvPath = Join-Path $RepoRoot '.venv'
 $DistPath = Join-Path $RepoRoot 'dist'
 $BuildPath = Join-Path $RepoRoot 'build'
-$SpecPath = Join-Path $RepoRoot 'task_timer.spec'
-$LauncherPath = Join-Path $RepoRoot 'run_task_timer.py'
+$SpecPath = Join-Path $RepoRoot 'chronicle.spec'
+$LauncherPath = Join-Path $RepoRoot 'run_chronicle.py'
 $VenvPythonExe = Join-Path $VenvPath 'Scripts\python.exe'
 
 $PythonCommand = Find-PythonCommand
@@ -128,12 +128,12 @@ Push-Location $RepoRoot
 try {
     if ($OneFile) {
         Write-Host 'Building optional onefile executable ...'
-        & $VenvPythonExe -m PyInstaller --noconfirm --clean --windowed --name 'Task Timer' --paths src --onefile $LauncherPath
+        & $VenvPythonExe -m PyInstaller --noconfirm --clean --windowed --name 'Chronicle' --paths src --onefile $LauncherPath
         if ($LASTEXITCODE -ne 0) {
             throw "PyInstaller onefile build failed with exit code $LASTEXITCODE."
         }
 
-        $OutputPath = Join-Path $DistPath 'Task Timer.exe'
+        $OutputPath = Join-Path $DistPath 'Chronicle.exe'
     }
     else {
         Write-Host 'Building default onedir distribution via spec ...'
@@ -142,7 +142,7 @@ try {
             throw "PyInstaller onedir build failed with exit code $LASTEXITCODE."
         }
 
-        $OutputPath = Join-Path $DistPath 'Task Timer'
+        $OutputPath = Join-Path $DistPath 'Chronicle'
     }
 }
 finally {

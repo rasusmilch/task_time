@@ -1,4 +1,4 @@
-"""Core data models for the task timer app."""
+"""Core data models for the Chronicle app."""
 
 from __future__ import annotations
 

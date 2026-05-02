@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller build spec for Task Timer (Windows onedir default)."""
+"""PyInstaller build spec for Chronicle (Windows onedir default)."""
 
 from pathlib import Path
 
@@ -10,7 +10,7 @@ except NameError:
 
 # Keep analysis focused on project sources under src/.
 a = Analysis(
-    [str(repo_root / "run_task_timer.py")],
+    [str(repo_root / "run_chronicle.py")],
     pathex=[str(repo_root / "src")],
     binaries=[],
     datas=[],
@@ -31,7 +31,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="Task Timer",
+    name="Chronicle",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -53,5 +53,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name="Task Timer",
+    name="Chronicle",
 )

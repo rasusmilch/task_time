@@ -524,7 +524,7 @@ def test_selected_export_text_header_and_marking(tmp_path: Path, monkeypatch) ->
     out = tmp_path / "selected.txt"
     service.export_selected_tasks_report(out, [t1], None, end, mark_submitted=True, reason="Job closing")
     text = out.read_text(encoding="utf-8")
-    assert "Task Timer Selected Task Export" in text
+    assert "Chronicle Selected Task Export" in text
     assert "This selected export was marked as already entered into Epicor." in text
     assert "Reason: Job closing" in text
     assert "- A" in text
