@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .time_utils import format_duration, to_utc_z
+from .time_utils import format_duration, format_duration_hm_and_decimal, to_utc_z
 
 
 def _render_table(headers: list[str], rows: list[list[str]]) -> list[str]:
@@ -75,7 +75,7 @@ def build_export_text(
         cells = []
         for idx, value in enumerate(row["weeks"]):
             marker = row.get("week_markers", [""] * len(row["weeks"]))[idx]
-            cells.append(f"{format_duration(value)}{marker}")
+            cells.append(f"{format_duration_hm_and_decimal(value)}{marker}")
         weekly_table_rows.append([row["name"], row["notes"], *cells])
     if weekly_table_rows:
         lines.extend(_render_table(weekly_table_headers, weekly_table_rows))
@@ -95,7 +95,7 @@ def build_export_text(
         rows=[]
         for tag in sorted(tag_weekly[week], key=lambda t: (t=="untagged", t)):
             info=tag_weekly[week][tag]
-            rows.append([tag, format_duration(info["seconds"]), _format_contributing_tasks(info["tasks"])])
+            rows.append([tag, format_duration_hm_and_decimal(info["seconds"]), _format_contributing_tasks(info["tasks"])])
         lines.extend(_render_table(["Tag","Total","Contributing tasks"], rows))
     lines.append("")
 
@@ -107,7 +107,7 @@ def build_export_text(
         rows=[]
         for tag in sorted(tag_daily[day], key=lambda t: (t=="untagged", t)):
             info=tag_daily[day][tag]
-            rows.append([tag, format_duration(info["seconds"]), _format_contributing_tasks(info["tasks"])])
+            rows.append([tag, format_duration_hm_and_decimal(info["seconds"]), _format_contributing_tasks(info["tasks"])])
         lines.extend(_render_table(["Tag","Total","Contributing tasks"], rows))
     lines.append("")
 
@@ -123,16 +123,20 @@ def build_export_text(
         if row["daily_totals"]:
             for day, seconds in row["daily_totals"]:
                 marker = "*" if any("already entered" in note for note in row.get("status_notes", [])) else ""
-                lines.append(f"    - {day}: {format_duration(seconds)}{marker}")
+                lines.append(f"    - {day}: {format_duration_hm_and_decimal(seconds)}{marker}")
         else:
             lines.append("    - None")
         lines.append("  Weekly totals (Sunday start):")
         if row["weekly_totals"]:
             for week_range, seconds in row["weekly_totals"]:
-                lines.append(f"    - {week_range}: {format_duration(seconds)}")
+                lines.append(f"    - {week_range}: {format_duration_hm_and_decimal(seconds)}")
         else:
             lines.append("    - None")
-        lines.append(f"  Overall total since checkpoint: {format_duration(row['overall_seconds'])}")
+        lines.append(f"  Overall total since checkpoint: {format_duration_hm_and_decimal(row['overall_seconds'])}")
+        if row.get('breakdown'):
+            lines.append('  Breakdown:')
+            for label, seconds in row['breakdown']:
+                lines.append(f"    - {label}: {format_duration_hm_and_decimal(seconds)}")
     lines.append("")
 
     lines.append("Human-readable audit history (since checkpoint)")
@@ -166,6 +170,8 @@ def build_selected_tasks_export_text(
     lines.append(f"Window start (exclusive): {to_utc_z(window_start_utc) if window_start_utc else 'Beginning of recorded history'}")
     lines.append(f"Window end (inclusive): {to_utc_z(window_end_utc)}")
     lines.append(f"Selected task count: {len(per_task_rows)}")
+    lines.append('Selected parent tasks include their subtasks.')
+    lines.append('Subtask breakdown included below parent totals.')
     lines.append(f"Marked as already entered: {'Yes' if mark_submitted else 'No'}")
     if mark_submitted:
         lines.append("This selected export was marked as already entered into Epicor.")
@@ -181,7 +187,7 @@ def build_selected_tasks_export_text(
     headers=["Task","Notes",*weekly_headers]
     rows=[]
     for row in weekly_summary_rows:
-        rows.append([row['name'], row['notes'], *[format_duration(v) for v in row['weeks']]])
+        rows.append([row['name'], row['notes'], *[format_duration_hm_and_decimal(v) for v in row['weeks']]])
     lines.extend(_render_table(headers, rows) if rows else ["No selected tasks found for this export window."])
     lines.append("")
 
@@ -192,15 +198,19 @@ def build_selected_tasks_export_text(
         lines.append("  Daily totals:")
         if row['daily_totals']:
             for day, seconds in row['daily_totals']:
-                lines.append(f"    - {day}: {format_duration(seconds)}")
+                lines.append(f"    - {day}: {format_duration_hm_and_decimal(seconds)}")
         else:
             lines.append("    - None")
         lines.append("  Weekly totals:")
         if row['weekly_totals']:
             for week_range, seconds in row['weekly_totals']:
-                lines.append(f"    - {week_range}: {format_duration(seconds)}")
+                lines.append(f"    - {week_range}: {format_duration_hm_and_decimal(seconds)}")
         else:
             lines.append("    - None")
+        if row.get("breakdown"):
+            lines.append("  Breakdown:")
+            for label, seconds in row["breakdown"]:
+                lines.append(f"    - {label}: {format_duration_hm_and_decimal(seconds)}")
     lines.append("")
     lines.append("Selected task audit history")
     if history_lines:
