@@ -1356,6 +1356,7 @@ class TaskTimerApp:
         self._refresh_month_end_reminder_ui()
         self._maybe_show_startup_reminder_popup()
         self.refresh_live_values()
+        self.root.after_idle(self._open_mini_mode_if_persistent_enabled)
         self._tick()
 
     def _build_ui(self) -> None:
@@ -1537,6 +1538,10 @@ class TaskTimerApp:
 
     def _on_mini_mode_closed(self) -> None:
         self.mini_mode_window = None
+
+    def _open_mini_mode_if_persistent_enabled(self) -> None:
+        if self.ui_settings.keep_mini_open:
+            self.open_mini_mode()
 
     def open_mini_mode(self) -> None:
         should_keep_open = self.ui_settings.keep_mini_open

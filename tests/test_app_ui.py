@@ -12,11 +12,16 @@ from task_timer.time_utils import format_duration_hm
 class _FakeRoot:
     def __init__(self) -> None:
         self.after_calls: list[int] = []
+        self.after_idle_callbacks: list[object] = []
         self.iconified = False
 
     def after(self, delay_ms: int, callback: object) -> str:
         self.after_calls.append(delay_ms)
         return "after-id"
+
+    def after_idle(self, callback: object) -> str:
+        self.after_idle_callbacks.append(callback)
+        return "after-idle"
 
     def iconify(self) -> None:
         self.iconified = True
@@ -1134,6 +1139,70 @@ def test_keep_mini_toggle_unchecked_saves_without_closing_open_mini() -> None:
     assert app.ui_settings.keep_mini_open is False
     assert saves == [False]
     assert app.mini_mode_window is not None
+
+
+def test_open_mini_mode_if_persistent_enabled_opens_only_when_true() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    opened: list[str] = []
+    app.open_mini_mode = lambda: opened.append("open")
+    app.ui_settings = UISettings(keep_mini_open=False)
+
+    TaskTimerApp._open_mini_mode_if_persistent_enabled(app)
+    assert opened == []
+
+    app.ui_settings = UISettings(keep_mini_open=True)
+    TaskTimerApp._open_mini_mode_if_persistent_enabled(app)
+    assert opened == ["open"]
+
+
+def test_init_schedules_startup_mini_mode_activation_when_setting_persisted() -> None:
+    import task_timer.app as app_module
+
+    root = _FakeRoot()
+    root.title = lambda *_args, **_kwargs: None
+    root.protocol = lambda *_args, **_kwargs: None
+
+    original_disable = app_module.disable_snap_maximize
+    original_zoom = app_module.install_zoom_guard
+    original_stringvar = app_module.StringVar
+    original_boolvar = app_module.tk.BooleanVar
+    original_build_ui = app_module.TaskTimerApp._build_ui
+    original_refresh_structure = app_module.TaskTimerApp.refresh_structure
+    original_refresh_reminder = app_module.TaskTimerApp._refresh_month_end_reminder_ui
+    original_maybe_popup = app_module.TaskTimerApp._maybe_show_startup_reminder_popup
+    original_refresh_live = app_module.TaskTimerApp.refresh_live_values
+    original_tick = app_module.TaskTimerApp._tick
+    original_store = app_module.UISettingsStore
+    try:
+        app_module.disable_snap_maximize = lambda _root: None
+        app_module.install_zoom_guard = lambda _root: None
+        app_module.StringVar = lambda: SimpleNamespace()
+        app_module.tk.BooleanVar = lambda value=False: SimpleNamespace(get=lambda: value)
+        app_module.TaskTimerApp._build_ui = lambda self: None
+        app_module.TaskTimerApp.refresh_structure = lambda self: None
+        app_module.TaskTimerApp._refresh_month_end_reminder_ui = lambda self: None
+        app_module.TaskTimerApp._maybe_show_startup_reminder_popup = lambda self: None
+        app_module.TaskTimerApp.refresh_live_values = lambda self: None
+        app_module.TaskTimerApp._tick = lambda self: None
+        app_module.UISettingsStore = lambda _data_dir: SimpleNamespace(load=lambda: UISettings(keep_mini_open=True))
+
+        service = SimpleNamespace(storage=SimpleNamespace(data_dir="."), state=SimpleNamespace(tasks={}))
+        app = TaskTimerApp(root, service)
+    finally:
+        app_module.disable_snap_maximize = original_disable
+        app_module.install_zoom_guard = original_zoom
+        app_module.StringVar = original_stringvar
+        app_module.tk.BooleanVar = original_boolvar
+        app_module.TaskTimerApp._build_ui = original_build_ui
+        app_module.TaskTimerApp.refresh_structure = original_refresh_structure
+        app_module.TaskTimerApp._refresh_month_end_reminder_ui = original_refresh_reminder
+        app_module.TaskTimerApp._maybe_show_startup_reminder_popup = original_maybe_popup
+        app_module.TaskTimerApp.refresh_live_values = original_refresh_live
+        app_module.TaskTimerApp._tick = original_tick
+        app_module.UISettingsStore = original_store
+
+    assert len(root.after_idle_callbacks) == 1
+    assert root.after_idle_callbacks[0] == app._open_mini_mode_if_persistent_enabled
 
 
 def test_open_mini_mode_keep_checked_lifts_existing_without_duplicate() -> None:
