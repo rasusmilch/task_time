@@ -10,7 +10,7 @@ from .storage import EventStorage
 
 
 def main() -> None:
-    """Run the tkinter task timer app."""
+    """Run the tkinter Chronicle app."""
     data_dir = Path.home() / ".task_timer_data"
     storage = EventStorage(data_dir)
     service = TaskTimerService(storage)

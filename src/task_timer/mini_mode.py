@@ -32,7 +32,7 @@ class MiniModeWindow:
         self.keep_open_provider = keep_open_provider or (lambda: False)
         self.on_destroy = on_destroy
         self.window = Toplevel(parent)
-        self.window.title("Task Timer Mini")
+        self.window.title("Chronicle Mini")
         self._configure_window_chrome()
 
         self.task_name_var = StringVar(value="No task selected")
