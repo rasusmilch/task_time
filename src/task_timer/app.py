@@ -225,16 +225,21 @@ class TaskTimerService:
     def delete_task(self, task_id: str) -> None:
         self.delete_task_tree(task_id)
 
+    def delete_task_only(self, task_id: str) -> None:
+        task = self.state.tasks.get(task_id)
+        if not task or task.is_deleted:
+            return
+        self.stop_task(task_id)
+        self._append(task_id, "task_deleted", {})
+
     def delete_task_tree(self, task_id: str) -> None:
         task = self.state.tasks.get(task_id)
         if not task or task.is_deleted:
             return
         if task.parent_task_id is None:
             for child in self.child_tasks(task_id):
-                self.stop_task(child.task_id)
-                self._append(child.task_id, "task_deleted", {})
-        self.stop_task(task_id)
-        self._append(task_id, "task_deleted", {})
+                self.delete_task_only(child.task_id)
+        self.delete_task_only(task_id)
 
     def start_task(self, task_id: str) -> None:
         if self.state.running_task_id == task_id:
@@ -1808,8 +1813,34 @@ class TaskTimerApp:
         self._after_state_change()
 
     def _reset_task(self, task_id: str) -> None:
+        task = self.service.state.tasks.get(task_id)
+        if not task:
+            return
+        is_subtask = task.parent_task_id is not None
+        children = self.service.child_tasks(task_id, include_deleted=False)
+
+        if not is_subtask and children:
+            choice = messagebox.askyesnocancel(
+                "Confirm reset",
+                "This parent row total includes subtask time.\n\n"
+                "Choose reset scope:\n"
+                "• Yes = Reset Parent + Subtasks (default)\n"
+                "• No = Reset Parent Only\n"
+                "• Cancel = Do nothing",
+                default=messagebox.YES,
+            )
+            if choice is None:
+                return
+            if choice:
+                self._create_risky_operation_backup("before resetting parent task tree")
+                self.service.reset_task_tree(task_id)
+            else:
+                self.service.reset_task_only(task_id)
+            self._after_state_change()
+            return
+
         if messagebox.askyesno("Confirm reset", "Reset this task timer to zero?"):
-            self.service.reset_task(task_id)
+            self.service.reset_task_only(task_id)
             self._after_state_change()
 
     def _reset_all_task_timers(self) -> None:
@@ -1831,8 +1862,29 @@ class TaskTimerApp:
         messagebox.showinfo("Reset All Task Timers", "All active task timers were reset.")
 
     def _delete_task(self, task_id: str) -> None:
+        task = self.service.state.tasks.get(task_id)
+        if not task:
+            return
+        is_subtask = task.parent_task_id is not None
+        children = self.service.child_tasks(task_id, include_deleted=False)
+
+        if not is_subtask and children:
+            should_delete_tree = messagebox.askokcancel(
+                "Confirm delete",
+                "Deleting this parent task will also delete all of its subtasks.\n\n"
+                "Continue with Delete Parent + Subtasks?",
+                default=messagebox.OK,
+            )
+            if not should_delete_tree:
+                return
+            self._create_risky_operation_backup("before deleting parent task tree")
+            self.service.delete_task_tree(task_id)
+            self.expanded_parents.discard(task_id)
+            self._after_state_change()
+            return
+
         if messagebox.askyesno("Confirm delete", "Delete this task from active view?"):
-            self.service.delete_task(task_id)
+            self.service.delete_task_only(task_id)
             self._after_state_change()
 
     def _edit_task(self, task_id: str) -> None:
