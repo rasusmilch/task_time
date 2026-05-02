@@ -474,13 +474,17 @@ class TaskTimerService:
                 self.reset_task(task.task_id)
 
     def reset_selected_tasks(self, task_ids: list[str]) -> None:
-        for task_id in list(dict.fromkeys(task_ids)):
+        normalized = self._normalize_selected_task_ids(task_ids)
+        expanded = self._expand_selected_task_ids(normalized)
+        for task_id in sorted(expanded):
             task = self.state.tasks.get(task_id)
             if task and not task.is_deleted:
                 self.reset_task(task_id)
 
     def delete_selected_tasks(self, task_ids: list[str]) -> None:
-        for task_id in list(dict.fromkeys(task_ids)):
+        normalized = self._normalize_selected_task_ids(task_ids)
+        expanded = self._expand_selected_task_ids(normalized)
+        for task_id in sorted(expanded):
             task = self.state.tasks.get(task_id)
             if task and not task.is_deleted:
                 self.delete_task(task_id)
@@ -714,6 +718,17 @@ class TaskTimerService:
                 expanded.update(child.task_id for child in self.child_tasks(task_id, include_deleted=True))
         return expanded
 
+    def _normalize_selected_task_ids(self, task_ids: list[str]) -> list[str]:
+        selected = list(dict.fromkeys(task_ids))
+        selected_set = set(selected)
+        normalized: list[str] = []
+        for task_id in selected:
+            task = self.state.tasks.get(task_id)
+            if task and task.parent_task_id and task.parent_task_id in selected_set:
+                continue
+            normalized.append(task_id)
+        return normalized
+
     def _aggregate_parent_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         row_by_id = {r["task_id"]: r for r in rows}
         out=[]
@@ -800,29 +815,35 @@ class TaskTimerService:
     ) -> str:
         if window_start_utc and window_end_utc <= window_start_utc:
             raise ValueError("Window end must be after window start")
-        selected = list(dict.fromkeys(task_ids))
+        selected = self._normalize_selected_task_ids(task_ids)
         expanded = list(dict.fromkeys(self._expand_selected_task_ids(selected)))
         if not selected:
             raise ValueError("At least one task must be selected")
         valid = [tid for tid in expanded if tid in self.state.tasks]
-        if len(valid) != len(selected):
+        if len(valid) != len(expanded):
             raise ValueError("One or more selected task IDs do not exist")
         if not any(not self.state.tasks[tid].is_deleted for tid in valid):
             raise ValueError("At least one selected task must be non-deleted")
         submission_id = str(uuid4())
         snapshots = [{"task_id": tid, "task_name": self.state.tasks[tid].name, "notes": self.state.tasks[tid].notes, "tags": sorted(self.state.tasks[tid].tags)} for tid in valid]
         per_task = self.compute_selected_task_totals(valid, window_start_utc, window_end_utc)
-        self._append("__app__", "time_submission_created", {"submission_id": submission_id, "submitted_at_utc": to_utc_z(utc_now()), "window_start_utc": to_utc_z(window_start_utc) if window_start_utc else None, "window_end_utc": to_utc_z(window_end_utc), "task_ids": valid, "reason": reason.strip(), "export_path": str(export_path) if export_path else None, "task_snapshots": snapshots, "submitted_daily_totals_by_task": {row["task_id"]: {day: seconds for day, seconds in row["daily_totals"]} for row in per_task}, "submitted_weekly_totals_by_task": {row["task_id"]: {week: seconds for week, seconds in row["weekly_totals"]} for row in per_task}, "submitted_overall_totals_by_task": {row["task_id"]: row["overall_seconds"] for row in per_task}})
+        included_by_parent = {
+            parent_id: sorted(child.task_id for child in self.child_tasks(parent_id, include_deleted=True) if child.task_id in valid)
+            for parent_id in selected
+            if self.state.tasks.get(parent_id) and self.state.tasks[parent_id].parent_task_id is None
+        }
+        self._append("__app__", "time_submission_created", {"submission_id": submission_id, "submitted_at_utc": to_utc_z(utc_now()), "window_start_utc": to_utc_z(window_start_utc) if window_start_utc else None, "window_end_utc": to_utc_z(window_end_utc), "selected_task_ids": selected, "task_ids": valid, "included_subtask_ids_by_parent": included_by_parent, "reason": reason.strip(), "export_path": str(export_path) if export_path else None, "task_snapshots": snapshots, "submitted_daily_totals_by_task": {row["task_id"]: {day: seconds for day, seconds in row["daily_totals"]} for row in per_task}, "submitted_weekly_totals_by_task": {row["task_id"]: {week: seconds for week, seconds in row["weekly_totals"]} for row in per_task}, "submitted_overall_totals_by_task": {row["task_id"]: row["overall_seconds"] for row in per_task}})
         return submission_id
 
     def export_selected_tasks_report(
         self, target: Path, task_ids: list[str], window_start_utc: datetime | None, window_end_utc: datetime, mark_submitted: bool, reason: str
     ) -> None:
         self._create_risky_operation_backup("before selected export")
-        per_task = self.compute_selected_task_totals(task_ids, window_start_utc, window_end_utc)
+        normalized_task_ids = self._normalize_selected_task_ids(task_ids)
+        per_task = self.compute_selected_task_totals(normalized_task_ids, window_start_utc, window_end_utc)
         self._apply_submission_flags(per_task, window_start_utc, window_end_utc)
         weekly_ranges = self.collect_week_ranges(per_task)
-        selected_ids = self._expand_selected_task_ids(task_ids)
+        selected_ids = self._expand_selected_task_ids(normalized_task_ids)
         selected_window_events = self.events_in_window_for_tasks(
             selected_ids,
             window_start_utc,
@@ -844,7 +865,7 @@ class TaskTimerService:
         )
         write_export_file(target, content)
         if mark_submitted:
-            self.create_time_submission_marker(task_ids, window_start_utc, window_end_utc, reason, target)
+            self.create_time_submission_marker(normalized_task_ids, window_start_utc, window_end_utc, reason, target)
 
     def find_submitted_seconds_for_task_window(
         self, task_id: str, bucket_start_utc: datetime, bucket_end_utc: datetime
