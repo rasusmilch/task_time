@@ -1837,6 +1837,8 @@ class TaskTimerApp:
 
     def _edit_task(self, task_id: str) -> None:
         dialog = EditTaskDialog(self.root, self.service, task_id)
+        if getattr(dialog, "added_subtask", False):
+            self.expanded_parents.add(task_id)
         if dialog.changed:
             self._after_state_change()
 
