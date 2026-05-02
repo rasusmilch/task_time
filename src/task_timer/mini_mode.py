@@ -23,10 +23,14 @@ class MiniModeWindow:
         service: object,
         refresh_callback: Callable[[], None],
         month_end_due_provider: Callable[[], bool] | None = None,
+        keep_open_provider: Callable[[], bool] | None = None,
+        on_destroy: Callable[[], None] | None = None,
     ) -> None:
         self.service = service
         self.refresh_callback = refresh_callback
         self.month_end_due_provider = month_end_due_provider
+        self.keep_open_provider = keep_open_provider or (lambda: False)
+        self.on_destroy = on_destroy
         self.window = Toplevel(parent)
         self.window.title("Task Timer Mini")
         self._configure_window_chrome()
@@ -66,6 +70,8 @@ class MiniModeWindow:
     def _configure_window_chrome(self) -> None:
         self.window.attributes("-topmost", True)
         self.window.protocol("WM_DELETE_WINDOW", self.restore_main)
+        if hasattr(self.window, "bind"):
+            self.window.bind("<Destroy>", self._notify_destroy, add="+")
         disable_snap_maximize(self.window)
         install_zoom_guard(self.window)
         if not sys.platform.startswith("win"):
@@ -104,7 +110,13 @@ class MiniModeWindow:
     def restore_main(self) -> None:
         self.window.master.deiconify()
         self.window.master.lift()
-        self.window.destroy()
+        # Keep Mini Open intentionally overrides close/show-main auto-destroy behavior.
+        if not self.keep_open_provider():
+            self.window.destroy()
+
+    def _notify_destroy(self, _event: tk.Event | None = None) -> None:
+        if self.on_destroy:
+            self.on_destroy()
 
     def refresh_structure(self) -> None:
         self._display_task_id = self._resolve_display_task_id()

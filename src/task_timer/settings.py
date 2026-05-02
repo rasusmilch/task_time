@@ -14,6 +14,7 @@ class UISettings:
     """Small set of UI-only preferences."""
 
     sort_alphabetically: bool = False
+    keep_mini_open: bool = False
     month_end_reminder_enabled: bool = False
     month_end_reminder_show_startup_notice: bool = True
     month_end_reminder_show_close_notice: bool = True
@@ -37,6 +38,7 @@ class UISettingsStore:
             return UISettings()
         return UISettings(
             sort_alphabetically=bool(payload.get("sort_alphabetically", False)),
+            keep_mini_open=bool(payload.get("keep_mini_open", False)),
             month_end_reminder_enabled=bool(payload.get("month_end_reminder_enabled", False)),
             month_end_reminder_show_startup_notice=bool(payload.get("month_end_reminder_show_startup_notice", True)),
             month_end_reminder_show_close_notice=bool(payload.get("month_end_reminder_show_close_notice", True)),
@@ -52,6 +54,7 @@ class UISettingsStore:
         self._atomic_write_json(
             {
                 "sort_alphabetically": settings.sort_alphabetically,
+                "keep_mini_open": settings.keep_mini_open,
                 "month_end_reminder_enabled": settings.month_end_reminder_enabled,
                 "month_end_reminder_show_startup_notice": settings.month_end_reminder_show_startup_notice,
                 "month_end_reminder_show_close_notice": settings.month_end_reminder_show_close_notice,

@@ -80,3 +80,20 @@ def test_backup_settings_migrates_legacy_count_fields(tmp_path) -> None:
     assert loaded.grandfather_keep_days == 60
     rewritten = store.path.read_text(encoding="utf-8")
     assert "keep_count" not in rewritten
+
+
+def test_settings_keep_mini_open_defaults_false_and_persists(tmp_path) -> None:
+    store = UISettingsStore(tmp_path)
+    assert store.load().keep_mini_open is False
+
+    store.save(UISettings(keep_mini_open=True))
+    loaded = store.load()
+    assert loaded.keep_mini_open is True
+
+
+def test_settings_missing_keep_mini_open_field_defaults_false(tmp_path) -> None:
+    store = UISettingsStore(tmp_path)
+    store.path.write_text('{"sort_alphabetically": true}', encoding="utf-8")
+    loaded = store.load()
+    assert loaded.sort_alphabetically is True
+    assert loaded.keep_mini_open is False

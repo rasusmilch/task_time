@@ -1345,6 +1345,7 @@ class TaskTimerApp:
         self.ui_settings_store = UISettingsStore(self.service.storage.data_dir)
         self.ui_settings = self.ui_settings_store.load()
         self.sort_alpha_var = tk.BooleanVar(value=self.ui_settings.sort_alphabetically)
+        self.keep_mini_open_var = tk.BooleanVar(value=self.ui_settings.keep_mini_open)
         self.mini_mode_window: MiniModeWindow | None = None
         self._tick_job: str | None = None
         self._startup_reminder_prompted_date: str | None = None
@@ -1377,6 +1378,10 @@ class TaskTimerApp:
         ttk.Button(self.toolbar_frame, text="Add Task", command=self.add_task).pack(side="left", padx=(0, 4))
         ttk.Button(self.toolbar_frame, text="Export", command=self.export).pack(side="left", padx=4)
         ttk.Button(self.toolbar_frame, text="Mini Mode", command=self.open_mini_mode).pack(side="left", padx=4)
+        self.keep_mini_open_checkbox = ttk.Checkbutton(
+            self.toolbar_frame, text="Keep Mini Open", variable=self.keep_mini_open_var, command=self._on_keep_mini_open_toggle
+        )
+        self.keep_mini_open_checkbox.pack(side="left", padx=(0, 6))
         self.sort_alpha_checkbox = ttk.Checkbutton(
             self.toolbar_frame, text="Sort A-Z", variable=self.sort_alpha_var, command=self._on_sort_toggle
         )
@@ -1524,13 +1529,32 @@ class TaskTimerApp:
         messagebox.showinfo("Export Selected Tasks", "Selected-task export complete.")
         return True
 
+    def _on_keep_mini_open_toggle(self) -> None:
+        self.ui_settings.keep_mini_open = self.keep_mini_open_var.get()
+        self.ui_settings_store.save(self.ui_settings)
+        if self.ui_settings.keep_mini_open:
+            self.open_mini_mode()
+
+    def _on_mini_mode_closed(self) -> None:
+        self.mini_mode_window = None
+
     def open_mini_mode(self) -> None:
+        should_keep_open = self.ui_settings.keep_mini_open
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
             self.mini_mode_window.window.lift()
-            self.root.iconify()
+            if not should_keep_open:
+                self.root.iconify()
             return
-        self.mini_mode_window = MiniModeWindow(self.root, self.service, self._after_state_change, self._is_month_end_reminder_due_today)
-        self.root.iconify()
+        self.mini_mode_window = MiniModeWindow(
+            self.root,
+            self.service,
+            self._after_state_change,
+            self._is_month_end_reminder_due_today,
+            keep_open_provider=lambda: self.ui_settings.keep_mini_open,
+            on_destroy=self._on_mini_mode_closed,
+        )
+        if not should_keep_open:
+            self.root.iconify()
 
     def refresh_structure(self) -> None:
         active_tasks = self._get_active_tasks_in_display_order()

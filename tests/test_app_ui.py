@@ -168,13 +168,14 @@ def test_refresh_row_uses_clipped_display_text_without_mutating_task() -> None:
     assert task.notes == long_notes
 
 
-def test_open_mini_mode_minimizes_main_window() -> None:
+def test_open_mini_mode_minimizes_main_window_when_keep_unchecked() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     root = _FakeRoot()
     app.root = root
     app.service = object()
     app.mini_mode_window = None
     app._after_state_change = lambda: None
+    app.ui_settings = UISettings(keep_mini_open=False)
 
     class _Mini:
         def __init__(self) -> None:
@@ -187,6 +188,30 @@ def test_open_mini_mode_minimizes_main_window() -> None:
     try:
         TaskTimerApp.open_mini_mode(app)
         assert root.iconified is True
+    finally:
+        app_module.MiniModeWindow = original
+
+
+def test_open_mini_mode_keeps_main_visible_when_keep_checked() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    root = _FakeRoot()
+    app.root = root
+    app.service = object()
+    app.mini_mode_window = None
+    app._after_state_change = lambda: None
+    app.ui_settings = UISettings(keep_mini_open=True)
+
+    class _Mini:
+        def __init__(self) -> None:
+            self.window = SimpleNamespace(winfo_exists=lambda: True, lift=lambda: None)
+
+    import task_timer.app as app_module
+
+    original = app_module.MiniModeWindow
+    app_module.MiniModeWindow = lambda *args, **kwargs: _Mini()
+    try:
+        TaskTimerApp.open_mini_mode(app)
+        assert root.iconified is False
     finally:
         app_module.MiniModeWindow = original
 
@@ -629,12 +654,14 @@ def test_build_ui_creates_reminder_banner_and_toolbar_widgets(monkeypatch) -> No
     app._setup_headers = lambda: None
     app.root = _FakeRoot()
     app.sort_alpha_var = object()
+    app.keep_mini_open_var = object()
     app.daily_var = object()
     app.weekly_var = object()
     app.add_task = lambda: None
     app.export = lambda: True
     app.open_mini_mode = lambda: None
     app._on_sort_toggle = lambda: None
+    app._on_keep_mini_open_toggle = lambda: None
     app._on_reminder_export = lambda: None
     app._dismiss_month_end_reminder_today = lambda: None
 
@@ -647,6 +674,7 @@ def test_build_ui_creates_reminder_banner_and_toolbar_widgets(monkeypatch) -> No
     assert "Add Task" in toolbar_texts
     assert "Export" in toolbar_texts
     assert "Mini Mode" in toolbar_texts
+    assert "Keep Mini Open" in toolbar_texts
     assert "Sort A-Z" in toolbar_texts
 
 
@@ -1075,3 +1103,77 @@ def test_selected_export_post_action_delete_creates_single_backup_and_deletes_se
     assert calls["backup"] == 1
     assert calls["reset"] is None
     assert calls["delete"] == ["t1"]
+
+
+def test_keep_mini_toggle_checked_saves_and_opens_without_minimize() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.ui_settings = UISettings(keep_mini_open=False)
+    saves: list[bool] = []
+    app.ui_settings_store = SimpleNamespace(save=lambda settings: saves.append(settings.keep_mini_open))
+    app.keep_mini_open_var = SimpleNamespace(get=lambda: True)
+    opened: list[str] = []
+    app.open_mini_mode = lambda: opened.append("open")
+
+    TaskTimerApp._on_keep_mini_open_toggle(app)
+
+    assert app.ui_settings.keep_mini_open is True
+    assert saves == [True]
+    assert opened == ["open"]
+
+
+def test_keep_mini_toggle_unchecked_saves_without_closing_open_mini() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.ui_settings = UISettings(keep_mini_open=True)
+    saves: list[bool] = []
+    app.ui_settings_store = SimpleNamespace(save=lambda settings: saves.append(settings.keep_mini_open))
+    app.keep_mini_open_var = SimpleNamespace(get=lambda: False)
+    app.mini_mode_window = SimpleNamespace(window=SimpleNamespace(winfo_exists=lambda: True))
+
+    TaskTimerApp._on_keep_mini_open_toggle(app)
+
+    assert app.ui_settings.keep_mini_open is False
+    assert saves == [False]
+    assert app.mini_mode_window is not None
+
+
+def test_open_mini_mode_keep_checked_lifts_existing_without_duplicate() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = _FakeRoot()
+    app.service = object()
+    app._after_state_change = lambda: None
+    app.ui_settings = UISettings(keep_mini_open=True)
+    lifts: list[str] = []
+    existing = SimpleNamespace(window=SimpleNamespace(winfo_exists=lambda: True, lift=lambda: lifts.append("lift")))
+    app.mini_mode_window = existing
+
+    TaskTimerApp.open_mini_mode(app)
+
+    assert lifts == ["lift"]
+    assert app.mini_mode_window is existing
+
+
+def test_mini_mode_destroy_callback_clears_reference() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.mini_mode_window = object()
+
+    TaskTimerApp._on_mini_mode_closed(app)
+
+    assert app.mini_mode_window is None
+
+
+def test_mini_mode_restore_main_respects_keep_open() -> None:
+    calls: list[str] = []
+
+    mini = MiniModeWindow.__new__(MiniModeWindow)
+    mini.window = SimpleNamespace(
+        master=SimpleNamespace(deiconify=lambda: calls.append("deiconify"), lift=lambda: calls.append("lift")),
+        destroy=lambda: calls.append("destroy"),
+    )
+    mini.keep_open_provider = lambda: True
+
+    MiniModeWindow.restore_main(mini)
+    assert calls == ["deiconify", "lift"]
+
+    mini.keep_open_provider = lambda: False
+    MiniModeWindow.restore_main(mini)
+    assert calls[-3:] == ["deiconify", "lift", "destroy"]
