@@ -115,6 +115,7 @@ def test_row_refresh_sets_toggle_text_and_color() -> None:
             "container": _Widget(),
             "name_label": _Widget(),
             "notes_label": _Widget(),
+            "expander_btn": _Widget(),
         }
     }
     app.root = SimpleNamespace(focus_get=lambda: None)
@@ -161,6 +162,7 @@ def test_refresh_row_uses_clipped_display_text_without_mutating_task() -> None:
             "container": _Widget(),
             "name_label": _Widget(),
             "notes_label": _Widget(),
+            "expander_btn": _Widget(),
         }
     }
     app.root = SimpleNamespace(focus_get=lambda: None)
@@ -244,6 +246,7 @@ def test_display_order_uses_casefold_sort_with_stable_task_id_tiebreak(tmp_path)
     app = TaskTimerApp.__new__(TaskTimerApp)
     app.service = service
     app.sort_alpha_var = SimpleNamespace(get=lambda: True)
+    app.expanded_parents = set()
 
     ordered = TaskTimerApp._get_active_tasks_in_display_order(app)
     expected = sorted(
