@@ -44,6 +44,7 @@ class TaskState:
     last_reset_utc: datetime | None = None
     intervals: dict[str, IntervalRecord] = field(default_factory=dict)
     tags: set[str] = field(default_factory=set)
+    parent_task_id: str | None = None
 
 
 @dataclass(slots=True)
