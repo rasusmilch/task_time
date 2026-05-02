@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from task_timer.app import TaskTimerService
@@ -85,3 +87,18 @@ def test_start_subtask_preserves_one_running_invariant(tmp_path):
     assert service.state.running_task_id == other
     running = [t.task_id for t in service.state.tasks.values() if t.is_running]
     assert running == [other]
+
+
+def test_task_tree_elapsed_and_own_elapsed(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    parent = service.create_task("P", "")
+    child = service.create_subtask(parent, "C", "")
+    start_parent = datetime(2026, 1, 1, 10, 0, tzinfo=service.local_tz)
+    stop_parent = datetime(2026, 1, 1, 11, 0, tzinfo=service.local_tz)
+    start_child = datetime(2026, 1, 1, 11, 0, tzinfo=service.local_tz)
+    stop_child = datetime(2026, 1, 1, 11, 30, tzinfo=service.local_tz)
+    service.add_manual_interval(parent, start_local=start_parent, stop_local=stop_parent, reason="p")
+    service.add_manual_interval(child, start_local=start_child, stop_local=stop_child, reason="c")
+    assert service.task_own_elapsed(parent) == 3600
+    assert service.task_own_elapsed(child) == 1800
+    assert service.task_tree_elapsed(parent) == 5400
