@@ -48,6 +48,7 @@ By default data is stored in `~/.task_timer_data`:
 - `archives/*.jsonl`: immutable sealed segments.
 - `state_snapshot.json`: derived state for fast startup.
 - `log_manifest.json`: segment index/metadata.
+- `subtask_templates.json`: reusable subtask template definitions.
 - `backup_settings.json`: tunable GFS backup retention values.
 - `backups/sons|fathers|grandfathers`: managed zip backups.
 
@@ -67,6 +68,7 @@ Backup settings can be edited in-app via **File → Backup Settings**.
 ## Backup behavior
 
 - **Manual backup** (`File → Create Backup Now`) always creates a backup immediately.
+- Backups include `subtask_templates.json`, so template definitions are captured with normal task data.
 - **Retention** runs after backup creation and keeps only the configured counts:
   - sons: newest N son backups
   - fathers: newest N father backups
@@ -78,6 +80,7 @@ Backup settings can be edited in-app via **File → Backup Settings**.
     - export
     - manual interval edit/delete
     - rebuild snapshot from journal
+- **Restore** restores subtask templates from the selected backup, including `subtask_templates.json`.
 - **Automatic backup on app start**:
   - Controlled by `auto_backup_on_app_start`.
   - Creates a son backup with reason `automatic backup on app start`.
@@ -99,6 +102,18 @@ Export is plain text and includes:
 - Source segments used for export.
 - Overall totals and per-task totals (including notes).
 - Detailed chronological event/interval history, including resets and corrections.
+
+## Subtask Templates
+
+Subtask Templates are reusable groups of subtask definitions. Applying a template copies those definitions into a parent task as real subtasks. The created subtasks are independent and can be edited, timed, reset, deleted, and exported like any other subtask.
+
+- Manage templates in **Tools → Manage Subtask Templates**.
+- Templates are definitions only; they are not timed/running work items by themselves.
+- Applying a template creates real subtasks under the selected parent task.
+- Editing or deleting a template does not change existing subtasks that were already created from it.
+- Duplicate subtask names are skipped when applying templates to avoid duplicate child tasks under the same parent.
+- Template item order is preserved when creating subtasks.
+- Templates are included in backups and restored with backup restore.
 
 ## Assumptions / limitations
 
