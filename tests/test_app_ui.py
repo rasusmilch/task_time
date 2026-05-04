@@ -116,6 +116,8 @@ def test_row_refresh_sets_toggle_text_and_color() -> None:
             "elapsed_label": _Widget(),
             "toggle_btn": _Widget(),
             "container": _Widget(),
+            "name_cell": _Widget(),
+            "notes_cell": _Widget(),
             "name_label": _Widget(),
             "notes_label": _Widget(),
             "expander_btn": _Widget(),
@@ -166,6 +168,8 @@ def test_refresh_row_uses_clipped_display_text_without_mutating_task() -> None:
             "elapsed_label": _Widget(),
             "toggle_btn": _Widget(),
             "container": _Widget(),
+            "name_cell": _Widget(),
+            "notes_cell": _Widget(),
             "name_label": _Widget(),
             "notes_label": _Widget(),
             "expander_btn": _Widget(),
@@ -203,6 +207,8 @@ def test_refresh_row_parent_and_subtask_hierarchy_styles() -> None:
             "elapsed_label": _Widget(),
             "toggle_btn": _Widget(),
             "container": _Widget(),
+            "name_cell": _Widget(),
+            "notes_cell": _Widget(),
             "name_label": _Widget(),
             "notes_label": _Widget(),
             "expander_btn": _Widget(),
@@ -212,6 +218,8 @@ def test_refresh_row_parent_and_subtask_hierarchy_styles() -> None:
             "elapsed_label": _Widget(),
             "toggle_btn": _Widget(),
             "container": _Widget(),
+            "name_cell": _Widget(),
+            "notes_cell": _Widget(),
             "name_label": _Widget(),
             "notes_label": _Widget(),
             "expander_btn": _Widget(),
@@ -239,6 +247,14 @@ def test_column_specs_keep_dedicated_expander_column() -> None:
     assert specs[0]["key"] == "expander"
     assert specs[0]["header"] == ""
     assert specs[0]["minsize"] >= 24
+
+
+def test_table_column_widths_match_column_specs() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    widths = TaskTimerApp._table_column_widths(app)
+    specs = TaskTimerApp._column_specs(app)
+    assert widths["name"] == next(spec["minsize"] for spec in specs if spec["key"] == "name")
+    assert widths["notes"] == next(spec["minsize"] for spec in specs if spec["key"] == "notes")
 
 
 def test_open_mini_mode_minimizes_main_window_when_keep_unchecked() -> None:
