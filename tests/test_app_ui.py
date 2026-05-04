@@ -191,6 +191,7 @@ def test_refresh_row_parent_and_subtask_hierarchy_styles() -> None:
     child_id = "child"
     parent = SimpleNamespace(is_running=False, name="Parent", notes="P")
     child = SimpleNamespace(is_running=False, name="Reports", notes="C")
+    app.default_name_font = "default-font"
     app.parent_name_font = "parent-bold-font"
     app.expanded_parents = set()
 
@@ -239,6 +240,57 @@ def test_refresh_row_parent_and_subtask_hierarchy_styles() -> None:
     assert app.rows[child_id]["container"].config["bg"] == ROW_SUBTASK_STOPPED_COLOR
     assert app.rows[child_id]["name_label"].config["text"].startswith("└─")
     assert "padding" not in app.rows[child_id]["name_label"].config
+
+
+def test_refresh_row_uses_default_font_for_non_parent_rows_and_never_empty_font() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    parent_id = "parent"
+    child_id = "child"
+    solo_id = "solo"
+    parent = SimpleNamespace(is_running=False, name="Parent", notes="P")
+    child = SimpleNamespace(is_running=False, name="Child", notes="C")
+    solo = SimpleNamespace(is_running=False, name="Solo", notes="S")
+    app.default_name_font = "default-font"
+    app.parent_name_font = "parent-bold-font"
+    app.expanded_parents = set()
+
+    class _Widget:
+        def __init__(self) -> None:
+            self.config: dict[str, object] = {}
+
+        def configure(self, **kwargs: object) -> None:
+            self.config.update(kwargs)
+
+    def _row() -> dict[str, _Widget]:
+        return {
+            "state_label": _Widget(),
+            "elapsed_label": _Widget(),
+            "toggle_btn": _Widget(),
+            "container": _Widget(),
+            "name_cell": _Widget(),
+            "notes_cell": _Widget(),
+            "name_label": _Widget(),
+            "notes_label": _Widget(),
+            "expander_btn": _Widget(),
+        }
+
+    app.rows = {parent_id: _row(), child_id: _row(), solo_id: _row()}
+    app.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={parent_id: parent, child_id: child, solo_id: solo}),
+        child_tasks=lambda task_id, **_kwargs: [child] if task_id == parent_id else [],
+        is_subtask=lambda task_id: task_id == child_id,
+    )
+
+    TaskTimerApp.refresh_row(app, parent_id, is_subtask=False)
+    TaskTimerApp.refresh_row(app, child_id, is_subtask=True)
+    TaskTimerApp.refresh_row(app, solo_id, is_subtask=False)
+
+    assert app.rows[parent_id]["name_label"].config["font"] == "parent-bold-font"
+    assert app.rows[child_id]["name_label"].config["font"] == "default-font"
+    assert app.rows[solo_id]["name_label"].config["font"] == "default-font"
+    assert app.rows[parent_id]["name_label"].config["font"] != ""
+    assert app.rows[child_id]["name_label"].config["font"] != ""
+    assert app.rows[solo_id]["name_label"].config["font"] != ""
 
 
 def test_column_specs_keep_dedicated_expander_column() -> None:

@@ -1512,6 +1512,7 @@ class TaskTimerApp:
         self.mini_mode_window: MiniModeWindow | None = None
         self._tick_job: str | None = None
         self._startup_reminder_prompted_date: str | None = None
+        self.default_name_font: tkfont.Font | None = None
         self.parent_name_font: tkfont.Font | None = None
 
         self._build_ui()
@@ -1616,10 +1617,11 @@ class TaskTimerApp:
 
     def _init_row_fonts(self) -> None:
         try:
-            default_font = tkfont.nametofont("TkDefaultFont")
-            self.parent_name_font = default_font.copy()
+            self.default_name_font = tkfont.nametofont("TkDefaultFont")
+            self.parent_name_font = self.default_name_font.copy()
             self.parent_name_font.configure(weight="bold")
         except (tk.TclError, RuntimeError):
+            self.default_name_font = None
             self.parent_name_font = None
 
     def _column_minsize(self, key: str) -> int:
@@ -1859,9 +1861,12 @@ class TaskTimerApp:
         displayed_name = f"└─ {task.name}" if is_subtask else task.name
         row["name_label"].configure(
             text=self._display_task_name(displayed_name),
-            font=self.parent_name_font if is_parent and self.parent_name_font is not None else "",
             bg=row_color,
         )
+        if is_parent and self.parent_name_font is not None:
+            row["name_label"].configure(font=self.parent_name_font)
+        elif self.default_name_font is not None:
+            row["name_label"].configure(font=self.default_name_font)
         row["notes_label"].configure(text=self._display_task_notes(task.notes), bg=row_color)
         if is_subtask or not children:
             row["expander_btn"].configure(text="", state="disabled")
