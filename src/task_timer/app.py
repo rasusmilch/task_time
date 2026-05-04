@@ -1754,6 +1754,15 @@ class TaskTimerApp:
         if not dialog.confirmed:
             return
         task_id = self.service.create_task(dialog.name, dialog.notes, dialog.tags)
+        selected_template_ids = getattr(dialog, "selected_template_ids", [])
+        if selected_template_ids:
+            result = self.service.apply_subtask_templates(task_id, selected_template_ids)
+            if result.created_subtask_ids:
+                self.expanded_parents.add(task_id)
+                summary = f"Created {len(result.created_subtask_ids)} subtasks."
+                if result.skipped_duplicates:
+                    summary += f" Skipped {len(result.skipped_duplicates)} duplicates."
+                messagebox.showinfo("Create Task", summary)
         self.refresh_structure()
         self.refresh_live_values()
         
@@ -1975,10 +1984,12 @@ class TaskTimerApp:
             text=self._display_task_name(displayed_name),
             bg=row_color,
         )
-        if is_parent and self.parent_name_font is not None:
-            row["name_label"].configure(font=self.parent_name_font)
-        elif self.default_name_font is not None:
-            row["name_label"].configure(font=self.default_name_font)
+        parent_font = getattr(self, "parent_name_font", None)
+        default_font = getattr(self, "default_name_font", None)
+        if is_parent and parent_font is not None:
+            row["name_label"].configure(font=parent_font)
+        elif default_font is not None:
+            row["name_label"].configure(font=default_font)
         row["notes_label"].configure(text=self._display_task_notes(task.notes), bg=row_color)
         if is_subtask or not children:
             row["expander_btn"].configure(text="", state="disabled")
