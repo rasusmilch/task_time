@@ -18,6 +18,7 @@ from .backups import BackupManager
 from .dialogs import (
     AddTaskDialog,
     EditTaskDialog,
+    ManageSubtaskTemplatesDialog,
     ManageTagsDialog,
     BackupSettingsDialog,
     EditTimelineDialog,
@@ -1646,6 +1647,7 @@ class TaskTimerApp:
         tools_menu.add_command(label="Reset All Task Timers...", command=self._reset_all_task_timers)
         tools_menu.add_separator()
         tools_menu.add_command(label="Manage Tags", command=self._manage_tags)
+        tools_menu.add_command(label="Manage Subtask Templates", command=self._manage_subtask_templates)
         tools_menu.add_command(label="Month-End Reminder Settings", command=self._open_month_end_reminder_settings)
         menubar.add_cascade(label="Tools", menu=tools_menu)
         self.root.configure(menu=menubar)
@@ -2071,6 +2073,11 @@ class TaskTimerApp:
 
     def _manage_tags(self) -> None:
         dialog = ManageTagsDialog(self.root, self.service)
+        if dialog.changed:
+            self._after_state_change()
+
+    def _manage_subtask_templates(self) -> None:
+        dialog = ManageSubtaskTemplatesDialog(self.root, self.service)
         if dialog.changed:
             self._after_state_change()
 

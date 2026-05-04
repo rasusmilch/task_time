@@ -848,6 +848,7 @@ def test_build_menus_tools_contains_reset_all_item(monkeypatch) -> None:
     app._reopen_last_export_checkpoint = lambda: None
     app._reset_all_task_timers = lambda: None
     app._manage_tags = lambda: None
+    app._manage_subtask_templates = lambda: None
     app._open_month_end_reminder_settings = lambda: None
     app._create_backup_now = lambda: None
     app._open_backup_settings = lambda: None
@@ -1563,3 +1564,48 @@ def test_mini_mode_restore_main_respects_keep_open() -> None:
     mini.keep_open_provider = lambda: False
     MiniModeWindow.restore_main(mini)
     assert calls[-3:] == ["deiconify", "lift", "destroy"]
+
+
+def test_build_menus_tools_contains_manage_subtask_templates(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    class _FakeMenu:
+        def __init__(self, _parent=None, **_kwargs) -> None:
+            self.commands=[]; self.cascades={}
+        def add_command(self,label:str,command=None)->None: self.commands.append(label)
+        def add_separator(self)->None: self.commands.append("---")
+        def add_cascade(self,label:str,menu)->None: self.cascades[label]=menu
+    class _Root:
+        def configure(self, **kwargs) -> None: self.menu=kwargs.get("menu")
+    import task_timer.app as app_module
+    monkeypatch.setattr(app_module.tk, "Menu", _FakeMenu)
+    app.root=_Root()
+    app._reopen_last_export_checkpoint=lambda:None
+    app._reset_all_task_timers=lambda:None
+    app._manage_tags=lambda:None
+    app._manage_subtask_templates=lambda:None
+    app._open_month_end_reminder_settings=lambda:None
+    app._create_backup_now=lambda:None
+    app._open_backup_settings=lambda:None
+    app._open_data_folder=lambda:None
+    app._open_backup_folder=lambda:None
+    app._restore_from_backup=lambda:None
+    app._rebuild_snapshot_from_journal=lambda:None
+    app.export_selected_tasks=lambda:None
+    TaskTimerApp._build_menus(app)
+    tools_menu = app.root.menu.cascades["Tools"]
+    assert "Manage Subtask Templates" in tools_menu.commands
+
+
+def test_manage_subtask_templates_dialog_opens(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = object()
+    app.service = object()
+    called = {"opened": 0}
+    import task_timer.app as app_module
+    class _Dialog:
+        def __init__(self, *_args, **_kwargs):
+            called["opened"] += 1
+            self.changed = False
+    monkeypatch.setattr(app_module, "ManageSubtaskTemplatesDialog", _Dialog)
+    TaskTimerApp._manage_subtask_templates(app)
+    assert called["opened"] == 1

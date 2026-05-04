@@ -954,6 +954,178 @@ class EditTaskDialog:
         self.changed = True
         self.window.destroy()
 
+
+
+class SubtaskTemplateItemDialog:
+    def __init__(self, parent: Toplevel, service: "TaskTimerService", *, title: str, item: Any | None = None) -> None:
+        self.result: dict[str, Any] | None = None
+        self.window = Toplevel(parent)
+        self.window.title(title)
+        self.window.transient(parent)
+        self.window.grab_set()
+        self.window.resizable(False, False)
+        self.name_var = StringVar(value=getattr(item, "name", ""))
+        self.notes_var = StringVar(value=getattr(item, "notes", ""))
+        initial_tags = list(getattr(item, "tags", []))
+
+        ttk.Label(self.window, text="Name").grid(row=0, column=0, padx=8, pady=(8, 2), sticky="w")
+        ttk.Entry(self.window, textvariable=self.name_var).grid(row=0, column=1, padx=8, pady=(8, 2), sticky="ew")
+        ttk.Label(self.window, text="Notes").grid(row=1, column=0, padx=8, pady=2, sticky="w")
+        ttk.Entry(self.window, textvariable=self.notes_var).grid(row=1, column=1, padx=8, pady=2, sticky="ew")
+        self.tag_selector = TagSelectionFrame(self.window, service, initial_tags=initial_tags)
+        self.tag_selector.grid(row=2, column=0, columnspan=2, padx=8, pady=4, sticky="nsew")
+
+        actions = ttk.Frame(self.window)
+        actions.grid(row=3, column=0, columnspan=2, padx=8, pady=(2, 8), sticky="e")
+        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
+        ttk.Button(actions, text="Save", command=self._save).pack(side="right")
+        self.window.grid_columnconfigure(1, weight=1)
+        parent.wait_window(self.window)
+
+    def _save(self) -> None:
+        name = self.name_var.get().strip()
+        if not name:
+            messagebox.showerror("Subtask Item", "Item name is required.", parent=self.window)
+            return
+        self.result = {"name": name, "notes": self.notes_var.get().strip(), "tags": self.tag_selector.get_selected_tags()}
+        self.window.destroy()
+
+
+class ManageSubtaskTemplatesDialog:
+    def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
+        self.changed = False
+        self.service = service
+        self.templates = service.list_subtask_templates()
+        self.current_template_id: str | None = None
+        self.dirty = False
+        self.window = Toplevel(parent)
+        self.window.title("Manage Subtask Templates")
+        self.window.geometry("920x460")
+        self.window.transient(parent)
+        self.window.grab_set()
+        # layout omitted brevity
+        main = ttk.Frame(self.window)
+        main.pack(fill="both", expand=True, padx=8, pady=8)
+        left = ttk.Frame(main)
+        left.pack(side="left", fill="y")
+        right = ttk.Frame(main)
+        right.pack(side="left", fill="both", expand=True, padx=(8,0))
+        self.template_list = tk.Listbox(left, exportselection=False, height=16)
+        self.template_list.pack(fill="y", expand=True)
+        self.template_list.bind("<<ListboxSelect>>", lambda _e: self._on_select_template())
+        b=ttk.Frame(left); b.pack(fill='x', pady=(6,0))
+        ttk.Button(b,text='Add Template',command=self._add_template).pack(fill='x', pady=2)
+        ttk.Button(b,text='Delete Template',command=self._delete_template).pack(fill='x', pady=2)
+        self.template_name_var=StringVar(); self.template_notes_var=StringVar()
+        ttk.Label(right,text='Template name').grid(row=0,column=0,sticky='w')
+        ttk.Entry(right,textvariable=self.template_name_var).grid(row=1,column=0,sticky='ew', pady=(0,4))
+        ttk.Label(right,text='Template notes').grid(row=2,column=0,sticky='w')
+        ttk.Entry(right,textvariable=self.template_notes_var).grid(row=3,column=0,sticky='ew', pady=(0,4))
+        self.item_tree=ttk.Treeview(right,columns=('order','name','notes','tags'),show='headings',height=10)
+        for c,t,w in [('order','Order',50),('name','Name',180),('notes','Notes',220),('tags','Tags',120)]:
+            self.item_tree.heading(c,text=t); self.item_tree.column(c,width=w,anchor='w')
+        self.item_tree.grid(row=4,column=0,sticky='nsew')
+        btns=ttk.Frame(right); btns.grid(row=5,column=0,sticky='w', pady=4)
+        for txt,cmd in [('Add Subtask Item',self._add_item),('Edit Subtask Item',self._edit_item),('Remove Subtask Item',self._remove_item),('Move Up',self._move_up),('Move Down',self._move_down)]:
+            ttk.Button(btns,text=txt,command=cmd).pack(side='left', padx=2)
+        actions=ttk.Frame(right); actions.grid(row=6,column=0,sticky='e', pady=4)
+        ttk.Button(actions,text='Save',command=self._save_current).pack(side='right', padx=2)
+        ttk.Button(actions,text='Close',command=self._close).pack(side='right', padx=2)
+        right.grid_columnconfigure(0,weight=1); right.grid_rowconfigure(4,weight=1)
+        self.template_name_var.trace_add('write', lambda *_: self._mark_dirty())
+        self.template_notes_var.trace_add('write', lambda *_: self._mark_dirty())
+        self._refresh_template_list(); parent.wait_window(self.window)
+    # helpers
+    def _mark_dirty(self):
+        if self.current_template_id: self.dirty=True
+    def _current(self):
+        return next((t for t in self.templates if t.template_id==self.current_template_id),None)
+    def _refresh_template_list(self):
+        self.template_list.delete(0,'end')
+        for t in self.templates: self.template_list.insert('end',t.name)
+        if self.templates and self.current_template_id is None:
+            self.template_list.selection_set(0); self._on_select_template()
+    def _on_select_template(self):
+        if self.dirty and self.current_template_id:
+            ans = messagebox.askyesnocancel('Unsaved Changes','Save changes before switching template?', parent=self.window)
+            if ans is None: return
+            if ans: self._save_current()
+        sel=self.template_list.curselection()
+        if not sel: return
+        self.current_template_id=self.templates[int(sel[0])].template_id; self._load_current(); self.dirty=False
+    def _load_current(self):
+        t=self._current();
+        if not t:return
+        self.template_name_var.set(t.name); self.template_notes_var.set(t.notes)
+        for iid in self.item_tree.get_children(): self.item_tree.delete(iid)
+        for i,it in enumerate(t.items, start=1): self.item_tree.insert('', 'end', iid=it.item_id, values=(i,it.name,it.notes,', '.join(it.tags)))
+    def _items_from_tree(self):
+        t=self._current();
+        ids=list(self.item_tree.get_children()); out=[]
+        by={i.item_id:i for i in (t.items if t else [])}
+        for idx,iid in enumerate(ids):
+            it=by[str(iid)]; it.sort_order=idx; out.append(it)
+        return out
+    def _save_current(self):
+        t=self._current();
+        if not t:return
+        try: self.service.update_subtask_template(t.template_id,self.template_name_var.get().strip(),self.template_notes_var.get().strip(),self._items_from_tree())
+        except Exception as exc: messagebox.showerror('Save Template',str(exc),parent=self.window); return
+        self.templates=self.service.list_subtask_templates(); self.changed=True; self.dirty=False; self._refresh_template_list()
+    def _add_template(self):
+        try: tid=self.service.create_subtask_template('New Template','')
+        except Exception as exc: messagebox.showerror('Add Template',str(exc),parent=self.window); return
+        self.templates=self.service.list_subtask_templates(); self.changed=True; self._refresh_template_list(); self.current_template_id=tid
+    def _delete_template(self):
+        t=self._current();
+        if not t:return
+        if not messagebox.askyesno('Delete Template',f"Delete template '{t.name}'?",parent=self.window): return
+        self.service.delete_subtask_template(t.template_id); self.templates=self.service.list_subtask_templates(); self.current_template_id=None; self.changed=True; self._refresh_template_list()
+    def _selected_item_id(self):
+        s=self.item_tree.selection();
+        if not s: raise ValueError('Select a subtask item first')
+        return str(s[0])
+    def _add_item(self):
+        t=self._current();
+        if not t:return
+        d=SubtaskTemplateItemDialog(self.window,self.service,title='Add Subtask Item')
+        if not d.result:return
+        from .subtask_templates import SubtaskTemplateItem
+        t.items.append(SubtaskTemplateItem(item_id=str(datetime.now().timestamp()),name=d.result['name'],notes=d.result['notes'],tags=d.result['tags'],sort_order=len(t.items)))
+        self.dirty=True; self._load_current()
+    def _edit_item(self):
+        t=self._current();
+        if not t:return
+        try:iid=self._selected_item_id()
+        except Exception as exc: messagebox.showerror('Edit Subtask Item',str(exc),parent=self.window); return
+        it=next(i for i in t.items if i.item_id==iid)
+        d=SubtaskTemplateItemDialog(self.window,self.service,title='Edit Subtask Item',item=it)
+        if not d.result:return
+        it.name=d.result['name']; it.notes=d.result['notes']; it.tags=d.result['tags']; self.dirty=True; self._load_current()
+    def _remove_item(self):
+        t=self._current();
+        if not t:return
+        try:iid=self._selected_item_id()
+        except Exception as exc: messagebox.showerror('Remove Subtask Item',str(exc),parent=self.window); return
+        if not messagebox.askyesno('Remove Subtask Item','Remove selected template item?',parent=self.window): return
+        t.items=[i for i in t.items if i.item_id!=iid]; self.dirty=True; self._load_current()
+    def _move_up(self): self._move(-1)
+    def _move_down(self): self._move(1)
+    def _move(self,delta:int):
+        t=self._current();
+        if not t:return
+        try:iid=self._selected_item_id()
+        except Exception: return
+        idx=next((i for i,x in enumerate(t.items) if x.item_id==iid),-1); j=idx+delta
+        if idx<0 or j<0 or j>=len(t.items): return
+        t.items[idx],t.items[j]=t.items[j],t.items[idx]; self.dirty=True; self._load_current(); self.item_tree.selection_set(t.items[j].item_id)
+    def _close(self):
+        if self.dirty:
+            ans=messagebox.askyesnocancel('Unsaved Changes','Save changes before closing?',parent=self.window)
+            if ans is None:return
+            if ans:self._save_current()
+        self.window.destroy()
+
 class ManageTagsDialog:
     def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
         self.changed = False
