@@ -7,7 +7,7 @@ import os
 import subprocess
 import tkinter as tk
 import tkinter.font as tkfont
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from tkinter import StringVar, Tk, Toplevel, filedialog, messagebox, simpledialog, ttk
@@ -60,6 +60,14 @@ ROW_PARENT_STOPPED_COLOR = "#e6edf6"
 ROW_PARENT_RUNNING_COLOR = "#d9ecdf"
 ROW_SUBTASK_STOPPED_COLOR = "#f2f5fa"
 ROW_SUBTASK_RUNNING_COLOR = "#e3f3e9"
+
+
+@dataclass(slots=True)
+class ApplySubtaskTemplatesResult:
+    created_subtask_ids: list[str]
+    created_names: list[str]
+    skipped_duplicates: list[str]
+    template_names: list[str]
 
 
 class TaskTimerService:
@@ -134,6 +142,48 @@ class TaskTimerService:
             return
         self.subtask_templates = kept
         self.subtask_template_store.save(self.subtask_templates)
+
+    def apply_subtask_templates(self, parent_task_id: str, template_ids: list[str]) -> ApplySubtaskTemplatesResult:
+        parent = self.state.tasks.get(parent_task_id)
+        if not parent:
+            raise ValueError("Parent task not found")
+        if parent.is_deleted:
+            raise ValueError("Parent task is deleted")
+        if parent.parent_task_id is not None:
+            raise ValueError("Cannot apply templates to a subtask")
+        if not template_ids:
+            raise ValueError("At least one template must be selected")
+
+        template_map = {template.template_id: template for template in self.subtask_templates}
+        selected_templates: list[SubtaskTemplate] = []
+        for template_id in template_ids:
+            template = template_map.get(template_id)
+            if not template:
+                raise ValueError("Subtask template not found")
+            selected_templates.append(template)
+
+        existing = {child.name.strip().casefold() for child in self.child_tasks(parent_task_id, include_deleted=False)}
+        created_subtask_ids: list[str] = []
+        created_names: list[str] = []
+        skipped_duplicates: list[str] = []
+
+        for template in selected_templates:
+            for item in template.items:
+                normalized_name = item.name.strip().casefold()
+                if normalized_name in existing:
+                    skipped_duplicates.append(item.name)
+                    continue
+                subtask_id = self.create_subtask(parent_task_id, item.name, item.notes, item.tags)
+                existing.add(normalized_name)
+                created_subtask_ids.append(subtask_id)
+                created_names.append(item.name)
+
+        return ApplySubtaskTemplatesResult(
+            created_subtask_ids=created_subtask_ids,
+            created_names=created_names,
+            skipped_duplicates=skipped_duplicates,
+            template_names=[template.name for template in selected_templates],
+        )
 
     def create_task(self, name: str, notes: str, tags: list[str] | None = None) -> str:
         task_id = str(uuid4())
