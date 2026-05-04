@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import tkinter as tk
+import tkinter.font as tkfont
 from dataclasses import asdict
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
@@ -51,6 +52,12 @@ from .time_utils import (
 
 RUNNING_COLOR = "#1f9d55"
 STOPPED_COLOR = "#c62828"
+ROW_STOPPED_COLOR = "#fdecea"
+ROW_RUNNING_COLOR = "#e9f7ef"
+ROW_PARENT_STOPPED_COLOR = "#e6edf6"
+ROW_PARENT_RUNNING_COLOR = "#d9ecdf"
+ROW_SUBTASK_STOPPED_COLOR = "#f2f5fa"
+ROW_SUBTASK_RUNNING_COLOR = "#e3f3e9"
 
 
 class TaskTimerService:
@@ -1505,6 +1512,7 @@ class TaskTimerApp:
         self.mini_mode_window: MiniModeWindow | None = None
         self._tick_job: str | None = None
         self._startup_reminder_prompted_date: str | None = None
+        self.parent_name_font: tkfont.Font | None = None
 
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close_request)
@@ -1516,6 +1524,7 @@ class TaskTimerApp:
         self._tick()
 
     def _build_ui(self) -> None:
+        self._init_row_fonts()
         self._build_menus()
         self.reminder_banner = tk.Frame(self.root, bg="#fff4e5", bd=1, relief="solid")
         reminder_label = tk.Label(
@@ -1604,6 +1613,14 @@ class TaskTimerApp:
 
     def _display_task_notes(self, notes: str) -> str:
         return self._clip_table_text(notes, max_chars=36)
+
+    def _init_row_fonts(self) -> None:
+        try:
+            default_font = tkfont.nametofont("TkDefaultFont")
+            self.parent_name_font = default_font.copy()
+            self.parent_name_font.configure(weight="bold")
+        except (tk.TclError, RuntimeError):
+            self.parent_name_font = None
 
     def _configure_table_columns(self, frame: tk.Misc) -> None:
         for idx, spec in enumerate(self._column_specs()):
@@ -1785,7 +1802,7 @@ class TaskTimerApp:
         row["elapsed_label"] = tk.Label(container, text="00:00", width=7)
 
         row["expander_btn"].grid(row=0, column=0, padx=(2, 0), pady=2, sticky="ew")
-        row["name_label"].grid(row=0, column=1, padx=4, pady=2, sticky="w")
+        row["name_label"].grid(row=0, column=1, padx=(4, 4), pady=2, sticky="w")
         row["notes_label"].grid(row=0, column=2, padx=4, pady=2, sticky="w")
         row["state_label"].grid(row=0, column=3, padx=4, pady=2, sticky="ew")
         row["toggle_btn"].grid(row=0, column=4, padx=2, pady=2, sticky="ew")
@@ -1811,10 +1828,23 @@ class TaskTimerApp:
         row["state_label"].configure(text=state_text, bg=state_color, fg="white")
         row["elapsed_label"].configure(fg=state_color)
         row["toggle_btn"].configure(text="Stop" if is_running else "Start")
-        row["container"].configure(bg="#e9f7ef" if is_running else "#fdecea")
-        row["name_label"].configure(text=self._display_task_name(("   ↳ " if is_subtask else "") + task.name))
-        row["notes_label"].configure(text=self._display_task_notes(task.notes))
         children = self.service.child_tasks(task_id, include_deleted=False) if hasattr(self.service, "child_tasks") else []
+        has_subtasks = bool(children)
+        is_parent = not is_subtask and has_subtasks
+        if is_subtask:
+            row_color = ROW_SUBTASK_RUNNING_COLOR if is_running else ROW_SUBTASK_STOPPED_COLOR
+        elif is_parent:
+            row_color = ROW_PARENT_RUNNING_COLOR if is_running else ROW_PARENT_STOPPED_COLOR
+        else:
+            row_color = ROW_RUNNING_COLOR if is_running else ROW_STOPPED_COLOR
+        row["container"].configure(bg=row_color)
+        displayed_name = f"└─ {task.name}" if is_subtask else task.name
+        row["name_label"].configure(
+            text=self._display_task_name(displayed_name),
+            padding=(18, 0, 0, 0) if is_subtask else (0, 0, 0, 0),
+            font=self.parent_name_font if is_parent and self.parent_name_font is not None else "",
+        )
+        row["notes_label"].configure(text=self._display_task_notes(task.notes))
         if is_subtask or not children:
             row["expander_btn"].configure(text="", state="disabled")
         else:
