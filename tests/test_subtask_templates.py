@@ -85,3 +85,17 @@ def test_restore_restores_subtask_templates_file(tmp_path) -> None:
     restored = SubtaskTemplateStore(tmp_path).load()
     assert len(restored) == 1
     assert restored[0].name == "Before"
+
+
+def test_update_template_item_tags_and_order_persist(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    tid = service.create_subtask_template("T", "")
+    items = [
+        SubtaskTemplateItem(item_id="2", name="Two", notes="", tags=["Beta"], sort_order=0),
+        SubtaskTemplateItem(item_id="1", name="One", notes="", tags=[" Alpha "], sort_order=1),
+    ]
+    service.update_subtask_template(tid, "T2", "n", items)
+    reloaded = TaskTimerService(EventStorage(tmp_path)).get_subtask_template(tid)
+    assert [i.name for i in reloaded.items] == ["Two", "One"]
+    assert reloaded.items[0].tags == ["beta"]
+    assert reloaded.items[1].tags == ["alpha"]
