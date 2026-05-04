@@ -33,6 +33,7 @@ from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TagMeta, TaskSta
 from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
 from .storage import EventStorage
+from .subtask_templates import SubtaskTemplate, SubtaskTemplateItem, SubtaskTemplateStore
 from .window_chrome import disable_snap_maximize, install_zoom_guard
 from .tags import normalize_tag, normalize_tag_list
 from .time_utils import (
@@ -66,6 +67,8 @@ class TaskTimerService:
     def __init__(self, storage: EventStorage) -> None:
         self.storage = storage
         self.backups = BackupManager(storage.data_dir)
+        self.subtask_template_store = SubtaskTemplateStore(storage.data_dir)
+        self.subtask_templates = self.subtask_template_store.load()
         self.local_tz = detect_local_timezone()
         self.local_tz_name = getattr(self.local_tz, "key", None) or getattr(self.local_tz, "zone", None) or str(self.local_tz)
         self.state = AppState()
@@ -73,6 +76,63 @@ class TaskTimerService:
         self._rebuild_state(self.events)
         self._save_snapshot()
         self._maybe_create_app_start_backup()
+
+    def list_subtask_templates(self) -> list[SubtaskTemplate]:
+        return list(self.subtask_templates)
+
+    def get_subtask_template(self, template_id: str) -> SubtaskTemplate:
+        for template in self.subtask_templates:
+            if template.template_id == template_id:
+                return template
+        raise ValueError("Subtask template not found")
+
+    def create_subtask_template(self, name: str, notes: str = "") -> str:
+        now = to_utc_z(utc_now())
+        template = SubtaskTemplate(
+            template_id=str(uuid4()),
+            name=name,
+            notes=notes,
+            items=[],
+            created_at_utc=now,
+            updated_at_utc=now,
+        )
+        self.subtask_templates.append(template)
+        self.subtask_template_store.save(self.subtask_templates)
+        return template.template_id
+
+    def update_subtask_template(self, template_id: str, name: str, notes: str, items: list[SubtaskTemplateItem]) -> None:
+        for idx, template in enumerate(self.subtask_templates):
+            if template.template_id != template_id:
+                continue
+            normalized_items: list[SubtaskTemplateItem] = []
+            for sort_order, item in enumerate(items):
+                normalized_items.append(
+                    SubtaskTemplateItem(
+                        item_id=item.item_id or str(uuid4()),
+                        name=item.name,
+                        notes=item.notes,
+                        tags=item.tags,
+                        sort_order=sort_order,
+                    )
+                )
+            self.subtask_templates[idx] = SubtaskTemplate(
+                template_id=template.template_id,
+                name=name,
+                notes=notes,
+                items=normalized_items,
+                created_at_utc=template.created_at_utc,
+                updated_at_utc=to_utc_z(utc_now()),
+            )
+            self.subtask_template_store.save(self.subtask_templates)
+            return
+        raise ValueError("Subtask template not found")
+
+    def delete_subtask_template(self, template_id: str) -> None:
+        kept = [template for template in self.subtask_templates if template.template_id != template_id]
+        if len(kept) == len(self.subtask_templates):
+            return
+        self.subtask_templates = kept
+        self.subtask_template_store.save(self.subtask_templates)
 
     def create_task(self, name: str, notes: str, tags: list[str] | None = None) -> str:
         task_id = str(uuid4())
