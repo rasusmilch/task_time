@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from task_timer.app import ROW_PARENT_STOPPED_COLOR, ROW_SUBTASK_STOPPED_COLOR, STOPPED_COLOR, TaskTimerApp, TaskTimerService
-from task_timer.dialogs import AddTaskDialog, BackupSettingsDialog, EditTaskDialog
+from task_timer.dialogs import AddTaskDialog, ApplySubtaskTemplatesDialog, BackupSettingsDialog, EditTaskDialog, SubtaskTemplateSelectionFrame
 from task_timer.mini_mode import MiniModeWindow, RUNNING_COLOR, STOPPED_COLOR as MINI_STOPPED_COLOR
 from task_timer.settings import BackupSettings, UISettings
 from task_timer.storage import EventStorage
@@ -1091,6 +1091,94 @@ def test_add_task_dialog_confirm_uses_selected_tags() -> None:
     assert dialog.tags == ["alpha", "beta"]
 
 
+
+
+def test_add_task_dialog_confirm_collects_selected_template_ids() -> None:
+    dialog = AddTaskDialog.__new__(AddTaskDialog)
+    dialog.name_var = SimpleNamespace(get=lambda: "New Task")
+    dialog.notes_var = SimpleNamespace(get=lambda: "Note")
+    dialog.tag_selector = SimpleNamespace(get_selected_tags=lambda: ["alpha"])
+    dialog.template_selector = SimpleNamespace(get_selected_template_ids=lambda: ["t1", "t2"])
+    dialog.window = SimpleNamespace(destroy=lambda: None)
+    dialog.confirmed = False
+
+    AddTaskDialog._confirm(dialog)
+
+    assert dialog.selected_template_ids == ["t1", "t2"]
+
+
+def test_add_task_applies_selected_templates_after_parent_creation() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = object()
+    app.expanded_parents = set()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    app.service = SimpleNamespace(
+        create_task=lambda n, no, t: calls.append(("create_task", (n, no, t))) or "parent-1",
+        apply_subtask_templates=lambda parent_id, tids: calls.append(("apply", (parent_id, tids))) or SimpleNamespace(created_subtask_ids=["c1"], skipped_duplicates=[]),
+    )
+    app.refresh_structure = lambda: calls.append(("refresh_structure", tuple()))
+    app.refresh_live_values = lambda: calls.append(("refresh_live_values", tuple()))
+
+    import task_timer.app as app_module
+
+    original = app_module.AddTaskDialog
+    original_info = app_module.messagebox.showinfo
+
+    class _Dialog:
+        def __init__(self, *_args) -> None:
+            self.confirmed = True
+            self.name = "Task"
+            self.notes = "Note"
+            self.tags = ["alpha"]
+            self.selected_template_ids = ["t1", "t2"]
+
+    infos: list[str] = []
+    app_module.AddTaskDialog = _Dialog
+    app_module.messagebox.showinfo = lambda _title, message: infos.append(message)
+    try:
+        TaskTimerApp.add_task(app)
+    finally:
+        app_module.AddTaskDialog = original
+        app_module.messagebox.showinfo = original_info
+
+    assert ("create_task", ("Task", "Note", ["alpha"])) in calls
+    assert ("apply", ("parent-1", ["t1", "t2"])) in calls
+    assert "parent-1" in app.expanded_parents
+    assert infos and infos[0].startswith("Created 1 subtasks")
+
+
+def test_add_task_without_templates_keeps_normal_flow() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = object()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    app.service = SimpleNamespace(
+        create_task=lambda n, no, t: calls.append(("create_task", (n, no, t))) or "parent-1",
+        apply_subtask_templates=lambda *_args: calls.append(("apply", tuple())),
+    )
+    app.refresh_structure = lambda: None
+    app.refresh_live_values = lambda: None
+
+    import task_timer.app as app_module
+
+    original = app_module.AddTaskDialog
+
+    class _Dialog:
+        def __init__(self, *_args) -> None:
+            self.confirmed = True
+            self.name = "Task"
+            self.notes = "Note"
+            self.tags = []
+            self.selected_template_ids = []
+
+    app_module.AddTaskDialog = _Dialog
+    try:
+        TaskTimerApp.add_task(app)
+    finally:
+        app_module.AddTaskDialog = original
+
+    assert ("create_task", ("Task", "Note", [])) in calls
+    assert not any(name == "apply" for name, _args in calls)
+
 def test_add_task_passes_tags_to_service() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     app.root = object()
@@ -1258,6 +1346,93 @@ def test_edit_task_dialog_add_subtask_passes_parent_and_tags() -> None:
     assert dialog.changed is True
     assert dialog.added_subtask is True
 
+
+
+
+def test_edit_task_dialog_apply_subtask_templates_refreshes_and_summarizes() -> None:
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.task_id = "parent-1"
+    dialog.window = object()
+    dialog.changed = False
+    dialog.added_subtask = False
+    refreshed: list[str] = []
+    dialog._refresh_subtasks = lambda: refreshed.append("refresh")
+    dialog.service = SimpleNamespace(apply_subtask_templates=lambda *_args: SimpleNamespace(created_subtask_ids=["a", "b"], skipped_duplicates=["dup"]))
+
+    import task_timer.dialogs as dialogs_module
+
+    original_dialog = dialogs_module.ApplySubtaskTemplatesDialog
+    original_info = dialogs_module.messagebox.showinfo
+
+    class _ApplyDialog:
+        def __init__(self, *_args) -> None:
+            self.confirmed = True
+            self.selected_template_ids = ["t1"]
+
+    infos: list[str] = []
+    dialogs_module.ApplySubtaskTemplatesDialog = _ApplyDialog
+    dialogs_module.messagebox.showinfo = lambda _title, msg, **_kwargs: infos.append(msg)
+    try:
+        EditTaskDialog._apply_subtask_templates(dialog)
+    finally:
+        dialogs_module.ApplySubtaskTemplatesDialog = original_dialog
+        dialogs_module.messagebox.showinfo = original_info
+
+    assert dialog.changed is True
+    assert dialog.added_subtask is True
+    assert refreshed == ["refresh"]
+    assert infos and "Skipped 1 duplicates" in infos[0]
+
+
+def test_edit_task_dialog_apply_subtask_templates_all_duplicates_message() -> None:
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.task_id = "parent-1"
+    dialog.window = object()
+    dialog.changed = False
+    dialog.added_subtask = False
+    dialog._refresh_subtasks = lambda: None
+    dialog.service = SimpleNamespace(apply_subtask_templates=lambda *_args: SimpleNamespace(created_subtask_ids=[], skipped_duplicates=["dup"]))
+
+    import task_timer.dialogs as dialogs_module
+
+    original_dialog = dialogs_module.ApplySubtaskTemplatesDialog
+    original_info = dialogs_module.messagebox.showinfo
+
+    class _ApplyDialog:
+        def __init__(self, *_args) -> None:
+            self.confirmed = True
+            self.selected_template_ids = ["t1"]
+
+    infos: list[str] = []
+    dialogs_module.ApplySubtaskTemplatesDialog = _ApplyDialog
+    dialogs_module.messagebox.showinfo = lambda _title, msg, **_kwargs: infos.append(msg)
+    try:
+        EditTaskDialog._apply_subtask_templates(dialog)
+    finally:
+        dialogs_module.ApplySubtaskTemplatesDialog = original_dialog
+        dialogs_module.messagebox.showinfo = original_info
+
+    assert infos and infos[0].startswith("No subtasks were created")
+
+
+def test_apply_subtask_templates_dialog_requires_selection() -> None:
+    dialog = ApplySubtaskTemplatesDialog.__new__(ApplySubtaskTemplatesDialog)
+    dialog.template_selector = SimpleNamespace(get_selected_template_ids=lambda: [])
+    dialog.window = object()
+    dialog.confirmed = False
+
+    import task_timer.dialogs as dialogs_module
+
+    original_error = dialogs_module.messagebox.showerror
+    errors: list[str] = []
+    dialogs_module.messagebox.showerror = lambda _title, msg, **_kwargs: errors.append(msg)
+    try:
+        ApplySubtaskTemplatesDialog._confirm(dialog)
+    finally:
+        dialogs_module.messagebox.showerror = original_error
+
+    assert dialog.confirmed is False
+    assert errors
 
 def test_rename_task_preserves_uuid_history_and_tags(tmp_path) -> None:
     service = TaskTimerService(EventStorage(tmp_path))

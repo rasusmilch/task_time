@@ -380,6 +380,7 @@ class AddTaskDialog:
         self.name = ""
         self.notes = ""
         self.tags: list[str] = []
+        self.selected_template_ids: list[str] = []
         self.window = Toplevel(parent)
         self.window.title("Add Task")
         self.window.transient(parent)
@@ -401,8 +402,11 @@ class AddTaskDialog:
         self.tag_selector = TagSelectionFrame(self.window, service, initial_tags=[])
         self.tag_selector.grid(row=2, column=0, columnspan=2, padx=6, pady=4, sticky="nsew")
 
+        self.template_selector = SubtaskTemplateSelectionFrame(self.window, service)
+        self.template_selector.grid(row=3, column=0, columnspan=2, padx=6, pady=4, sticky="nsew")
+
         button_row = ttk.Frame(self.window)
-        button_row.grid(row=3, column=0, columnspan=2, padx=6, pady=6, sticky="e")
+        button_row.grid(row=4, column=0, columnspan=2, padx=6, pady=6, sticky="e")
         ttk.Button(button_row, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(button_row, text="Create", command=self._confirm).pack(side="right")
 
@@ -422,8 +426,48 @@ class AddTaskDialog:
         self.name = name
         self.notes = notes
         self.tags = self.tag_selector.get_selected_tags()
+        selector = getattr(self, "template_selector", None)
+        self.selected_template_ids = selector.get_selected_template_ids() if selector else []
         self.confirmed = True
         self.window.destroy()
+
+
+class SubtaskTemplateSelectionFrame(ttk.LabelFrame):
+    def __init__(self, parent: tk.Misc, service: "TaskTimerService") -> None:
+        super().__init__(parent, text="Subtask Templates")
+        self.templates = service.list_subtask_templates()
+        self._template_vars: dict[str, BooleanVar] = {}
+        self.grid_columnconfigure(0, weight=1)
+
+        list_frame = ttk.Frame(self)
+        list_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=4, pady=(4, 2))
+        for template in self.templates:
+            var = BooleanVar(value=False)
+            self._template_vars[template.template_id] = var
+            ttk.Checkbutton(list_frame, text=template.name, variable=var, command=self._refresh_selected_label).pack(anchor="w")
+
+        ttk.Button(self, text="Select All", command=self.select_all).grid(row=1, column=0, sticky="w", padx=4, pady=2)
+        ttk.Button(self, text="Clear All", command=self.clear_all).grid(row=1, column=1, sticky="w", padx=4, pady=2)
+        self.selected_label = ttk.Label(self, text="Selected: none")
+        self.selected_label.grid(row=2, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 4))
+
+    def get_selected_template_ids(self) -> list[str]:
+        return [template_id for template_id, var in self._template_vars.items() if var.get()]
+
+    def select_all(self) -> None:
+        for var in self._template_vars.values():
+            var.set(True)
+        self._refresh_selected_label()
+
+    def clear_all(self) -> None:
+        for var in self._template_vars.values():
+            var.set(False)
+        self._refresh_selected_label()
+
+    def _refresh_selected_label(self) -> None:
+        names = [template.name for template in self.templates if self._template_vars[template.template_id].get()]
+        summary = ", ".join(names) if names else "none"
+        self.selected_label.configure(text=f"Selected: {summary}")
 
 
 class BackupSettingsDialog:
@@ -881,6 +925,7 @@ class EditTaskDialog:
             ttk.Button(subtask_buttons, text="Add Subtask", command=self._add_subtask).pack(side="left", padx=(0, 4))
             ttk.Button(subtask_buttons, text="Edit Selected Subtask", command=self._edit_selected_subtask).pack(side="left", padx=4)
             ttk.Button(subtask_buttons, text="Delete Selected Subtask", command=self._delete_selected_subtask).pack(side="left", padx=4)
+            ttk.Button(subtask_buttons, text="Apply Subtask Template...", command=self._apply_subtask_templates).pack(side="left", padx=4)
             self.subtask_tree.bind("<Double-1>", lambda _event: self._edit_selected_subtask())
             self._refresh_subtasks()
             row += 1
@@ -930,6 +975,22 @@ class EditTaskDialog:
             self.changed = True
             self._refresh_subtasks()
 
+    def _apply_subtask_templates(self) -> None:
+        dialog = ApplySubtaskTemplatesDialog(self.window, self.service)
+        if not dialog.confirmed or not dialog.selected_template_ids:
+            return
+        result = self.service.apply_subtask_templates(self.task_id, dialog.selected_template_ids)
+        self.changed = True
+        self.added_subtask = bool(result.created_subtask_ids)
+        self._refresh_subtasks()
+        if result.created_subtask_ids:
+            message = f"Created {len(result.created_subtask_ids)} subtasks."
+            if result.skipped_duplicates:
+                message += f" Skipped {len(result.skipped_duplicates)} duplicates."
+            messagebox.showinfo("Apply Subtask Templates", message, parent=self.window)
+        else:
+            messagebox.showinfo("Apply Subtask Templates", "No subtasks were created. All template items already exist under this task.", parent=self.window)
+
     def _delete_selected_subtask(self) -> None:
         try:
             subtask_id = self._selected_subtask_id()
@@ -954,6 +1015,33 @@ class EditTaskDialog:
         self.changed = True
         self.window.destroy()
 
+
+
+class ApplySubtaskTemplatesDialog:
+    def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
+        self.confirmed = False
+        self.window = Toplevel(parent)
+        self.window.title("Apply Subtask Templates")
+        self.window.transient(parent)
+        self.window.grab_set()
+        self.template_selector = SubtaskTemplateSelectionFrame(self.window, service)
+        self.template_selector.grid(row=0, column=0, padx=8, pady=8, sticky="nsew")
+        actions = ttk.Frame(self.window)
+        actions.grid(row=1, column=0, sticky="e", padx=8, pady=(0, 8))
+        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
+        ttk.Button(actions, text="Apply", command=self._confirm).pack(side="right")
+        parent.wait_window(self.window)
+
+    @property
+    def selected_template_ids(self) -> list[str]:
+        return self.template_selector.get_selected_template_ids()
+
+    def _confirm(self) -> None:
+        if not self.selected_template_ids:
+            messagebox.showerror("Apply Subtask Templates", "Select at least one template", parent=self.window)
+            return
+        self.confirmed = True
+        self.window.destroy()
 
 
 class SubtaskTemplateItemDialog:
