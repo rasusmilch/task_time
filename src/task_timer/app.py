@@ -1805,7 +1805,7 @@ class TaskTimerApp:
         row["name_cell"] = tk.Frame(container, width=widths["name"], bg=container.cget("bg"))
         row["name_cell"].grid_propagate(False)
         row["name_label"] = tk.Label(row["name_cell"], text=self._display_task_name(task.name), anchor="w", bg=container.cget("bg"))
-        row["name_label"].pack(fill="x")
+        row["name_label"].pack(fill="x", padx=2)
         row["notes_cell"] = tk.Frame(container, width=widths["notes"], bg=container.cget("bg"))
         row["notes_cell"].grid_propagate(False)
         row["notes_label"] = tk.Label(row["notes_cell"], text=self._display_task_notes(task.notes), anchor="w", bg=container.cget("bg"))
@@ -1859,7 +1859,6 @@ class TaskTimerApp:
         displayed_name = f"└─ {task.name}" if is_subtask else task.name
         row["name_label"].configure(
             text=self._display_task_name(displayed_name),
-            padding=(0, 0, 0, 0),
             font=self.parent_name_font if is_parent and self.parent_name_font is not None else "",
             bg=row_color,
         )

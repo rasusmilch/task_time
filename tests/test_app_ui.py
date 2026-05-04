@@ -238,7 +238,7 @@ def test_refresh_row_parent_and_subtask_hierarchy_styles() -> None:
     assert app.rows[parent_id]["expander_btn"].config["text"] == "+"
     assert app.rows[child_id]["container"].config["bg"] == ROW_SUBTASK_STOPPED_COLOR
     assert app.rows[child_id]["name_label"].config["text"].startswith("└─")
-    assert app.rows[child_id]["name_label"].config["padding"] == (0, 0, 0, 0)
+    assert "padding" not in app.rows[child_id]["name_label"].config
 
 
 def test_column_specs_keep_dedicated_expander_column() -> None:
