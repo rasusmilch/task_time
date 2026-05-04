@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
-from task_timer.app import STOPPED_COLOR, TaskTimerApp, TaskTimerService
+from task_timer.app import ROW_PARENT_STOPPED_COLOR, ROW_SUBTASK_STOPPED_COLOR, STOPPED_COLOR, TaskTimerApp, TaskTimerService
 from task_timer.dialogs import AddTaskDialog, BackupSettingsDialog, EditTaskDialog
 from task_timer.mini_mode import MiniModeWindow, RUNNING_COLOR, STOPPED_COLOR as MINI_STOPPED_COLOR
 from task_timer.settings import BackupSettings, UISettings
@@ -98,7 +98,10 @@ def test_row_refresh_sets_toggle_text_and_color() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     task_id = "task-1"
     task = SimpleNamespace(is_running=False, name="Name", notes="Notes")
-    app.service = SimpleNamespace(state=SimpleNamespace(tasks={task_id: task}))
+    app.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={task_id: task}),
+        child_tasks=lambda *_args, **_kwargs: [],
+    )
 
     class _Widget:
         def __init__(self) -> None:
@@ -145,7 +148,10 @@ def test_refresh_row_uses_clipped_display_text_without_mutating_task() -> None:
     long_name = "Task Name That Is Definitely Too Long For The Table"
     long_notes = "Reports, documentation, rework, questions"
     task = SimpleNamespace(is_running=False, name=long_name, notes=long_notes)
-    app.service = SimpleNamespace(state=SimpleNamespace(tasks={task_id: task}))
+    app.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={task_id: task}),
+        child_tasks=lambda *_args, **_kwargs: [],
+    )
 
     class _Widget:
         def __init__(self) -> None:
@@ -173,6 +179,66 @@ def test_refresh_row_uses_clipped_display_text_without_mutating_task() -> None:
     assert str(app.rows[task_id]["notes_label"].config["text"]).endswith("…")
     assert task.name == long_name
     assert task.notes == long_notes
+
+
+def test_refresh_row_parent_and_subtask_hierarchy_styles() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    parent_id = "parent"
+    child_id = "child"
+    parent = SimpleNamespace(is_running=False, name="Parent", notes="P")
+    child = SimpleNamespace(is_running=False, name="Reports", notes="C")
+    app.parent_name_font = "parent-bold-font"
+    app.expanded_parents = set()
+
+    class _Widget:
+        def __init__(self) -> None:
+            self.config: dict[str, object] = {}
+
+        def configure(self, **kwargs: object) -> None:
+            self.config.update(kwargs)
+
+    app.rows = {
+        parent_id: {
+            "state_label": _Widget(),
+            "elapsed_label": _Widget(),
+            "toggle_btn": _Widget(),
+            "container": _Widget(),
+            "name_label": _Widget(),
+            "notes_label": _Widget(),
+            "expander_btn": _Widget(),
+        },
+        child_id: {
+            "state_label": _Widget(),
+            "elapsed_label": _Widget(),
+            "toggle_btn": _Widget(),
+            "container": _Widget(),
+            "name_label": _Widget(),
+            "notes_label": _Widget(),
+            "expander_btn": _Widget(),
+        },
+    }
+    app.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={parent_id: parent, child_id: child}),
+        child_tasks=lambda task_id, **_kwargs: [child] if task_id == parent_id else [],
+    )
+
+    TaskTimerApp.refresh_row(app, parent_id, is_subtask=False)
+    TaskTimerApp.refresh_row(app, child_id, is_subtask=True)
+
+    assert app.rows[parent_id]["name_label"].config["font"] == "parent-bold-font"
+    assert app.rows[parent_id]["container"].config["bg"] == ROW_PARENT_STOPPED_COLOR
+    assert app.rows[parent_id]["expander_btn"].config["text"] == "+"
+    assert app.rows[child_id]["container"].config["bg"] == ROW_SUBTASK_STOPPED_COLOR
+    assert app.rows[child_id]["name_label"].config["text"].startswith("└─")
+    assert app.rows[child_id]["name_label"].config["padding"] == (18, 0, 0, 0)
+
+
+def test_column_specs_keep_dedicated_expander_column() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    specs = TaskTimerApp._column_specs(app)
+    assert specs[0]["key"] == "expander"
+    assert specs[0]["header"] == ""
+    assert specs[0]["minsize"] >= 24
 
 
 def test_open_mini_mode_minimizes_main_window_when_keep_unchecked() -> None:
