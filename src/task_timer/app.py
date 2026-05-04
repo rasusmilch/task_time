@@ -1841,7 +1841,7 @@ class TaskTimerApp:
         displayed_name = f"└─ {task.name}" if is_subtask else task.name
         row["name_label"].configure(
             text=self._display_task_name(displayed_name),
-            padding=(18, 0, 0, 0) if is_subtask else (0, 0, 0, 0),
+            padding=(0, 0, 0, 0),
             font=self.parent_name_font if is_parent and self.parent_name_font is not None else "",
         )
         row["notes_label"].configure(text=self._display_task_notes(task.notes))
