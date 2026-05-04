@@ -1622,6 +1622,15 @@ class TaskTimerApp:
         except (tk.TclError, RuntimeError):
             self.parent_name_font = None
 
+    def _column_minsize(self, key: str) -> int:
+        for spec in self._column_specs():
+            if spec["key"] == key:
+                return int(spec["minsize"])
+        raise KeyError(f"Unknown table column key: {key}")
+
+    def _table_column_widths(self) -> dict[str, int]:
+        return {spec["key"]: int(spec["minsize"]) for spec in self._column_specs()}
+
     def _configure_table_columns(self, frame: tk.Misc) -> None:
         for idx, spec in enumerate(self._column_specs()):
             frame.grid_columnconfigure(idx, minsize=spec["minsize"])
@@ -1787,13 +1796,20 @@ class TaskTimerApp:
         
         container = tk.Frame(self.rows_frame, bd=1, relief="solid", padx=2, pady=2)
         self._configure_table_columns(container)
+        widths = self._table_column_widths()
         row: dict[str, Any] = {
             
             "container": container,
         }
         row["expander_btn"] = ttk.Button(container, text="", width=2, command=lambda t=task_id: self._toggle_parent_expansion(t))
-        row["name_label"] = ttk.Label(container, text=self._display_task_name(task.name), width=26, anchor="w")
-        row["notes_label"] = ttk.Label(container, text=self._display_task_notes(task.notes), width=36, anchor="w")
+        row["name_cell"] = tk.Frame(container, width=widths["name"], bg=container.cget("bg"))
+        row["name_cell"].grid_propagate(False)
+        row["name_label"] = tk.Label(row["name_cell"], text=self._display_task_name(task.name), anchor="w", bg=container.cget("bg"))
+        row["name_label"].pack(fill="x")
+        row["notes_cell"] = tk.Frame(container, width=widths["notes"], bg=container.cget("bg"))
+        row["notes_cell"].grid_propagate(False)
+        row["notes_label"] = tk.Label(row["notes_cell"], text=self._display_task_notes(task.notes), anchor="w", bg=container.cget("bg"))
+        row["notes_label"].pack(fill="x")
         row["state_label"] = tk.Label(container, text="", width=9)
         row["toggle_btn"] = ttk.Button(container, text="Start", command=lambda t=task_id: self._toggle_task(t))
         row["reset_btn"] = ttk.Button(container, text="Reset", command=lambda t=task_id: self._reset_task(t))
@@ -1802,8 +1818,8 @@ class TaskTimerApp:
         row["elapsed_label"] = tk.Label(container, text="00:00", width=7)
 
         row["expander_btn"].grid(row=0, column=0, padx=(2, 0), pady=2, sticky="ew")
-        row["name_label"].grid(row=0, column=1, padx=(4, 4), pady=2, sticky="w")
-        row["notes_label"].grid(row=0, column=2, padx=4, pady=2, sticky="w")
+        row["name_cell"].grid(row=0, column=1, padx=(4, 4), pady=2, sticky="w")
+        row["notes_cell"].grid(row=0, column=2, padx=4, pady=2, sticky="w")
         row["state_label"].grid(row=0, column=3, padx=4, pady=2, sticky="ew")
         row["toggle_btn"].grid(row=0, column=4, padx=2, pady=2, sticky="ew")
         row["reset_btn"].grid(row=0, column=5, padx=2, pady=2, sticky="ew")
@@ -1838,13 +1854,16 @@ class TaskTimerApp:
         else:
             row_color = ROW_RUNNING_COLOR if is_running else ROW_STOPPED_COLOR
         row["container"].configure(bg=row_color)
+        row["name_cell"].configure(bg=row_color)
+        row["notes_cell"].configure(bg=row_color)
         displayed_name = f"└─ {task.name}" if is_subtask else task.name
         row["name_label"].configure(
             text=self._display_task_name(displayed_name),
             padding=(0, 0, 0, 0),
             font=self.parent_name_font if is_parent and self.parent_name_font is not None else "",
+            bg=row_color,
         )
-        row["notes_label"].configure(text=self._display_task_notes(task.notes))
+        row["notes_label"].configure(text=self._display_task_notes(task.notes), bg=row_color)
         if is_subtask or not children:
             row["expander_btn"].configure(text="", state="disabled")
         else:
