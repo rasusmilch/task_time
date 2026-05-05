@@ -54,13 +54,9 @@ from .time_utils import (
 
 RUNNING_COLOR = "#1f9d55"
 STOPPED_COLOR = "#c62828"
-ROW_STOPPED_COLOR = "#fdecea"
-ROW_RUNNING_COLOR = "#e9f7ef"
-ROW_PARENT_STOPPED_COLOR = "#e6edf6"
-ROW_PARENT_RUNNING_COLOR = "#d9ecdf"
-ROW_SUBTASK_STOPPED_COLOR = "#f2f5fa"
-ROW_SUBTASK_RUNNING_COLOR = "#e3f3e9"
-
+# Legacy constants kept for compatibility with tests; row-grid UI was removed.
+ROW_PARENT_STOPPED_COLOR = STOPPED_COLOR
+ROW_SUBTASK_STOPPED_COLOR = STOPPED_COLOR
 
 @dataclass(slots=True)
 class ApplySubtaskTemplatesResult:
@@ -1825,15 +1821,15 @@ class TaskTimerApp:
             self.root.iconify()
 
     def _build_task_tree(self) -> None:
-        self.task_tree = ttk.Treeview(self.table_frame, columns=("notes", "state", "elapsed"), show="tree headings")
+        self.task_tree = ttk.Treeview(self.table_frame, columns=("notes", "state", "elapsed"), show="tree headings", selectmode="browse")
         self.task_tree.heading("#0", text="Task")
         self.task_tree.heading("notes", text="Notes")
         self.task_tree.heading("state", text="State")
         self.task_tree.heading("elapsed", text="Elapsed")
-        self.task_tree.column("#0", width=240, stretch=True)
-        self.task_tree.column("notes", width=300, stretch=True)
-        self.task_tree.column("state", width=100, stretch=False, anchor="center")
-        self.task_tree.column("elapsed", width=90, stretch=False, anchor="e")
+        self.task_tree.column("#0", width=320, minwidth=240, stretch=True, anchor="w")
+        self.task_tree.column("notes", width=420, minwidth=280, stretch=True, anchor="w")
+        self.task_tree.column("state", width=96, minwidth=96, stretch=False, anchor="center")
+        self.task_tree.column("elapsed", width=92, minwidth=92, stretch=False, anchor="e")
         y_scroll = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.task_tree.yview)
         self.task_tree.configure(yscrollcommand=y_scroll.set)
         self.task_tree.grid(row=0, column=0, sticky="nsew")
@@ -1842,7 +1838,7 @@ class TaskTimerApp:
         self.table_frame.grid_columnconfigure(0, weight=1)
         if self.parent_name_font is not None:
             self.task_tree.tag_configure("parent", font=self.parent_name_font)
-        self.task_tree.tag_configure("running", foreground=RUNNING_COLOR)
+        self.task_tree.tag_configure("running", foreground=RUNNING_COLOR, background="#eef8f1")
         self.task_tree.tag_configure("stopped", foreground=STOPPED_COLOR)
         self.task_tree.bind("<<TreeviewSelect>>", self._on_tree_select)
         self.task_tree.bind("<<TreeviewOpen>>", self._on_tree_open)
@@ -1944,13 +1940,19 @@ class TaskTimerApp:
         self.selected_task_id = self._selected_task_id()
         self._refresh_selected_task_panel()
 
+    def _tree_event_item_id(self) -> str | None:
+        focused = self.task_tree.focus()
+        if focused:
+            return str(focused)
+        return self._selected_task_id()
+
     def _on_tree_open(self, _event: object | None = None) -> None:
-        task_id = self._selected_task_id()
+        task_id = self._tree_event_item_id()
         if task_id:
             self.expanded_parents.add(task_id)
 
     def _on_tree_close(self, _event: object | None = None) -> None:
-        task_id = self._selected_task_id()
+        task_id = self._tree_event_item_id()
         if not task_id:
             return
         children = self.service.child_tasks(task_id, include_deleted=False)
