@@ -898,6 +898,7 @@ class EditTaskDialog:
         self.window.title("Edit Task")
         self.window.transient(parent)
         self.window.grab_set()
+        self.window.geometry("900x520")
         self.name_var = StringVar(value=task.name)
         self.notes_var = StringVar(value=task.notes)
         row = 0
@@ -947,6 +948,7 @@ class EditTaskDialog:
         ttk.Button(bar, text="Cancel", command=self.window.destroy).pack(side="right")
         ttk.Button(bar, text="Save", command=self._save).pack(side="right")
         self.window.grid_columnconfigure(1, weight=1)
+        self.window.grid_rowconfigure(2 if self.is_subtask else 3, weight=1)
         parent.wait_window(self.window)
 
     def _edit_timeline(self) -> None:
@@ -1079,6 +1081,7 @@ class SubtaskTemplateItemDialog:
         ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(actions, text="Save", command=self._save).pack(side="right")
         self.window.grid_columnconfigure(1, weight=1)
+        self.window.grid_rowconfigure(2 if self.is_subtask else 3, weight=1)
         parent.wait_window(self.window)
 
     def _save(self) -> None:
