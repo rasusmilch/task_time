@@ -216,3 +216,14 @@ def test_manage_tags_dialog_blocks_archive_delete_when_in_use(monkeypatch) -> No
     dlg._archive_tag()
     dlg._delete_tag()
     assert any("in use" in e for e in errors)
+
+
+def test_tag_selection_frame_grid_columns_are_distinct() -> None:
+    import inspect
+    import task_timer.tag_dialogs as tag_dialogs_module
+
+    source = inspect.getsource(tag_dialogs_module.TagSelectionFrame.__init__)
+    assert 'avail_scroll.grid(row=1, column=1' in source
+    assert 'center.grid(row=1, column=2' in source
+    assert 'self.selected_list.grid(row=1, column=3' in source
+    assert 'sel_scroll.grid(row=1, column=4' in source

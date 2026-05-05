@@ -14,6 +14,8 @@ class _FakeRoot:
         self.after_calls: list[int] = []
         self.after_idle_callbacks: list[object] = []
         self.iconified = False
+        self.resizable_calls: list[tuple[bool, bool]] = []
+        self.minsize_calls: list[tuple[int, int]] = []
 
     def after(self, delay_ms: int, callback: object) -> str:
         self.after_calls.append(delay_ms)
@@ -25,6 +27,12 @@ class _FakeRoot:
 
     def iconify(self) -> None:
         self.iconified = True
+
+    def resizable(self, width: bool, height: bool) -> None:
+        self.resizable_calls.append((width, height))
+
+    def minsize(self, width: int, height: int) -> None:
+        self.minsize_calls.append((width, height))
 
 
 def test_tick_refreshes_live_values_only() -> None:
@@ -1728,7 +1736,6 @@ def test_init_schedules_startup_mini_mode_activation_when_setting_persisted() ->
     root.title = lambda *_args, **_kwargs: None
     root.protocol = lambda *_args, **_kwargs: None
 
-    original_disable = app_module.disable_snap_maximize
     original_zoom = app_module.install_zoom_guard
     original_stringvar = app_module.StringVar
     original_boolvar = app_module.tk.BooleanVar
@@ -1740,7 +1747,6 @@ def test_init_schedules_startup_mini_mode_activation_when_setting_persisted() ->
     original_tick = app_module.TaskTimerApp._tick
     original_store = app_module.UISettingsStore
     try:
-        app_module.disable_snap_maximize = lambda _root: None
         app_module.install_zoom_guard = lambda _root: None
         app_module.StringVar = lambda: SimpleNamespace()
         app_module.tk.BooleanVar = lambda value=False: SimpleNamespace(get=lambda: value)
@@ -1755,7 +1761,6 @@ def test_init_schedules_startup_mini_mode_activation_when_setting_persisted() ->
         service = SimpleNamespace(storage=SimpleNamespace(data_dir="."), state=SimpleNamespace(tasks={}))
         app = TaskTimerApp(root, service)
     finally:
-        app_module.disable_snap_maximize = original_disable
         app_module.install_zoom_guard = original_zoom
         app_module.StringVar = original_stringvar
         app_module.tk.BooleanVar = original_boolvar
@@ -1767,6 +1772,8 @@ def test_init_schedules_startup_mini_mode_activation_when_setting_persisted() ->
         app_module.TaskTimerApp._tick = original_tick
         app_module.UISettingsStore = original_store
 
+    assert root.resizable_calls == [(True, True)]
+    assert root.minsize_calls == [(800, 500)]
     assert len(root.after_idle_callbacks) == 1
     assert root.after_idle_callbacks[0] == app._open_mini_mode_if_persistent_enabled
 
@@ -1990,3 +1997,57 @@ def test_shortcuts_and_selected_actions_use_selected_task(tmp_path) -> None:
         ("delete", task_id),
         ("edit", task_id),
     ]
+
+
+def test_task_tree_column_defaults_are_compact() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+
+    class _FakeTree:
+        def __init__(self, *_args, **_kwargs):
+            self.columns = {}
+        def heading(self, *_args, **_kwargs):
+            return None
+        def column(self, key, **kwargs):
+            self.columns[key] = kwargs
+        def configure(self, **_kwargs):
+            return None
+        def grid(self, **_kwargs):
+            return None
+        def tag_configure(self, *_args, **_kwargs):
+            return None
+        def bind(self, *_args, **_kwargs):
+            return None
+        def yview(self, *_args, **_kwargs):
+            return None
+
+    class _FakeScrollbar:
+        def __init__(self, *_args, **_kwargs):
+            pass
+        def grid(self, **_kwargs):
+            return None
+        def set(self, *_args, **_kwargs):
+            return None
+
+    class _FakeFrame:
+        def grid_rowconfigure(self, *_args, **_kwargs):
+            return None
+        def grid_columnconfigure(self, *_args, **_kwargs):
+            return None
+
+    import task_timer.app as app_module
+    old_tree = app_module.ttk.Treeview
+    old_scroll = app_module.ttk.Scrollbar
+    try:
+        app_module.ttk.Treeview = _FakeTree
+        app_module.ttk.Scrollbar = _FakeScrollbar
+        app.table_frame = _FakeFrame()
+        app.parent_name_font = None
+        TaskTimerApp._build_task_tree(app)
+    finally:
+        app_module.ttk.Treeview = old_tree
+        app_module.ttk.Scrollbar = old_scroll
+
+    assert app.task_tree.columns["#0"]["width"] <= 250
+    assert app.task_tree.columns["notes"]["width"] <= 300
+    assert app.task_tree.columns["state"]["stretch"] is False
+    assert app.task_tree.columns["elapsed"]["stretch"] is False

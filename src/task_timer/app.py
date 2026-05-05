@@ -35,7 +35,7 @@ from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
 from .storage import EventStorage
 from .subtask_templates import SubtaskTemplate, SubtaskTemplateItem, SubtaskTemplateStore
-from .window_chrome import disable_snap_maximize, install_zoom_guard
+from .window_chrome import install_zoom_guard
 from .tags import normalize_tag, normalize_tag_list
 from .time_utils import (
     detect_local_timezone,
@@ -1606,7 +1606,8 @@ class TaskTimerApp:
         self.root = root
         self.service = service
         self.root.title("Chronicle")
-        disable_snap_maximize(self.root)
+        self.root.resizable(True, True)
+        self.root.minsize(800, 500)
         install_zoom_guard(self.root)
         self.expanded_parents: set[str] = set()
         self.selected_task_id: str | None = None
@@ -1826,10 +1827,10 @@ class TaskTimerApp:
         self.task_tree.heading("notes", text="Notes")
         self.task_tree.heading("state", text="State")
         self.task_tree.heading("elapsed", text="Elapsed")
-        self.task_tree.column("#0", width=320, minwidth=240, stretch=True, anchor="w")
-        self.task_tree.column("notes", width=420, minwidth=280, stretch=True, anchor="w")
-        self.task_tree.column("state", width=96, minwidth=96, stretch=False, anchor="center")
-        self.task_tree.column("elapsed", width=92, minwidth=92, stretch=False, anchor="e")
+        self.task_tree.column("#0", width=240, minwidth=170, stretch=False, anchor="w")
+        self.task_tree.column("notes", width=280, minwidth=200, stretch=True, anchor="w")
+        self.task_tree.column("state", width=90, minwidth=85, stretch=False, anchor="center")
+        self.task_tree.column("elapsed", width=80, minwidth=75, stretch=False, anchor="e")
         y_scroll = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.task_tree.yview)
         self.task_tree.configure(yscrollcommand=y_scroll.set)
         self.task_tree.grid(row=0, column=0, sticky="nsew")

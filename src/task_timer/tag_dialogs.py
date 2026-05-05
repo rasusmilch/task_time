@@ -21,11 +21,14 @@ class TagSelectionFrame(ttk.Frame):
         lists = ttk.Frame(self)
         lists.grid(row=0, column=0, sticky="nsew")
         lists.grid_columnconfigure(0, weight=1)
-        lists.grid_columnconfigure(2, weight=1)
+        lists.grid_columnconfigure(1, weight=0)
+        lists.grid_columnconfigure(2, weight=0)
+        lists.grid_columnconfigure(3, weight=1)
+        lists.grid_columnconfigure(4, weight=0)
         lists.grid_rowconfigure(1, weight=1)
 
-        ttk.Label(lists, text="Available tags").grid(row=0, column=0, sticky="w")
-        ttk.Label(lists, text="Task tags").grid(row=0, column=2, sticky="w")
+        ttk.Label(lists, text="Available tags").grid(row=0, column=0, columnspan=2, sticky="w")
+        ttk.Label(lists, text="Task tags").grid(row=0, column=3, columnspan=2, sticky="w")
 
         self.available_list = Listbox(lists, height=8, exportselection=False)
         self.available_list.grid(row=1, column=0, sticky="nsew")
@@ -34,14 +37,14 @@ class TagSelectionFrame(ttk.Frame):
         self.available_list.configure(yscrollcommand=avail_scroll.set)
 
         center = ttk.Frame(lists)
-        center.grid(row=1, column=1, padx=8, sticky="n")
+        center.grid(row=1, column=2, padx=8, sticky="n")
         ttk.Button(center, text="Add >", command=self._add_selected_available).pack(fill="x", pady=(4, 4))
         ttk.Button(center, text="< Remove", command=self._remove_selected_assigned).pack(fill="x")
 
         self.selected_list = Listbox(lists, height=8, exportselection=False)
-        self.selected_list.grid(row=1, column=2, sticky="nsew")
+        self.selected_list.grid(row=1, column=3, sticky="nsew")
         sel_scroll = ttk.Scrollbar(lists, orient="vertical", command=self.selected_list.yview)
-        sel_scroll.grid(row=1, column=3, sticky="ns")
+        sel_scroll.grid(row=1, column=4, sticky="ns")
         self.selected_list.configure(yscrollcommand=sel_scroll.set)
 
         self.available_list.bind("<Double-Button-1>", lambda _e: self._add_selected_available())
