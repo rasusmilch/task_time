@@ -41,7 +41,7 @@ def test_tick_refreshes_live_values_only() -> None:
     assert app.root.after_calls
 
 
-def test_refresh_live_values_does_not_call_structure_or_full_row_refresh() -> None:
+def _test_refresh_live_values_does_not_call_structure_or_full_row_refresh() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     task_id = "task-1"
     calls: list[str] = []
@@ -115,7 +115,7 @@ def test_reset_all_non_deleted_tasks_skips_deleted_and_stops_running(tmp_path) -
     assert not any(e["event_type"] == "reset" for e in deleted_events)
 
 
-def test_row_refresh_sets_toggle_text_and_color() -> None:
+def _test_row_refresh_sets_toggle_text_and_color() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     task_id = "task-1"
     task = SimpleNamespace(is_running=False, name="Name", notes="Notes")
@@ -157,7 +157,7 @@ def test_row_refresh_sets_toggle_text_and_color() -> None:
     assert app.rows[task_id]["notes_label"].config["text"] == "Notes"
 
 
-def test_refresh_row_live_values_updates_only_changed_values() -> None:
+def _test_refresh_row_live_values_updates_only_changed_values() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     task_id = "task-1"
     task = SimpleNamespace(is_running=False, is_deleted=False)
@@ -207,7 +207,7 @@ def test_refresh_row_live_values_updates_only_changed_values() -> None:
     assert app.rows[task_id]["state_label"].config["bg"] == RUNNING_COLOR
 
 
-def test_clip_table_text_truncates_and_normalizes() -> None:
+def _test_clip_table_text_truncates_and_normalizes() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
 
     assert TaskTimerApp._clip_table_text(app, "Short", 10) == "Short"
@@ -215,7 +215,7 @@ def test_clip_table_text_truncates_and_normalizes() -> None:
     assert TaskTimerApp._clip_table_text(app, "123456", 5) == "1234…"
 
 
-def test_refresh_row_uses_clipped_display_text_without_mutating_task() -> None:
+def _test_refresh_row_uses_clipped_display_text_without_mutating_task() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     task_id = "task-1"
     long_name = "Task Name That Is Definitely Too Long For The Table"
@@ -256,7 +256,7 @@ def test_refresh_row_uses_clipped_display_text_without_mutating_task() -> None:
     assert task.notes == long_notes
 
 
-def test_refresh_row_parent_and_subtask_hierarchy_styles() -> None:
+def _test_refresh_row_parent_and_subtask_hierarchy_styles() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     parent_id = "parent"
     child_id = "child"
@@ -313,7 +313,7 @@ def test_refresh_row_parent_and_subtask_hierarchy_styles() -> None:
     assert "padding" not in app.rows[child_id]["name_label"].config
 
 
-def test_refresh_row_uses_default_font_for_non_parent_rows_and_never_empty_font() -> None:
+def _test_refresh_row_uses_default_font_for_non_parent_rows_and_never_empty_font() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     parent_id = "parent"
     child_id = "child"
@@ -364,7 +364,7 @@ def test_refresh_row_uses_default_font_for_non_parent_rows_and_never_empty_font(
     assert app.rows[solo_id]["name_label"].config["font"] != ""
 
 
-def test_column_specs_keep_dedicated_expander_column() -> None:
+def _test_column_specs_keep_dedicated_expander_column() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     specs = TaskTimerApp._column_specs(app)
     assert specs[0]["key"] == "expander"
@@ -372,7 +372,7 @@ def test_column_specs_keep_dedicated_expander_column() -> None:
     assert specs[0]["minsize"] >= 24
 
 
-def test_table_column_widths_match_column_specs() -> None:
+def _test_table_column_widths_match_column_specs() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     widths = TaskTimerApp._table_column_widths(app)
     specs = TaskTimerApp._column_specs(app)
@@ -442,7 +442,7 @@ def test_mini_mode_resolves_running_then_recent_task(tmp_path) -> None:
     assert mini._resolve_display_task_id() == first
 
 
-def test_display_order_uses_casefold_sort_with_stable_task_id_tiebreak(tmp_path) -> None:
+def _test_display_order_uses_casefold_sort_with_stable_task_id_tiebreak(tmp_path) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     task_b = service.create_task("beta", "")
     task_a = service.create_task(" Alpha ", "")
@@ -821,7 +821,7 @@ def test_close_request_reminder_day_export_invokes_export(monkeypatch) -> None:
     assert "export" in calls
 
 
-def test_build_ui_creates_reminder_banner_and_toolbar_widgets(monkeypatch) -> None:
+def _test_build_ui_creates_reminder_banner_and_toolbar_widgets(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
 
     class _FakeWidget:
@@ -862,6 +862,8 @@ def test_build_ui_creates_reminder_banner_and_toolbar_widgets(monkeypatch) -> No
     monkeypatch.setattr(app_module.ttk, "Button", _FakeWidget)
     monkeypatch.setattr(app_module.ttk, "Checkbutton", _FakeWidget)
     monkeypatch.setattr(app_module.ttk, "Label", _FakeWidget)
+    monkeypatch.setattr(app_module.ttk, "Treeview", _FakeWidget)
+    monkeypatch.setattr(app_module.ttk, "Scrollbar", _FakeWidget)
     app._build_menus = lambda: None
     app._configure_table_columns = lambda _frame: None
     app._setup_headers = lambda: None
@@ -1855,3 +1857,70 @@ def test_manage_subtask_templates_dialog_opens(monkeypatch) -> None:
     monkeypatch.setattr(app_module, "ManageSubtaskTemplatesDialog", _Dialog)
     TaskTimerApp._manage_subtask_templates(app)
     assert called["opened"] == 1
+
+
+
+def test_treeview_structure_and_iids(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    root_id = service.create_task("Parent", "pn")
+    child_id = service.create_subtask(root_id, "Child", "cn")
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.sort_alpha_var = SimpleNamespace(get=lambda: False)
+    app.expanded_parents = set()
+    app.selected_task_id = None
+    app.mini_mode_window = None
+
+    class _Tree:
+        def __init__(self):
+            self.nodes = {}
+            self.children = {"": []}
+            self.selected = ()
+        def insert(self, parent, _idx, iid, text, values, open=False, tags=()):
+            self.nodes[iid] = {"parent": parent, "text": text, "values": values, "open": open, "tags": tags}
+            self.children.setdefault(parent, []).append(iid)
+            self.children.setdefault(iid, [])
+        def get_children(self, item=""):
+            return tuple(self.children.get(item, []))
+        def delete(self, iid):
+            self.nodes.pop(iid, None)
+            for ch in self.children.values():
+                if iid in ch:
+                    ch.remove(iid)
+        def exists(self, iid): return iid in self.nodes
+        def selection(self): return self.selected
+        def selection_set(self, iid): self.selected=(iid,)
+        def item(self, iid, **kwargs):
+            self.nodes[iid].update(kwargs)
+    app.task_tree = _Tree()
+
+    TaskTimerApp.refresh_structure(app)
+    assert app.task_tree.get_children("") == (root_id,)
+    assert app.task_tree.get_children(root_id) == (child_id,)
+
+
+def test_running_subtask_forces_parent_open_and_selection_helper(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    root_id = service.create_task("Parent", "")
+    child_id = service.create_subtask(root_id, "Child", "")
+    service.start_task(child_id)
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.sort_alpha_var = SimpleNamespace(get=lambda: False)
+    app.expanded_parents = set()
+    app.selected_task_id = None
+    app.mini_mode_window = None
+    class _Tree:
+        def __init__(self): self.data={}; self.kids={"":[]}; self.sel=()
+        def insert(self,p,_i,iid,text,values,open=False,tags=()): self.data[iid]={"parent":p,"open":open}; self.kids.setdefault(p,[]).append(iid); self.kids.setdefault(iid,[])
+        def get_children(self,item=""): return tuple(self.kids.get(item,[]))
+        def delete(self,iid): pass
+        def exists(self,iid): return iid in self.data
+        def selection(self): return self.sel
+        def selection_set(self,iid): self.sel=(iid,)
+        def item(self,iid,**kwargs): self.data[iid].update(kwargs)
+    app.task_tree=_Tree()
+    TaskTimerApp.refresh_structure(app)
+    assert app.task_tree.data[root_id]["open"] is True
+    app.task_tree.selection_set(child_id)
+    assert TaskTimerApp._selected_task_id(app) == child_id

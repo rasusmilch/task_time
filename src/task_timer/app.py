@@ -1612,8 +1612,8 @@ class TaskTimerApp:
         self.root.title("Chronicle")
         disable_snap_maximize(self.root)
         install_zoom_guard(self.root)
-        self.rows: dict[str, dict[str, Any]] = {}
         self.expanded_parents: set[str] = set()
+        self.selected_task_id: str | None = None
         self.daily_var = StringVar()
         self.weekly_var = StringVar()
         self.ui_settings_store = UISettingsStore(self.service.storage.data_dir)
@@ -1671,13 +1671,16 @@ class TaskTimerApp:
 
         self.table_frame = ttk.Frame(self.root)
         self.table_frame.pack(fill="both", expand=True, padx=8, pady=8)
-        self.header_frame = ttk.Frame(self.table_frame)
-        self.header_frame.pack(fill="x")
-        self.rows_frame = ttk.Frame(self.table_frame)
-        self.rows_frame.pack(fill="both", expand=True, pady=(2, 0))
-        self._configure_table_columns(self.header_frame)
-        self.rows_frame.grid_columnconfigure(0, weight=1)
-        self._setup_headers()
+        self._build_task_tree()
+
+    def _init_row_fonts(self) -> None:
+        try:
+            self.default_name_font = tkfont.nametofont("TkDefaultFont")
+            self.parent_name_font = self.default_name_font.copy()
+            self.parent_name_font.configure(weight="bold")
+        except (tk.TclError, RuntimeError):
+            self.default_name_font = None
+            self.parent_name_font = None
 
     def _build_menus(self) -> None:
         menubar = tk.Menu(self.root)
@@ -1701,53 +1704,6 @@ class TaskTimerApp:
         tools_menu.add_command(label="Month-End Reminder Settings", command=self._open_month_end_reminder_settings)
         menubar.add_cascade(label="Tools", menu=tools_menu)
         self.root.configure(menu=menubar)
-
-    def _column_specs(self) -> list[dict[str, Any]]:
-        return [
-            {"key": "expander", "header": "", "minsize": 24, "sticky": "ew"},
-            {"key": "name", "header": "Name", "minsize": 160, "sticky": "w"},
-            {"key": "notes", "header": "Notes", "minsize": 230, "sticky": "w"},
-            {"key": "state", "header": "State", "minsize": 90, "sticky": "ew"},
-            {"key": "action", "header": "Action", "minsize": 80, "sticky": "ew"},
-            {"key": "reset", "header": "Reset", "minsize": 80, "sticky": "ew"},
-            {"key": "delete", "header": "Delete", "minsize": 80, "sticky": "ew"},
-            {"key": "edit_task", "header": "Edit Task", "minsize": 100, "sticky": "ew"},
-            {"key": "elapsed", "header": "Elapsed", "minsize": 80, "sticky": "e"},
-        ]
-
-    def _clip_table_text(self, text: str, max_chars: int) -> str:
-        normalized = text.replace("\n", " ").strip()
-        if len(normalized) <= max_chars:
-            return normalized
-        return f"{normalized[: max_chars - 1]}…"
-
-    def _display_task_name(self, name: str) -> str:
-        return self._clip_table_text(name, max_chars=26)
-
-    def _display_task_notes(self, notes: str) -> str:
-        return self._clip_table_text(notes, max_chars=36)
-
-    def _init_row_fonts(self) -> None:
-        try:
-            self.default_name_font = tkfont.nametofont("TkDefaultFont")
-            self.parent_name_font = self.default_name_font.copy()
-            self.parent_name_font.configure(weight="bold")
-        except (tk.TclError, RuntimeError):
-            self.default_name_font = None
-            self.parent_name_font = None
-
-    def _column_minsize(self, key: str) -> int:
-        for spec in self._column_specs():
-            if spec["key"] == key:
-                return int(spec["minsize"])
-        raise KeyError(f"Unknown table column key: {key}")
-
-    def _table_column_widths(self) -> dict[str, int]:
-        return {spec["key"]: int(spec["minsize"]) for spec in self._column_specs()}
-
-    def _configure_table_columns(self, frame: tk.Misc) -> None:
-        for idx, spec in enumerate(self._column_specs()):
-            frame.grid_columnconfigure(idx, minsize=spec["minsize"])
 
     def add_task(self) -> None:
         dialog = AddTaskDialog(self.root, self.service)
@@ -1867,21 +1823,50 @@ class TaskTimerApp:
         if not should_keep_open:
             self.root.iconify()
 
-    def refresh_structure(self) -> None:
-        display_items = self._get_display_rows()
-        active_ids = {task.task_id for task, _ in display_items}
-        for task_id in list(self.rows):
-            if task_id not in active_ids:
-                row = self.rows.pop(task_id)
-                row["container"].destroy()
+    def _build_task_tree(self) -> None:
+        self.task_tree = ttk.Treeview(self.table_frame, columns=("notes", "state", "elapsed"), show="tree headings")
+        self.task_tree.heading("#0", text="Task")
+        self.task_tree.heading("notes", text="Notes")
+        self.task_tree.heading("state", text="State")
+        self.task_tree.heading("elapsed", text="Elapsed")
+        self.task_tree.column("#0", width=240, stretch=True)
+        self.task_tree.column("notes", width=300, stretch=True)
+        self.task_tree.column("state", width=100, stretch=False, anchor="center")
+        self.task_tree.column("elapsed", width=90, stretch=False, anchor="e")
+        y_scroll = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.task_tree.yview)
+        self.task_tree.configure(yscrollcommand=y_scroll.set)
+        self.task_tree.grid(row=0, column=0, sticky="nsew")
+        y_scroll.grid(row=0, column=1, sticky="ns")
+        self.table_frame.grid_rowconfigure(0, weight=1)
+        self.table_frame.grid_columnconfigure(0, weight=1)
+        if self.parent_name_font is not None:
+            self.task_tree.tag_configure("parent", font=self.parent_name_font)
+        self.task_tree.tag_configure("running", foreground=RUNNING_COLOR)
+        self.task_tree.tag_configure("stopped", foreground=STOPPED_COLOR)
+        self.task_tree.bind("<<TreeviewSelect>>", self._on_tree_select)
+        self.task_tree.bind("<<TreeviewOpen>>", self._on_tree_open)
+        self.task_tree.bind("<<TreeviewClose>>", self._on_tree_close)
 
-        row_index = 1
-        for task, is_subtask in display_items:
-            if task.task_id not in self.rows:
-                self.rows[task.task_id] = self._create_row(task.task_id)
-            self._grid_row(self.rows[task.task_id], row_index)
-            self.refresh_row(task.task_id, is_subtask=is_subtask)
-            row_index += 1
+    def refresh_structure(self) -> None:
+        selected = self._selected_task_id()
+        for item in self.task_tree.get_children(""):
+            self.task_tree.delete(item)
+        roots = self._sorted_tasks(self.service.root_tasks(include_deleted=False))
+        children_map = self.service.task_tree_children_map(include_deleted=False)
+        for root in roots:
+            children = self._sorted_tasks(children_map.get(root.task_id, []))
+            if any(child.is_running for child in children):
+                self.expanded_parents.add(root.task_id)
+            self.task_tree.insert("", "end", iid=root.task_id, text=root.name, values=(root.notes, "Stopped", "00:00"), open=root.task_id in self.expanded_parents, tags=self._tree_tags(root, is_subtask=False, has_children=bool(children)))
+            for child in children:
+                self.task_tree.insert(root.task_id, "end", iid=child.task_id, text=child.name, values=(child.notes, "Stopped", "00:00"), tags=self._tree_tags(child, is_subtask=True, has_children=False))
+            if any(child.is_running for child in children):
+                self.task_tree.item(root.task_id, open=True)
+        if selected and self.task_tree.exists(selected):
+            self.task_tree.selection_set(selected)
+            self.selected_task_id = selected
+        elif self.selected_task_id and not self.task_tree.exists(self.selected_task_id):
+            self.selected_task_id = None
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
             self.mini_mode_window.refresh_structure()
 
@@ -1890,23 +1875,14 @@ class TaskTimerApp:
             return tasks
         return sorted(tasks, key=lambda task: (task.name.strip().casefold(), task.task_id))
 
-    def _get_display_rows(self) -> list[tuple[TaskState, bool]]:
-        if not hasattr(self, "expanded_parents"):
-            self.expanded_parents = set()
-        rows: list[tuple[TaskState, bool]] = []
-        roots = self._sorted_tasks(self.service.root_tasks(include_deleted=False))
-        for root in roots:
-            children = self._sorted_tasks(self.service.child_tasks(root.task_id, include_deleted=False))
-            if any(child.is_running for child in children):
-                self.expanded_parents.add(root.task_id)
-            rows.append((root, False))
-            if root.task_id in self.expanded_parents:
-                for child in children:
-                    rows.append((child, True))
-        return rows
+    def _tree_tags(self, task: TaskState, *, is_subtask: bool, has_children: bool) -> tuple[str, ...]:
+        tags = ["subtask" if is_subtask else "parent" if has_children else "task"]
+        tags.append("running" if task.is_running else "stopped")
+        return tuple(tags)
 
-    def _get_active_tasks_in_display_order(self) -> list[TaskState]:
-        return [task for task, _ in self._get_display_rows()]
+    def _selected_task_id(self) -> str | None:
+        sel = self.task_tree.selection()
+        return sel[0] if sel else self.selected_task_id
 
     def _on_sort_toggle(self) -> None:
         self.ui_settings.sort_alphabetically = self.sort_alpha_var.get()
@@ -1914,153 +1890,52 @@ class TaskTimerApp:
         self.refresh_structure()
         self.refresh_live_values()
 
-    def _create_row(self, task_id: str) -> dict[str, Any]:
-        task = self.service.state.tasks[task_id]
-        
-        container = tk.Frame(self.rows_frame, bd=1, relief="solid", padx=2, pady=2)
-        self._configure_table_columns(container)
-        widths = self._table_column_widths()
-        row: dict[str, Any] = {
-            
-            "container": container,
-        }
-        row["expander_btn"] = ttk.Button(container, text="", width=2, command=lambda t=task_id: self._toggle_parent_expansion(t))
-        row["name_cell"] = tk.Frame(container, width=widths["name"], bg=container.cget("bg"))
-        row["name_cell"].grid_propagate(False)
-        row["name_label"] = tk.Label(row["name_cell"], text=self._display_task_name(task.name), anchor="w", bg=container.cget("bg"))
-        row["name_label"].pack(fill="x", padx=2)
-        row["notes_cell"] = tk.Frame(container, width=widths["notes"], bg=container.cget("bg"))
-        row["notes_cell"].grid_propagate(False)
-        row["notes_label"] = tk.Label(row["notes_cell"], text=self._display_task_notes(task.notes), anchor="w", bg=container.cget("bg"))
-        row["notes_label"].pack(fill="x")
-        row["state_label"] = tk.Label(container, text="", width=9)
-        row["toggle_btn"] = ttk.Button(container, text="Start", command=lambda t=task_id: self._toggle_task(t))
-        row["reset_btn"] = ttk.Button(container, text="Reset", command=lambda t=task_id: self._reset_task(t))
-        row["delete_btn"] = ttk.Button(container, text="Delete", command=lambda t=task_id: self._delete_task(t))
-        row["edit_btn"] = ttk.Button(container, text="Edit Task", command=lambda t=task_id: self._edit_task(t))
-        row["elapsed_label"] = tk.Label(container, text="00:00", width=7)
-
-        row["expander_btn"].grid(row=0, column=0, padx=(2, 0), pady=2, sticky="ew")
-        row["name_cell"].grid(row=0, column=1, padx=(4, 4), pady=2, sticky="w")
-        row["notes_cell"].grid(row=0, column=2, padx=4, pady=2, sticky="w")
-        row["state_label"].grid(row=0, column=3, padx=4, pady=2, sticky="ew")
-        row["toggle_btn"].grid(row=0, column=4, padx=2, pady=2, sticky="ew")
-        row["reset_btn"].grid(row=0, column=5, padx=2, pady=2, sticky="ew")
-        row["delete_btn"].grid(row=0, column=6, padx=2, pady=2, sticky="ew")
-        row["edit_btn"].grid(row=0, column=7, padx=2, pady=2, sticky="ew")
-        row["elapsed_label"].grid(row=0, column=8, padx=4, pady=2, sticky="e")
-        return row
-
-    def _grid_row(self, row: dict[str, Any], row_index: int) -> None:
-        row["container"].grid(row=row_index, column=0, padx=2, pady=2, sticky="ew")
-
-    def refresh_row(self, task_id: str, is_subtask: bool | None = None) -> None:
-        task = self.service.state.tasks.get(task_id)
-        row = self.rows.get(task_id)
-        if not task or not row:
-            return
-        if is_subtask is None:
-            is_subtask = self.service.is_subtask(task_id) if hasattr(self.service, "is_subtask") else False
-        is_running = task.is_running
-        state_text = "Running" if is_running else "Stopped"
-        state_color = RUNNING_COLOR if is_running else STOPPED_COLOR
-        row["state_label"].configure(text=state_text, bg=state_color, fg="white")
-        row["elapsed_label"].configure(fg=state_color)
-        row["toggle_btn"].configure(text="Stop" if is_running else "Start")
-        children = self.service.child_tasks(task_id, include_deleted=False) if hasattr(self.service, "child_tasks") else []
-        has_subtasks = bool(children)
-        is_parent = not is_subtask and has_subtasks
-        if is_subtask:
-            row_color = ROW_SUBTASK_RUNNING_COLOR if is_running else ROW_SUBTASK_STOPPED_COLOR
-        elif is_parent:
-            row_color = ROW_PARENT_RUNNING_COLOR if is_running else ROW_PARENT_STOPPED_COLOR
-        else:
-            row_color = ROW_RUNNING_COLOR if is_running else ROW_STOPPED_COLOR
-        row["container"].configure(bg=row_color)
-        row["name_cell"].configure(bg=row_color)
-        row["notes_cell"].configure(bg=row_color)
-        displayed_name = f"└─ {task.name}" if is_subtask else task.name
-        row["name_label"].configure(
-            text=self._display_task_name(displayed_name),
-            bg=row_color,
-        )
-        parent_font = getattr(self, "parent_name_font", None)
-        default_font = getattr(self, "default_name_font", None)
-        if is_parent and parent_font is not None:
-            row["name_label"].configure(font=parent_font)
-        elif default_font is not None:
-            row["name_label"].configure(font=default_font)
-        row["notes_label"].configure(text=self._display_task_notes(task.notes), bg=row_color)
-        if is_subtask or not children:
-            row["expander_btn"].configure(text="", state="disabled")
-        else:
-            forced = any(child.is_running for child in children)
-            if forced:
-                self.expanded_parents.add(task_id)
-            expanded = task_id in self.expanded_parents
-            row["expander_btn"].configure(text="-" if expanded else "+", state="normal")
-
     def refresh_live_values(self) -> None:
         now_utc = utc_now()
-        for task_id, row in self.rows.items():
-            task = self.service.state.tasks.get(task_id)
-            if task and not task.is_deleted:
-                self._refresh_row_live_values(task_id, now_utc)
+        for task_id, task in self.service.state.tasks.items():
+            if task.is_deleted or not self.task_tree.exists(task_id):
+                continue
+            elapsed = self.service.task_own_elapsed(task_id, now_utc) if task.parent_task_id is not None else self.service.task_tree_elapsed(task_id, now_utc)
+            state_text = "Running" if task.is_running else "Stopped"
+            self.task_tree.set(task_id, "elapsed", format_duration_hm(elapsed))
+            self.task_tree.set(task_id, "state", state_text)
+            parent = self.task_tree.parent(task_id)
+            has_children = bool(self.service.child_tasks(task_id, include_deleted=False))
+            self.task_tree.item(task_id, tags=self._tree_tags(task, is_subtask=bool(parent), has_children=has_children))
+        for root_id in self.task_tree.get_children(""):
+            children = self.service.child_tasks(root_id, include_deleted=False)
+            if any(child.is_running for child in children):
+                self.expanded_parents.add(root_id)
+                self.task_tree.item(root_id, open=True)
         daily, weekly, _ = self.service.compute_totals(now_utc)
         self.daily_var.set(f"Daily Total: {format_duration_hm(daily)}")
         self.weekly_var.set(f"Weekly Total: {format_duration_hm(weekly)}")
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
             self.mini_mode_window.refresh_live_values()
 
-    def _refresh_row_live_values(self, task_id: str, now_utc: datetime) -> None:
-        task = self.service.state.tasks.get(task_id)
-        row = self.rows.get(task_id)
-        if not task or not row or task.is_deleted:
+    def _on_tree_select(self, _event: object | None = None) -> None:
+        self.selected_task_id = self._selected_task_id()
+
+    def _on_tree_open(self, _event: object | None = None) -> None:
+        task_id = self._selected_task_id()
+        if task_id:
+            self.expanded_parents.add(task_id)
+
+    def _on_tree_close(self, _event: object | None = None) -> None:
+        task_id = self._selected_task_id()
+        if not task_id:
             return
-
-        elapsed = self.service.task_own_elapsed(task_id, now_utc) if self.service.is_subtask(task_id) else self.service.task_tree_elapsed(task_id, now_utc)
-        elapsed_text = format_duration_hm(elapsed)
-        if row.get("last_elapsed_text") != elapsed_text:
-            row["elapsed_label"].configure(text=elapsed_text)
-            row["last_elapsed_text"] = elapsed_text
-
-        toggle_text = "Stop" if task.is_running else "Start"
-        if row.get("last_toggle_text") != toggle_text:
-            row["toggle_btn"].configure(text=toggle_text)
-            row["last_toggle_text"] = toggle_text
-
-        state_text = "Running" if task.is_running else "Stopped"
-        state_color = RUNNING_COLOR if task.is_running else STOPPED_COLOR
-        if row.get("last_state_text") != state_text or row.get("last_state_color") != state_color:
-            row["state_label"].configure(text=state_text, bg=state_color, fg="white")
-            row["elapsed_label"].configure(fg=state_color)
-            row["last_state_text"] = state_text
-            row["last_state_color"] = state_color
+        children = self.service.child_tasks(task_id, include_deleted=False)
+        if any(child.is_running for child in children):
+            self.expanded_parents.add(task_id)
+            self.task_tree.item(task_id, open=True)
+        else:
+            self.expanded_parents.discard(task_id)
 
     def _after_state_change(self) -> None:
         self.refresh_structure()
         self.refresh_live_values()
         self._refresh_month_end_reminder_ui()
-
-    def _setup_headers(self) -> None:
-        for idx, spec in enumerate(self._column_specs()):
-            ttk.Label(self.header_frame, text=spec["header"], anchor="center").grid(
-                row=0, column=idx, padx=4, pady=2, sticky="ew"
-            )
-
-    def _toggle_parent_expansion(self, task_id: str) -> None:
-        task = self.service.state.tasks.get(task_id)
-        if not task or task.parent_task_id is not None:
-            return
-        children = self.service.child_tasks(task_id, include_deleted=False)
-        if any(child.is_running for child in children):
-            self.expanded_parents.add(task_id)
-        elif task_id in self.expanded_parents:
-            self.expanded_parents.remove(task_id)
-        else:
-            self.expanded_parents.add(task_id)
-        self.refresh_structure()
-        self.refresh_live_values()
 
     def _toggle_task(self, task_id: str) -> None:
         task = self.service.state.tasks.get(task_id)
