@@ -219,3 +219,47 @@ def test_edit_or_delete_template_later_does_not_modify_created_subtasks(tmp_path
     assert children[0].name == "X"
     assert children[0].notes == "n"
     assert sorted(children[0].tags) == ["alpha"]
+
+
+def test_template_item_parent_round_trip(tmp_path) -> None:
+    store = SubtaskTemplateStore(tmp_path)
+    template = SubtaskTemplate(template_id="t", name="T", items=[
+        SubtaskTemplateItem(item_id="p", name="Parent", sort_order=0),
+        SubtaskTemplateItem(item_id="c", name="Child", parent_item_id="p", sort_order=1),
+    ])
+    store.save([template])
+    loaded = store.load()[0]
+    assert loaded.items[1].parent_item_id == "p"
+
+
+def test_template_rejects_depth_greater_than_2(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    tid = service.create_subtask_template("T", "")
+    with pytest.raises(ValueError, match="depth"):
+        service.update_subtask_template(tid, "T", "", [
+            SubtaskTemplateItem(item_id="a", name="A", sort_order=0),
+            SubtaskTemplateItem(item_id="b", name="B", parent_item_id="a", sort_order=1),
+            SubtaskTemplateItem(item_id="c", name="C", parent_item_id="b", sort_order=2),
+        ])
+
+
+def test_apply_nested_template_creates_hierarchy_and_skips_duplicates(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    existing = service.create_subtask(root, "Build", "")
+    service.create_subtask(existing, "Plan", "")
+    tid = service.create_subtask_template("Nested", "")
+    service.update_subtask_template(tid, "Nested", "", [
+        SubtaskTemplateItem(item_id="p1", name="Build", sort_order=0),
+        SubtaskTemplateItem(item_id="c1", name="Plan", parent_item_id="p1", sort_order=1),
+        SubtaskTemplateItem(item_id="c2", name="Execute", parent_item_id="p1", sort_order=2),
+        SubtaskTemplateItem(item_id="p2", name="Review", sort_order=3),
+    ])
+    result = service.apply_subtask_templates(root, [tid])
+    children = {c.name: c for c in service.child_tasks(root)}
+    assert set(children) == {"Build", "Review"}
+    build_children = sorted(c.name for c in service.child_tasks(children["Build"].task_id))
+    assert build_children == ["Execute", "Plan"]
+    assert sorted(result.skipped_duplicates) == ["Build", "Plan"]
+    assert "Execute" in result.created_names and "Review" in result.created_names
+

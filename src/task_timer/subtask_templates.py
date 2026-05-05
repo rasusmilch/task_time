@@ -16,6 +16,7 @@ from .tags import normalize_tag_list
 class SubtaskTemplateItem:
     item_id: str
     name: str
+    parent_item_id: str | None = None
     notes: str = ""
     tags: list[str] = field(default_factory=list)
     sort_order: int = 0
@@ -25,12 +26,14 @@ class SubtaskTemplateItem:
         if not self.name:
             raise ValueError("Template item name is required")
         self.notes = self.notes.strip()
+        self.parent_item_id = (self.parent_item_id or "").strip() or None
         self.tags = normalize_tag_list(self.tags)
 
     def to_dict(self) -> dict[str, object]:
         return {
             "item_id": self.item_id,
             "name": self.name,
+            "parent_item_id": self.parent_item_id,
             "notes": self.notes,
             "tags": list(self.tags),
             "sort_order": self.sort_order,
@@ -90,6 +93,7 @@ class SubtaskTemplateStore:
                     SubtaskTemplateItem(
                         item_id=str(item.get("item_id", str(uuid4()))),
                         name=str(item.get("name", "")),
+                        parent_item_id=(str(item.get("parent_item_id", "")).strip() or None),
                         notes=str(item.get("notes", "")),
                         tags=list(item.get("tags", [])),
                         sort_order=int(item.get("sort_order", 0)),

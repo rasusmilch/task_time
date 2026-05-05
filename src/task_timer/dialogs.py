@@ -1278,7 +1278,8 @@ class ManageSubtaskTemplatesDialog:
         ttk.Entry(right,textvariable=self.template_notes_var).grid(row=3,column=0,sticky='ew', pady=(0,4))
         tree_frame = ttk.Frame(right)
         tree_frame.grid(row=4, column=0, sticky="nsew")
-        self.item_tree=ttk.Treeview(tree_frame,columns=('order','name','notes','tags'),show='headings',height=10)
+        self.item_tree=ttk.Treeview(tree_frame,columns=('order','name','notes','tags'),show='tree headings',height=10)
+        self.item_tree.heading('#0', text='Hierarchy'); self.item_tree.column('#0', width=180, anchor='w')
         for c,t,w in [('order','Order',50),('name','Name',180),('notes','Notes',220),('tags','Tags',120)]:
             self.item_tree.heading(c,text=t); self.item_tree.column(c,width=w,anchor='w')
         item_tree_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self.item_tree.yview)
@@ -1286,7 +1287,7 @@ class ManageSubtaskTemplatesDialog:
         self.item_tree.pack(side="left", fill="both", expand=True)
         item_tree_scroll.pack(side="right", fill="y")
         btns=ttk.Frame(right); btns.grid(row=5,column=0,sticky='w', pady=4)
-        for txt,cmd in [('Add Subtask Item',self._add_item),('Edit Subtask Item',self._edit_item),('Remove Subtask Item',self._remove_item),('Move Up',self._move_up),('Move Down',self._move_down)]:
+        for txt,cmd in [('Add Subtask',self._add_item),('Add Nested Subtask',self._add_nested_item),('Edit',self._edit_item),('Remove',self._remove_item),('Move Up',self._move_up),('Move Down',self._move_down)]:
             ttk.Button(btns,text=txt,command=cmd).pack(side='left', padx=2)
         actions=ttk.Frame(right); actions.grid(row=6,column=0,sticky='e', pady=4)
         ttk.Button(actions,text='Save',command=self._save_current).pack(side='right', padx=2)
@@ -1318,13 +1319,24 @@ class ManageSubtaskTemplatesDialog:
         if not t:return
         self.template_name_var.set(t.name); self.template_notes_var.set(t.notes)
         for iid in self.item_tree.get_children(): self.item_tree.delete(iid)
-        for i,it in enumerate(t.items, start=1): self.item_tree.insert('', 'end', iid=it.item_id, values=(i,it.name,it.notes,', '.join(it.tags)))
+        roots=[i for i in t.items if i.parent_item_id is None]
+        children=[i for i in t.items if i.parent_item_id is not None]
+        order=1
+        for it in roots:
+            self.item_tree.insert('', 'end', iid=it.item_id, text='Subtask', values=(order,it.name,it.notes,', '.join(it.tags))); order+=1
+            for child in [c for c in children if c.parent_item_id==it.item_id]:
+                self.item_tree.insert(it.item_id,'end',iid=child.item_id,text='Nested Subtask',values=(order,child.name,child.notes,', '.join(child.tags))); order+=1
     def _items_from_tree(self):
         t=self._current();
-        ids=list(self.item_tree.get_children()); out=[]
+        ids=[]
+        for rid in self.item_tree.get_children():
+            ids.append((rid,None))
+            for cid in self.item_tree.get_children(rid):
+                ids.append((cid,rid))
+        out=[]
         by={i.item_id:i for i in (t.items if t else [])}
-        for idx,iid in enumerate(ids):
-            it=by[str(iid)]; it.sort_order=idx; out.append(it)
+        for idx,(iid,parent_id) in enumerate(ids):
+            it=by[str(iid)]; it.sort_order=idx; it.parent_item_id=parent_id; out.append(it)
         return out
     def _save_current(self):
         t=self._current();
@@ -1351,8 +1363,23 @@ class ManageSubtaskTemplatesDialog:
         d=SubtaskTemplateItemDialog(self.window,self.service,title='Add Subtask Item')
         if not d.result:return
         from .subtask_templates import SubtaskTemplateItem
-        t.items.append(SubtaskTemplateItem(item_id=str(datetime.now().timestamp()),name=d.result['name'],notes=d.result['notes'],tags=d.result['tags'],sort_order=len(t.items)))
+        t.items.append(SubtaskTemplateItem(item_id=str(datetime.now().timestamp()),name=d.result['name'],parent_item_id=None,notes=d.result['notes'],tags=d.result['tags'],sort_order=len(t.items)))
         self.dirty=True; self._load_current()
+
+    def _add_nested_item(self):
+        t=self._current();
+        if not t:return
+        try:iid=self._selected_item_id()
+        except Exception as exc: messagebox.showerror('Add Nested Subtask',str(exc),parent=self.window); return
+        parent_item=next(i for i in t.items if i.item_id==iid)
+        if parent_item.parent_item_id is not None:
+            messagebox.showerror('Add Nested Subtask','Select a top-level subtask item.',parent=self.window); return
+        d=SubtaskTemplateItemDialog(self.window,self.service,title='Add Nested Subtask')
+        if not d.result:return
+        from .subtask_templates import SubtaskTemplateItem
+        t.items.append(SubtaskTemplateItem(item_id=str(datetime.now().timestamp()),name=d.result['name'],parent_item_id=iid,notes=d.result['notes'],tags=d.result['tags'],sort_order=len(t.items)))
+        self.dirty=True; self._load_current()
+
     def _edit_item(self):
         t=self._current();
         if not t:return

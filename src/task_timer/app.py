@@ -66,6 +66,8 @@ class ApplySubtaskTemplatesResult:
     created_names: list[str]
     skipped_duplicates: list[str]
     template_names: list[str]
+    created_count: int = 0
+    skipped_count: int = 0
 
 
 class TaskTimerService:
@@ -117,11 +119,21 @@ class TaskTimerService:
                     SubtaskTemplateItem(
                         item_id=item.item_id or str(uuid4()),
                         name=item.name,
+                        parent_item_id=item.parent_item_id,
                         notes=item.notes,
                         tags=item.tags,
                         sort_order=sort_order,
                     )
                 )
+            by_id = {item.item_id: item for item in normalized_items}
+            for item in normalized_items:
+                if item.parent_item_id is None:
+                    continue
+                parent_item = by_id.get(item.parent_item_id)
+                if not parent_item:
+                    raise ValueError("Template item parent not found")
+                if parent_item.parent_item_id is not None:
+                    raise ValueError("Template depth cannot exceed 2")
             self.subtask_templates[idx] = SubtaskTemplate(
                 template_id=template.template_id,
                 name=name,
@@ -160,20 +172,41 @@ class TaskTimerService:
                 raise ValueError("Subtask template not found")
             selected_templates.append(template)
 
-        existing = {child.name.strip().casefold() for child in self.child_tasks(parent_task_id, include_deleted=False)}
+        existing_children = {child.name.strip().casefold(): child for child in self.child_tasks(parent_task_id, include_deleted=False)}
         created_subtask_ids: list[str] = []
         created_names: list[str] = []
         skipped_duplicates: list[str] = []
 
         for template in selected_templates:
-            for item in template.items:
+            roots = sorted([i for i in template.items if i.parent_item_id is None], key=lambda i: i.sort_order)
+            nested = sorted([i for i in template.items if i.parent_item_id is not None], key=lambda i: i.sort_order)
+            item_to_task: dict[str, str] = {}
+
+            for item in roots:
                 normalized_name = item.name.strip().casefold()
-                if normalized_name in existing:
+                existing = existing_children.get(normalized_name)
+                if existing:
                     skipped_duplicates.append(item.name)
+                    item_to_task[item.item_id] = existing.task_id
                     continue
                 subtask_id = self.create_subtask(parent_task_id, item.name, item.notes, item.tags)
-                existing.add(normalized_name)
+                created = self.state.tasks[subtask_id]
+                existing_children[normalized_name] = created
                 created_subtask_ids.append(subtask_id)
+                created_names.append(item.name)
+                item_to_task[item.item_id] = subtask_id
+
+            for item in nested:
+                parent_subtask_id = item_to_task.get(item.parent_item_id or "")
+                if not parent_subtask_id:
+                    continue
+                existing_nested = {c.name.strip().casefold() for c in self.child_tasks(parent_subtask_id, include_deleted=False)}
+                normalized_name = item.name.strip().casefold()
+                if normalized_name in existing_nested:
+                    skipped_duplicates.append(item.name)
+                    continue
+                nested_id = self.create_subtask(parent_subtask_id, item.name, item.notes, item.tags)
+                created_subtask_ids.append(nested_id)
                 created_names.append(item.name)
 
         return ApplySubtaskTemplatesResult(
@@ -181,7 +214,10 @@ class TaskTimerService:
             created_names=created_names,
             skipped_duplicates=skipped_duplicates,
             template_names=[template.name for template in selected_templates],
+            created_count=len(created_subtask_ids),
+            skipped_count=len(skipped_duplicates),
         )
+
 
     def create_task(self, name: str, notes: str, tags: list[str] | None = None) -> str:
         task_id = str(uuid4())
