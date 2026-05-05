@@ -2005,15 +2005,37 @@ class TaskTimerApp:
         for task_id, row in self.rows.items():
             task = self.service.state.tasks.get(task_id)
             if task and not task.is_deleted:
-                elapsed = self.service.task_own_elapsed(task_id, now_utc) if self.service.is_subtask(task_id) else self.service.task_tree_elapsed(task_id, now_utc)
-                row["elapsed_label"].configure(text=format_duration_hm(elapsed))
-                row["toggle_btn"].configure(text="Stop" if task.is_running else "Start")
-                self.refresh_row(task_id)
+                self._refresh_row_live_values(task_id, now_utc)
         daily, weekly, _ = self.service.compute_totals(now_utc)
         self.daily_var.set(f"Daily Total: {format_duration_hm(daily)}")
         self.weekly_var.set(f"Weekly Total: {format_duration_hm(weekly)}")
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
             self.mini_mode_window.refresh_live_values()
+
+    def _refresh_row_live_values(self, task_id: str, now_utc: datetime) -> None:
+        task = self.service.state.tasks.get(task_id)
+        row = self.rows.get(task_id)
+        if not task or not row or task.is_deleted:
+            return
+
+        elapsed = self.service.task_own_elapsed(task_id, now_utc) if self.service.is_subtask(task_id) else self.service.task_tree_elapsed(task_id, now_utc)
+        elapsed_text = format_duration_hm(elapsed)
+        if row.get("last_elapsed_text") != elapsed_text:
+            row["elapsed_label"].configure(text=elapsed_text)
+            row["last_elapsed_text"] = elapsed_text
+
+        toggle_text = "Stop" if task.is_running else "Start"
+        if row.get("last_toggle_text") != toggle_text:
+            row["toggle_btn"].configure(text=toggle_text)
+            row["last_toggle_text"] = toggle_text
+
+        state_text = "Running" if task.is_running else "Stopped"
+        state_color = RUNNING_COLOR if task.is_running else STOPPED_COLOR
+        if row.get("last_state_text") != state_text or row.get("last_state_color") != state_color:
+            row["state_label"].configure(text=state_text, bg=state_color, fg="white")
+            row["elapsed_label"].configure(fg=state_color)
+            row["last_state_text"] = state_text
+            row["last_state_color"] = state_color
 
     def _after_state_change(self) -> None:
         self.refresh_structure()

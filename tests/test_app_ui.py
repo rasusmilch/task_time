@@ -41,6 +41,27 @@ def test_tick_refreshes_live_values_only() -> None:
     assert app.root.after_calls
 
 
+def test_refresh_live_values_does_not_call_structure_or_full_row_refresh() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    task_id = "task-1"
+    calls: list[str] = []
+    app.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={task_id: SimpleNamespace(is_running=False, is_deleted=False)}),
+        compute_totals=lambda _now: (0, 0, 0),
+    )
+    app.rows = {task_id: {}}
+    app.daily_var = SimpleNamespace(set=lambda _v: None)
+    app.weekly_var = SimpleNamespace(set=lambda _v: None)
+    app.mini_mode_window = None
+    app.refresh_row = lambda _task_id: calls.append("refresh_row")
+    app.refresh_structure = lambda: calls.append("refresh_structure")
+    app._refresh_row_live_values = lambda _task_id, _now: calls.append("live_row")
+
+    TaskTimerApp.refresh_live_values(app)
+
+    assert calls == ["live_row"]
+
+
 def test_ui_duration_formatter_is_hours_minutes_only() -> None:
     assert format_duration_hm(59) == "00:00"
     assert format_duration_hm(61) == "00:01"
@@ -134,6 +155,56 @@ def test_row_refresh_sets_toggle_text_and_color() -> None:
     assert app.rows[task_id]["toggle_btn"].config["text"] == "Stop"
     assert app.rows[task_id]["name_label"].config["text"] == "Name"
     assert app.rows[task_id]["notes_label"].config["text"] == "Notes"
+
+
+def test_refresh_row_live_values_updates_only_changed_values() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    task_id = "task-1"
+    task = SimpleNamespace(is_running=False, is_deleted=False)
+    app.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={task_id: task}),
+        is_subtask=lambda _task_id: False,
+        task_tree_elapsed=lambda _task_id, _now: 3600,
+        task_own_elapsed=lambda _task_id, _now: 60,
+    )
+
+    class _Widget:
+        def __init__(self) -> None:
+            self.config: dict[str, object] = {}
+            self.configure_calls = 0
+
+        def configure(self, **kwargs: object) -> None:
+            self.configure_calls += 1
+            self.config.update(kwargs)
+
+    app.rows = {
+        task_id: {
+            "elapsed_label": _Widget(),
+            "toggle_btn": _Widget(),
+            "state_label": _Widget(),
+        }
+    }
+
+    now = datetime.now(timezone.utc)
+    TaskTimerApp._refresh_row_live_values(app, task_id, now)
+    first_calls = (
+        app.rows[task_id]["elapsed_label"].configure_calls,
+        app.rows[task_id]["toggle_btn"].configure_calls,
+        app.rows[task_id]["state_label"].configure_calls,
+    )
+    TaskTimerApp._refresh_row_live_values(app, task_id, now)
+    second_calls = (
+        app.rows[task_id]["elapsed_label"].configure_calls,
+        app.rows[task_id]["toggle_btn"].configure_calls,
+        app.rows[task_id]["state_label"].configure_calls,
+    )
+    assert first_calls == second_calls
+
+    task.is_running = True
+    TaskTimerApp._refresh_row_live_values(app, task_id, now)
+    assert app.rows[task_id]["toggle_btn"].config["text"] == "Stop"
+    assert app.rows[task_id]["state_label"].config["text"] == "Running"
+    assert app.rows[task_id]["state_label"].config["bg"] == RUNNING_COLOR
 
 
 def test_clip_table_text_truncates_and_normalizes() -> None:
