@@ -660,7 +660,7 @@ class SelectedTaskExportDialog:
         self.window.title("Export Selected Tasks")
         self.window.transient(parent)
         self.window.grab_set()
-        self.window.minsize(760, 560)
+        self.window.minsize(600, 560)
         self.window.resizable(True, True)
 
         self.window_mode_var = StringVar(value="checkpoint")
@@ -735,7 +735,7 @@ class SelectedTaskExportDialog:
                 self._child_parent[child.task_id] = task.task_id
                 row = ttk.Frame(list_frame)
                 row.pack(fill="x", anchor="w", padx=(18, 0))
-                ttk.Checkbutton(row, text=f"↳ {child.name} — {child.notes}", variable=cvar).pack(side="left", anchor="w")
+                ttk.Checkbutton(row, text=f"└─ {child.name} — {child.notes}", variable=cvar).pack(side="left", anchor="w")
                 label = ttk.Label(row, text="")
                 label.pack(side="left", padx=(6, 0))
                 self._included_labels[child.task_id] = label
@@ -789,6 +789,7 @@ class SelectedTaskExportDialog:
                 if label is not None:
                     label.configure(text="included via parent")
             else:
+                self._task_vars[child_id].set(False)
                 if child_id in self._included_labels:
                     self._included_labels[child_id].configure(text="")
 
