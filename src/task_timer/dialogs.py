@@ -712,11 +712,11 @@ class SelectedTaskExportDialog:
         task_list_frame.grid_columnconfigure(0, weight=1)
         task_list_frame.grid_rowconfigure(0, weight=1)
 
-        canvas = tk.Canvas(task_list_frame, height=220, width=500)
+        canvas = tk.Canvas(task_list_frame, height=220, width=500, bd=0, borderwidth=0, highlightthickness=0)
         scroll = ttk.Scrollbar(task_list_frame, orient="vertical", command=canvas.yview)
         list_frame = ttk.Frame(canvas)
         list_frame.bind("<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=list_frame, anchor="nw")
+        canvas.create_window((4, 4), window=list_frame, anchor="nw")
         canvas.configure(yscrollcommand=scroll.set)
         canvas.grid(row=0, column=0, sticky="nsew")
         scroll.grid(row=0, column=1, sticky="ns")
