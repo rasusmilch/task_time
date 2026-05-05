@@ -1998,6 +1998,7 @@ def test_treeview_structure_and_iids(tmp_path) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     root_id = service.create_task("Parent", "pn")
     child_id = service.create_subtask(root_id, "Child", "cn")
+    nested_id = service.create_subtask(child_id, "Nested", "nn")
     app = TaskTimerApp.__new__(TaskTimerApp)
     app.service = service
     app.sort_alpha_var = SimpleNamespace(get=lambda: False)
@@ -2031,6 +2032,7 @@ def test_treeview_structure_and_iids(tmp_path) -> None:
     TaskTimerApp.refresh_structure(app)
     assert app.task_tree.get_children("") == (root_id,)
     assert app.task_tree.get_children(root_id) == (child_id,)
+    assert app.task_tree.get_children(child_id) == (nested_id,)
 
 
 def test_running_subtask_forces_parent_open_and_selection_helper(tmp_path) -> None:
@@ -2058,6 +2060,33 @@ def test_running_subtask_forces_parent_open_and_selection_helper(tmp_path) -> No
     assert app.task_tree.data[root_id]["open"] is True
     app.task_tree.selection_set(child_id)
     assert TaskTimerApp._selected_task_id(app) == child_id
+
+
+def test_running_nested_subtask_forces_both_ancestors_open(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    root_id = service.create_task("Parent", "")
+    child_id = service.create_subtask(root_id, "Child", "")
+    nested_id = service.create_subtask(child_id, "Nested", "")
+    service.start_task(nested_id)
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.sort_alpha_var = SimpleNamespace(get=lambda: False)
+    app.expanded_parents = set()
+    app.selected_task_id = None
+    app.mini_mode_window = None
+    class _Tree:
+        def __init__(self): self.data={}; self.kids={"":[]}; self.sel=()
+        def insert(self,p,_i,iid,text,values,open=False,tags=()): self.data[iid]={"parent":p,"open":open}; self.kids.setdefault(p,[]).append(iid); self.kids.setdefault(iid,[])
+        def get_children(self,item=""): return tuple(self.kids.get(item,[]))
+        def delete(self,iid): pass
+        def exists(self,iid): return iid in self.data
+        def selection(self): return self.sel
+        def selection_set(self,iid): self.sel=(iid,)
+        def item(self,iid,**kwargs): self.data[iid].update(kwargs)
+    app.task_tree=_Tree()
+    TaskTimerApp.refresh_structure(app)
+    assert app.task_tree.data[root_id]["open"] is True
+    assert app.task_tree.data[child_id]["open"] is True
 
 
 def test_selected_panel_none_disables_controls(tmp_path) -> None:
@@ -2111,6 +2140,66 @@ def test_selected_panel_subtask_label_and_toggle_text(tmp_path) -> None:
     assert state["toggle"]["text"] == "Stop"
     assert state["toggle"]["state"] == "normal"
     assert state["state"]["text"] == "State: ▶ Running"
+
+
+def test_selected_panel_nested_subtask_path_label(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    root_id = service.create_task("Root", "")
+    child_id = service.create_subtask(root_id, "Child", "")
+    nested_id = service.create_subtask(child_id, "Nested", "")
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.selected_task_id = nested_id
+    app.task_tree = SimpleNamespace(selection=lambda: (nested_id,))
+    state: dict[str, dict[str, str]] = {}
+    app.selected_task_label_var = SimpleNamespace(set=lambda value: state.setdefault("label", {"text": value}).update({"text": value}))
+    app.selected_toggle_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("toggle", {}).update(kwargs))
+    app.selected_state_label = SimpleNamespace(configure=lambda **kwargs: state.setdefault("state", {}).update(kwargs))
+    app.selected_reset_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("reset", {}).update(kwargs))
+    app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
+    app.selected_move_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("move", {}).update(kwargs))
+    app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
+    app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
+    app._selected_state_colors = TaskTimerApp._selected_state_colors.__get__(app, TaskTimerApp)
+    app.root = SimpleNamespace(cget=lambda _name: "#f0f0f0")
+    app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
+    TaskTimerApp._refresh_selected_task_panel(app)
+    assert state["label"]["text"] == "Selected: Root / Child / Nested"
+
+
+def test_refresh_live_values_elapsed_by_depth(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    root_id = service.create_task("Root", "")
+    child_id = service.create_subtask(root_id, "Child", "")
+    nested_id = service.create_subtask(child_id, "Nested", "")
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.task_tree = SimpleNamespace(
+        exists=lambda _iid: True,
+        set=lambda *_args, **_kwargs: "■ Stopped",
+        item=lambda *_args, **_kwargs: None,
+        parent=lambda iid: {root_id: "", child_id: root_id, nested_id: child_id}[iid],
+    )
+    calls: list[tuple[str, str]] = []
+    app.task_tree.set = lambda iid, col, value=None: (calls.append((iid, col)) if value is None else None) or ("■ Stopped" if value is None else None)  # type: ignore[assignment]
+    app.task_tree.item = lambda *_args, **_kwargs: None
+    app.task_tree.get_children = lambda _item="": ()
+    app.sort_alpha_var = SimpleNamespace(get=lambda: False)
+    app.expanded_parents = set()
+    app.daily_var = SimpleNamespace(set=lambda *_: None)
+    app.weekly_var = SimpleNamespace(set=lambda *_: None)
+    app.mini_mode_window = None
+    app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
+    own_calls: list[str] = []
+    tree_calls: list[str] = []
+    original_own = service.task_own_elapsed
+    original_tree = service.task_tree_elapsed
+    service.task_own_elapsed = lambda task_id, now=None: own_calls.append(task_id) or original_own(task_id, now)  # type: ignore[assignment]
+    service.task_tree_elapsed = lambda task_id, now=None: tree_calls.append(task_id) or original_tree(task_id, now)  # type: ignore[assignment]
+    TaskTimerApp.refresh_live_values(app)
+    assert root_id in tree_calls
+    assert child_id in tree_calls
+    assert nested_id in own_calls
 
 
 def test_selected_panel_state_updates_with_task_start_stop(tmp_path) -> None:

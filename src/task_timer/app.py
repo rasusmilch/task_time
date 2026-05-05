@@ -2077,15 +2077,17 @@ class TaskTimerApp:
         children_map = self.service.task_tree_children_map(include_deleted=False)
         for root in roots:
             children = self._sorted_tasks(children_map.get(root.task_id, []))
-            if any(child.is_running for child in self.descendant_tasks(root.task_id, include_deleted=False)):
+            if self._has_running_descendant(root.task_id, children_map):
                 self.expanded_parents.add(root.task_id)
             self.task_tree.insert("", "end", iid=root.task_id, text=root.name, values=(root.notes, "■ Stopped", "00:00"), open=root.task_id in self.expanded_parents, tags=self._tree_tags(root, is_subtask=False, has_children=bool(children)))
             for child in children:
                 grandkids = self._sorted_tasks(children_map.get(child.task_id, []))
+                if self._has_running_descendant(child.task_id, children_map):
+                    self.expanded_parents.add(child.task_id)
                 self.task_tree.insert(root.task_id, "end", iid=child.task_id, text=child.name, values=(child.notes, "■ Stopped", "00:00"), open=child.task_id in self.expanded_parents, tags=self._tree_tags(child, is_subtask=True, has_children=bool(grandkids)))
                 for nested in grandkids:
                     self.task_tree.insert(child.task_id, "end", iid=nested.task_id, text=nested.name, values=(nested.notes, "■ Stopped", "00:00"), tags=self._tree_tags(nested, is_subtask=True, has_children=False))
-            if any(child.is_running for child in self.descendant_tasks(root.task_id, include_deleted=False)):
+            if self._has_running_descendant(root.task_id, children_map):
                 self.task_tree.item(root.task_id, open=True)
         if selected and self.task_tree.exists(selected):
             self.task_tree.selection_set(selected)
@@ -2100,6 +2102,15 @@ class TaskTimerApp:
         if not self.sort_alpha_var.get():
             return tasks
         return sorted(tasks, key=lambda task: (task.name.strip().casefold(), task.task_id))
+
+    def _has_running_descendant(self, task_id: str, children_map: dict[str, list[TaskState]]) -> bool:
+        stack = list(children_map.get(task_id, []))
+        while stack:
+            child = stack.pop()
+            if child.is_running:
+                return True
+            stack.extend(children_map.get(child.task_id, []))
+        return False
 
     def _tree_tags(self, task: TaskState, *, is_subtask: bool, has_children: bool) -> tuple[str, ...]:
         tags = ["subtask" if is_subtask else "parent" if has_children else "task"]
@@ -2121,7 +2132,7 @@ class TaskTimerApp:
         for task_id, task in self.service.state.tasks.items():
             if task.is_deleted or not self.task_tree.exists(task_id):
                 continue
-            elapsed = self.service.task_own_elapsed(task_id, now_utc) if task.parent_task_id is not None else self.service.task_tree_elapsed(task_id, now_utc)
+            elapsed = self.service.task_own_elapsed(task_id, now_utc) if not self.service.child_tasks(task_id, include_deleted=False) else self.service.task_tree_elapsed(task_id, now_utc)
             state_text = self._task_state_display(task, now_utc)
             self.task_tree.set(task_id, "elapsed", format_duration_hm(elapsed))
             if self.task_tree.set(task_id, "state") != state_text:
@@ -2129,11 +2140,13 @@ class TaskTimerApp:
             parent = self.task_tree.parent(task_id)
             has_children = bool(self.service.child_tasks(task_id, include_deleted=False))
             self.task_tree.item(task_id, tags=self._tree_tags(task, is_subtask=bool(parent), has_children=has_children))
-        for root_id in self.task_tree.get_children(""):
-            children = self.service.child_tasks(root_id, include_deleted=False)
-            if any(child.is_running for child in children):
-                self.expanded_parents.add(root_id)
-                self.task_tree.item(root_id, open=True)
+        children_map = self.service.task_tree_children_map(include_deleted=False)
+        for task_id in list(self.service.state.tasks):
+            if not self.task_tree.exists(task_id):
+                continue
+            if self._has_running_descendant(task_id, children_map):
+                self.expanded_parents.add(task_id)
+                self.task_tree.item(task_id, open=True)
         daily, weekly, _ = self.service.compute_totals(now_utc)
         self.daily_var.set(f"Daily Total: {format_duration_hm(daily)}")
         self.weekly_var.set(f"Weekly Total: {format_duration_hm(weekly)}")
@@ -2168,8 +2181,7 @@ class TaskTimerApp:
         task_id = self._tree_event_item_id()
         if not task_id:
             return
-        children = self.service.child_tasks(task_id, include_deleted=False)
-        if any(child.is_running for child in children):
+        if any(self.service.state.tasks[child.task_id].is_running for child in self.descendant_tasks(task_id, include_deleted=False)):
             self.expanded_parents.add(task_id)
             self.task_tree.item(task_id, open=True)
         else:
@@ -2204,11 +2216,15 @@ class TaskTimerApp:
             for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_move_btn, self.selected_edit_btn, self.selected_timeline_btn):
                 btn.configure(state="disabled")
             return
-        if task.parent_task_id:
-            parent_name = self.service.state.tasks[task.parent_task_id].name
-            self.selected_task_label_var.set(f"Selected: {parent_name} / {task.name}")
-        else:
-            self.selected_task_label_var.set(f"Selected: {task.name}")
+        path_names: list[str] = [task.name]
+        parent_id = task.parent_task_id
+        while parent_id:
+            parent = self.service.state.tasks.get(parent_id)
+            if parent is None:
+                break
+            path_names.append(parent.name)
+            parent_id = parent.parent_task_id
+        self.selected_task_label_var.set(f"Selected: {' / '.join(reversed(path_names))}")
         state_text = self._task_state_display(task, utc_now())
         if hasattr(self, "selected_state_label"):
             bg, fg = self._selected_state_colors(state_text)
