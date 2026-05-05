@@ -4,7 +4,6 @@ from types import SimpleNamespace
 import pytest
 
 from task_timer.dialogs import SelectedTaskExportDialog
-from task_timer.time_utils import parse_utc_z
 
 
 def _svc() -> object:
@@ -26,6 +25,20 @@ def test_dialog_validation_reason_required_when_mark_submitted() -> None:
         SelectedTaskExportDialog.validate_inputs(selected_task_ids=["t1"], window_mode="checkpoint", start_date_text="2026-01-01", end_date_text="2026-01-02", mark_submitted=True, reason=" ", service=_svc())
 
 
+def test_dialog_validation_reason_optional_when_not_marking_submitted() -> None:
+    result = SelectedTaskExportDialog.validate_inputs(
+        selected_task_ids=["t1"],
+        window_mode="checkpoint",
+        start_date_text="2026-01-01",
+        end_date_text="2026-01-02",
+        mark_submitted=False,
+        reason=" ",
+        service=_svc(),
+    )
+    assert result.reason == ""
+    assert result.mark_submitted is False
+
+
 def test_dialog_select_all_and_clear_all() -> None:
     dlg = SelectedTaskExportDialog.__new__(SelectedTaskExportDialog)
     dlg._task_vars = {"a": SimpleNamespace(set=lambda v: setattr(dlg, "a", v)), "b": SimpleNamespace(set=lambda v: setattr(dlg, "b", v))}
@@ -42,15 +55,24 @@ def test_dialog_explanatory_text_present() -> None:
 
 def test_dialog_layout_uses_dedicated_task_list_frame_with_adjacent_scrollbar() -> None:
     source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
-    assert "task_list_frame = ttk.Frame(tasks_outer)" in source
+    assert "task_list_frame = ttk.Frame(task_area)" in source
     assert "canvas = tk.Canvas(task_list_frame, height=220, width=500)" in source
     assert "scroll = ttk.Scrollbar(task_list_frame, orient=\"vertical\", command=canvas.yview)" in source
     assert "canvas.grid(row=0, column=0, sticky=\"nsew\")" in source
     assert "scroll.grid(row=0, column=1, sticky=\"ns\")" in source
 
 
-def test_dialog_layout_keeps_options_outside_task_list_frame() -> None:
+def test_dialog_layout_has_controls_and_actions_outside_scrollable_task_list() -> None:
     source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
-    assert "options_panel = ttk.Frame(content)" in source
-    assert "task_btns = ttk.Frame(options_panel)" in source
-    assert "ttk.Checkbutton(\n            options_panel," in source
+    assert "control_buttons = ttk.Frame(task_area)" in source
+    assert "options_frame = ttk.Frame(frame)" in source
+    assert "reason_row = ttk.Frame(options_frame)" in source
+    assert "ttk.Button(actions, text=\"Export Selected\", command=self._confirm).pack(side=\"right\")" in source
+    assert "ttk.Button(actions, text=\"Cancel\", command=self.window.destroy).pack(side=\"right\", padx=4)" in source
+
+
+def test_dialog_contains_mark_submitted_and_reason_controls() -> None:
+    source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
+    assert "Mark exported selected time as already entered into Epicor" in source
+    assert "ttk.Label(reason_row, text=\"Reason\")" in source
+    assert "self.reason_var = StringVar(value=\"Job closing / entered into Epicor\")" in source

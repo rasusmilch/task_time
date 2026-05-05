@@ -660,6 +660,8 @@ class SelectedTaskExportDialog:
         self.window.title("Export Selected Tasks")
         self.window.transient(parent)
         self.window.grab_set()
+        self.window.minsize(760, 560)
+        self.window.resizable(True, True)
 
         self.window_mode_var = StringVar(value="checkpoint")
         self.mark_submitted_var = BooleanVar(value=True)
@@ -700,12 +702,12 @@ class SelectedTaskExportDialog:
         content.grid_columnconfigure(0, weight=1)
         content.grid_rowconfigure(0, weight=1)
 
-        tasks_outer = ttk.Frame(content)
-        tasks_outer.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-        tasks_outer.grid_columnconfigure(0, weight=1)
-        tasks_outer.grid_rowconfigure(0, weight=1)
+        task_area = ttk.Frame(content)
+        task_area.grid(row=0, column=0, sticky="nsew")
+        task_area.grid_columnconfigure(0, weight=1)
+        task_area.grid_rowconfigure(0, weight=1)
 
-        task_list_frame = ttk.Frame(tasks_outer)
+        task_list_frame = ttk.Frame(task_area)
         task_list_frame.grid(row=0, column=0, sticky="nsew")
         task_list_frame.grid_columnconfigure(0, weight=1)
         task_list_frame.grid_rowconfigure(0, weight=1)
@@ -738,27 +740,29 @@ class SelectedTaskExportDialog:
                 label.pack(side="left", padx=(6, 0))
                 self._included_labels[child.task_id] = label
 
+        control_buttons = ttk.Frame(task_area)
+        control_buttons.grid(row=0, column=1, sticky="ne", padx=(10, 0))
+        ttk.Button(control_buttons, text="Select All", command=self.select_all_tasks).pack(fill="x")
+        ttk.Button(control_buttons, text="Clear All", command=self.clear_all_tasks).pack(fill="x", pady=(4, 0))
+
         self._refresh_included_states()
 
-        options_panel = ttk.Frame(content)
-        options_panel.grid(row=0, column=1, sticky="ns")
-
-        task_btns = ttk.Frame(options_panel)
-        task_btns.pack(fill="x", pady=(0, 8))
-        ttk.Button(task_btns, text="Select All", command=self.select_all_tasks).pack(fill="x")
-        ttk.Button(task_btns, text="Clear All", command=self.clear_all_tasks).pack(fill="x", pady=(4, 0))
-
+        options_frame = ttk.Frame(frame)
+        options_frame.pack(fill="x", pady=(8, 0))
         ttk.Checkbutton(
-            options_panel,
+            options_frame,
             text="Mark exported selected time as already entered into Epicor",
             variable=self.mark_submitted_var,
-            wraplength=240,
+            wraplength=520,
             justify="left",
         ).pack(anchor="w", fill="x")
-        ttk.Label(options_panel, text="Reason").pack(anchor="w", pady=(8, 0))
-        ttk.Entry(options_panel, textvariable=self.reason_var, width=34).pack(fill="x")
 
-        actions = ttk.Frame(options_panel)
+        reason_row = ttk.Frame(options_frame)
+        reason_row.pack(fill="x", pady=(8, 0))
+        ttk.Label(reason_row, text="Reason").pack(side="left")
+        ttk.Entry(reason_row, textvariable=self.reason_var).pack(side="left", fill="x", expand=True, padx=(8, 0))
+
+        actions = ttk.Frame(frame)
         actions.pack(fill="x", pady=(10, 0))
         ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(actions, text="Export Selected", command=self._confirm).pack(side="right")
