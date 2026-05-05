@@ -242,6 +242,71 @@ class TaskTimerService:
             children.sort(key=lambda t: (t.created_at_utc, t.task_id))
         return output
 
+
+    def movable_parent_targets(self, task_id: str) -> list[TaskState]:
+        task = self.state.tasks.get(task_id)
+        if not task or task.is_deleted:
+            return []
+        return [
+            root
+            for root in self.root_tasks(include_deleted=False)
+            if root.task_id != task_id
+        ]
+
+    def can_move_task(self, task_id: str, new_parent_task_id: str | None) -> tuple[bool, str]:
+        task = self.state.tasks.get(task_id)
+        if not task:
+            return False, "Task not found"
+        if task.is_deleted:
+            return False, "Task is deleted"
+        if new_parent_task_id == task_id:
+            return False, "Cannot move task under itself"
+
+        if new_parent_task_id is None:
+            return True, ""
+
+        new_parent = self.state.tasks.get(new_parent_task_id)
+        if not new_parent:
+            return False, "Parent task not found"
+        if new_parent.is_deleted:
+            return False, "Parent task is deleted"
+        if new_parent.parent_task_id is not None:
+            return False, "Cannot move task under another subtask"
+
+        if task.parent_task_id is None and self.child_tasks(task_id, include_deleted=False):
+            return False, "Cannot move a parent task with subtasks under another parent. Move/promote its subtasks first."
+
+        seen: set[str] = set()
+        cursor = new_parent
+        while cursor.parent_task_id is not None and cursor.parent_task_id not in seen:
+            if cursor.parent_task_id == task_id:
+                return False, "Cannot move parent into its own descendant"
+            seen.add(cursor.parent_task_id)
+            parent = self.state.tasks.get(cursor.parent_task_id)
+            if not parent:
+                break
+            cursor = parent
+
+        return True, ""
+
+    def move_task(self, task_id: str, new_parent_task_id: str | None, reason: str | None = None) -> None:
+        can_move, message = self.can_move_task(task_id, new_parent_task_id)
+        if not can_move:
+            raise ValueError(message)
+        task = self.state.tasks.get(task_id)
+        if not task:
+            raise ValueError("Task not found")
+        old_parent_task_id = task.parent_task_id
+        if old_parent_task_id == new_parent_task_id:
+            return
+        payload: dict[str, Any] = {
+            "old_parent_task_id": old_parent_task_id,
+            "new_parent_task_id": new_parent_task_id,
+        }
+        if reason is not None and reason.strip():
+            payload["reason"] = reason.strip()
+        self._append(task_id, "task_moved", payload)
+
     def update_task(self, task_id: str, name: str, notes: str) -> None:
         self._append(task_id, "task_updated", {"name": name.strip(), "notes": self._clean_notes(notes)})
 
@@ -1527,6 +1592,19 @@ class TaskTimerService:
             for key in tags:
                 if key not in self.state.global_tags:
                     self.state.global_tags[key] = TagMeta(key=key, archived=False, created_at_utc=timestamp, updated_at_utc=timestamp)
+        elif event_type == "task_moved":
+            new_parent_task_id = payload.get("new_parent_task_id")
+            if new_parent_task_id == task_id:
+                return
+            if new_parent_task_id is None:
+                task.parent_task_id = None
+                return
+            new_parent = self.state.tasks.get(new_parent_task_id)
+            if not new_parent or new_parent.is_deleted:
+                return
+            if new_parent.parent_task_id is not None:
+                return
+            task.parent_task_id = new_parent_task_id
         elif event_type == "manual_interval_added":
             interval = IntervalRecord(
                 interval_id=payload["interval_id"],
