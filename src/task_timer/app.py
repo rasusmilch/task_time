@@ -1672,6 +1672,7 @@ class TaskTimerApp:
         self.table_frame = ttk.Frame(self.root)
         self.table_frame.pack(fill="both", expand=True, padx=8, pady=8)
         self._build_task_tree()
+        self._build_selected_task_panel()
 
     def _init_row_fonts(self) -> None:
         try:
@@ -1846,6 +1847,31 @@ class TaskTimerApp:
         self.task_tree.bind("<<TreeviewSelect>>", self._on_tree_select)
         self.task_tree.bind("<<TreeviewOpen>>", self._on_tree_open)
         self.task_tree.bind("<<TreeviewClose>>", self._on_tree_close)
+        self.task_tree.bind("<Double-1>", self._on_tree_double_click)
+        self.task_tree.bind("<Return>", self._on_tree_toggle_shortcut)
+        self.task_tree.bind("<space>", self._on_tree_toggle_shortcut)
+        self.task_tree.bind("<Delete>", self._on_tree_delete_shortcut)
+        self.task_tree.bind("<Control-e>", self._on_tree_edit_shortcut)
+
+    def _build_selected_task_panel(self) -> None:
+        self.selected_task_panel = ttk.Frame(self.table_frame)
+        self.selected_task_panel.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        self.selected_task_panel.grid_columnconfigure(0, weight=1)
+        self.selected_task_label_var = StringVar(value="Selected: None")
+        ttk.Label(self.selected_task_panel, textvariable=self.selected_task_label_var).grid(row=0, column=0, sticky="w", pady=(0, 6))
+        button_bar = ttk.Frame(self.selected_task_panel)
+        button_bar.grid(row=1, column=0, sticky="w")
+        self.selected_toggle_btn = ttk.Button(button_bar, text="Start", command=self._toggle_selected_task)
+        self.selected_toggle_btn.pack(side="left", padx=(0, 4))
+        self.selected_reset_btn = ttk.Button(button_bar, text="Reset", command=self._reset_selected_task)
+        self.selected_reset_btn.pack(side="left", padx=4)
+        self.selected_delete_btn = ttk.Button(button_bar, text="Delete", command=self._delete_selected_task)
+        self.selected_delete_btn.pack(side="left", padx=4)
+        self.selected_edit_btn = ttk.Button(button_bar, text="Edit Task", command=self._edit_selected_task)
+        self.selected_edit_btn.pack(side="left", padx=4)
+        self.selected_timeline_btn = ttk.Button(button_bar, text="Edit Timeline", command=self._edit_selected_timeline)
+        self.selected_timeline_btn.pack(side="left", padx=4)
+        self._refresh_selected_task_panel()
 
     def refresh_structure(self) -> None:
         selected = self._selected_task_id()
@@ -1867,6 +1893,7 @@ class TaskTimerApp:
             self.selected_task_id = selected
         elif self.selected_task_id and not self.task_tree.exists(self.selected_task_id):
             self.selected_task_id = None
+        self._refresh_selected_task_panel()
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
             self.mini_mode_window.refresh_structure()
 
@@ -1915,6 +1942,7 @@ class TaskTimerApp:
 
     def _on_tree_select(self, _event: object | None = None) -> None:
         self.selected_task_id = self._selected_task_id()
+        self._refresh_selected_task_panel()
 
     def _on_tree_open(self, _event: object | None = None) -> None:
         task_id = self._selected_task_id()
@@ -1936,6 +1964,71 @@ class TaskTimerApp:
         self.refresh_structure()
         self.refresh_live_values()
         self._refresh_month_end_reminder_ui()
+
+    def _refresh_selected_task_panel(self) -> None:
+        if not hasattr(self, "selected_task_label_var"):
+            return
+        task_id = self._selected_task_id()
+        task = self.service.state.tasks.get(task_id) if task_id else None
+        has_selected_task = bool(task and not task.is_deleted)
+        if not has_selected_task:
+            self.selected_task_label_var.set("Selected: None")
+            self.selected_toggle_btn.configure(text="Start", state="disabled")
+            for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_edit_btn, self.selected_timeline_btn):
+                btn.configure(state="disabled")
+            return
+        if task.parent_task_id:
+            parent_name = self.service.state.tasks[task.parent_task_id].name
+            self.selected_task_label_var.set(f"Selected: {parent_name} / {task.name}")
+        else:
+            self.selected_task_label_var.set(f"Selected: {task.name}")
+        self.selected_toggle_btn.configure(text="Stop" if task.is_running else "Start", state="normal")
+        for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_edit_btn, self.selected_timeline_btn):
+            btn.configure(state="normal")
+
+    def _toggle_selected_task(self) -> None:
+        task_id = self._selected_task_id()
+        if task_id:
+            self._toggle_task(task_id)
+
+    def _reset_selected_task(self) -> None:
+        task_id = self._selected_task_id()
+        if task_id:
+            self._reset_task(task_id)
+
+    def _delete_selected_task(self) -> None:
+        task_id = self._selected_task_id()
+        if task_id:
+            self._delete_task(task_id)
+
+    def _edit_selected_task(self) -> None:
+        task_id = self._selected_task_id()
+        if task_id:
+            self._edit_task(task_id)
+
+    def _edit_selected_timeline(self) -> None:
+        task_id = self._selected_task_id()
+        if not task_id:
+            return
+        dialog = EditTimelineDialog(self.root, self.service, task_id)
+        if dialog.changed:
+            self._after_state_change()
+
+    def _on_tree_double_click(self, _event: object | None = None) -> str | None:
+        self._toggle_selected_task()
+        return "break"
+
+    def _on_tree_toggle_shortcut(self, _event: object | None = None) -> str | None:
+        self._toggle_selected_task()
+        return "break"
+
+    def _on_tree_delete_shortcut(self, _event: object | None = None) -> str | None:
+        self._delete_selected_task()
+        return "break"
+
+    def _on_tree_edit_shortcut(self, _event: object | None = None) -> str | None:
+        self._edit_selected_task()
+        return "break"
 
     def _toggle_task(self, task_id: str) -> None:
         task = self.service.state.tasks.get(task_id)

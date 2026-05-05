@@ -1924,3 +1924,69 @@ def test_running_subtask_forces_parent_open_and_selection_helper(tmp_path) -> No
     assert app.task_tree.data[root_id]["open"] is True
     app.task_tree.selection_set(child_id)
     assert TaskTimerApp._selected_task_id(app) == child_id
+
+
+def test_selected_panel_none_disables_controls(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.selected_task_id = None
+    app.task_tree = SimpleNamespace(selection=lambda: ())
+    state: dict[str, dict[str, str]] = {}
+    app.selected_task_label_var = SimpleNamespace(set=lambda value: state.setdefault("label", {"text": value}).update({"text": value}))
+    app.selected_toggle_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("toggle", {}).update(kwargs))
+    app.selected_reset_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("reset", {}).update(kwargs))
+    app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
+    app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
+    app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
+    TaskTimerApp._refresh_selected_task_panel(app)
+    assert state["label"]["text"] == "Selected: None"
+    assert state["toggle"]["state"] == "disabled"
+    assert state["reset"]["state"] == "disabled"
+
+
+def test_selected_panel_subtask_label_and_toggle_text(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    parent_id = service.create_task("Parent", "")
+    child_id = service.create_subtask(parent_id, "Child", "")
+    service.start_task(child_id)
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.selected_task_id = child_id
+    app.task_tree = SimpleNamespace(selection=lambda: (child_id,))
+    state: dict[str, dict[str, str]] = {}
+    app.selected_task_label_var = SimpleNamespace(set=lambda value: state.setdefault("label", {"text": value}).update({"text": value}))
+    app.selected_toggle_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("toggle", {}).update(kwargs))
+    app.selected_reset_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("reset", {}).update(kwargs))
+    app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
+    app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
+    app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
+    TaskTimerApp._refresh_selected_task_panel(app)
+    assert state["label"]["text"] == "Selected: Parent / Child"
+    assert state["toggle"]["text"] == "Stop"
+    assert state["toggle"]["state"] == "normal"
+
+
+def test_shortcuts_and_selected_actions_use_selected_task(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("Task", "")
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.selected_task_id = task_id
+    app.task_tree = SimpleNamespace(selection=lambda: (task_id,))
+    called: list[tuple[str, str]] = []
+    app._toggle_task = lambda selected_id: called.append(("toggle", selected_id))
+    app._delete_task = lambda selected_id: called.append(("delete", selected_id))
+    app._edit_task = lambda selected_id: called.append(("edit", selected_id))
+    TaskTimerApp._toggle_selected_task(app)
+    TaskTimerApp._on_tree_double_click(app)
+    TaskTimerApp._on_tree_toggle_shortcut(app)
+    TaskTimerApp._on_tree_delete_shortcut(app)
+    TaskTimerApp._on_tree_edit_shortcut(app)
+    assert called == [
+        ("toggle", task_id),
+        ("toggle", task_id),
+        ("toggle", task_id),
+        ("delete", task_id),
+        ("edit", task_id),
+    ]
