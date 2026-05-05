@@ -1857,7 +1857,16 @@ class TaskTimerApp:
         self.selected_task_panel.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
         self.selected_task_panel.grid_columnconfigure(0, weight=1)
         self.selected_task_label_var = StringVar(value="Selected: None")
-        ttk.Label(self.selected_task_panel, textvariable=self.selected_task_label_var).grid(row=0, column=0, sticky="w", pady=(0, 6))
+        ttk.Label(self.selected_task_panel, textvariable=self.selected_task_label_var).grid(row=0, column=0, sticky="w")
+        self.selected_state_label = tk.Label(
+            self.selected_task_panel,
+            text="",
+            bg=self.root.cget("bg"),
+            fg="black",
+            padx=8,
+            pady=1,
+        )
+        self.selected_state_label.grid(row=0, column=1, sticky="e", padx=(8, 0), pady=(0, 6))
         button_bar = ttk.Frame(self.selected_task_panel)
         button_bar.grid(row=1, column=0, sticky="w")
         self.selected_toggle_btn = ttk.Button(button_bar, text="Start", command=self._toggle_selected_task)
@@ -1882,9 +1891,9 @@ class TaskTimerApp:
             children = self._sorted_tasks(children_map.get(root.task_id, []))
             if any(child.is_running for child in children):
                 self.expanded_parents.add(root.task_id)
-            self.task_tree.insert("", "end", iid=root.task_id, text=root.name, values=(root.notes, "Stopped", "00:00"), open=root.task_id in self.expanded_parents, tags=self._tree_tags(root, is_subtask=False, has_children=bool(children)))
+            self.task_tree.insert("", "end", iid=root.task_id, text=root.name, values=(root.notes, "■ Stopped", "00:00"), open=root.task_id in self.expanded_parents, tags=self._tree_tags(root, is_subtask=False, has_children=bool(children)))
             for child in children:
-                self.task_tree.insert(root.task_id, "end", iid=child.task_id, text=child.name, values=(child.notes, "Stopped", "00:00"), tags=self._tree_tags(child, is_subtask=True, has_children=False))
+                self.task_tree.insert(root.task_id, "end", iid=child.task_id, text=child.name, values=(child.notes, "■ Stopped", "00:00"), tags=self._tree_tags(child, is_subtask=True, has_children=False))
             if any(child.is_running for child in children):
                 self.task_tree.item(root.task_id, open=True)
         if selected and self.task_tree.exists(selected):
@@ -1942,7 +1951,7 @@ class TaskTimerApp:
 
     def _task_state_display(self, task: TaskState, now_utc: datetime) -> str:
         if not task.is_running:
-            return "Stopped"
+            return "■ Stopped"
         threshold = timedelta(hours=getattr(self.ui_settings, "long_running_task_warning_hours", DEFAULT_LONG_RUNNING_TASK_WARNING_HOURS))
         start_utc = getattr(task, "currently_open_interval_start_utc", None)
         if start_utc is not None and (now_utc - start_utc) >= threshold:
@@ -1980,6 +1989,15 @@ class TaskTimerApp:
         self.refresh_live_values()
         self._refresh_month_end_reminder_ui()
 
+    def _selected_state_colors(self, state_text: str) -> tuple[str, str]:
+        if state_text == "▶ Running":
+            return ("#2e7d32", "#ffffff")
+        if state_text == "⚠ Long-running":
+            return ("#f9a825", "#111111")
+        if state_text == "■ Stopped":
+            return ("#c62828", "#ffffff")
+        return (self.root.cget("bg"), "black")
+
     def _refresh_selected_task_panel(self) -> None:
         if not hasattr(self, "selected_task_label_var"):
             return
@@ -1988,6 +2006,9 @@ class TaskTimerApp:
         has_selected_task = bool(task and not task.is_deleted)
         if not has_selected_task:
             self.selected_task_label_var.set("Selected: None")
+            if hasattr(self, "selected_state_label"):
+                bg, fg = self._selected_state_colors("")
+                self.selected_state_label.configure(text="", bg=bg, fg=fg)
             self.selected_toggle_btn.configure(text="Start", state="disabled")
             for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_edit_btn, self.selected_timeline_btn):
                 btn.configure(state="disabled")
@@ -1997,6 +2018,10 @@ class TaskTimerApp:
             self.selected_task_label_var.set(f"Selected: {parent_name} / {task.name}")
         else:
             self.selected_task_label_var.set(f"Selected: {task.name}")
+        state_text = self._task_state_display(task, utc_now())
+        if hasattr(self, "selected_state_label"):
+            bg, fg = self._selected_state_colors(state_text)
+            self.selected_state_label.configure(text=f"State: {state_text}", bg=bg, fg=fg)
         self.selected_toggle_btn.configure(text="Stop" if task.is_running else "Start", state="normal")
         for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_edit_btn, self.selected_timeline_btn):
             btn.configure(state="normal")

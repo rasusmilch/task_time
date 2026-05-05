@@ -1942,14 +1942,18 @@ def test_selected_panel_none_disables_controls(tmp_path) -> None:
     state: dict[str, dict[str, str]] = {}
     app.selected_task_label_var = SimpleNamespace(set=lambda value: state.setdefault("label", {"text": value}).update({"text": value}))
     app.selected_toggle_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("toggle", {}).update(kwargs))
+    app.selected_state_label = SimpleNamespace(configure=lambda **kwargs: state.setdefault("state", {}).update(kwargs))
+    app._selected_state_colors = lambda _text: ("neutral", "black")
     app.selected_reset_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("reset", {}).update(kwargs))
     app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
     app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
     app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
+    app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
     TaskTimerApp._refresh_selected_task_panel(app)
     assert state["label"]["text"] == "Selected: None"
     assert state["toggle"]["state"] == "disabled"
     assert state["reset"]["state"] == "disabled"
+    assert state["state"]["text"] == ""
 
 
 def test_selected_panel_subtask_label_and_toggle_text(tmp_path) -> None:
@@ -1964,14 +1968,48 @@ def test_selected_panel_subtask_label_and_toggle_text(tmp_path) -> None:
     state: dict[str, dict[str, str]] = {}
     app.selected_task_label_var = SimpleNamespace(set=lambda value: state.setdefault("label", {"text": value}).update({"text": value}))
     app.selected_toggle_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("toggle", {}).update(kwargs))
+    app.selected_state_label = SimpleNamespace(configure=lambda **kwargs: state.setdefault("state", {}).update(kwargs))
+    app._selected_state_colors = TaskTimerApp._selected_state_colors.__get__(app, TaskTimerApp)
+    app.root = SimpleNamespace(cget=lambda _name: "#f0f0f0")
+    app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
     app.selected_reset_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("reset", {}).update(kwargs))
     app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
     app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
     app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
+    app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
     TaskTimerApp._refresh_selected_task_panel(app)
     assert state["label"]["text"] == "Selected: Parent / Child"
     assert state["toggle"]["text"] == "Stop"
     assert state["toggle"]["state"] == "normal"
+    assert state["state"]["text"] == "State: ▶ Running"
+
+
+def test_selected_panel_state_updates_with_task_start_stop(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("Task", "")
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.selected_task_id = task_id
+    app.task_tree = SimpleNamespace(selection=lambda: (task_id,))
+    app.root = SimpleNamespace(cget=lambda _name: "#f0f0f0")
+    state: dict[str, dict[str, str]] = {}
+    app.selected_task_label_var = SimpleNamespace(set=lambda value: state.setdefault("label", {"text": value}).update({"text": value}))
+    app.selected_toggle_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("toggle", {}).update(kwargs))
+    app.selected_state_label = SimpleNamespace(configure=lambda **kwargs: state.setdefault("state", {}).update(kwargs))
+    app.selected_reset_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("reset", {}).update(kwargs))
+    app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
+    app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
+    app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
+    app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
+
+    TaskTimerApp._refresh_selected_task_panel(app)
+    assert state["state"]["text"] == "State: ■ Stopped"
+    assert state["state"]["bg"] == "#c62828"
+
+    service.start_task(task_id)
+    TaskTimerApp._refresh_selected_task_panel(app)
+    assert state["state"]["text"] == "State: ▶ Running"
+    assert state["state"]["bg"] == "#2e7d32"
 
 
 def test_shortcuts_and_selected_actions_use_selected_task(tmp_path) -> None:
@@ -2064,7 +2102,15 @@ def test_task_state_display_labels() -> None:
     long_running = SimpleNamespace(is_running=True, currently_open_interval_start_utc=now - timedelta(hours=13))
     running_missing_start = SimpleNamespace(is_running=True)
 
-    assert TaskTimerApp._task_state_display(app, stopped, now) == "Stopped"
+    assert TaskTimerApp._task_state_display(app, stopped, now) == "■ Stopped"
     assert TaskTimerApp._task_state_display(app, running, now) == "▶ Running"
     assert TaskTimerApp._task_state_display(app, long_running, now) == "⚠ Long-running"
     assert TaskTimerApp._task_state_display(app, running_missing_start, now) == "▶ Running"
+
+
+def test_selected_state_colors() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = SimpleNamespace(cget=lambda _name: "#f0f0f0")
+    assert TaskTimerApp._selected_state_colors(app, "▶ Running") == ("#2e7d32", "#ffffff")
+    assert TaskTimerApp._selected_state_colors(app, "■ Stopped") == ("#c62828", "#ffffff")
+    assert TaskTimerApp._selected_state_colors(app, "⚠ Long-running") == ("#f9a825", "#111111")
