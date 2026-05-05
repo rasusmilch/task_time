@@ -1944,7 +1944,8 @@ class TaskTimerApp:
         if not task.is_running:
             return "Stopped"
         threshold = timedelta(hours=getattr(self.ui_settings, "long_running_task_warning_hours", DEFAULT_LONG_RUNNING_TASK_WARNING_HOURS))
-        if task.running_since_utc and (now_utc - task.running_since_utc) >= threshold:
+        start_utc = getattr(task, "currently_open_interval_start_utc", None)
+        if start_utc is not None and (now_utc - start_utc) >= threshold:
             return "⚠ Long-running"
         return "▶ Running"
 
