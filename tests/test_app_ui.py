@@ -2049,5 +2049,20 @@ def test_task_tree_column_defaults_are_compact() -> None:
 
     assert app.task_tree.columns["#0"]["width"] <= 250
     assert app.task_tree.columns["notes"]["width"] <= 300
+    assert app.task_tree.columns["state"]["width"] >= 120
     assert app.task_tree.columns["state"]["stretch"] is False
     assert app.task_tree.columns["elapsed"]["stretch"] is False
+
+
+def test_task_state_display_labels() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.ui_settings = SimpleNamespace()
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    stopped = SimpleNamespace(is_running=False, running_since_utc=None)
+    running = SimpleNamespace(is_running=True, running_since_utc=now - timedelta(hours=1))
+    long_running = SimpleNamespace(is_running=True, running_since_utc=now - timedelta(hours=13))
+
+    assert TaskTimerApp._task_state_display(app, stopped, now) == "Stopped"
+    assert TaskTimerApp._task_state_display(app, running, now) == "▶ Running"
+    assert TaskTimerApp._task_state_display(app, long_running, now) == "⚠ Long-running"

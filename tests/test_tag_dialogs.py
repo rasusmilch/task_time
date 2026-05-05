@@ -223,6 +223,8 @@ def test_tag_selection_frame_grid_columns_are_distinct() -> None:
     import task_timer.tag_dialogs as tag_dialogs_module
 
     source = inspect.getsource(tag_dialogs_module.TagSelectionFrame.__init__)
+    assert 'lists.grid(row=0, column=0, sticky="n")' in source
+    assert "width=28" in source
     assert 'avail_scroll.grid(row=1, column=1' in source
     assert 'center.grid(row=1, column=2' in source
     assert 'self.selected_list.grid(row=1, column=3' in source

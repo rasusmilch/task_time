@@ -913,8 +913,11 @@ class EditTaskDialog:
             ttk.Label(self.window, text=f"Parent task: {parent_name}").grid(row=row, column=0, columnspan=2, sticky="w", pady=(2, 4))
             row += 1
 
-        self.tag_selector = TagSelectionFrame(self.window, service, initial_tags=task.tags)
-        self.tag_selector.grid(row=row, column=0, columnspan=2, sticky="nsew", pady=4)
+        tag_selector_row = ttk.Frame(self.window)
+        tag_selector_row.grid(row=row, column=0, columnspan=2, sticky="ew", pady=4)
+        tag_selector_row.grid_columnconfigure(0, weight=1)
+        self.tag_selector = TagSelectionFrame(tag_selector_row, service, initial_tags=task.tags)
+        self.tag_selector.grid(row=0, column=0)
         row += 1
 
         if not self.is_subtask:
