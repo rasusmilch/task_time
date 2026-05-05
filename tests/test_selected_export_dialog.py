@@ -56,7 +56,7 @@ def test_dialog_explanatory_text_present() -> None:
 def test_dialog_layout_uses_dedicated_task_list_frame_with_adjacent_scrollbar() -> None:
     source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
     assert "task_list_frame = ttk.Frame(task_area)" in source
-    assert "canvas = tk.Canvas(task_list_frame, height=220, width=500)" in source
+    assert "canvas = tk.Canvas(task_list_frame, height=220, width=500, bd=0, borderwidth=0, highlightthickness=0)" in source
     assert "scroll = ttk.Scrollbar(task_list_frame, orient=\"vertical\", command=canvas.yview)" in source
     assert "canvas.grid(row=0, column=0, sticky=\"nsew\")" in source
     assert "scroll.grid(row=0, column=1, sticky=\"ns\")" in source
@@ -77,6 +77,13 @@ def test_dialog_contains_mark_submitted_and_reason_controls() -> None:
     assert "ttk.Label(reason_row, text=\"Reason\")" in source
     assert "self.reason_var = StringVar(value=\"Job closing / entered into Epicor\")" in source
 
+
+
+def test_dialog_task_canvas_border_and_highlight_are_disabled() -> None:
+    source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
+    assert "bd=0" in source
+    assert "borderwidth=0" in source
+    assert "highlightthickness=0" in source
 
 def test_dialog_mark_submitted_checkbutton_uses_supported_options_only() -> None:
     source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
