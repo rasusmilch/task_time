@@ -645,8 +645,8 @@ def test_parent_export_aggregates_subtasks_and_formats_decimal(tmp_path: Path, m
     text = out.read_text(encoding="utf-8")
     assert "06:25 (6.42 h)" in text
     assert "Parent/general: 01:15 (1.25 h)" in text
-    assert "Create test adapter: 03:00 (3.00 h)" in text
-    assert "Research specifications: 02:10 (2.17 h)" in text
+    assert "Create test adapter total: 03:00 (3.00 h)" in text
+    assert "Research specifications total: 02:10 (2.17 h)" in text
 
 
 def test_selected_parent_includes_subtasks_and_no_double_count(tmp_path: Path, monkeypatch) -> None:
@@ -677,7 +677,42 @@ def test_subtask_alone_selected_does_not_include_parent_and_inherits_parent_tags
     out = tmp_path / "sel.txt"
     service.export_selected_tasks_report(out, [child], None, end, mark_submitted=False, reason="")
     text = out.read_text(encoding="utf-8")
-    assert "- Child" in text and "- Parent" not in text
+    assert "- Child" in text and "\n- Parent\n" not in text
     service.export_report(tmp_path / "global.txt", reset_after=False)
     g = (tmp_path / "global.txt").read_text(encoding="utf-8")
     assert "alpha" in g and "beta" in g
+
+
+def test_depth2_hierarchy_export_selected_tags_and_markers(tmp_path: Path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    sub = service.create_subtask(root, "Sub", "")
+    nested = service.create_subtask(sub, "Nested", "")
+    service.update_task_tags(root, ["alpha"])
+    service.update_task_tags(sub, ["beta"])
+    service.update_task_tags(nested, ["gamma"])
+    service.add_manual_interval(root, parse_utc_z("2026-01-10T10:00:00Z").astimezone(), parse_utc_z("2026-01-10T11:00:00Z").astimezone(), "r")
+    service.add_manual_interval(sub, parse_utc_z("2026-01-10T11:00:00Z").astimezone(), parse_utc_z("2026-01-10T12:30:00Z").astimezone(), "s")
+    service.add_manual_interval(nested, parse_utc_z("2026-01-10T12:30:00Z").astimezone(), parse_utc_z("2026-01-10T13:00:00Z").astimezone(), "n")
+    end = parse_utc_z("2026-01-31T00:00:00Z")
+    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+
+    service.export_selected_tasks_report(tmp_path / "root_selected.txt", [root], None, end, mark_submitted=True, reason="done")
+    marker = [e for e in service.events if e["event_type"] == "time_submission_created"][-1]["payload"]
+    assert set(marker["task_ids"]) == {root, sub, nested}
+
+    service.export_selected_tasks_report(tmp_path / "sub_selected.txt", [sub], None, end, mark_submitted=False, reason="")
+    sub_text = (tmp_path / "sub_selected.txt").read_text(encoding="utf-8")
+    assert "- Sub" in sub_text and "Nested" in sub_text and "- Root" not in sub_text
+    assert "02:00 (2.00 h)" in sub_text
+
+    service.export_selected_tasks_report(tmp_path / "nested_selected.txt", [nested], None, end, mark_submitted=False, reason="")
+    nested_text = (tmp_path / "nested_selected.txt").read_text(encoding="utf-8")
+    assert "- Nested" in nested_text and "- Sub" not in nested_text
+    assert "00:30 (0.50 h)" in nested_text
+
+    service.export_report(tmp_path / "global.txt", reset_after=False)
+    global_text = (tmp_path / "global.txt").read_text(encoding="utf-8")
+    assert "Root Task Total" not in global_text  # sanity current heading style unchanged
+    assert "00:30 (0.50 h)" in global_text
+    assert "alpha" in global_text and "beta" in global_text and "gamma" in global_text
