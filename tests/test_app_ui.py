@@ -947,7 +947,7 @@ def test_build_menus_tools_contains_reset_all_item(monkeypatch) -> None:
 
 
 
-def test_reset_parent_with_subtasks_prompts_scope_and_default_tree(monkeypatch) -> None:
+def test_reset_task_with_descendants_prompts_scope_and_default_tree(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     parent = SimpleNamespace(parent_task_id=None)
     child = SimpleNamespace(task_id="c1", parent_task_id="p1")
@@ -974,13 +974,13 @@ def test_reset_parent_with_subtasks_prompts_scope_and_default_tree(monkeypatch) 
     TaskTimerApp._reset_task(app, "p1")
     assert captured["default"] == app_module.messagebox.YES
     assert calls == [
-        ("backup", "before resetting parent task tree"),
+        ("backup", "before resetting selected task and descendants"),
         ("tree", "p1"),
         ("refresh", None),
     ]
 
 
-def test_reset_parent_only_leaves_subtasks_intact_path(monkeypatch) -> None:
+def test_reset_task_only_leaves_descendants_intact_path(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     parent = SimpleNamespace(parent_task_id=None)
     child = SimpleNamespace(task_id="c1", parent_task_id="p1")
@@ -999,10 +999,10 @@ def test_reset_parent_only_leaves_subtasks_intact_path(monkeypatch) -> None:
     monkeypatch.setattr(app_module.messagebox, "askyesnocancel", lambda *_a, **_k: False)
 
     TaskTimerApp._reset_task(app, "p1")
-    assert calls == [("only", "p1"), ("refresh", "x")]
+    assert calls == [("backup", "x"), ("only", "p1"), ("refresh", "x")]
 
 
-def test_reset_subtask_resets_only_that_subtask(monkeypatch) -> None:
+def test_reset_depth_two_subtask_resets_only_itself(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     subtask = SimpleNamespace(parent_task_id="p1")
     calls: list[tuple[str, str]] = []
@@ -1011,6 +1011,7 @@ def test_reset_subtask_resets_only_that_subtask(monkeypatch) -> None:
         child_tasks=lambda *_a, **_k: [],
         reset_task_only=lambda task_id: calls.append(("only", task_id)),
     )
+    app._create_risky_operation_backup = lambda _reason: calls.append(("backup", "x"))
     app._after_state_change = lambda: calls.append(("refresh", "x"))
 
     import task_timer.app as app_module
@@ -1018,10 +1019,10 @@ def test_reset_subtask_resets_only_that_subtask(monkeypatch) -> None:
     monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *_a, **_k: True)
 
     TaskTimerApp._reset_task(app, "c1")
-    assert calls == [("only", "c1"), ("refresh", "x")]
+    assert calls == [("backup", "x"), ("only", "c1"), ("refresh", "x")]
 
 
-def test_delete_parent_with_subtasks_prompts_and_deletes_tree_once(monkeypatch) -> None:
+def test_delete_task_with_descendants_prompts_and_deletes_tree_once(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     parent = SimpleNamespace(parent_task_id=None)
     child = SimpleNamespace(task_id="c1", parent_task_id="p1")
@@ -1043,13 +1044,13 @@ def test_delete_parent_with_subtasks_prompts_and_deletes_tree_once(monkeypatch) 
     TaskTimerApp._delete_task(app, "p1")
     assert "p1" not in app.expanded_parents
     assert calls == [
-        ("backup", "before deleting parent task tree"),
+        ("backup", "before deleting selected task and descendants"),
         ("tree", "p1"),
         ("refresh", "x"),
     ]
 
 
-def test_delete_subtask_deletes_only_subtask(monkeypatch) -> None:
+def test_delete_depth_two_subtask_deletes_only_subtask(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     subtask = SimpleNamespace(parent_task_id="p1")
     calls: list[tuple[str, str]] = []
@@ -1058,6 +1059,7 @@ def test_delete_subtask_deletes_only_subtask(monkeypatch) -> None:
         child_tasks=lambda *_a, **_k: [],
         delete_task_only=lambda task_id: calls.append(("only", task_id)),
     )
+    app._create_risky_operation_backup = lambda _reason: calls.append(("backup", "x"))
     app._after_state_change = lambda: calls.append(("refresh", "x"))
 
     import task_timer.app as app_module
@@ -1065,7 +1067,7 @@ def test_delete_subtask_deletes_only_subtask(monkeypatch) -> None:
     monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *_a, **_k: True)
 
     TaskTimerApp._delete_task(app, "c1")
-    assert calls == [("only", "c1"), ("refresh", "x")]
+    assert calls == [("backup", "x"), ("only", "c1"), ("refresh", "x")]
 def test_reset_all_task_timers_requires_confirmation_and_handles_cancel(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     app.service = SimpleNamespace(state=SimpleNamespace(tasks={"t1": SimpleNamespace(is_deleted=False)}))

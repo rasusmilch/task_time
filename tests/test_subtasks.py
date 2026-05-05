@@ -76,6 +76,64 @@ def test_reset_task_tree_resets_parent_and_subtasks(tmp_path):
     assert service.state.tasks[child].last_reset_utc is not None
 
 
+
+
+def test_reset_depth_one_only_leaves_nested_child_untouched(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    child = service.create_subtask(root, "Child", "")
+    nested = service.create_subtask(child, "Nested", "")
+    service.start_task(child)
+    service.stop_task(child)
+    service.start_task(nested)
+    service.stop_task(nested)
+
+    service.reset_task_only(child)
+
+    assert service.state.tasks[child].last_reset_utc is not None
+    assert service.state.tasks[nested].last_reset_utc is None
+
+
+def test_reset_depth_one_tree_resets_nested_child(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    child = service.create_subtask(root, "Child", "")
+    nested = service.create_subtask(child, "Nested", "")
+    service.start_task(child)
+    service.stop_task(child)
+    service.start_task(nested)
+    service.stop_task(nested)
+
+    service.reset_task_tree(child)
+
+    assert service.state.tasks[child].last_reset_utc is not None
+    assert service.state.tasks[nested].last_reset_utc is not None
+
+
+def test_delete_tree_depth_coverage(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    child = service.create_subtask(root, "Child", "")
+    nested = service.create_subtask(child, "Nested", "")
+
+    service.delete_task_tree(child)
+
+    assert service.state.tasks[root].is_deleted is False
+    assert service.state.tasks[child].is_deleted is True
+    assert service.state.tasks[nested].is_deleted is True
+
+
+def test_delete_depth_two_only_deletes_itself(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    child = service.create_subtask(root, "Child", "")
+    nested = service.create_subtask(child, "Nested", "")
+
+    service.delete_task_only(nested)
+
+    assert service.state.tasks[root].is_deleted is False
+    assert service.state.tasks[child].is_deleted is False
+    assert service.state.tasks[nested].is_deleted is True
 def test_start_subtask_preserves_one_running_invariant(tmp_path):
     service = TaskTimerService(EventStorage(tmp_path))
     parent = service.create_task("P", "")

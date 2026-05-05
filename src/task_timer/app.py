@@ -2297,30 +2297,30 @@ class TaskTimerApp:
         task = self.service.state.tasks.get(task_id)
         if not task:
             return
-        is_subtask = task.parent_task_id is not None
         children = self.service.child_tasks(task_id, include_deleted=False)
 
-        if not is_subtask and children:
+        if children:
             choice = messagebox.askyesnocancel(
                 "Confirm reset",
-                "This parent row total includes subtask time.\n\n"
-                "Choose reset scope:\n"
-                "• Yes = Reset Parent + Subtasks (default)\n"
-                "• No = Reset Parent Only\n"
+                "This task has subtasks. Choose reset scope:\n\n"
+                "• Yes = Reset selected task and all subtasks (default)\n"
+                "• No = Reset selected task only\n"
                 "• Cancel = Do nothing",
                 default=messagebox.YES,
             )
             if choice is None:
                 return
             if choice:
-                self._create_risky_operation_backup("before resetting parent task tree")
+                self._create_risky_operation_backup("before resetting selected task and descendants")
                 self.service.reset_task_tree(task_id)
             else:
+                self._create_risky_operation_backup("before resetting selected task")
                 self.service.reset_task_only(task_id)
             self._after_state_change()
             return
 
         if messagebox.askyesno("Confirm reset", "Reset this task timer to zero?"):
+            self._create_risky_operation_backup("before resetting selected task")
             self.service.reset_task_only(task_id)
             self._after_state_change()
 
@@ -2346,25 +2346,25 @@ class TaskTimerApp:
         task = self.service.state.tasks.get(task_id)
         if not task:
             return
-        is_subtask = task.parent_task_id is not None
         children = self.service.child_tasks(task_id, include_deleted=False)
 
-        if not is_subtask and children:
+        if children:
             should_delete_tree = messagebox.askokcancel(
                 "Confirm delete",
-                "Deleting this parent task will also delete all of its subtasks.\n\n"
-                "Continue with Delete Parent + Subtasks?",
+                "Deleting this task will also delete all descendant subtasks.\n\n"
+                "Continue?",
                 default=messagebox.OK,
             )
             if not should_delete_tree:
                 return
-            self._create_risky_operation_backup("before deleting parent task tree")
+            self._create_risky_operation_backup("before deleting selected task and descendants")
             self.service.delete_task_tree(task_id)
             self.expanded_parents.discard(task_id)
             self._after_state_change()
             return
 
         if messagebox.askyesno("Confirm delete", "Delete this task from active view?"):
+            self._create_risky_operation_backup("before deleting selected task")
             self.service.delete_task_only(task_id)
             self._after_state_change()
 
