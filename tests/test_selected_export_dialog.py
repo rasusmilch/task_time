@@ -38,3 +38,19 @@ def test_dialog_select_all_and_clear_all() -> None:
 def test_dialog_explanatory_text_present() -> None:
     source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
     assert "Selecting a parent task includes its subtasks. Selecting an individual subtask exports only that subtask." in source
+
+
+def test_dialog_layout_uses_dedicated_task_list_frame_with_adjacent_scrollbar() -> None:
+    source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
+    assert "task_list_frame = ttk.Frame(tasks_outer)" in source
+    assert "canvas = tk.Canvas(task_list_frame, height=220, width=500)" in source
+    assert "scroll = ttk.Scrollbar(task_list_frame, orient=\"vertical\", command=canvas.yview)" in source
+    assert "canvas.grid(row=0, column=0, sticky=\"nsew\")" in source
+    assert "scroll.grid(row=0, column=1, sticky=\"ns\")" in source
+
+
+def test_dialog_layout_keeps_options_outside_task_list_frame() -> None:
+    source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
+    assert "options_panel = ttk.Frame(content)" in source
+    assert "task_btns = ttk.Frame(options_panel)" in source
+    assert "ttk.Checkbutton(\n            options_panel," in source

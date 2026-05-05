@@ -694,14 +694,30 @@ class SelectedTaskExportDialog:
             wraplength=520,
             justify="left",
         ).pack(anchor="w", pady=(0, 4))
-        canvas = tk.Canvas(frame, height=170)
-        scroll = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
+
+        content = ttk.Frame(frame)
+        content.pack(fill="both", expand=True)
+        content.grid_columnconfigure(0, weight=1)
+        content.grid_rowconfigure(0, weight=1)
+
+        tasks_outer = ttk.Frame(content)
+        tasks_outer.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        tasks_outer.grid_columnconfigure(0, weight=1)
+        tasks_outer.grid_rowconfigure(0, weight=1)
+
+        task_list_frame = ttk.Frame(tasks_outer)
+        task_list_frame.grid(row=0, column=0, sticky="nsew")
+        task_list_frame.grid_columnconfigure(0, weight=1)
+        task_list_frame.grid_rowconfigure(0, weight=1)
+
+        canvas = tk.Canvas(task_list_frame, height=220, width=500)
+        scroll = ttk.Scrollbar(task_list_frame, orient="vertical", command=canvas.yview)
         list_frame = ttk.Frame(canvas)
         list_frame.bind("<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.create_window((0, 0), window=list_frame, anchor="nw")
         canvas.configure(yscrollcommand=scroll.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        scroll.pack(side="right", fill="y")
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scroll.grid(row=0, column=1, sticky="ns")
 
         active_tasks = [t for t in service.state.tasks.values() if not t.is_deleted]
         roots = sorted([t for t in active_tasks if t.parent_task_id is None], key=lambda t: (t.name.strip().casefold(), t.task_id))
@@ -724,17 +740,26 @@ class SelectedTaskExportDialog:
 
         self._refresh_included_states()
 
-        task_btns = ttk.Frame(frame)
-        task_btns.pack(fill="x", pady=(4, 8))
-        ttk.Button(task_btns, text="Select All", command=self.select_all_tasks).pack(side="left")
-        ttk.Button(task_btns, text="Clear All", command=self.clear_all_tasks).pack(side="left", padx=4)
+        options_panel = ttk.Frame(content)
+        options_panel.grid(row=0, column=1, sticky="ns")
 
-        ttk.Checkbutton(frame, text="Mark exported selected time as already entered into Epicor", variable=self.mark_submitted_var).pack(anchor="w")
-        ttk.Label(frame, text="Reason").pack(anchor="w")
-        ttk.Entry(frame, textvariable=self.reason_var).pack(fill="x")
+        task_btns = ttk.Frame(options_panel)
+        task_btns.pack(fill="x", pady=(0, 8))
+        ttk.Button(task_btns, text="Select All", command=self.select_all_tasks).pack(fill="x")
+        ttk.Button(task_btns, text="Clear All", command=self.clear_all_tasks).pack(fill="x", pady=(4, 0))
 
-        actions = ttk.Frame(frame)
-        actions.pack(fill="x", pady=(8, 0))
+        ttk.Checkbutton(
+            options_panel,
+            text="Mark exported selected time as already entered into Epicor",
+            variable=self.mark_submitted_var,
+            wraplength=240,
+            justify="left",
+        ).pack(anchor="w", fill="x")
+        ttk.Label(options_panel, text="Reason").pack(anchor="w", pady=(8, 0))
+        ttk.Entry(options_panel, textvariable=self.reason_var, width=34).pack(fill="x")
+
+        actions = ttk.Frame(options_panel)
+        actions.pack(fill="x", pady=(10, 0))
         ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(actions, text="Export Selected", command=self._confirm).pack(side="right")
 
