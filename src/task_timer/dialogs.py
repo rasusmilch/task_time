@@ -1014,7 +1014,8 @@ class EditTaskDialog:
         row += 1
         if self.is_subtask:
             parent_name = self.service.state.tasks[task.parent_task_id].name
-            ttk.Label(self.window, text=f"Parent task: {parent_name}").grid(row=row, column=0, columnspan=2, sticky="w", pady=(2, 4))
+            self.parent_label_var = StringVar(value=f"Parent task: {parent_name}")
+            ttk.Label(self.window, textvariable=self.parent_label_var).grid(row=row, column=0, columnspan=2, sticky="w", pady=(2, 4))
             row += 1
 
         tag_selector_row = ttk.Frame(self.window)
@@ -1052,6 +1053,7 @@ class EditTaskDialog:
         bar = ttk.Frame(self.window)
         bar.grid(row=row, column=0, columnspan=2, sticky="e")
         ttk.Button(bar, text="Edit Timeline", command=self._edit_timeline).pack(side="left")
+        ttk.Button(bar, text="Move Task...", command=self._move_task).pack(side="left", padx=(6, 0))
         ttk.Button(bar, text="Cancel", command=self.window.destroy).pack(side="right")
         ttk.Button(bar, text="Save", command=self._save).pack(side="right")
         self.window.grid_columnconfigure(1, weight=1)
@@ -1062,6 +1064,35 @@ class EditTaskDialog:
         timeline_dialog = EditTimelineDialog(self.window, self.service, self.task_id)
         if timeline_dialog.changed:
             self.changed = True
+
+    def _move_task(self) -> None:
+        task = self.service.state.tasks.get(self.task_id)
+        if not task or task.is_deleted:
+            messagebox.showerror("Move Task", "Task no longer exists.", parent=self.window)
+            self.changed = True
+            self.window.destroy()
+            return
+
+        old_parent_task_id = task.parent_task_id
+        dialog = MoveTaskDialog(self.window, self.service, self.task_id)
+        if not getattr(dialog, "confirmed", False):
+            return
+
+        if dialog.new_parent_task_id is not None and not self.service.state.tasks.get(dialog.new_parent_task_id):
+            messagebox.showerror("Move Task", "Selected parent task no longer exists.", parent=self.window)
+            return
+
+        if old_parent_task_id == dialog.new_parent_task_id:
+            return
+
+        try:
+            self.service.move_task(self.task_id, dialog.new_parent_task_id, getattr(dialog, "reason", "") or None)
+        except ValueError as exc:
+            messagebox.showerror("Move Task", str(exc), parent=self.window)
+            return
+
+        self.changed = True
+        self.window.destroy()
 
     def _refresh_subtasks(self) -> None:
         for item in self.subtask_tree.get_children():

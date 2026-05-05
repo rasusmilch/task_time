@@ -1336,6 +1336,107 @@ def test_edit_task_dialog_timeline_marks_changed_when_dialog_changed() -> None:
     assert dialog.changed is True
 
 
+def test_edit_task_dialog_has_move_task_button() -> None:
+    import inspect
+    source = inspect.getsource(EditTaskDialog.__init__)
+    assert 'text="Move Task..."' in source
+
+
+def test_edit_task_dialog_move_opens_move_dialog() -> None:
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.task_id = "task-1"
+    dialog.changed = False
+    dialog.window = SimpleNamespace(destroy=lambda: None)
+    moved: list[tuple[str, object, str]] = []
+    dialog.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={"task-1": SimpleNamespace(parent_task_id=None, is_deleted=False)}),
+        move_task=lambda task_id, parent_id, reason: moved.append((task_id, parent_id, reason)),
+    )
+
+    import task_timer.dialogs as dialogs_module
+
+    original = dialogs_module.MoveTaskDialog
+
+    class _Dialog:
+        def __init__(self, *_args) -> None:
+            self.confirmed = True
+            self.new_parent_task_id = "parent-2"
+            self.reason = "reorganize"
+
+    dialogs_module.MoveTaskDialog = _Dialog
+    dialog.service.state.tasks["parent-2"] = SimpleNamespace(parent_task_id=None, is_deleted=False)
+    try:
+        EditTaskDialog._move_task(dialog)
+    finally:
+        dialogs_module.MoveTaskDialog = original
+
+    assert moved == [("task-1", "parent-2", "reorganize")]
+
+
+def test_edit_task_dialog_move_success_marks_changed_and_closes() -> None:
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.task_id = "task-1"
+    destroyed: list[str] = []
+    dialog.window = SimpleNamespace(destroy=lambda: destroyed.append("destroy"))
+    dialog.changed = False
+    dialog.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={"task-1": SimpleNamespace(parent_task_id="parent-1", is_deleted=False), "parent-2": SimpleNamespace(parent_task_id=None, is_deleted=False)}),
+        move_task=lambda *_args: None,
+    )
+
+    import task_timer.dialogs as dialogs_module
+
+    original = dialogs_module.MoveTaskDialog
+
+    class _Dialog:
+        def __init__(self, *_args) -> None:
+            self.confirmed = True
+            self.new_parent_task_id = "parent-2"
+            self.reason = ""
+
+    dialogs_module.MoveTaskDialog = _Dialog
+    try:
+        EditTaskDialog._move_task(dialog)
+    finally:
+        dialogs_module.MoveTaskDialog = original
+
+    assert dialog.changed is True
+    assert destroyed == ["destroy"]
+
+
+def test_edit_task_dialog_move_promote_subtask_updates_parent_and_closes() -> None:
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.task_id = "task-1"
+    destroyed: list[str] = []
+    dialog.window = SimpleNamespace(destroy=lambda: destroyed.append("destroy"))
+    dialog.changed = False
+    move_calls: list[tuple[str, object, object]] = []
+    dialog.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={"task-1": SimpleNamespace(parent_task_id="parent-1", is_deleted=False)}),
+        move_task=lambda *args: move_calls.append(args),
+    )
+
+    import task_timer.dialogs as dialogs_module
+
+    original = dialogs_module.MoveTaskDialog
+
+    class _Dialog:
+        def __init__(self, *_args) -> None:
+            self.confirmed = True
+            self.new_parent_task_id = None
+            self.reason = ""
+
+    dialogs_module.MoveTaskDialog = _Dialog
+    try:
+        EditTaskDialog._move_task(dialog)
+    finally:
+        dialogs_module.MoveTaskDialog = original
+
+    assert move_calls == [("task-1", None, None)]
+    assert dialog.changed is True
+    assert destroyed == ["destroy"]
+
+
 def test_edit_task_dialog_loads_existing_tags_from_task() -> None:
     task = SimpleNamespace(name="Task", notes="", tags={"zeta", "alpha"})
     service = SimpleNamespace(state=SimpleNamespace(tasks={"t1": task}))
@@ -1360,6 +1461,31 @@ def test_edit_task_button_triggers_edit_flow() -> None:
     class _Dialog:
         def __init__(self, *_args) -> None:
             self.changed = True
+
+    app_module.EditTaskDialog = _Dialog
+    try:
+        TaskTimerApp._edit_task(app, "t1")
+    finally:
+        app_module.EditTaskDialog = original
+
+    assert calls == ["refresh"]
+
+
+def test_edit_task_move_changed_refreshes_main_tree_after_close() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    calls: list[str] = []
+    app.root = object()
+    app.service = object()
+    app._after_state_change = lambda: calls.append("refresh")
+
+    import task_timer.app as app_module
+
+    original = app_module.EditTaskDialog
+
+    class _Dialog:
+        def __init__(self, *_args) -> None:
+            self.changed = True
+            self.added_subtask = False
 
     app_module.EditTaskDialog = _Dialog
     try:
