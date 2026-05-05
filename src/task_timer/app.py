@@ -279,7 +279,7 @@ class TaskTimerService:
         if not parent:
             return False, "Parent task not found"
         if parent.is_deleted:
-            return False, "Parent task is deleted"
+            return False, "Cannot move a task under a deleted task."
         try:
             depth = self.task_depth(parent_task_id)
         except ValueError:
@@ -327,11 +327,21 @@ class TaskTimerService:
         task = self.state.tasks.get(task_id)
         if not task or task.is_deleted:
             return []
-        return [
-            root
-            for root in self.root_tasks(include_deleted=False)
-            if root.task_id != task_id
-        ]
+        descendants = {t.task_id for t in self.descendant_tasks(task_id, include_deleted=True)}
+        out: list[TaskState] = []
+        for candidate in sorted(self.state.tasks.values(), key=lambda t: (t.created_at_utc, t.task_id)):
+            if candidate.is_deleted or candidate.task_id == task_id or candidate.task_id in descendants:
+                continue
+            try:
+                depth = self.task_depth(candidate.task_id)
+            except ValueError:
+                continue
+            if depth > 1:
+                continue
+            if self.max_depth_after_move(task_id, candidate.task_id) > 2:
+                continue
+            out.append(candidate)
+        return out
 
     def can_move_task(self, task_id: str, new_parent_task_id: str | None) -> tuple[bool, str]:
         task = self.state.tasks.get(task_id)
@@ -340,7 +350,7 @@ class TaskTimerService:
         if task.is_deleted:
             return False, "Task is deleted"
         if new_parent_task_id == task_id:
-            return False, "Cannot move task under itself"
+            return False, "Cannot move a task under itself or one of its descendants."
 
         if new_parent_task_id is None:
             return True, ""
@@ -349,16 +359,18 @@ class TaskTimerService:
         if not new_parent:
             return False, "Parent task not found"
         if new_parent.is_deleted:
-            return False, "Parent task is deleted"
+            return False, "Cannot move a task under a deleted task."
         can_accept, message = self.can_accept_child(new_parent_task_id)
         if not can_accept:
+            if "two subtask levels" in message:
+                return False, "Cannot move a task under a nested subtask."
             return False, message
 
         seen: set[str] = set()
         cursor = new_parent
         while cursor.parent_task_id is not None and cursor.parent_task_id not in seen:
             if cursor.parent_task_id == task_id:
-                return False, "Cannot move parent into its own descendant"
+                return False, "Cannot move a task under itself or one of its descendants."
             seen.add(cursor.parent_task_id)
             parent = self.state.tasks.get(cursor.parent_task_id)
             if not parent:
@@ -367,7 +379,7 @@ class TaskTimerService:
 
         try:
             if self.max_depth_after_move(task_id, new_parent_task_id) > 2:
-                return False, "Cannot move task because it would exceed Chronicle's two-level subtask limit"
+                return False, "Cannot move this task there because it would exceed Chronicle's two-level subtask limit."
         except ValueError:
             return False, "Task hierarchy is corrupted"
 
@@ -1684,22 +1696,21 @@ class TaskTimerService:
             new_parent = self.state.tasks.get(new_parent_task_id)
             if not new_parent or new_parent.is_deleted:
                 return
-            if new_parent_task_id == task_id:
-                return
-            candidate_parent = new_parent
             seen: set[str] = {task_id}
-            depth = 1
-            while candidate_parent.parent_task_id is not None:
-                pid = candidate_parent.parent_task_id
-                if pid in seen:
+            cursor = new_parent
+            while cursor.parent_task_id is not None:
+                parent_id = cursor.parent_task_id
+                if parent_id in seen:
                     return
-                parent = self.state.tasks.get(pid)
+                parent = self.state.tasks.get(parent_id)
                 if not parent:
                     return
-                seen.add(pid)
-                candidate_parent = parent
-                depth += 1
-            if depth > 2:
+                seen.add(parent_id)
+                cursor = parent
+            try:
+                if self.max_depth_after_move(task_id, new_parent_task_id) > 2:
+                    return
+            except ValueError:
                 return
             task.parent_task_id = new_parent_task_id
         elif event_type == "manual_interval_added":

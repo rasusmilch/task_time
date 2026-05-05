@@ -2276,6 +2276,7 @@ def test_move_task_promote_subtask_to_root(tmp_path, monkeypatch) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     p1 = service.create_task("P1", "")
     child = service.create_subtask(p1, "Child", "")
+    service.create_subtask(child, "Nested", "")
     app = TaskTimerApp.__new__(TaskTimerApp)
     app.service = service
     app.root = object()
@@ -2302,6 +2303,7 @@ def test_move_task_service_error_shows_message(tmp_path, monkeypatch) -> None:
     p1 = service.create_task("P1", "")
     p2 = service.create_task("P2", "")
     child = service.create_subtask(p1, "Child", "")
+    service.create_subtask(child, "Nested", "")
     app = TaskTimerApp.__new__(TaskTimerApp)
     app.service = service
     app.root = object()
@@ -2322,5 +2324,5 @@ def test_move_task_service_error_shows_message(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(app_module, "MoveTaskDialog", _Dialog)
     monkeypatch.setattr(app_module.messagebox, "showerror", lambda title, message: shown.update({"title": title, "message": message}))
     TaskTimerApp._move_task(app, p1)
-    assert "Cannot move a parent task with subtasks" in shown["message"]
+    assert "two-level subtask limit" in shown["message"]
     assert service.state.tasks[child].parent_task_id == p1
