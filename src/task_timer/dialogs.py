@@ -751,10 +751,8 @@ class SelectedTaskExportDialog:
         options_frame.pack(fill="x", pady=(8, 0))
         ttk.Checkbutton(
             options_frame,
-            text="Mark exported selected time as already entered into Epicor",
+            text="Mark exported time as already entered into Epicor",
             variable=self.mark_submitted_var,
-            wraplength=520,
-            justify="left",
         ).pack(anchor="w", fill="x")
 
         reason_row = ttk.Frame(options_frame)
