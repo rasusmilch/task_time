@@ -1555,6 +1555,102 @@ def test_edit_task_dialog_add_subtask_passes_parent_and_tags() -> None:
     assert dialog.added_subtask is True
 
 
+def test_edit_task_dialog_add_subtask_depth_limit_shows_error() -> None:
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.task_id = "nested-1"
+    dialog.window = object()
+    dialog.changed = False
+    dialog.added_subtask = False
+    refreshed: list[str] = []
+    dialog._refresh_subtasks = lambda: refreshed.append("refresh")
+    dialog.service = SimpleNamespace(create_subtask=lambda *_args: (_ for _ in ()).throw(ValueError("Maximum subtask depth reached.")))
+
+    import task_timer.dialogs as dialogs_module
+
+    original_dialog = dialogs_module.AddTaskDialog
+    original_error = dialogs_module.messagebox.showerror
+
+    class _Dialog:
+        def __init__(self, *_args) -> None:
+            self.confirmed = True
+            self.name = "Nested"
+            self.notes = ""
+            self.tags = []
+
+    errors: list[str] = []
+    dialogs_module.AddTaskDialog = _Dialog
+    dialogs_module.messagebox.showerror = lambda _title, msg, **_kwargs: errors.append(msg)
+    try:
+        EditTaskDialog._add_subtask(dialog)
+    finally:
+        dialogs_module.AddTaskDialog = original_dialog
+        dialogs_module.messagebox.showerror = original_error
+
+    assert errors and "Maximum subtask depth reached" in errors[0]
+    assert refreshed == []
+    assert dialog.changed is False
+
+
+def test_edit_task_dialog_refresh_subtasks_shows_direct_children_only() -> None:
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.task_id = "root-1"
+
+    class _Tree:
+        def __init__(self) -> None:
+            self.deleted: list[str] = []
+            self.inserted: list[str] = []
+
+        def get_children(self):
+            return ["old"]
+
+        def delete(self, item):
+            self.deleted.append(item)
+
+        def insert(self, _parent, _index, iid, values):
+            self.inserted.append(iid)
+
+    dialog.subtask_tree = _Tree()
+    dialog.service = SimpleNamespace(
+        child_tasks=lambda task_id, include_deleted=False: [
+            SimpleNamespace(task_id="child-a", name="A", notes="", tags=[]),
+            SimpleNamespace(task_id="child-b", name="B", notes="", tags=["x"]),
+        ]
+        if task_id == "root-1"
+        else []
+    )
+
+    EditTaskDialog._refresh_subtasks(dialog)
+
+    assert dialog.subtask_tree.deleted == ["old"]
+    assert dialog.subtask_tree.inserted == ["child-a", "child-b"]
+
+
+def test_edit_task_dialog_timeline_uses_selected_nested_task_id() -> None:
+    dialog = EditTaskDialog.__new__(EditTaskDialog)
+    dialog.window = object()
+    dialog.service = object()
+    dialog.task_id = "nested-1"
+    dialog.changed = False
+
+    import task_timer.dialogs as dialogs_module
+
+    original = dialogs_module.EditTimelineDialog
+
+    seen: list[str] = []
+
+    class _Timeline:
+        def __init__(self, _window, _service, task_id) -> None:
+            seen.append(task_id)
+            self.changed = True
+
+    dialogs_module.EditTimelineDialog = _Timeline
+    try:
+        EditTaskDialog._edit_timeline(dialog)
+    finally:
+        dialogs_module.EditTimelineDialog = original
+
+    assert seen == ["nested-1"]
+    assert dialog.changed is True
 
 
 def test_edit_task_dialog_apply_subtask_templates_refreshes_and_summarizes() -> None:

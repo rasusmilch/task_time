@@ -998,6 +998,7 @@ class EditTaskDialog:
         task = service.state.tasks[task_id]
         self.task = task
         self.is_subtask = bool(task.parent_task_id)
+        self.task_depth = self.service.task_depth(task_id)
         self.window = Toplevel(parent)
         self.window.title("Edit Task")
         self.window.transient(parent)
@@ -1025,8 +1026,9 @@ class EditTaskDialog:
         self.tag_selector.grid(row=0, column=0)
         row += 1
 
-        if not self.is_subtask:
-            subtask_frame = ttk.LabelFrame(self.window, text="Subtasks")
+        if self.task_depth <= 1:
+            section_title = "Subtasks" if self.task_depth == 0 else "Nested Subtasks"
+            subtask_frame = ttk.LabelFrame(self.window, text=section_title)
             subtask_frame.grid(row=row, column=0, columnspan=2, sticky="nsew", pady=4)
             subtask_frame.grid_columnconfigure(0, weight=1)
             self.subtask_tree = ttk.Treeview(subtask_frame, columns=("name", "notes", "tags"), show="headings", height=6)
@@ -1045,9 +1047,13 @@ class EditTaskDialog:
             ttk.Button(subtask_buttons, text="Add Subtask", command=self._add_subtask).pack(side="left", padx=(0, 4))
             ttk.Button(subtask_buttons, text="Edit Selected Subtask", command=self._edit_selected_subtask).pack(side="left", padx=4)
             ttk.Button(subtask_buttons, text="Delete Selected Subtask", command=self._delete_selected_subtask).pack(side="left", padx=4)
-            ttk.Button(subtask_buttons, text="Apply Subtask Template...", command=self._apply_subtask_templates).pack(side="left", padx=4)
+            if self.task_depth == 0:
+                ttk.Button(subtask_buttons, text="Apply Subtask Template...", command=self._apply_subtask_templates).pack(side="left", padx=4)
             self.subtask_tree.bind("<Double-1>", lambda _event: self._edit_selected_subtask())
             self._refresh_subtasks()
+            row += 1
+        elif self.task_depth >= 2:
+            ttk.Label(self.window, text="Maximum subtask depth reached.").grid(row=row, column=0, columnspan=2, sticky="w", pady=4)
             row += 1
 
         bar = ttk.Frame(self.window)
@@ -1057,7 +1063,7 @@ class EditTaskDialog:
         ttk.Button(bar, text="Cancel", command=self.window.destroy).pack(side="right")
         ttk.Button(bar, text="Save", command=self._save).pack(side="right")
         self.window.grid_columnconfigure(1, weight=1)
-        self.window.grid_rowconfigure(2 if self.is_subtask else 3, weight=1)
+        self.window.grid_rowconfigure(max(0, row - 1), weight=1)
         parent.wait_window(self.window)
 
     def _edit_timeline(self) -> None:
@@ -1110,7 +1116,11 @@ class EditTaskDialog:
         dialog = AddTaskDialog(self.window, self.service)
         if not dialog.confirmed:
             return
-        self.service.create_subtask(self.task_id, dialog.name, dialog.notes, dialog.tags)
+        try:
+            self.service.create_subtask(self.task_id, dialog.name, dialog.notes, dialog.tags)
+        except ValueError as exc:
+            messagebox.showerror("Add Subtask", str(exc), parent=self.window)
+            return
         self.added_subtask = True
         self.changed = True
         self._refresh_subtasks()
@@ -1219,7 +1229,7 @@ class SubtaskTemplateItemDialog:
         ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(actions, text="Save", command=self._save).pack(side="right")
         self.window.grid_columnconfigure(1, weight=1)
-        self.window.grid_rowconfigure(2 if self.is_subtask else 3, weight=1)
+        self.window.grid_rowconfigure(max(0, row - 1), weight=1)
         parent.wait_window(self.window)
 
     def _save(self) -> None:
