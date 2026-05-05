@@ -43,8 +43,10 @@ def test_create_subtask_parent_validation(tmp_path):
         service.create_subtask(parent, "X", "")
     root = service.create_task("Root", "")
     sub = service.create_subtask(root, "Sub", "")
-    with pytest.raises(ValueError):
-        service.create_subtask(sub, "Too deep", "")
+    nested = service.create_subtask(sub, "Nested", "")
+    assert service.task_depth(nested) == 2
+    with pytest.raises(ValueError, match="two subtask levels"):
+        service.create_subtask(nested, "Too deep", "")
 
 
 def test_delete_parent_deletes_subtasks_but_child_delete_keeps_parent(tmp_path):
@@ -155,18 +157,18 @@ def test_move_task_validation_errors(tmp_path):
         service.move_task(child2, p2)
 
     sub_parent = service.create_subtask(p1, "SubParent", "")
-    with pytest.raises(ValueError, match="Cannot move task under another subtask"):
-        service.move_task(child2, sub_parent)
+    service.move_task(child2, sub_parent)
+    assert service.state.tasks[child2].parent_task_id == sub_parent
 
 
-def test_move_root_with_children_blocked(tmp_path):
+def test_move_root_with_children_under_root_allowed(tmp_path):
     service = TaskTimerService(EventStorage(tmp_path))
     p1 = service.create_task("P1", "")
     p2 = service.create_task("P2", "")
-    service.create_subtask(p1, "Child", "")
-
-    with pytest.raises(ValueError, match="Cannot move a parent task with subtasks"):
-        service.move_task(p1, p2)
+    child = service.create_subtask(p1, "Child", "")
+    service.move_task(p1, p2)
+    assert service.state.tasks[p1].parent_task_id == p2
+    assert service.state.tasks[child].parent_task_id == p1
 
 
 def test_move_event_replays_and_snapshot(tmp_path):
@@ -195,3 +197,64 @@ def test_move_appends_event_without_rewriting_task_created(tmp_path):
     assert len(created_before) == 1
     assert len(created_after) == 1
     assert len(moved_after) == 1
+
+
+def test_ancestor_descendant_and_direct_child_helpers(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    sub = service.create_subtask(root, "Sub", "")
+    nested = service.create_subtask(sub, "Nested", "")
+
+    ancestors = service.ancestor_tasks(nested)
+    assert [t.task_id for t in ancestors] == [sub, root]
+    descendants = service.descendant_tasks(root)
+    assert [t.task_id for t in descendants] == [sub, nested]
+    direct = service.direct_child_tasks(root)
+    assert [t.task_id for t in direct] == [sub]
+
+
+def test_delete_and_reset_tree_with_nested_subtasks(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    sub = service.create_subtask(root, "Sub", "")
+    nested = service.create_subtask(sub, "Nested", "")
+
+    service.delete_task_tree(sub)
+    assert service.state.tasks[sub].is_deleted is True
+    assert service.state.tasks[nested].is_deleted is True
+    assert service.state.tasks[root].is_deleted is False
+
+    root2 = service.create_task("Root2", "")
+    sub2 = service.create_subtask(root2, "Sub2", "")
+    nested2 = service.create_subtask(sub2, "Nested2", "")
+    service.reset_task_tree(root2)
+    assert service.state.tasks[root2].last_reset_utc is not None
+    assert service.state.tasks[sub2].last_reset_utc is not None
+    assert service.state.tasks[nested2].last_reset_utc is not None
+
+
+def test_task_tree_elapsed_includes_nested_descendants(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    sub = service.create_subtask(root, "Sub", "")
+    nested = service.create_subtask(sub, "Nested", "")
+
+    service.add_manual_interval(root, datetime(2026, 1, 1, 9, 0, tzinfo=service.local_tz), datetime(2026, 1, 1, 10, 0, tzinfo=service.local_tz), "r")
+    service.add_manual_interval(sub, datetime(2026, 1, 1, 10, 0, tzinfo=service.local_tz), datetime(2026, 1, 1, 10, 30, tzinfo=service.local_tz), "s")
+    service.add_manual_interval(nested, datetime(2026, 1, 1, 10, 30, tzinfo=service.local_tz), datetime(2026, 1, 1, 10, 45, tzinfo=service.local_tz), "n")
+
+    assert service.task_tree_elapsed(root) == 6300
+    assert service.task_tree_elapsed(sub) == 2700
+    assert service.task_tree_elapsed(nested) == 900
+
+
+def test_start_nested_subtask_stops_running_task(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    sub = service.create_subtask(root, "Sub", "")
+    nested = service.create_subtask(sub, "Nested", "")
+    other = service.create_task("Other", "")
+    service.start_task(other)
+    service.start_task(nested)
+    assert service.state.running_task_id == nested
+    assert service.state.tasks[other].is_running is False

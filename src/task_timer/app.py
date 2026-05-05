@@ -193,13 +193,9 @@ class TaskTimerService:
 
 
     def create_subtask(self, parent_task_id: str, name: str, notes: str, tags: list[str] | None = None) -> str:
-        parent = self.state.tasks.get(parent_task_id)
-        if not parent:
-            raise ValueError("Parent task not found")
-        if parent.is_deleted:
-            raise ValueError("Parent task is deleted")
-        if parent.parent_task_id is not None:
-            raise ValueError("Cannot create subtask under another subtask")
+        can_accept, message = self.can_accept_child(parent_task_id)
+        if not can_accept:
+            raise ValueError(message)
         if not name.strip():
             raise ValueError("Task name is required")
         task_id = str(uuid4())
@@ -208,6 +204,89 @@ class TaskTimerService:
         for key in tag_list:
             self.ensure_tag_exists(key)
         return task_id
+
+    def task_depth(self, task_id: str) -> int:
+        task = self.state.tasks.get(task_id)
+        if not task:
+            raise ValueError("Task not found")
+        depth = 0
+        seen: set[str] = {task_id}
+        cursor = task
+        while cursor.parent_task_id is not None:
+            parent_id = cursor.parent_task_id
+            if parent_id in seen:
+                raise ValueError("Task hierarchy is corrupted")
+            parent = self.state.tasks.get(parent_id)
+            if not parent:
+                raise ValueError("Task hierarchy is corrupted")
+            seen.add(parent_id)
+            depth += 1
+            cursor = parent
+        return depth
+
+    def ancestor_tasks(self, task_id: str) -> list[TaskState]:
+        task = self.state.tasks.get(task_id)
+        if not task:
+            raise ValueError("Task not found")
+        out: list[TaskState] = []
+        seen: set[str] = {task_id}
+        cursor = task
+        while cursor.parent_task_id is not None:
+            parent_id = cursor.parent_task_id
+            if parent_id in seen:
+                raise ValueError("Task hierarchy is corrupted")
+            parent = self.state.tasks.get(parent_id)
+            if not parent:
+                raise ValueError("Task hierarchy is corrupted")
+            out.append(parent)
+            seen.add(parent_id)
+            cursor = parent
+        return out
+
+    def descendant_tasks(self, task_id: str, include_deleted: bool = False) -> list[TaskState]:
+        if task_id not in self.state.tasks:
+            raise ValueError("Task not found")
+        out: list[TaskState] = []
+        stack = list(reversed(self.child_tasks(task_id, include_deleted=True)))
+        seen: set[str] = set()
+        while stack:
+            task = stack.pop()
+            if task.task_id in seen:
+                continue
+            seen.add(task.task_id)
+            if include_deleted or not task.is_deleted:
+                out.append(task)
+            stack.extend(reversed(self.child_tasks(task.task_id, include_deleted=True)))
+        return out
+
+    def direct_child_tasks(self, task_id: str, include_deleted: bool = False) -> list[TaskState]:
+        return self.child_tasks(task_id, include_deleted=include_deleted)
+
+    def subtree_height(self, task_id: str, include_deleted: bool = False) -> int:
+        if task_id not in self.state.tasks:
+            raise ValueError("Task not found")
+        children = self.child_tasks(task_id, include_deleted=include_deleted)
+        if not children:
+            return 0
+        return 1 + max(self.subtree_height(child.task_id, include_deleted=include_deleted) for child in children)
+
+    def max_depth_after_move(self, task_id: str, new_parent_task_id: str | None) -> int:
+        base_depth = 0 if new_parent_task_id is None else self.task_depth(new_parent_task_id) + 1
+        return base_depth + self.subtree_height(task_id, include_deleted=False)
+
+    def can_accept_child(self, parent_task_id: str) -> tuple[bool, str]:
+        parent = self.state.tasks.get(parent_task_id)
+        if not parent:
+            return False, "Parent task not found"
+        if parent.is_deleted:
+            return False, "Parent task is deleted"
+        try:
+            depth = self.task_depth(parent_task_id)
+        except ValueError:
+            return False, "Task hierarchy is corrupted"
+        if depth >= 2:
+            return False, "Cannot add another subtask under this item because Chronicle supports two subtask levels."
+        return True, ""
 
     def child_tasks(self, parent_task_id: str, include_deleted: bool = False) -> list[TaskState]:
         children = [t for t in self.state.tasks.values() if t.parent_task_id == parent_task_id]
@@ -271,11 +350,9 @@ class TaskTimerService:
             return False, "Parent task not found"
         if new_parent.is_deleted:
             return False, "Parent task is deleted"
-        if new_parent.parent_task_id is not None:
-            return False, "Cannot move task under another subtask"
-
-        if task.parent_task_id is None and self.child_tasks(task_id, include_deleted=False):
-            return False, "Cannot move a parent task with subtasks under another parent. Move/promote its subtasks first."
+        can_accept, message = self.can_accept_child(new_parent_task_id)
+        if not can_accept:
+            return False, message
 
         seen: set[str] = set()
         cursor = new_parent
@@ -287,6 +364,12 @@ class TaskTimerService:
             if not parent:
                 break
             cursor = parent
+
+        try:
+            if self.max_depth_after_move(task_id, new_parent_task_id) > 2:
+                return False, "Cannot move task because it would exceed Chronicle's two-level subtask limit"
+        except ValueError:
+            return False, "Task hierarchy is corrupted"
 
         return True, ""
 
@@ -417,9 +500,8 @@ class TaskTimerService:
         task = self.state.tasks.get(task_id)
         if not task or task.is_deleted:
             return
-        if task.parent_task_id is None:
-            for child in self.child_tasks(task_id):
-                self.delete_task_only(child.task_id)
+        for child in self.child_tasks(task_id):
+            self.delete_task_tree(child.task_id)
         self.delete_task_only(task_id)
 
     def start_task(self, task_id: str) -> None:
@@ -446,9 +528,8 @@ class TaskTimerService:
         task = self.state.tasks.get(task_id)
         if not task:
             return
-        if task.parent_task_id is None:
-            for child in self.child_tasks(task_id):
-                self.reset_task_only(child.task_id)
+        for child in self.child_tasks(task_id):
+            self.reset_task_tree(child.task_id)
         self.reset_task_only(task_id)
 
     def parse_local_datetime_inputs(self, work_date: date, time_text: str) -> datetime:
@@ -710,7 +791,7 @@ class TaskTimerService:
     def task_tree_elapsed(self, parent_task_id: str, now_utc: datetime | None = None) -> float:
         total = self.task_own_elapsed(parent_task_id, now_utc)
         for child in self.child_tasks(parent_task_id, include_deleted=False):
-            total += self.task_own_elapsed(child.task_id, now_utc)
+            total += self.task_tree_elapsed(child.task_id, now_utc)
         return total
 
     def build_history_lines(self) -> list[str]:
@@ -1603,7 +1684,22 @@ class TaskTimerService:
             new_parent = self.state.tasks.get(new_parent_task_id)
             if not new_parent or new_parent.is_deleted:
                 return
-            if new_parent.parent_task_id is not None:
+            if new_parent_task_id == task_id:
+                return
+            candidate_parent = new_parent
+            seen: set[str] = {task_id}
+            depth = 1
+            while candidate_parent.parent_task_id is not None:
+                pid = candidate_parent.parent_task_id
+                if pid in seen:
+                    return
+                parent = self.state.tasks.get(pid)
+                if not parent:
+                    return
+                seen.add(pid)
+                candidate_parent = parent
+                depth += 1
+            if depth > 2:
                 return
             task.parent_task_id = new_parent_task_id
         elif event_type == "manual_interval_added":
@@ -1970,12 +2066,15 @@ class TaskTimerApp:
         children_map = self.service.task_tree_children_map(include_deleted=False)
         for root in roots:
             children = self._sorted_tasks(children_map.get(root.task_id, []))
-            if any(child.is_running for child in children):
+            if any(child.is_running for child in self.descendant_tasks(root.task_id, include_deleted=False)):
                 self.expanded_parents.add(root.task_id)
             self.task_tree.insert("", "end", iid=root.task_id, text=root.name, values=(root.notes, "■ Stopped", "00:00"), open=root.task_id in self.expanded_parents, tags=self._tree_tags(root, is_subtask=False, has_children=bool(children)))
             for child in children:
-                self.task_tree.insert(root.task_id, "end", iid=child.task_id, text=child.name, values=(child.notes, "■ Stopped", "00:00"), tags=self._tree_tags(child, is_subtask=True, has_children=False))
-            if any(child.is_running for child in children):
+                grandkids = self._sorted_tasks(children_map.get(child.task_id, []))
+                self.task_tree.insert(root.task_id, "end", iid=child.task_id, text=child.name, values=(child.notes, "■ Stopped", "00:00"), open=child.task_id in self.expanded_parents, tags=self._tree_tags(child, is_subtask=True, has_children=bool(grandkids)))
+                for nested in grandkids:
+                    self.task_tree.insert(child.task_id, "end", iid=nested.task_id, text=nested.name, values=(nested.notes, "■ Stopped", "00:00"), tags=self._tree_tags(nested, is_subtask=True, has_children=False))
+            if any(child.is_running for child in self.descendant_tasks(root.task_id, include_deleted=False)):
                 self.task_tree.item(root.task_id, open=True)
         if selected and self.task_tree.exists(selected):
             self.task_tree.selection_set(selected)
