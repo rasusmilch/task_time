@@ -24,6 +24,7 @@ from .dialogs import (
     EditTimelineDialog,
     MonthEndCloseReminderDialog,
     MonthEndReminderSettingsDialog,
+    MoveTaskDialog,
     PostSelectedExportActionDialog,
     SelectedTaskExportDialog,
     format_timeline_row,
@@ -1953,6 +1954,8 @@ class TaskTimerApp:
         self.selected_reset_btn.pack(side="left", padx=4)
         self.selected_delete_btn = ttk.Button(button_bar, text="Delete", command=self._delete_selected_task)
         self.selected_delete_btn.pack(side="left", padx=4)
+        self.selected_move_btn = ttk.Button(button_bar, text="Move Task", command=self._move_selected_task)
+        self.selected_move_btn.pack(side="left", padx=4)
         self.selected_edit_btn = ttk.Button(button_bar, text="Edit Task", command=self._edit_selected_task)
         self.selected_edit_btn.pack(side="left", padx=4)
         self.selected_timeline_btn = ttk.Button(button_bar, text="Edit Timeline", command=self._edit_selected_timeline)
@@ -2088,7 +2091,7 @@ class TaskTimerApp:
                 bg, fg = self._selected_state_colors("")
                 self.selected_state_label.configure(text="", bg=bg, fg=fg)
             self.selected_toggle_btn.configure(text="Start", state="disabled")
-            for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_edit_btn, self.selected_timeline_btn):
+            for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_move_btn, self.selected_edit_btn, self.selected_timeline_btn):
                 btn.configure(state="disabled")
             return
         if task.parent_task_id:
@@ -2101,7 +2104,7 @@ class TaskTimerApp:
             bg, fg = self._selected_state_colors(state_text)
             self.selected_state_label.configure(text=f"State: {state_text}", bg=bg, fg=fg)
         self.selected_toggle_btn.configure(text="Stop" if task.is_running else "Start", state="normal")
-        for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_edit_btn, self.selected_timeline_btn):
+        for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_move_btn, self.selected_edit_btn, self.selected_timeline_btn):
             btn.configure(state="normal")
 
     def _toggle_selected_task(self) -> None:
@@ -2118,6 +2121,12 @@ class TaskTimerApp:
         task_id = self._selected_task_id()
         if task_id:
             self._delete_task(task_id)
+
+
+    def _move_selected_task(self) -> None:
+        task_id = self._selected_task_id()
+        if task_id:
+            self._move_task(task_id)
 
     def _edit_selected_task(self) -> None:
         task_id = self._selected_task_id()
@@ -2239,6 +2248,43 @@ class TaskTimerApp:
             self.expanded_parents.add(task_id)
         if dialog.changed:
             self._after_state_change()
+
+
+    def _move_task(self, task_id: str) -> None:
+        task = self.service.state.tasks.get(task_id)
+        if not task or task.is_deleted:
+            messagebox.showerror("Move Task", "Selected task no longer exists.")
+            self._after_state_change()
+            return
+
+        old_parent_task_id = task.parent_task_id
+        dialog = MoveTaskDialog(self.root, self.service, task_id)
+        if not getattr(dialog, "confirmed", False):
+            return
+
+        if dialog.new_parent_task_id is not None and not self.service.state.tasks.get(dialog.new_parent_task_id):
+            messagebox.showerror("Move Task", "Selected parent task no longer exists.")
+            self._after_state_change()
+            return
+
+        if old_parent_task_id == dialog.new_parent_task_id:
+            return
+
+        try:
+            self.service.move_task(task_id, dialog.new_parent_task_id, getattr(dialog, "reason", "") or None)
+        except ValueError as exc:
+            messagebox.showerror("Move Task", str(exc))
+            return
+
+        if dialog.new_parent_task_id:
+            self.expanded_parents.add(dialog.new_parent_task_id)
+
+        self.refresh_structure()
+        if self.task_tree.exists(task_id):
+            self.task_tree.selection_set(task_id)
+            self.selected_task_id = task_id
+        self._refresh_selected_task_panel()
+        self.refresh_live_values()
 
     def _manage_tags(self) -> None:
         dialog = ManageTagsDialog(self.root, self.service)

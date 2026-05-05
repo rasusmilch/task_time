@@ -913,6 +913,82 @@ def format_timeline_row(interval: Any, local_tz: Any) -> dict[str, str]:
     }
 
 
+class MoveTaskDialog:
+    def __init__(self, parent: Toplevel, service: "TaskTimerService", task_id: str) -> None:
+        self.service = service
+        self.task_id = task_id
+        self.confirmed = False
+        self.new_parent_task_id: str | None = None
+        self.reason = ""
+
+        task = service.state.tasks.get(task_id)
+        if not task or task.is_deleted:
+            return
+
+        self.window = Toplevel(parent)
+        self.window.title("Move Task")
+        self.window.transient(parent)
+        self.window.grab_set()
+
+        move_targets = service.movable_parent_targets(task_id)
+        self._target_by_label = {f"{t.name} ({t.task_id[:8]})": t.task_id for t in move_targets}
+        self._labels = sorted(self._target_by_label.keys(), key=str.casefold)
+
+        mode_default = "top" if task.parent_task_id is not None or not self._labels else "parent"
+        self.mode_var = StringVar(value=mode_default)
+        self.parent_var = StringVar(value=self._labels[0] if self._labels else "")
+
+        current_location = "Top-level task"
+        if task.parent_task_id and task.parent_task_id in service.state.tasks:
+            parent_name = service.state.tasks[task.parent_task_id].name
+            current_location = f"{parent_name} / {task.name}"
+
+        row = 0
+        ttk.Label(self.window, text=f"Task: {task.name}").grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 2))
+        row += 1
+        ttk.Label(self.window, text=f"Current location: {current_location}").grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(0, 8))
+        row += 1
+
+        ttk.Radiobutton(self.window, text="Make top-level task", value="top", variable=self.mode_var, command=self._on_mode_change).grid(row=row, column=0, columnspan=2, sticky="w", padx=10)
+        row += 1
+
+        self.parent_radio = ttk.Radiobutton(self.window, text="Move under parent task", value="parent", variable=self.mode_var, command=self._on_mode_change)
+        self.parent_radio.grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(2, 0))
+        row += 1
+
+        self.parent_combo = ttk.Combobox(self.window, textvariable=self.parent_var, values=self._labels, state="readonly", width=48)
+        self.parent_combo.grid(row=row, column=0, columnspan=2, sticky="ew", padx=28, pady=(2, 8))
+        row += 1
+
+        bar = ttk.Frame(self.window)
+        bar.grid(row=row, column=0, columnspan=2, sticky="e", padx=10, pady=(2, 10))
+        ttk.Button(bar, text="Cancel", command=self.window.destroy).pack(side="right", padx=(6, 0))
+        ttk.Button(bar, text="Move", command=self._move).pack(side="right")
+
+        self.window.grid_columnconfigure(0, weight=1)
+        self._on_mode_change()
+        parent.wait_window(self.window)
+
+    def _on_mode_change(self) -> None:
+        has_targets = bool(self._labels)
+        self.parent_radio.configure(state="normal" if has_targets else "disabled")
+        if not has_targets and self.mode_var.get() == "parent":
+            self.mode_var.set("top")
+        self.parent_combo.configure(state="readonly" if self.mode_var.get() == "parent" and has_targets else "disabled")
+
+    def _move(self) -> None:
+        if self.mode_var.get() == "top":
+            self.new_parent_task_id = None
+        else:
+            label = self.parent_var.get().strip()
+            self.new_parent_task_id = self._target_by_label.get(label)
+            if not self.new_parent_task_id:
+                messagebox.showerror("Move Task", "Select a parent task.", parent=self.window)
+                return
+        self.confirmed = True
+        self.window.destroy()
+
+
 class EditTaskDialog:
     def __init__(self, parent: Toplevel, service: "TaskTimerService", task_id: str) -> None:
         self.changed = False

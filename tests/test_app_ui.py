@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
+import task_timer.app as app_module
 from task_timer.app import ROW_PARENT_STOPPED_COLOR, ROW_SUBTASK_STOPPED_COLOR, STOPPED_COLOR, TaskTimerApp, TaskTimerService
 from task_timer.dialogs import AddTaskDialog, ApplySubtaskTemplatesDialog, BackupSettingsDialog, EditTaskDialog, SubtaskTemplateSelectionFrame
 from task_timer.mini_mode import MiniModeWindow, RUNNING_COLOR, STOPPED_COLOR as MINI_STOPPED_COLOR
@@ -1946,6 +1947,7 @@ def test_selected_panel_none_disables_controls(tmp_path) -> None:
     app._selected_state_colors = lambda _text: ("neutral", "black")
     app.selected_reset_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("reset", {}).update(kwargs))
     app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
+    app.selected_move_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("move", {}).update(kwargs))
     app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
     app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
     app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
@@ -1974,6 +1976,7 @@ def test_selected_panel_subtask_label_and_toggle_text(tmp_path) -> None:
     app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
     app.selected_reset_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("reset", {}).update(kwargs))
     app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
+    app.selected_move_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("move", {}).update(kwargs))
     app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
     app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
     app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
@@ -1998,6 +2001,7 @@ def test_selected_panel_state_updates_with_task_start_stop(tmp_path) -> None:
     app.selected_state_label = SimpleNamespace(configure=lambda **kwargs: state.setdefault("state", {}).update(kwargs))
     app.selected_reset_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("reset", {}).update(kwargs))
     app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
+    app.selected_move_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("move", {}).update(kwargs))
     app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
     app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
     app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
@@ -2114,3 +2118,83 @@ def test_selected_state_colors() -> None:
     assert TaskTimerApp._selected_state_colors(app, "▶ Running") == ("#2e7d32", "#ffffff")
     assert TaskTimerApp._selected_state_colors(app, "■ Stopped") == ("#c62828", "#ffffff")
     assert TaskTimerApp._selected_state_colors(app, "⚠ Long-running") == ("#f9a825", "#111111")
+
+
+def test_move_task_calls_service_and_expands_parent(tmp_path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    root_a = service.create_task("Root A", "")
+    root_b = service.create_task("Root B", "")
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.root = object()
+    app.expanded_parents = set()
+    app.selected_task_id = root_a
+    app._refresh_selected_task_panel = lambda: None
+    app.refresh_live_values = lambda: None
+    app.task_tree = SimpleNamespace(exists=lambda iid: True, selection_set=lambda iid: None)
+    app.refresh_structure = lambda: None
+
+    class _Dialog:
+        def __init__(self, *_args, **_kwargs):
+            self.confirmed = True
+            self.new_parent_task_id = root_b
+            self.reason = "organize"
+
+    monkeypatch.setattr(app_module, "MoveTaskDialog", _Dialog)
+    TaskTimerApp._move_task(app, root_a)
+    assert service.state.tasks[root_a].parent_task_id == root_b
+    assert root_b in app.expanded_parents
+
+
+def test_move_task_promote_subtask_to_root(tmp_path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    p1 = service.create_task("P1", "")
+    child = service.create_subtask(p1, "Child", "")
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.root = object()
+    app.expanded_parents = set()
+    app.selected_task_id = child
+    app._refresh_selected_task_panel = lambda: None
+    app.refresh_live_values = lambda: None
+    app.task_tree = SimpleNamespace(exists=lambda iid: True, selection_set=lambda iid: None)
+    app.refresh_structure = lambda: None
+
+    class _Dialog:
+        def __init__(self, *_args, **_kwargs):
+            self.confirmed = True
+            self.new_parent_task_id = None
+            self.reason = ""
+
+    monkeypatch.setattr(app_module, "MoveTaskDialog", _Dialog)
+    TaskTimerApp._move_task(app, child)
+    assert service.state.tasks[child].parent_task_id is None
+
+
+def test_move_task_service_error_shows_message(tmp_path, monkeypatch) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    p1 = service.create_task("P1", "")
+    p2 = service.create_task("P2", "")
+    child = service.create_subtask(p1, "Child", "")
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.root = object()
+    app.expanded_parents = set()
+    app.selected_task_id = p1
+    app._refresh_selected_task_panel = lambda: None
+    app.refresh_live_values = lambda: None
+    app.task_tree = SimpleNamespace(exists=lambda iid: True, selection_set=lambda iid: None)
+    app.refresh_structure = lambda: None
+
+    class _Dialog:
+        def __init__(self, *_args, **_kwargs):
+            self.confirmed = True
+            self.new_parent_task_id = p2
+            self.reason = ""
+
+    shown = {}
+    monkeypatch.setattr(app_module, "MoveTaskDialog", _Dialog)
+    monkeypatch.setattr(app_module.messagebox, "showerror", lambda title, message: shown.update({"title": title, "message": message}))
+    TaskTimerApp._move_task(app, p1)
+    assert "Cannot move a parent task with subtasks" in shown["message"]
+    assert service.state.tasks[child].parent_task_id == p1
