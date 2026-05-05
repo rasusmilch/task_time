@@ -19,18 +19,18 @@ class TagSelectionFrame(ttk.Frame):
         self.error_var = StringVar(value="")
 
         lists = ttk.Frame(self)
-        lists.grid(row=0, column=0, sticky="nsew")
-        lists.grid_columnconfigure(0, weight=1)
+        lists.grid(row=0, column=0, sticky="n")
+        lists.grid_columnconfigure(0, weight=0)
         lists.grid_columnconfigure(1, weight=0)
         lists.grid_columnconfigure(2, weight=0)
-        lists.grid_columnconfigure(3, weight=1)
+        lists.grid_columnconfigure(3, weight=0)
         lists.grid_columnconfigure(4, weight=0)
         lists.grid_rowconfigure(1, weight=1)
 
         ttk.Label(lists, text="Available tags").grid(row=0, column=0, columnspan=2, sticky="w")
         ttk.Label(lists, text="Task tags").grid(row=0, column=3, columnspan=2, sticky="w")
 
-        self.available_list = Listbox(lists, height=8, exportselection=False)
+        self.available_list = Listbox(lists, width=28, height=8, exportselection=False)
         self.available_list.grid(row=1, column=0, sticky="nsew")
         avail_scroll = ttk.Scrollbar(lists, orient="vertical", command=self.available_list.yview)
         avail_scroll.grid(row=1, column=1, sticky="ns")
@@ -41,7 +41,7 @@ class TagSelectionFrame(ttk.Frame):
         ttk.Button(center, text="Add >", command=self._add_selected_available).pack(fill="x", pady=(4, 4))
         ttk.Button(center, text="< Remove", command=self._remove_selected_assigned).pack(fill="x")
 
-        self.selected_list = Listbox(lists, height=8, exportselection=False)
+        self.selected_list = Listbox(lists, width=28, height=8, exportselection=False)
         self.selected_list.grid(row=1, column=3, sticky="nsew")
         sel_scroll = ttk.Scrollbar(lists, orient="vertical", command=self.selected_list.yview)
         sel_scroll.grid(row=1, column=4, sticky="ns")
@@ -57,7 +57,6 @@ class TagSelectionFrame(ttk.Frame):
         ttk.Label(actions, textvariable=self.error_var, foreground="#b00020").pack(side="left", padx=8)
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
         self.refresh_lists()
 
     @staticmethod

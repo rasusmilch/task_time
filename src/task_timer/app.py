@@ -54,6 +54,7 @@ from .time_utils import (
 
 RUNNING_COLOR = "#1f9d55"
 STOPPED_COLOR = "#c62828"
+DEFAULT_LONG_RUNNING_TASK_WARNING_HOURS = 12
 # Legacy constants kept for compatibility with tests; row-grid UI was removed.
 ROW_PARENT_STOPPED_COLOR = STOPPED_COLOR
 ROW_SUBTASK_STOPPED_COLOR = STOPPED_COLOR
@@ -1822,6 +1823,7 @@ class TaskTimerApp:
             self.root.iconify()
 
     def _build_task_tree(self) -> None:
+        # Keep the task tree column first because ttk.Treeview uses #0 for hierarchy.
         self.task_tree = ttk.Treeview(self.table_frame, columns=("notes", "state", "elapsed"), show="tree headings", selectmode="browse")
         self.task_tree.heading("#0", text="Task")
         self.task_tree.heading("notes", text="Notes")
@@ -1829,7 +1831,7 @@ class TaskTimerApp:
         self.task_tree.heading("elapsed", text="Elapsed")
         self.task_tree.column("#0", width=240, minwidth=170, stretch=False, anchor="w")
         self.task_tree.column("notes", width=280, minwidth=200, stretch=True, anchor="w")
-        self.task_tree.column("state", width=90, minwidth=85, stretch=False, anchor="center")
+        self.task_tree.column("state", width=130, minwidth=120, stretch=False, anchor="center")
         self.task_tree.column("elapsed", width=80, minwidth=75, stretch=False, anchor="e")
         y_scroll = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.task_tree.yview)
         self.task_tree.configure(yscrollcommand=y_scroll.set)
@@ -1920,9 +1922,10 @@ class TaskTimerApp:
             if task.is_deleted or not self.task_tree.exists(task_id):
                 continue
             elapsed = self.service.task_own_elapsed(task_id, now_utc) if task.parent_task_id is not None else self.service.task_tree_elapsed(task_id, now_utc)
-            state_text = "Running" if task.is_running else "Stopped"
+            state_text = self._task_state_display(task, now_utc)
             self.task_tree.set(task_id, "elapsed", format_duration_hm(elapsed))
-            self.task_tree.set(task_id, "state", state_text)
+            if self.task_tree.set(task_id, "state") != state_text:
+                self.task_tree.set(task_id, "state", state_text)
             parent = self.task_tree.parent(task_id)
             has_children = bool(self.service.child_tasks(task_id, include_deleted=False))
             self.task_tree.item(task_id, tags=self._tree_tags(task, is_subtask=bool(parent), has_children=has_children))
@@ -1936,6 +1939,14 @@ class TaskTimerApp:
         self.weekly_var.set(f"Weekly Total: {format_duration_hm(weekly)}")
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
             self.mini_mode_window.refresh_live_values()
+
+    def _task_state_display(self, task: TaskState, now_utc: datetime) -> str:
+        if not task.is_running:
+            return "Stopped"
+        threshold = timedelta(hours=getattr(self.ui_settings, "long_running_task_warning_hours", DEFAULT_LONG_RUNNING_TASK_WARNING_HOURS))
+        if task.running_since_utc and (now_utc - task.running_since_utc) >= threshold:
+            return "⚠ Long-running"
+        return "▶ Running"
 
     def _on_tree_select(self, _event: object | None = None) -> None:
         self.selected_task_id = self._selected_task_id()
