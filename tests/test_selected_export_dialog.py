@@ -73,6 +73,13 @@ def test_dialog_layout_has_controls_and_actions_outside_scrollable_task_list() -
 
 def test_dialog_contains_mark_submitted_and_reason_controls() -> None:
     source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
-    assert "Mark exported selected time as already entered into Epicor" in source
+    assert "Mark exported time as already entered into Epicor" in source
     assert "ttk.Label(reason_row, text=\"Reason\")" in source
     assert "self.reason_var = StringVar(value=\"Job closing / entered into Epicor\")" in source
+
+
+def test_dialog_mark_submitted_checkbutton_uses_supported_options_only() -> None:
+    source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
+    block = source.split("ttk.Checkbutton(\n            options_frame,", 1)[1].split(").pack(anchor=\"w\", fill=\"x\")", 1)[0]
+    assert "wraplength=" not in block
+    assert "justify=" not in block
