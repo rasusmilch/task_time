@@ -2059,10 +2059,12 @@ def test_task_state_display_labels() -> None:
     app.ui_settings = SimpleNamespace()
     now = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
-    stopped = SimpleNamespace(is_running=False, running_since_utc=None)
-    running = SimpleNamespace(is_running=True, running_since_utc=now - timedelta(hours=1))
-    long_running = SimpleNamespace(is_running=True, running_since_utc=now - timedelta(hours=13))
+    stopped = SimpleNamespace(is_running=False, currently_open_interval_start_utc=None)
+    running = SimpleNamespace(is_running=True, currently_open_interval_start_utc=now - timedelta(hours=1))
+    long_running = SimpleNamespace(is_running=True, currently_open_interval_start_utc=now - timedelta(hours=13))
+    running_missing_start = SimpleNamespace(is_running=True)
 
     assert TaskTimerApp._task_state_display(app, stopped, now) == "Stopped"
     assert TaskTimerApp._task_state_display(app, running, now) == "▶ Running"
     assert TaskTimerApp._task_state_display(app, long_running, now) == "⚠ Long-running"
+    assert TaskTimerApp._task_state_display(app, running_missing_start, now) == "▶ Running"
