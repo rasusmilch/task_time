@@ -2489,6 +2489,9 @@ class TaskTimerApp:
         if dialog.changed:
             self._after_state_change()
 
+    def _create_risky_operation_backup(self, reason: str) -> None:
+        self.service._create_risky_operation_backup(reason)
+
     def _create_backup_now(self) -> None:
         backup_path = self.service.create_backup_now("manual backup from UI")
         messagebox.showinfo("Backup Created", f"Backup created:\n{backup_path}")
