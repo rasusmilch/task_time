@@ -2602,3 +2602,26 @@ def test_handle_selected_export_post_action_delete_clears_selection_and_refreshe
     assert calls["backup"] == 1
     assert calls["refresh"] == 2
     assert app.selected_task_id is None
+
+
+def test_app_create_risky_operation_backup_delegates_to_service() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    seen: list[str] = []
+    app.service = SimpleNamespace(_create_risky_operation_backup=lambda reason: seen.append(reason))
+
+    TaskTimerApp._create_risky_operation_backup(app, "before reset")
+
+    assert seen == ["before reset"]
+
+
+def test_handle_selected_export_post_action_reset_calls_backup_and_reset() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    calls = {"backup": 0, "refresh": 0, "reset": 0}
+    app._create_risky_operation_backup = lambda _r: calls.__setitem__("backup", calls["backup"] + 1)
+    app.refresh_structure = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
+    app.refresh_live_values = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
+    app.service = SimpleNamespace(reset_selected_tasks=lambda _ids: calls.__setitem__("reset", calls["reset"] + 1))
+
+    TaskTimerApp._handle_selected_export_post_action(app, "reset", ["t1"])
+
+    assert calls == {"backup": 1, "refresh": 2, "reset": 1}
