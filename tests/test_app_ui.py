@@ -2187,6 +2187,65 @@ def test_running_nested_subtask_forces_both_ancestors_open(tmp_path) -> None:
     assert app.task_tree.data[child_id]["open"] is True
 
 
+
+def test_on_tree_close_keeps_parent_open_when_descendant_running(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    parent_id = service.create_task("Parent", "")
+    child_id = service.create_subtask(parent_id, "Child", "")
+    service.start_task(child_id)
+
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.expanded_parents = set()
+
+    class _Tree:
+        def __init__(self) -> None:
+            self.open_state: dict[str, bool] = {parent_id: False}
+            self._focus = parent_id
+        def focus(self):
+            return self._focus
+        def selection(self):
+            return ()
+        def item(self, iid, **kwargs):
+            if "open" in kwargs:
+                self.open_state[iid] = kwargs["open"]
+
+    app.task_tree = _Tree()
+
+    TaskTimerApp._on_tree_close(app)
+
+    assert parent_id in app.expanded_parents
+    assert app.task_tree.open_state[parent_id] is True
+
+
+def test_on_tree_close_allows_collapse_without_running_descendants(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    parent_id = service.create_task("Parent", "")
+    service.create_subtask(parent_id, "Child", "")
+
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = service
+    app.expanded_parents = {parent_id}
+
+    class _Tree:
+        def __init__(self) -> None:
+            self.open_state: dict[str, bool] = {parent_id: False}
+            self._focus = parent_id
+        def focus(self):
+            return self._focus
+        def selection(self):
+            return ()
+        def item(self, iid, **kwargs):
+            if "open" in kwargs:
+                self.open_state[iid] = kwargs["open"]
+
+    app.task_tree = _Tree()
+
+    TaskTimerApp._on_tree_close(app)
+
+    assert parent_id not in app.expanded_parents
+    assert app.task_tree.open_state[parent_id] is False
+
 def test_selected_panel_none_disables_controls(tmp_path) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     app = TaskTimerApp.__new__(TaskTimerApp)

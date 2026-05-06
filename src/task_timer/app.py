@@ -2231,7 +2231,7 @@ class TaskTimerApp:
         task_id = self._tree_event_item_id()
         if not task_id:
             return
-        if any(self.service.state.tasks[child.task_id].is_running for child in self.descendant_tasks(task_id, include_deleted=False)):
+        if any(child.is_running for child in self.service.descendant_tasks(task_id, include_deleted=False)):
             self.expanded_parents.add(task_id)
             self.task_tree.item(task_id, open=True)
         else:
