@@ -2572,3 +2572,33 @@ def test_move_task_service_error_shows_message(tmp_path, monkeypatch) -> None:
     TaskTimerApp._move_task(app, p1)
     assert "two-level subtask limit" in shown["message"]
     assert service.state.tasks[child].parent_task_id == p1
+
+def test_handle_selected_export_post_action_leave_no_changes() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    calls = {"backup": 0, "refresh": 0, "reset": 0, "delete": 0}
+    app._create_risky_operation_backup = lambda _r: calls.__setitem__("backup", calls["backup"] + 1)
+    app.refresh_structure = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
+    app.refresh_live_values = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
+    app.service = SimpleNamespace(
+        reset_selected_tasks=lambda _ids: calls.__setitem__("reset", calls["reset"] + 1),
+        delete_selected_tasks=lambda _ids: calls.__setitem__("delete", calls["delete"] + 1),
+    )
+    TaskTimerApp._handle_selected_export_post_action(app, "leave", ["t1"])
+    assert calls == {"backup": 0, "refresh": 0, "reset": 0, "delete": 0}
+
+
+def test_handle_selected_export_post_action_delete_clears_selection_and_refreshes() -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    calls = {"backup": 0, "refresh": 0}
+    app.selected_task_id = "t1"
+    app.task_tree = SimpleNamespace(selection=lambda: ["t1"], selection_remove=lambda *_ids: None)
+    app._create_risky_operation_backup = lambda _r: calls.__setitem__("backup", calls["backup"] + 1)
+    app.refresh_structure = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
+    app.refresh_live_values = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
+    app.service = SimpleNamespace(delete_selected_tasks=lambda _ids: ["t1"])
+
+    TaskTimerApp._handle_selected_export_post_action(app, "delete", ["t1"])
+
+    assert calls["backup"] == 1
+    assert calls["refresh"] == 2
+    assert app.selected_task_id is None

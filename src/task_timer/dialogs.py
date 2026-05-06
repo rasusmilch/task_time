@@ -848,7 +848,7 @@ class PostSelectedExportActionDialog:
         frame.pack(fill="both", expand=True)
         ttk.Label(
             frame,
-            text="The selected task time was exported. What should happen to the selected task(s) now?",
+            text="The selected task time was exported. What should happen to the selected task(s) now?\n\nDelete/remove will take them out of the active list only. Their time history remains in the journal and can still appear in global exports.",
             justify="left",
             wraplength=420,
         ).pack(fill="x", pady=(0, 10))
@@ -857,7 +857,7 @@ class PostSelectedExportActionDialog:
         actions.pack(fill="x")
         ttk.Button(actions, text="Leave tasks unchanged", command=self._leave).pack(fill="x", pady=2)
         ttk.Button(actions, text="Reset selected task timers to zero", command=self._reset).pack(fill="x", pady=2)
-        ttk.Button(actions, text="Delete selected tasks from active list", command=self._delete).pack(fill="x", pady=2)
+        ttk.Button(actions, text="Delete/remove selected tasks from active list", command=self._delete).pack(fill="x", pady=2)
 
         parent.wait_window(self.window)
 
