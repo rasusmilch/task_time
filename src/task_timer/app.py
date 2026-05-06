@@ -783,21 +783,24 @@ class TaskTimerService:
             if not task.is_deleted:
                 self.reset_task(task.task_id)
 
-    def reset_selected_tasks(self, task_ids: list[str]) -> None:
+    def reset_selected_tasks(self, task_ids: list[str]) -> list[str]:
         normalized = self._normalize_selected_task_ids(task_ids)
         expanded = self._expand_selected_task_ids(normalized)
+        affected: list[str] = []
         for task_id in sorted(expanded):
             task = self.state.tasks.get(task_id)
             if task and not task.is_deleted:
                 self.reset_task(task_id)
+                affected.append(task_id)
+        return affected
 
-    def delete_selected_tasks(self, task_ids: list[str]) -> None:
+    def delete_selected_tasks(self, task_ids: list[str]) -> list[str]:
         normalized = self._normalize_selected_task_ids(task_ids)
         expanded = self._expand_selected_task_ids(normalized)
-        for task_id in sorted(expanded):
-            task = self.state.tasks.get(task_id)
-            if task and not task.is_deleted:
-                self.delete_task(task_id)
+        affected = [task_id for task_id in sorted(expanded) if (self.state.tasks.get(task_id) and not self.state.tasks[task_id].is_deleted)]
+        for task_id in affected:
+            self.delete_task(task_id)
+        return affected
 
     def compute_totals(self, now_utc: datetime | None = None) -> tuple[float, float, list[dict[str, Any]]]:
         check_now = now_utc or utc_now()
@@ -2013,19 +2016,33 @@ class TaskTimerApp:
         )
 
         post_action = PostSelectedExportActionDialog(self.root).choice
-        if post_action == "reset":
-            self._create_risky_operation_backup("before resetting selected exported tasks")
-            self.service.reset_selected_tasks(dialog.result.task_ids)
-            self.refresh_structure()
-            self.refresh_live_values()
-        elif post_action == "delete":
-            self._create_risky_operation_backup("before deleting selected exported tasks")
-            self.service.delete_selected_tasks(dialog.result.task_ids)
-            self.refresh_structure()
-            self.refresh_live_values()
+        self._handle_selected_export_post_action(post_action, dialog.result.task_ids)
 
         messagebox.showinfo("Export Selected Tasks", "Selected-task export complete.")
         return True
+
+    def _clear_selection_if_deleted(self, affected_task_ids: set[str]) -> None:
+        current_selected = getattr(self, "selected_task_id", None)
+        if current_selected in affected_task_ids:
+            self.selected_task_id = None
+            if hasattr(self, "task_tree"):
+                self.task_tree.selection_remove(*self.task_tree.selection())
+
+    def _handle_selected_export_post_action(self, action: str, selected_task_ids: list[str]) -> None:
+        if action == "leave":
+            return
+        if action == "reset":
+            self._create_risky_operation_backup("before resetting selected exported tasks")
+            self.service.reset_selected_tasks(selected_task_ids)
+            self.refresh_structure()
+            self.refresh_live_values()
+            return
+        if action == "delete":
+            self._create_risky_operation_backup("before deleting selected exported tasks")
+            affected_ids = set(self.service.delete_selected_tasks(selected_task_ids) or [])
+            self._clear_selection_if_deleted(affected_ids)
+            self.refresh_structure()
+            self.refresh_live_values()
 
     def _on_keep_mini_open_toggle(self) -> None:
         self.ui_settings.keep_mini_open = self.keep_mini_open_var.get()

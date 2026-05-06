@@ -27,3 +27,40 @@ def test_reset_and_delete_selected_tasks_are_scoped_and_append_only(tmp_path) ->
     assert not any(e["task_id"] == t2 and e["event_type"] == "task_deleted" for e in service.events[before_delete:])
     assert service.state.tasks[t1].is_deleted is True
     assert service.state.tasks[t2].is_deleted is False
+
+
+def test_delete_selected_tasks_parent_and_subtask_scope(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    parent = service.create_task("Parent", "")
+    child = service.create_subtask(parent, "Child", "")
+    sibling = service.create_task("Sibling", "")
+
+    affected_parent = service.delete_selected_tasks([parent])
+    assert set(affected_parent) == {parent, child}
+    assert service.state.tasks[parent].is_deleted is True
+    assert service.state.tasks[child].is_deleted is True
+    assert service.state.tasks[sibling].is_deleted is False
+
+
+def test_delete_selected_tasks_subtask_only(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    parent = service.create_task("Parent", "")
+    child = service.create_subtask(parent, "Child", "")
+
+    affected = service.delete_selected_tasks([child])
+    assert affected == [child]
+    assert service.state.tasks[parent].is_deleted is False
+    assert service.state.tasks[child].is_deleted is True
+
+
+def test_reset_selected_tasks_returns_only_changed_and_keeps_task(tmp_path) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    parent = service.create_task("Parent", "")
+    child = service.create_subtask(parent, "Child", "")
+
+    affected = service.reset_selected_tasks([parent])
+    assert set(affected) == {parent, child}
+    assert service.state.tasks[parent].is_deleted is False
+    assert service.state.tasks[child].is_deleted is False
+    assert any(e["task_id"] == parent and e["event_type"] == "reset" for e in service.events)
+    assert any(e["task_id"] == child and e["event_type"] == "reset" for e in service.events)
