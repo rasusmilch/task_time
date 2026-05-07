@@ -913,6 +913,21 @@ def format_timeline_row(interval: Any, local_tz: Any) -> dict[str, str]:
     }
 
 
+def build_move_task_option_labels(tasks: list[Any]) -> tuple[list[str], list[str]]:
+    """Build move-target labels with stable task-id mapping."""
+    ordered_tasks = sorted(tasks, key=lambda task: (task.name.strip().casefold(), task.task_id))
+    duplicate_counts: dict[str, int] = {}
+    labels: list[str] = []
+    task_ids: list[str] = []
+    for task in ordered_tasks:
+        base_label = task.name.strip() or "Untitled Task"
+        duplicate_counts[base_label] = duplicate_counts.get(base_label, 0) + 1
+        suffix = f" ({duplicate_counts[base_label]})" if duplicate_counts[base_label] > 1 else ""
+        labels.append(f"{base_label}{suffix}")
+        task_ids.append(task.task_id)
+    return labels, task_ids
+
+
 class MoveTaskDialog:
     def __init__(self, parent: Toplevel, service: "TaskTimerService", task_id: str) -> None:
         self.service = service
@@ -931,8 +946,7 @@ class MoveTaskDialog:
         self.window.grab_set()
 
         move_targets = service.movable_parent_targets(task_id)
-        self._target_by_label = {f"{t.name} ({t.task_id[:8]})": t.task_id for t in move_targets}
-        self._labels = sorted(self._target_by_label.keys(), key=str.casefold)
+        self._labels, self._target_task_ids = build_move_task_option_labels(move_targets)
 
         mode_default = "top" if task.parent_task_id is not None or not self._labels else "parent"
         self.mode_var = StringVar(value=mode_default)
@@ -980,8 +994,12 @@ class MoveTaskDialog:
         if self.mode_var.get() == "top":
             self.new_parent_task_id = None
         else:
-            label = self.parent_var.get().strip()
-            self.new_parent_task_id = self._target_by_label.get(label)
+            label = self.parent_var.get()
+            try:
+                selected_index = self._labels.index(label)
+            except ValueError:
+                selected_index = -1
+            self.new_parent_task_id = self._target_task_ids[selected_index] if selected_index >= 0 else None
             if not self.new_parent_task_id:
                 messagebox.showerror("Move Task", "Select a parent task.", parent=self.window)
                 return
