@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import task_timer.app as app_module
 from task_timer.app import ROW_PARENT_STOPPED_COLOR, ROW_SUBTASK_STOPPED_COLOR, STOPPED_COLOR, TaskTimerApp, TaskTimerService
-from task_timer.dialogs import AddTaskDialog, ApplySubtaskTemplatesDialog, BackupSettingsDialog, EditTaskDialog, SubtaskTemplateSelectionFrame
+from task_timer.dialogs import AddTaskDialog, ApplySubtaskTemplatesDialog, BackupSettingsDialog, EditTaskDialog, MoveTaskDialog, SubtaskTemplateSelectionFrame, build_move_task_option_labels
 from task_timer.mini_mode import MiniModeWindow, RUNNING_COLOR, STOPPED_COLOR as MINI_STOPPED_COLOR
 from task_timer.settings import BackupSettings, UISettings
 from task_timer.storage import EventStorage
@@ -1342,6 +1342,37 @@ def test_edit_task_dialog_has_move_task_button() -> None:
     import inspect
     source = inspect.getsource(EditTaskDialog.__init__)
     assert 'text="Move Task..."' in source
+
+
+def test_build_move_task_option_labels_hides_task_ids_and_disambiguates_duplicates() -> None:
+    tasks = [
+        SimpleNamespace(task_id="123e4567-e89b-12d3-a456-426614174000", name="Harness Build"),
+        SimpleNamespace(task_id="223e4567-e89b-12d3-a456-426614174001", name="Harness Build"),
+        SimpleNamespace(task_id="323e4567-e89b-12d3-a456-426614174002", name=" Another "),
+    ]
+
+    labels, task_ids = build_move_task_option_labels(tasks)
+
+    assert labels == ["Another", "Harness Build", "Harness Build (2)"]
+    assert task_ids == ["323e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174000", "223e4567-e89b-12d3-a456-426614174001"]
+    assert all("task_id=" not in label for label in labels)
+    assert all("123e4567" not in label and "223e4567" not in label and "323e4567" not in label for label in labels)
+
+
+def test_move_task_dialog_move_resolves_selected_label_to_task_id() -> None:
+    dialog = MoveTaskDialog.__new__(MoveTaskDialog)
+    dialog.mode_var = SimpleNamespace(get=lambda: "parent")
+    dialog.parent_var = SimpleNamespace(get=lambda: "Harness Build (2)")
+    dialog._labels = ["Harness Build", "Harness Build (2)"]
+    dialog._target_task_ids = ["p-1", "p-2"]
+    dialog.window = SimpleNamespace(destroy=lambda: None)
+    dialog.confirmed = False
+    dialog.new_parent_task_id = None
+
+    MoveTaskDialog._move(dialog)
+
+    assert dialog.new_parent_task_id == "p-2"
+    assert dialog.confirmed is True
 
 
 def test_edit_task_dialog_move_opens_move_dialog() -> None:
