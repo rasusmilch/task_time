@@ -185,8 +185,10 @@ def test_apply_template_to_missing_deleted_or_subtask_parent_fails(tmp_path) -> 
 
     with pytest.raises(ValueError, match="Parent task not found"):
         service.apply_subtask_templates("missing", [tid])
-    with pytest.raises(ValueError, match="Cannot apply templates to a subtask"):
-        service.apply_subtask_templates(child, [tid])
+    service.apply_subtask_templates(child, [tid])
+    nested = service.create_subtask(child, "Nested", "")
+    with pytest.raises(ValueError, match="depth-2"):
+        service.apply_subtask_templates(nested, [tid])
     service.delete_task(parent)
     with pytest.raises(ValueError, match="Parent task is deleted"):
         service.apply_subtask_templates(parent, [tid])
@@ -262,4 +264,3 @@ def test_apply_nested_template_creates_hierarchy_and_skips_duplicates(tmp_path) 
     assert build_children == ["Execute", "Plan"]
     assert sorted(result.skipped_duplicates) == ["Build", "Plan"]
     assert "Execute" in result.created_names and "Review" in result.created_names
-

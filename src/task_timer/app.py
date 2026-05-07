@@ -56,6 +56,7 @@ from .time_utils import (
 RUNNING_COLOR = "#1f9d55"
 STOPPED_COLOR = "#c62828"
 DEFAULT_LONG_RUNNING_TASK_WARNING_HOURS = 12
+MAX_TASK_TREE_DEPTH = 2
 # Legacy constants kept for compatibility with tests; row-grid UI was removed.
 ROW_PARENT_STOPPED_COLOR = STOPPED_COLOR
 ROW_SUBTASK_STOPPED_COLOR = STOPPED_COLOR
@@ -159,8 +160,9 @@ class TaskTimerService:
             raise ValueError("Parent task not found")
         if parent.is_deleted:
             raise ValueError("Parent task is deleted")
-        if parent.parent_task_id is not None:
-            raise ValueError("Cannot apply templates to a subtask")
+        depth = self.task_depth(parent_task_id)
+        if depth >= MAX_TASK_TREE_DEPTH:
+            raise ValueError("Cannot apply templates to depth-2 subtasks.")
         if not template_ids:
             raise ValueError("At least one template must be selected")
 
@@ -251,10 +253,10 @@ class TaskTimerService:
         while cursor.parent_task_id is not None:
             parent_id = cursor.parent_task_id
             if parent_id in seen:
-                raise ValueError("Task hierarchy is corrupted")
+                return depth
             parent = self.state.tasks.get(parent_id)
             if not parent:
-                raise ValueError("Task hierarchy is corrupted")
+                return depth
             seen.add(parent_id)
             depth += 1
             cursor = parent
@@ -320,8 +322,8 @@ class TaskTimerService:
             depth = self.task_depth(parent_task_id)
         except ValueError:
             return False, "Task hierarchy is corrupted"
-        if depth >= 2:
-            return False, "Cannot add another subtask under this item because Chronicle supports two subtask levels."
+        if depth >= MAX_TASK_TREE_DEPTH:
+            return False, "Cannot create another subtask level here. Chronicle currently supports two nested subtask levels."
         return True, ""
 
     def child_tasks(self, parent_task_id: str, include_deleted: bool = False) -> list[TaskState]:
@@ -372,9 +374,9 @@ class TaskTimerService:
                 depth = self.task_depth(candidate.task_id)
             except ValueError:
                 continue
-            if depth > 1:
+            if depth >= MAX_TASK_TREE_DEPTH:
                 continue
-            if self.max_depth_after_move(task_id, candidate.task_id) > 2:
+            if self.max_depth_after_move(task_id, candidate.task_id) > MAX_TASK_TREE_DEPTH:
                 continue
             out.append(candidate)
         return out
@@ -414,7 +416,7 @@ class TaskTimerService:
             cursor = parent
 
         try:
-            if self.max_depth_after_move(task_id, new_parent_task_id) > 2:
+            if self.max_depth_after_move(task_id, new_parent_task_id) > MAX_TASK_TREE_DEPTH:
                 return False, "Cannot move this task there because it would exceed Chronicle's two-level subtask limit."
         except ValueError:
             return False, "Task hierarchy is corrupted"
