@@ -1014,8 +1014,8 @@ class EditTaskDialog:
         ttk.Entry(self.window, textvariable=self.notes_var).grid(row=row, column=1, sticky="ew")
         row += 1
         if self.is_subtask:
-            parent_name = self.service.state.tasks[task.parent_task_id].name
-            self.parent_label_var = StringVar(value=f"Parent task: {parent_name}")
+            parent_names = [ancestor.name for ancestor in reversed(self.service.ancestor_tasks(task_id))]
+            self.parent_label_var = StringVar(value=f"Parent task: {' / '.join(parent_names)}")
             ttk.Label(self.window, textvariable=self.parent_label_var).grid(row=row, column=0, columnspan=2, sticky="w", pady=(2, 4))
             row += 1
 
@@ -1047,7 +1047,7 @@ class EditTaskDialog:
             ttk.Button(subtask_buttons, text="Add Subtask", command=self._add_subtask).pack(side="left", padx=(0, 4))
             ttk.Button(subtask_buttons, text="Edit Selected Subtask", command=self._edit_selected_subtask).pack(side="left", padx=4)
             ttk.Button(subtask_buttons, text="Delete Selected Subtask", command=self._delete_selected_subtask).pack(side="left", padx=4)
-            if self.task_depth == 0:
+            if self.task_depth <= 1:
                 ttk.Button(subtask_buttons, text="Apply Subtask Template...", command=self._apply_subtask_templates).pack(side="left", padx=4)
             self.subtask_tree.bind("<Double-1>", lambda _event: self._edit_selected_subtask())
             self._refresh_subtasks()

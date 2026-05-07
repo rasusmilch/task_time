@@ -45,7 +45,7 @@ def test_create_subtask_parent_validation(tmp_path):
     sub = service.create_subtask(root, "Sub", "")
     nested = service.create_subtask(sub, "Nested", "")
     assert service.task_depth(nested) == 2
-    with pytest.raises(ValueError, match="two subtask levels"):
+    with pytest.raises(ValueError, match="two nested subtask levels"):
         service.create_subtask(nested, "Too deep", "")
 
 
