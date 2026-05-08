@@ -16,3 +16,5 @@ dependencies = [
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 addopts = "-q"
+timeout = 60
+timeout_method = "thread"
