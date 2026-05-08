@@ -85,7 +85,9 @@ class SubtaskTemplateStore:
             self._mark_corrupt_file()
             self.save([])
             return []
-        templates_raw = payload.get("templates", []) if isinstance(payload, dict) else []
+        templates_raw = (
+            payload.get("templates", []) if isinstance(payload, dict) else []
+        )
         output: list[SubtaskTemplate] = []
         try:
             for row in templates_raw:
@@ -93,7 +95,9 @@ class SubtaskTemplateStore:
                     SubtaskTemplateItem(
                         item_id=str(item.get("item_id", str(uuid4()))),
                         name=str(item.get("name", "")),
-                        parent_item_id=(str(item.get("parent_item_id", "")).strip() or None),
+                        parent_item_id=(
+                            str(item.get("parent_item_id", "")).strip() or None
+                        ),
                         notes=str(item.get("notes", "")),
                         tags=list(item.get("tags", [])),
                         sort_order=int(item.get("sort_order", 0)),
