@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from task_timer.app import TaskTimerService
+from task_timer.service import TaskTimerService
 from task_timer.storage import EventStorage
 
 

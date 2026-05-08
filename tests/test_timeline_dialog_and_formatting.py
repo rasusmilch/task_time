@@ -5,12 +5,9 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
-from task_timer.app import TaskTimerService
-from task_timer.dialogs import (
-    EditTimelineDialog,
-    TimelineEntryResult,
-    format_timeline_row,
-)
+from task_timer.service import TaskTimerService
+from task_timer.dialogs import EditTimelineDialog, TimelineEntryResult
+from task_timer.timeline import format_timeline_row
 from task_timer.storage import EventStorage
 
 
@@ -83,7 +80,7 @@ def test_format_timeline_row_duration_hides_synthetic_times() -> None:
 
 def test_service_exposes_real_local_timezone_name(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(
-        "task_timer.app.detect_local_timezone", lambda: ZoneInfo("America/Chicago")
+        "task_timer.service.detect_local_timezone", lambda: ZoneInfo("America/Chicago")
     )
     service = TaskTimerService(EventStorage(tmp_path))
     assert service.local_tz_name == "America/Chicago"

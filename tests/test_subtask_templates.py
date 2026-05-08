@@ -4,7 +4,7 @@ import zipfile
 
 import pytest
 
-from task_timer.app import TaskTimerService
+from task_timer.service import TaskTimerService
 from task_timer.backups import BackupManager
 from task_timer.storage import EventStorage
 from task_timer.subtask_templates import (

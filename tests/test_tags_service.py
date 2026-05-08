@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from task_timer.app import TaskTimerService
+from task_timer.service import TaskTimerService
 from task_timer.storage import EventStorage
 from task_timer.tags import normalize_tag
 

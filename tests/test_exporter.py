@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from task_timer.app import TaskTimerService
+from task_timer.service import TaskTimerService
 from task_timer.models import event_dict
 from task_timer.storage import EventStorage
 from task_timer.time_utils import parse_utc_z
@@ -127,7 +127,7 @@ def test_export_without_prior_checkpoint_uses_full_history(
     )
     service = TaskTimerService(storage)
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-03T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-03T00:00:00Z")
     )
 
     output = tmp_path / "out.txt"
@@ -145,7 +145,7 @@ def test_export_with_prior_checkpoint_starts_after_checkpoint(
     _seed_windowed_history(storage)
     service = TaskTimerService(storage)
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-15T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-15T00:00:00Z")
     )
 
     output = tmp_path / "out.txt"
@@ -162,7 +162,7 @@ def test_successful_export_appends_new_checkpoint_event(
 ) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-10T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-10T00:00:00Z")
     )
 
     service.export_report(tmp_path / "a.txt", reset_after=False)
@@ -182,7 +182,7 @@ def test_export_spans_multiple_sunday_start_weeks(tmp_path: Path, monkeypatch) -
     _seed_windowed_history(storage)
     service = TaskTimerService(storage)
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-16T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-16T00:00:00Z")
     )
 
     service.export_report(tmp_path / "out.txt", reset_after=False)
@@ -197,7 +197,7 @@ def test_weekly_summary_table_includes_all_weeks(tmp_path: Path, monkeypatch) ->
     _seed_windowed_history(storage)
     service = TaskTimerService(storage)
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-16T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-16T00:00:00Z")
     )
 
     service.export_report(tmp_path / "out.txt", reset_after=False)
@@ -216,7 +216,7 @@ def test_per_task_daily_and_weekly_totals_are_windowed(
     _seed_windowed_history(storage)
     service = TaskTimerService(storage)
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-16T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-16T00:00:00Z")
     )
 
     service.export_report(tmp_path / "out.txt", reset_after=False)
@@ -238,7 +238,7 @@ def test_state_not_present_in_export_totals(tmp_path: Path, monkeypatch) -> None
         "x",
     )
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-02T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-02T00:00:00Z")
     )
 
     service.export_report(tmp_path / "out.txt", reset_after=False)
@@ -325,7 +325,7 @@ def test_human_readable_audit_lines_known_events(tmp_path: Path, monkeypatch) ->
     )
     service = TaskTimerService(storage)
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-01T12:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-01T12:00:00Z")
     )
     service.export_report(tmp_path / "out.txt", reset_after=False)
     text = (tmp_path / "out.txt").read_text(encoding="utf-8")
@@ -353,7 +353,7 @@ def test_reset_after_export_still_resets_and_keeps_checkpoint_behavior(
         "x",
     )
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-02T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-02T00:00:00Z")
     )
 
     service.export_report(tmp_path / "out.txt", reset_after=True)
@@ -396,7 +396,7 @@ def test_manual_duration_checkpoint_validation_and_audit_line(
     service = TaskTimerService(storage)
     task_id = service.create_task("Task A", "")
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-01T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-01T00:00:00Z")
     )
     service._append("__app__", "export_checkpoint", {"path": "x.txt"})  # noqa: SLF001
     checkpoint_date = (
@@ -407,13 +407,13 @@ def test_manual_duration_checkpoint_validation_and_audit_line(
             task_id, checkpoint_date - timedelta(days=1), 1800, "too old"
         )
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-10T01:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-10T01:00:00Z")
     )
     service.add_manual_duration(
         task_id, checkpoint_date + timedelta(days=1), 5400, "forgot timer"
     )
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-10T02:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-10T02:00:00Z")
     )
     out = tmp_path / "out.txt"
     service.export_report(out, reset_after=False)
@@ -479,7 +479,7 @@ def test_tag_sections_include_disclaimer_and_non_exclusive_totals(
     service.delete_task(empty)
 
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-08T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-08T00:00:00Z")
     )
     out = tmp_path / "out.txt"
     service.export_report(out, reset_after=False)
@@ -518,11 +518,11 @@ def test_tag_totals_respect_checkpoint_reset_deleted_and_interval_edits(
         "fix",
     )
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-05T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-05T00:00:00Z")
     )
     service.export_report(tmp_path / "first.txt", reset_after=False)
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-06T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-06T00:00:00Z")
     )
     service.add_manual_duration(
         task_id, datetime(2026, 1, 6, tzinfo=timezone.utc).date(), 3600, "d"
@@ -550,7 +550,7 @@ def test_create_time_submission_marker_appends_event_without_checkpoint_or_reset
         "r",
     )
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-31T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-31T00:00:00Z")
     )
     sid = service.create_time_submission_marker(
         [task_id], None, parse_utc_z("2026-01-31T00:00:00Z"), "job closing", None
@@ -583,7 +583,7 @@ def test_export_selected_tasks_report_mark_submitted_behavior(
         "r",
     )
     monkeypatch.setattr(
-        "task_timer.app.utc_now", lambda: parse_utc_z("2026-01-31T00:00:00Z")
+        "task_timer.service.utc_now", lambda: parse_utc_z("2026-01-31T00:00:00Z")
     )
 
     out = tmp_path / "selected.txt"
@@ -622,7 +622,7 @@ def test_normal_export_marks_submitted_week(tmp_path: Path, monkeypatch) -> None
     )
     end = parse_utc_z("2026-12-31T00:00:00Z")
     service.create_time_submission_marker([t1], None, end, "closing", None)
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
     out = tmp_path / "out.txt"
     service.export_report(out, reset_after=False)
     text = out.read_text(encoding="utf-8")
@@ -636,7 +636,7 @@ def test_time_submission_audit_line_human_readable(tmp_path: Path, monkeypatch) 
     service = TaskTimerService(EventStorage(tmp_path))
     t1 = service.create_task("A", "")
     end = parse_utc_z("2026-12-31T00:00:00Z")
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
     service.create_time_submission_marker([t1], None, end, "job closing", None)
     out = tmp_path / "out.txt"
     service.export_report(out, reset_after=False)
@@ -661,7 +661,7 @@ def test_selected_export_text_header_and_marking(tmp_path: Path, monkeypatch) ->
         "r",
     )
     end = parse_utc_z("2026-01-31T00:00:00Z")
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
     out = tmp_path / "selected.txt"
     service.export_selected_tasks_report(
         out, [t1], None, end, mark_submitted=True, reason="Job closing"
@@ -700,7 +700,7 @@ def test_selected_export_audit_history_is_scoped_to_selected_tasks(
         "other",
     )
     end = parse_utc_z("2026-12-31T00:00:00Z")
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
     service.create_time_submission_marker([other_active], None, end, "unrelated", None)
     service.create_time_submission_marker(
         [selected], None, end, "selected submission", None
@@ -743,7 +743,7 @@ def test_normal_export_submission_marker_legend_present(
         "r",
     )
     service.create_time_submission_marker([t1], None, end, "closing", None)
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
     out = tmp_path / "out.txt"
     service.export_report(out, reset_after=False)
     text = out.read_text(encoding="utf-8")
@@ -755,7 +755,7 @@ def test_find_submission_overlaps_cases(tmp_path: Path, monkeypatch) -> None:
     t1 = service.create_task("A", "")
     t2 = service.create_task("B", "")
     mark_end = parse_utc_z("2026-01-31T00:00:00Z")
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: mark_end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: mark_end)
     service.create_time_submission_marker(
         [t1],
         parse_utc_z("2026-01-10T00:00:00Z"),
@@ -794,7 +794,7 @@ def test_global_export_includes_selected_submitted_task_even_if_deleted_or_reset
         parse_utc_z("2026-05-01T12:10:28Z").astimezone(),
         "r",
     )
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
     service.create_time_submission_marker([task_id], start, end, "submit", None)
     service.reset_task(task_id)
     service.delete_task(task_id)
@@ -820,7 +820,7 @@ def test_time_submission_marker_stores_daily_weekly_and_overall_totals(
         "r",
     )
     end = parse_utc_z("2026-01-31T00:00:00Z")
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
     service.create_time_submission_marker([task_id], None, end, "closing", None)
     marker = [
         e for e in service.events if e["event_type"] == "time_submission_created"
@@ -856,7 +856,7 @@ def test_parent_export_aggregates_subtasks_and_formats_decimal(
         "c2",
     )
     end = parse_utc_z("2026-01-31T00:00:00Z")
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
     out = tmp_path / "out.txt"
     service.export_report(out, reset_after=False)
     text = out.read_text(encoding="utf-8")
@@ -885,7 +885,7 @@ def test_selected_parent_includes_subtasks_and_no_double_count(
         "c",
     )
     end = parse_utc_z("2026-01-31T00:00:00Z")
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
     out = tmp_path / "sel.txt"
     service.export_selected_tasks_report(
         out, [parent, child], None, end, mark_submitted=False, reason=""
@@ -911,7 +911,7 @@ def test_subtask_alone_selected_does_not_include_parent_and_inherits_parent_tags
         "c",
     )
     end = parse_utc_z("2026-01-31T00:00:00Z")
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
     out = tmp_path / "sel.txt"
     service.export_selected_tasks_report(
         out, [child], None, end, mark_submitted=False, reason=""
@@ -952,7 +952,7 @@ def test_depth2_hierarchy_export_selected_tags_and_markers(
         "n",
     )
     end = parse_utc_z("2026-01-31T00:00:00Z")
-    monkeypatch.setattr("task_timer.app.utc_now", lambda: end)
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
 
     service.export_selected_tasks_report(
         tmp_path / "root_selected.txt",

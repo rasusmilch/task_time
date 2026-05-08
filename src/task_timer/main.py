@@ -9,7 +9,8 @@ import sys
 
 from loguru import logger
 
-from .app import TaskTimerApp, TaskTimerService
+from .app import TaskTimerApp
+from .service import TaskTimerService
 from .logging_config import configure_logging
 from .storage import EventStorage
 
