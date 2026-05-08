@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import zipfile
 
 import pytest
@@ -41,6 +42,58 @@ def test_corrupt_subtask_templates_file_logs_warning(tmp_path) -> None:
     finally:
         logger.remove(sink)
     assert any("Corrupt subtask template file detected" in msg for msg in messages)
+
+
+@pytest.mark.parametrize(
+    ("payload", "error_fragment"),
+    [
+        ([{"schema_version": 1}], "Payload must be a dictionary"),
+        ({"schema_version": 1, "templates": "oops"}, "templates must be a list"),
+        ({"schema_version": 1, "templates": ["oops"]}, "template row must be a dictionary"),
+        (
+            {"schema_version": 1, "templates": [{"name": "T", "items": ["oops"]}]},
+            "template item row must be a dictionary",
+        ),
+        (
+            {"schema_version": 1, "templates": [{"name": "   ", "items": []}]},
+            "Template name is required",
+        ),
+        (
+            {"schema_version": 1, "templates": [{"name": "T", "items": [{"name": "   "}]}]},
+            "Template item name is required",
+        ),
+        (
+            {
+                "schema_version": 1,
+                "templates": [
+                    {"name": "T", "items": [{"name": "Item", "sort_order": "not-a-number"}]}
+                ],
+            },
+            "invalid literal for int()",
+        ),
+    ],
+)
+def test_malformed_but_valid_subtask_templates_json_recovers(
+    tmp_path, payload, error_fragment
+) -> None:
+    path = tmp_path / "subtask_templates.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    store = SubtaskTemplateStore(tmp_path)
+    messages: list[str] = []
+    sink = logger.add(lambda m: messages.append(str(m)), level="WARNING")
+    try:
+        loaded = store.load()
+    finally:
+        logger.remove(sink)
+
+    assert loaded == []
+    corrupt_files = list(tmp_path.glob("subtask_templates.json.corrupt.*"))
+    assert len(corrupt_files) == 1
+    assert any("Corrupt subtask template file detected" in msg for msg in messages)
+    assert any(error_fragment in msg for msg in messages)
+
+    replacement = json.loads(path.read_text(encoding="utf-8"))
+    assert replacement == {"schema_version": 1, "templates": []}
 
 
 def test_templates_save_load_round_trip_and_order_preserved(tmp_path) -> None:

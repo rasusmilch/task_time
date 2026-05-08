@@ -83,31 +83,33 @@ class SubtaskTemplateStore:
         self.ensure_file_exists()
         try:
             payload = json.loads(self.path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError) as exc:
-            corrupt_path = self._mark_corrupt_file()
-            logger.warning(
-                "Corrupt subtask template file detected at {}. Preserved as {}. Error: {}",
-                self.path,
-                corrupt_path,
-                exc,
-            )
-            self.save([])
-            return []
-        templates_raw = payload.get("templates", []) if isinstance(payload, dict) else []
-        output: list[SubtaskTemplate] = []
-        try:
+            if not isinstance(payload, dict):
+                raise ValueError("Payload must be a dictionary")
+            templates_raw = payload.get("templates", [])
+            if not isinstance(templates_raw, list):
+                raise ValueError("templates must be a list")
+
+            output: list[SubtaskTemplate] = []
             for row in templates_raw:
-                items = [
-                    SubtaskTemplateItem(
-                        item_id=str(item.get("item_id", str(uuid4()))),
-                        name=str(item.get("name", "")),
-                        parent_item_id=(str(item.get("parent_item_id", "")).strip() or None),
-                        notes=str(item.get("notes", "")),
-                        tags=list(item.get("tags", [])),
-                        sort_order=int(item.get("sort_order", 0)),
+                if not isinstance(row, dict):
+                    raise ValueError("template row must be a dictionary")
+                items_raw = row.get("items", [])
+                if not isinstance(items_raw, list):
+                    raise ValueError("template items must be a list")
+                items: list[SubtaskTemplateItem] = []
+                for item in items_raw:
+                    if not isinstance(item, dict):
+                        raise ValueError("template item row must be a dictionary")
+                    items.append(
+                        SubtaskTemplateItem(
+                            item_id=str(item.get("item_id", str(uuid4()))),
+                            name=str(item.get("name", "")),
+                            parent_item_id=(str(item.get("parent_item_id", "")).strip() or None),
+                            notes=str(item.get("notes", "")),
+                            tags=list(item.get("tags", [])),
+                            sort_order=int(item.get("sort_order", 0)),
+                        )
                     )
-                    for item in row.get("items", [])
-                ]
                 items.sort(key=lambda item: item.sort_order)
                 output.append(
                     SubtaskTemplate(
@@ -119,7 +121,8 @@ class SubtaskTemplateStore:
                         updated_at_utc=str(row.get("updated_at_utc", "")),
                     )
                 )
-        except (json.JSONDecodeError, OSError) as exc:
+            return output
+        except (json.JSONDecodeError, ValueError, TypeError, AttributeError, OSError) as exc:
             corrupt_path = self._mark_corrupt_file()
             logger.warning(
                 "Corrupt subtask template file detected at {}. Preserved as {}. Error: {}",
@@ -129,7 +132,6 @@ class SubtaskTemplateStore:
             )
             self.save([])
             return []
-        return output
 
     def save(self, templates: list[SubtaskTemplate]) -> None:
         payload = {
