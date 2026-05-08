@@ -1,5 +1,10 @@
 from datetime import datetime
+import json
 from pathlib import Path
+
+import pytest
+
+logger = pytest.importorskip("loguru").logger
 
 from task_timer.app import TaskTimerService
 from task_timer.storage import EventStorage
@@ -70,3 +75,52 @@ def test_rotation_and_rebuild_multi_segments(tmp_path: Path) -> None:
 
     service2 = TaskTimerService(EventStorage(tmp_path, max_active_size_bytes=200, max_active_events=2))
     assert service2.state.tasks[t].intervals
+
+
+def test_corrupt_json_line_is_quarantined_and_valid_lines_still_load(tmp_path: Path) -> None:
+    active = tmp_path / "active_events.jsonl"
+    active.write_text(
+        "\n".join(
+            [
+                json.dumps({"schema_version": 1, "event_id": "1", "timestamp_utc": "2026-01-01T00:00:00Z", "task_id": "t1", "event_type": "task_created", "payload": {"name": "A", "notes": ""}}),
+                '{"broken_json":',
+                json.dumps({"schema_version": 1, "event_id": "2", "timestamp_utc": "2026-01-01T00:00:01Z", "task_id": "t1", "event_type": "started", "payload": {}}),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    storage = EventStorage(tmp_path)
+    events = storage.iter_all_events()
+    assert [event["event_id"] for event in events] == ["1", "2"]
+    assert storage.corrupt_event_count == 1
+    assert storage.corrupt_events_path and storage.corrupt_events_path.exists()
+    quarantined = storage.corrupt_events_path.read_text(encoding="utf-8")
+    assert '"line_number": 2' in quarantined
+    assert '"raw_text": "{\\"broken_json\\":"}' in quarantined
+
+
+def test_missing_required_keys_are_quarantined(tmp_path: Path) -> None:
+    active = tmp_path / "active_events.jsonl"
+    active.write_text(
+        json.dumps({"schema_version": 1, "event_id": "1", "timestamp_utc": "2026-01-01T00:00:00Z", "task_id": "t1", "event_type": "task_created", "payload": {"name": "A", "notes": ""}})
+        + "\n"
+        + json.dumps({"schema_version": 1, "event_id": "bad", "timestamp_utc": "2026-01-01T00:00:01Z", "task_id": "t1", "event_type": "started"})
+        + "\n",
+        encoding="utf-8",
+    )
+    storage = EventStorage(tmp_path)
+    events = storage.iter_all_events()
+    assert [event["event_id"] for event in events] == ["1"]
+    assert storage.corrupt_event_count == 1
+
+
+def test_corrupt_warning_is_logged(tmp_path: Path) -> None:
+    (tmp_path / "active_events.jsonl").write_text('{"oops":\n', encoding="utf-8")
+    messages: list[str] = []
+    sink_id = logger.add(lambda m: messages.append(str(m)), level="WARNING")
+    try:
+        EventStorage(tmp_path).iter_all_events()
+    finally:
+        logger.remove(sink_id)
+    assert any("Chronicle skipped 1 corrupt journal event lines during startup" in msg for msg in messages)

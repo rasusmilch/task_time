@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
 
 
 class EventStorage:
@@ -25,6 +28,9 @@ class EventStorage:
         self.manifest_path = data_dir / "log_manifest.json"
         self.max_active_size_bytes = max_active_size_bytes
         self.max_active_events = max_active_events
+        self.corrupt_dir = self.data_dir / "corrupt"
+        self.corrupt_events_path: Path | None = None
+        self.corrupt_event_count = 0
 
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.archives_dir.mkdir(parents=True, exist_ok=True)
@@ -76,6 +82,11 @@ class EventStorage:
             read_sequence += 1
             events.append(event)
         events.sort(key=lambda item: (item["timestamp_utc"], item.get("_read_sequence", 0)))
+        if self.corrupt_event_count:
+            logger.warning(
+                "Chronicle skipped {} corrupt journal event lines during startup. A copy was saved for inspection.",
+                self.corrupt_event_count,
+            )
         return events
 
     def source_segments(self) -> list[str]:
@@ -118,18 +129,64 @@ class EventStorage:
         manifest["next_sequence"] = seq + 1
         self.save_manifest(manifest)
 
-    @staticmethod
-    def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    def _read_jsonl(self, path: Path) -> list[dict[str, Any]]:
         output: list[dict[str, Any]] = []
         if not path.exists():
             return output
         with path.open("r", encoding="utf-8") as handle:
-            for line in handle:
-                line = line.strip()
+            for line_number, raw_line in enumerate(handle, start=1):
+                line = raw_line.strip()
                 if not line:
                     continue
-                output.append(json.loads(line))
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    logger.warning("Skipped corrupt event line in {}:{}: {}", path, line_number, exc)
+                    self._quarantine_corrupt_line(
+                        source_path=path,
+                        line_number=line_number,
+                        raw_text=raw_line.rstrip("\n"),
+                        error_message=str(exc),
+                    )
+                    continue
+                if not self._is_valid_event_shape(event):
+                    message = "Missing required event keys"
+                    logger.warning("Skipped corrupt event line in {}:{}: {}", path, line_number, message)
+                    self._quarantine_corrupt_line(
+                        source_path=path,
+                        line_number=line_number,
+                        raw_text=raw_line.rstrip("\n"),
+                        error_message=message,
+                    )
+                    continue
+                output.append(event)
+        logger.info("Loaded {} valid events from {}", len(output), path)
         return output
+
+    @staticmethod
+    def _is_valid_event_shape(event: Any) -> bool:
+        if not isinstance(event, dict):
+            return False
+        required_keys = {"schema_version", "event_id", "timestamp_utc", "task_id", "event_type", "payload"}
+        return required_keys.issubset(event)
+
+    def _quarantine_corrupt_line(self, *, source_path: Path, line_number: int, raw_text: str, error_message: str) -> None:
+        try:
+            if self.corrupt_events_path is None:
+                stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+                self.corrupt_dir.mkdir(parents=True, exist_ok=True)
+                self.corrupt_events_path = self.corrupt_dir / f"corrupt_events_{stamp}.jsonl"
+            payload = {
+                "source_path": str(source_path),
+                "line_number": line_number,
+                "raw_text": raw_text,
+                "error": error_message,
+            }
+            with self.corrupt_events_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+            self.corrupt_event_count += 1
+        except OSError:
+            logger.error("Failed to quarantine corrupt event line from {}", source_path)
 
     @staticmethod
     def _line_count(path: Path) -> int:
