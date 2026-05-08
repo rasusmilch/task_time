@@ -2,10 +2,23 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from typing import Protocol
 from tkinter import Listbox, StringVar, messagebox, simpledialog, ttk
+import tkinter as tk
 
 from .tags import normalize_tag_list
+
+
+class _TagMeta(Protocol):
+    key: str
+    archived: bool
+
+
+class TagService(Protocol):
+    def list_global_tags(self, include_archived: bool = ...) -> Sequence[_TagMeta]: ...
+
+    def create_tag(self, key: str) -> None: ...
 
 
 class TagSelectionFrame(ttk.Frame):
@@ -13,8 +26,8 @@ class TagSelectionFrame(ttk.Frame):
 
     def __init__(
         self,
-        parent: ttk.Widget,
-        service: object,
+        parent: tk.Misc,
+        service: TagService,
         initial_tags: Iterable[str],
         allow_new_tags: bool = True,
     ) -> None:
@@ -87,7 +100,7 @@ class TagSelectionFrame(ttk.Frame):
 
     @staticmethod
     def _sorted_visible_tags(
-        global_tags: Iterable[object], selected_tags: Iterable[str]
+        global_tags: Iterable[_TagMeta], selected_tags: Iterable[str]
     ) -> list[str]:
         selected = set(selected_tags)
         keys = [

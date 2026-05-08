@@ -105,6 +105,7 @@ class TaskTimerService:
             or str(self.local_tz)
         )
         self.state = AppState()
+        self.log_path: Path | None = None
         self.events = self.storage.iter_all_events()
         self._rebuild_state(self.events)
         self._save_snapshot()
@@ -1204,15 +1205,17 @@ class TaskTimerService:
                 task_id = snapshot.get("task_id")
                 if not task_id:
                     continue
-                task = self.state.tasks.get(task_id)
+                task_opt = self.state.tasks.get(task_id)
                 row = by_id.get(task_id)
                 if row is None:
                     row = {
                         "task_id": task_id,
                         "name": snapshot.get(
-                            "task_name", task.name if task else task_id
+                            "task_name", task_opt.name if task_opt else task_id
                         ),
-                        "notes": snapshot.get("notes", task.notes if task else ""),
+                        "notes": snapshot.get(
+                            "notes", task_opt.notes if task_opt else ""
+                        ),
                         "daily_totals": [],
                         "weekly_totals": [],
                         "overall_seconds": 0.0,
@@ -2319,10 +2322,10 @@ class TaskTimerService:
                 )
         elif event_type == "interval_deleted":
             try:
-                interval = task.intervals.get(payload["interval_id"])
-                if interval:
-                    interval.deleted = True
-                    interval.edit_reason = payload.get("reason")
+                interval_record = task.intervals.get(payload["interval_id"])
+                if interval_record:
+                    interval_record.deleted = True
+                    interval_record.edit_reason = payload.get("reason")
             except (KeyError, TypeError) as exc:
                 logger.warning(
                     "Skipped malformed replay event {}: {}",
@@ -2991,8 +2994,7 @@ class TaskTimerApp:
             return
         task_id = self._selected_task_id()
         task = self.service.state.tasks.get(task_id) if task_id else None
-        has_selected_task = bool(task and not task.is_deleted)
-        if not has_selected_task:
+        if task is None or task.is_deleted:
             self.selected_task_label_var.set("Selected: None")
             if hasattr(self, "selected_state_label"):
                 bg, fg = self._selected_state_colors("")
@@ -3087,7 +3089,7 @@ class TaskTimerApp:
 
     def _toggle_task(self, task_id: str) -> None:
         task = self.service.state.tasks.get(task_id)
-        if not task:
+        if task is None:
             return
         if task.is_running:
             self.service.stop_task(task_id)
