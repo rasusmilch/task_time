@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 
 import task_timer.app as app_module
@@ -1198,7 +1199,7 @@ def test_add_task_applies_selected_templates_after_parent_creation() -> None:
     calls: list[tuple[str, tuple[object, ...]]] = []
     app.service = SimpleNamespace(
         create_task=lambda n, no, t: calls.append(("create_task", (n, no, t))) or "parent-1",
-        apply_subtask_templates=lambda parent_id, tids: calls.append(("apply", (parent_id, tids))) or SimpleNamespace(created_subtask_ids=["c1"], skipped_duplicates=[]),
+        apply_subtask_templates=lambda parent_id, tids: calls.append(("apply", (parent_id, tids))) or SimpleNamespace(created_count=1, skipped_count=0, created_subtask_ids=["c1"], skipped_duplicates=[]),
     )
     app.refresh_structure = lambda: calls.append(("refresh_structure", tuple()))
     app.refresh_live_values = lambda: calls.append(("refresh_live_values", tuple()))
@@ -2014,7 +2015,7 @@ def test_init_schedules_startup_mini_mode_activation_when_setting_persisted() ->
         app_module.TaskTimerApp._tick = lambda self: None
         app_module.UISettingsStore = lambda _data_dir: SimpleNamespace(load=lambda: UISettings(keep_mini_open=True))
 
-        service = SimpleNamespace(storage=SimpleNamespace(data_dir="."), state=SimpleNamespace(tasks={}))
+        service = SimpleNamespace(storage=SimpleNamespace(data_dir=Path(".")), state=SimpleNamespace(tasks={}))
         app = TaskTimerApp(root, service)
     finally:
         app_module.install_zoom_guard = original_zoom

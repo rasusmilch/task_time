@@ -97,7 +97,7 @@ def test_corrupt_json_line_is_quarantined_and_valid_lines_still_load(tmp_path: P
     assert storage.corrupt_events_path and storage.corrupt_events_path.exists()
     quarantined = storage.corrupt_events_path.read_text(encoding="utf-8")
     assert '"line_number": 2' in quarantined
-    assert '"raw_text": "{\\"broken_json\\":"}' in quarantined
+    assert "\"raw_text\": \"{\\\"broken_json\\\":\"" in quarantined
 
 
 def test_missing_required_keys_are_quarantined(tmp_path: Path) -> None:

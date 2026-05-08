@@ -48,8 +48,9 @@ def test_tk_exception_handler_logs_and_shows_message(monkeypatch, tmp_path: Path
 
 def test_move_task_value_error_logs_warning(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
+    app.root = object()
     app.service = SimpleNamespace(
-        state=SimpleNamespace(tasks={"t1": SimpleNamespace(is_deleted=False, parent_task_id=None)}),
+        state=SimpleNamespace(tasks={"t1": SimpleNamespace(is_deleted=False, parent_task_id="old")}),
         move_task=lambda *_a, **_k: (_ for _ in ()).throw(ValueError("bad move")),
     )
     app._selected_task_id = lambda: "t1"
