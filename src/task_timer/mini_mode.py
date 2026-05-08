@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import tkinter as tk
 from tkinter import StringVar, Toplevel, ttk
-from typing import Callable
+from typing import Any, Callable
 
 from .time_utils import format_duration_hm, utc_now
 from .window_chrome import disable_snap_maximize, install_zoom_guard
@@ -19,8 +19,8 @@ class MiniModeWindow:
 
     def __init__(
         self,
-        parent: Toplevel,
-        service: object,
+        parent: tk.Tk | tk.Toplevel,
+        service: Any,
         refresh_callback: Callable[[], None],
         month_end_due_provider: Callable[[], bool] | None = None,
         keep_open_provider: Callable[[], bool] | None = None,
@@ -98,7 +98,7 @@ class MiniModeWindow:
             running_task = self.service.state.tasks[self.service.state.running_task_id]
             if not running_task.is_deleted:
                 return running_task.task_id
-        most_recent = max(tasks, key=lambda task: task.updated_at_utc)
+        most_recent = max(tasks, key=lambda task: str(task.updated_at_utc))
         return most_recent.task_id
 
     def toggle(self) -> None:
@@ -115,8 +115,11 @@ class MiniModeWindow:
         self.refresh_callback()
 
     def restore_main(self) -> None:
-        self.window.master.deiconify()
-        self.window.master.lift()
+        master = self.window.master
+        if hasattr(master, "deiconify"):
+            master.deiconify()
+        if hasattr(master, "lift"):
+            master.lift()
         # Keep Mini Open intentionally overrides close/show-main auto-destroy behavior.
         if not self.keep_open_provider():
             self.window.destroy()

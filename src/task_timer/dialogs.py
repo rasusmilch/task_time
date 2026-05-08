@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from .app import TaskTimerService
 
 try:
-    from tkcalendar import DateEntry
+    from tkcalendar import DateEntry  # type: ignore[import-untyped]
 except Exception:  # noqa: BLE001
     DateEntry = None
 
@@ -44,7 +44,7 @@ class TimelineEntryDialog:
 
     def __init__(
         self,
-        parent: Toplevel,
+        parent: tk.Tk | Toplevel,
         service: "TaskTimerService",
         *,
         title: str,
@@ -256,7 +256,7 @@ class EditTimelineDialog:
     """Dialog for append-only timeline corrections on a task."""
 
     def __init__(
-        self, parent: Toplevel, service: "TaskTimerService", task_id: str
+        self, parent: tk.Tk | Toplevel, service: "TaskTimerService", task_id: str
     ) -> None:
         self.changed = False
         self.service = service
@@ -527,7 +527,7 @@ class EditTimelineDialog:
 class AddTaskDialog:
     """Dialog prompting for initial task name and notes."""
 
-    def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
+    def __init__(self, parent: tk.Tk | Toplevel, service: "TaskTimerService") -> None:
         self.confirmed = False
         self.name = ""
         self.notes = ""
@@ -597,7 +597,7 @@ class AddTaskDialog:
 
 
 class SubtaskTemplateSelectionFrame(ttk.LabelFrame):
-    def __init__(self, parent: tk.Misc, service: "TaskTimerService") -> None:
+    def __init__(self, parent: tk.Tk | Toplevel, service: "TaskTimerService") -> None:
         super().__init__(parent, text="Subtask Templates")
         self.templates = service.list_subtask_templates()
         self._template_vars: dict[str, BooleanVar] = {}
@@ -678,7 +678,10 @@ class BackupSettingsDialog:
     """Dialog for editing managed backup settings."""
 
     def __init__(
-        self, parent: Toplevel, service: "TaskTimerService", initial: BackupSettings
+        self,
+        parent: tk.Tk | Toplevel,
+        service: "TaskTimerService",
+        initial: BackupSettings,
     ) -> None:
         del service
         self.confirmed = False
@@ -797,7 +800,7 @@ class BackupSettingsDialog:
 class MonthEndReminderSettingsDialog:
     """Dialog for month-end reminder preferences."""
 
-    def __init__(self, parent: Toplevel, initial: UISettings) -> None:
+    def __init__(self, parent: tk.Tk | Toplevel, initial: UISettings) -> None:
         self.confirmed = False
         self.window = Toplevel(parent)
         self.window.title("Month-End Reminder Settings")
@@ -843,7 +846,7 @@ class MonthEndReminderSettingsDialog:
 class MonthEndCloseReminderDialog:
     """Three-action close reminder shown on month-end reminder day."""
 
-    def __init__(self, parent: Toplevel) -> None:
+    def __init__(self, parent: tk.Tk | Toplevel) -> None:
         self.choice = "return"
         self.window = Toplevel(parent)
         self.window.title("Month-End Reminder")
@@ -891,7 +894,7 @@ class SelectedTaskExportResult:
 
 
 class SelectedTaskExportDialog:
-    def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
+    def __init__(self, parent: tk.Tk | Toplevel, service: "TaskTimerService") -> None:
         self.service = service
         self.result: SelectedTaskExportResult | None = None
         self.window = Toplevel(parent)
@@ -977,7 +980,10 @@ class SelectedTaskExportDialog:
         scroll = ttk.Scrollbar(task_list_frame, orient="vertical", command=canvas.yview)
         list_frame = ttk.Frame(canvas)
         list_frame.bind(
-            "<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all"))
+            "<Configure>",
+            lambda _e: canvas.configure(
+                scrollregion=canvas.bbox("all") or (0, 0, 0, 0)
+            ),
         )
         canvas.create_window((4, 4), window=list_frame, anchor="nw")
         canvas.configure(yscrollcommand=scroll.set)
@@ -999,11 +1005,15 @@ class SelectedTaskExportDialog:
         for task in roots:
             var = BooleanVar(value=False)
             self._task_vars[task.task_id] = var
+
+            def _toggle_parent(tid: str = task.task_id) -> None:
+                self._on_parent_toggle(tid)
+
             parent_cb = ttk.Checkbutton(
                 list_frame,
                 text=f"{task.name} — {task.notes} (includes subtasks)",
                 variable=var,
-                command=lambda tid=task.task_id: self._on_parent_toggle(tid),
+                command=_toggle_parent,
             )
             parent_cb.pack(anchor="w")
             for child in children_by_parent.get(task.task_id, []):
@@ -1141,7 +1151,7 @@ class SelectedTaskExportDialog:
 
 
 class PostSelectedExportActionDialog:
-    def __init__(self, parent: Toplevel) -> None:
+    def __init__(self, parent: tk.Tk | Toplevel) -> None:
         self.choice = "leave"
         self.window = Toplevel(parent)
         self.window.title("Selected Export Complete")
@@ -1253,7 +1263,7 @@ def build_move_task_option_labels(tasks: list[Any]) -> tuple[list[str], list[str
 
 class MoveTaskDialog:
     def __init__(
-        self, parent: Toplevel, service: "TaskTimerService", task_id: str
+        self, parent: tk.Tk | Toplevel, service: "TaskTimerService", task_id: str
     ) -> None:
         self.service = service
         self.task_id = task_id
@@ -1374,7 +1384,7 @@ class MoveTaskDialog:
 
 class EditTaskDialog:
     def __init__(
-        self, parent: Toplevel, service: "TaskTimerService", task_id: str
+        self, parent: tk.Tk | Toplevel, service: "TaskTimerService", task_id: str
     ) -> None:
         self.changed = False
         self.added_subtask = False
@@ -1632,7 +1642,7 @@ class EditTaskDialog:
 
 
 class ApplySubtaskTemplatesDialog:
-    def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
+    def __init__(self, parent: tk.Tk | Toplevel, service: "TaskTimerService") -> None:
         self.confirmed = False
         self.window = Toplevel(parent)
         self.window.title("Apply Subtask Templates")
@@ -1667,7 +1677,7 @@ class ApplySubtaskTemplatesDialog:
 class SubtaskTemplateItemDialog:
     def __init__(
         self,
-        parent: Toplevel,
+        parent: tk.Tk | Toplevel,
         service: "TaskTimerService",
         *,
         title: str,
@@ -1728,7 +1738,7 @@ class SubtaskTemplateItemDialog:
 
 
 class ManageSubtaskTemplatesDialog:
-    def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
+    def __init__(self, parent: tk.Tk | Toplevel, service: "TaskTimerService") -> None:
         self.changed = False
         self.service = service
         self.templates = service.list_subtask_templates()
@@ -2096,7 +2106,7 @@ class ManageSubtaskTemplatesDialog:
 
 
 class ManageTagsDialog:
-    def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
+    def __init__(self, parent: tk.Tk | Toplevel, service: "TaskTimerService") -> None:
         self.changed = False
         self.service = service
         self.window = Toplevel(parent)

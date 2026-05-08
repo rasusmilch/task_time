@@ -91,7 +91,7 @@ def format_duration_hm_and_decimal(total_seconds: float) -> str:
 def _split_interval_by_local_boundaries(
     start_utc: datetime,
     stop_utc: datetime,
-    local_tz: ZoneInfo,
+    local_tz: tzinfo_type,
 ) -> list[tuple[datetime, datetime]]:
     """Split interval at local midnight boundaries, returning UTC sub-intervals."""
     if stop_utc <= start_utc:
@@ -113,7 +113,7 @@ def _split_interval_by_local_boundaries(
 def interval_seconds_in_local_day(
     start_utc: datetime,
     stop_utc: datetime,
-    local_tz: ZoneInfo,
+    local_tz: tzinfo_type,
     day_local: datetime,
 ) -> float:
     """Return overlap seconds with a specific local day."""
@@ -139,7 +139,7 @@ def sunday_week_start(local_dt: datetime) -> datetime:
 def interval_seconds_in_local_week(
     start_utc: datetime,
     stop_utc: datetime,
-    local_tz: ZoneInfo,
+    local_tz: tzinfo_type,
     reference_local: datetime,
 ) -> float:
     """Return overlap seconds with Sunday-start local week."""
@@ -205,7 +205,7 @@ def parse_duration_seconds(value: str) -> float:
 
 
 def combine_local_date_time(
-    work_date: date, clock_time: time, local_tz: ZoneInfo
+    work_date: date, clock_time: time, local_tz: tzinfo_type
 ) -> datetime:
     """Return aware local datetime from local date + local time."""
     return datetime.combine(work_date, clock_time, local_tz)
