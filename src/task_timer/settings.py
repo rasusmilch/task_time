@@ -39,9 +39,15 @@ class UISettingsStore:
         return UISettings(
             sort_alphabetically=bool(payload.get("sort_alphabetically", False)),
             keep_mini_open=bool(payload.get("keep_mini_open", False)),
-            month_end_reminder_enabled=bool(payload.get("month_end_reminder_enabled", False)),
-            month_end_reminder_show_startup_notice=bool(payload.get("month_end_reminder_show_startup_notice", True)),
-            month_end_reminder_show_close_notice=bool(payload.get("month_end_reminder_show_close_notice", True)),
+            month_end_reminder_enabled=bool(
+                payload.get("month_end_reminder_enabled", False)
+            ),
+            month_end_reminder_show_startup_notice=bool(
+                payload.get("month_end_reminder_show_startup_notice", True)
+            ),
+            month_end_reminder_show_close_notice=bool(
+                payload.get("month_end_reminder_show_close_notice", True)
+            ),
             month_end_reminder_last_dismissed_local_date=self._optional_str(
                 payload.get("month_end_reminder_last_dismissed_local_date")
             ),
@@ -122,24 +128,44 @@ class BackupSettingsStore:
 
         migrated = False
         if "son_keep_days" not in payload and "son_keep_count" in payload:
-            payload["son_keep_days"] = self._positive_int(payload.get("son_keep_count"), 14)
+            payload["son_keep_days"] = self._positive_int(
+                payload.get("son_keep_count"), 14
+            )
             migrated = True
         if "father_keep_days" not in payload and "father_keep_count" in payload:
-            payload["father_keep_days"] = self._positive_int(payload.get("father_keep_count"), 8) * 7
+            payload["father_keep_days"] = (
+                self._positive_int(payload.get("father_keep_count"), 8) * 7
+            )
             migrated = True
-        if "grandfather_keep_days" not in payload and "grandfather_keep_count" in payload:
-            payload["grandfather_keep_days"] = self._positive_int(payload.get("grandfather_keep_count"), 12) * 30
+        if (
+            "grandfather_keep_days" not in payload
+            and "grandfather_keep_count" in payload
+        ):
+            payload["grandfather_keep_days"] = (
+                self._positive_int(payload.get("grandfather_keep_count"), 12) * 30
+            )
             migrated = True
 
         settings = BackupSettings(
             son_keep_days=self._positive_int(payload.get("son_keep_days"), 14),
             father_keep_days=self._positive_int(payload.get("father_keep_days"), 56),
-            grandfather_keep_days=self._positive_int(payload.get("grandfather_keep_days"), 365),
-            auto_backup_before_risky_operations=bool(payload.get("auto_backup_before_risky_operations", True)),
-            auto_backup_on_app_start=bool(payload.get("auto_backup_on_app_start", False)),
-            auto_backup_min_interval_minutes=self._positive_int(payload.get("auto_backup_min_interval_minutes"), 60),
+            grandfather_keep_days=self._positive_int(
+                payload.get("grandfather_keep_days"), 365
+            ),
+            auto_backup_before_risky_operations=bool(
+                payload.get("auto_backup_before_risky_operations", True)
+            ),
+            auto_backup_on_app_start=bool(
+                payload.get("auto_backup_on_app_start", False)
+            ),
+            auto_backup_min_interval_minutes=self._positive_int(
+                payload.get("auto_backup_min_interval_minutes"), 60
+            ),
         )
-        if migrated or any(k in payload for k in ("son_keep_count", "father_keep_count", "grandfather_keep_count")):
+        if migrated or any(
+            k in payload
+            for k in ("son_keep_count", "father_keep_count", "grandfather_keep_count")
+        ):
             self.save(settings)
         return settings
 

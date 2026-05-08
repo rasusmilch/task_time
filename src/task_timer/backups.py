@@ -48,7 +48,9 @@ class BackupManager:
         zip_path = target_dir / f"task_timer_{backup_type}_{timestamp}.zip"
         included = self._build_backup_archive(zip_path)
         manifest = {
-            "backup_created_utc": now.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "backup_created_utc": now.replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z"),
             "backup_type": backup_type,
             "app_version": self.app_version,
             "source_data_directory": str(self.data_dir),
@@ -57,7 +59,10 @@ class BackupManager:
             "schema_version": 1,
         }
         with zipfile.ZipFile(zip_path, "a", compression=zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("backup_manifest.json", json.dumps(manifest, indent=2, ensure_ascii=False))
+            zf.writestr(
+                "backup_manifest.json",
+                json.dumps(manifest, indent=2, ensure_ascii=False),
+            )
 
         if backup_type == "son":
             self._maybe_promote_periodic(now, reason)
@@ -78,11 +83,17 @@ class BackupManager:
         now_utc = utc_now().astimezone(timezone.utc)
         self._trim_dir_by_age(self.sons_dir, settings.son_keep_days, now_utc)
         self._trim_dir_by_age(self.fathers_dir, settings.father_keep_days, now_utc)
-        self._trim_dir_by_age(self.grandfathers_dir, settings.grandfather_keep_days, now_utc)
+        self._trim_dir_by_age(
+            self.grandfathers_dir, settings.grandfather_keep_days, now_utc
+        )
 
     def list_backups(self) -> list[BackupEntry]:
         entries: list[BackupEntry] = []
-        for backup_type, backup_dir in (("son", self.sons_dir), ("father", self.fathers_dir), ("grandfather", self.grandfathers_dir)):
+        for backup_type, backup_dir in (
+            ("son", self.sons_dir),
+            ("father", self.fathers_dir),
+            ("grandfather", self.grandfathers_dir),
+        ):
             for path in backup_dir.glob("*.zip"):
                 manifest = self._read_manifest(path)
                 entries.append(
@@ -97,7 +108,9 @@ class BackupManager:
         entries.sort(key=lambda item: item.created_utc, reverse=True)
         return entries
 
-    def should_create_automatic_backup(self, reason: str, now_utc: datetime | None = None) -> bool:
+    def should_create_automatic_backup(
+        self, reason: str, now_utc: datetime | None = None
+    ) -> bool:
         del reason  # reserved for future reason-specific policy
         settings = self.settings_store.load()
         now = (now_utc or utc_now()).astimezone(timezone.utc)
@@ -166,20 +179,23 @@ class BackupManager:
         if now.day == 1:
             self.create_backup("grandfather", f"monthly promotion: {reason}")
 
-    def _trim_dir_by_age(self, directory: Path, keep_days: int, now_utc: datetime) -> None:
+    def _trim_dir_by_age(
+        self, directory: Path, keep_days: int, now_utc: datetime
+    ) -> None:
         cutoff = now_utc - timedelta(days=keep_days)
         for path in directory.glob("*.zip"):
             created_utc = self._backup_created_utc(path)
             if created_utc and created_utc < cutoff:
                 path.unlink(missing_ok=True)
 
-
     def _backup_created_utc(self, path: Path) -> datetime | None:
         manifest = self._read_manifest(path)
         created_raw = manifest.get("backup_created_utc") if manifest else None
         if isinstance(created_raw, str):
             try:
-                return datetime.fromisoformat(created_raw.replace("Z", "+00:00")).astimezone(timezone.utc)
+                return datetime.fromisoformat(
+                    created_raw.replace("Z", "+00:00")
+                ).astimezone(timezone.utc)
             except ValueError:
                 pass
 
@@ -210,7 +226,9 @@ class BackupManager:
         newest: datetime | None = None
         for entry in self.list_backups():
             try:
-                created = datetime.fromisoformat(entry.created_utc.replace("Z", "+00:00"))
+                created = datetime.fromisoformat(
+                    entry.created_utc.replace("Z", "+00:00")
+                )
             except ValueError:
                 continue
             if newest is None or created > newest:

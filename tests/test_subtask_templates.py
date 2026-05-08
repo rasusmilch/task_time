@@ -7,7 +7,11 @@ import pytest
 from task_timer.app import TaskTimerService
 from task_timer.backups import BackupManager
 from task_timer.storage import EventStorage
-from task_timer.subtask_templates import SubtaskTemplate, SubtaskTemplateItem, SubtaskTemplateStore
+from task_timer.subtask_templates import (
+    SubtaskTemplate,
+    SubtaskTemplateItem,
+    SubtaskTemplateStore,
+)
 
 
 def test_missing_subtask_templates_file_creates_default_empty_file(tmp_path) -> None:
@@ -32,8 +36,12 @@ def test_templates_save_load_round_trip_and_order_preserved(tmp_path) -> None:
         name="Build flow",
         notes="n",
         items=[
-            SubtaskTemplateItem(item_id="i2", name="Second", notes="", tags=[" Alpha "], sort_order=1),
-            SubtaskTemplateItem(item_id="i1", name="First", notes="", tags=["Beta"], sort_order=0),
+            SubtaskTemplateItem(
+                item_id="i2", name="Second", notes="", tags=[" Alpha "], sort_order=1
+            ),
+            SubtaskTemplateItem(
+                item_id="i1", name="First", notes="", tags=["Beta"], sort_order=0
+            ),
         ],
         created_at_utc="2026-01-01T00:00:00Z",
         updated_at_utc="2026-01-01T00:00:00Z",
@@ -79,7 +87,9 @@ def test_restore_restores_subtask_templates_file(tmp_path) -> None:
     manager = BackupManager(tmp_path)
     backup = manager.create_backup("son", "seed")
 
-    (tmp_path / "subtask_templates.json").write_text('{"schema_version":1,"templates":[]}', encoding="utf-8")
+    (tmp_path / "subtask_templates.json").write_text(
+        '{"schema_version":1,"templates":[]}', encoding="utf-8"
+    )
     manager.restore_backup(backup)
 
     restored = SubtaskTemplateStore(tmp_path).load()
@@ -91,8 +101,12 @@ def test_update_template_item_tags_and_order_persist(tmp_path) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     tid = service.create_subtask_template("T", "")
     items = [
-        SubtaskTemplateItem(item_id="2", name="Two", notes="", tags=["Beta"], sort_order=0),
-        SubtaskTemplateItem(item_id="1", name="One", notes="", tags=[" Alpha "], sort_order=1),
+        SubtaskTemplateItem(
+            item_id="2", name="Two", notes="", tags=["Beta"], sort_order=0
+        ),
+        SubtaskTemplateItem(
+            item_id="1", name="One", notes="", tags=[" Alpha "], sort_order=1
+        ),
     ]
     service.update_subtask_template(tid, "T2", "n", items)
     reloaded = TaskTimerService(EventStorage(tmp_path)).get_subtask_template(tid)
@@ -110,8 +124,12 @@ def test_apply_one_template_creates_subtasks_under_parent(tmp_path) -> None:
         "Launch",
         "",
         [
-            SubtaskTemplateItem(item_id="1", name="Prep", notes="n1", tags=["alpha"], sort_order=0),
-            SubtaskTemplateItem(item_id="2", name="Ship", notes="n2", tags=["beta"], sort_order=1),
+            SubtaskTemplateItem(
+                item_id="1", name="Prep", notes="n1", tags=["alpha"], sort_order=0
+            ),
+            SubtaskTemplateItem(
+                item_id="2", name="Ship", notes="n2", tags=["beta"], sort_order=1
+            ),
         ],
     )
 
@@ -134,8 +152,18 @@ def test_apply_multiple_templates_preserves_selected_and_item_order(tmp_path) ->
     parent = service.create_task("Parent", "")
     t1 = service.create_subtask_template("First", "")
     t2 = service.create_subtask_template("Second", "")
-    service.update_subtask_template(t1, "First", "", [SubtaskTemplateItem(item_id="1", name="A", notes="", tags=[], sort_order=0)])
-    service.update_subtask_template(t2, "Second", "", [SubtaskTemplateItem(item_id="2", name="B", notes="", tags=[], sort_order=0)])
+    service.update_subtask_template(
+        t1,
+        "First",
+        "",
+        [SubtaskTemplateItem(item_id="1", name="A", notes="", tags=[], sort_order=0)],
+    )
+    service.update_subtask_template(
+        t2,
+        "Second",
+        "",
+        [SubtaskTemplateItem(item_id="2", name="B", notes="", tags=[], sort_order=0)],
+    )
 
     result = service.apply_subtask_templates(parent, [t2, t1])
 
@@ -153,15 +181,22 @@ def test_apply_template_skips_duplicate_names_under_same_parent(tmp_path) -> Non
         "T",
         "",
         [
-            SubtaskTemplateItem(item_id="1", name=" already there ", notes="", tags=[], sort_order=0),
-            SubtaskTemplateItem(item_id="2", name="New", notes="", tags=[], sort_order=1),
+            SubtaskTemplateItem(
+                item_id="1", name=" already there ", notes="", tags=[], sort_order=0
+            ),
+            SubtaskTemplateItem(
+                item_id="2", name="New", notes="", tags=[], sort_order=1
+            ),
         ],
     )
 
     result = service.apply_subtask_templates(parent, [tid])
     assert result.skipped_duplicates == ["already there"]
     assert result.created_names == ["New"]
-    assert sorted(c.name for c in service.child_tasks(parent)) == ["Already There", "New"]
+    assert sorted(c.name for c in service.child_tasks(parent)) == [
+        "Already There",
+        "New",
+    ]
 
 
 def test_apply_template_skips_duplicates_across_selected_templates(tmp_path) -> None:
@@ -169,8 +204,18 @@ def test_apply_template_skips_duplicates_across_selected_templates(tmp_path) -> 
     parent = service.create_task("Parent", "")
     t1 = service.create_subtask_template("T1", "")
     t2 = service.create_subtask_template("T2", "")
-    service.update_subtask_template(t1, "T1", "", [SubtaskTemplateItem(item_id="1", name="X", notes="", tags=[], sort_order=0)])
-    service.update_subtask_template(t2, "T2", "", [SubtaskTemplateItem(item_id="2", name="x", notes="", tags=[], sort_order=0)])
+    service.update_subtask_template(
+        t1,
+        "T1",
+        "",
+        [SubtaskTemplateItem(item_id="1", name="X", notes="", tags=[], sort_order=0)],
+    )
+    service.update_subtask_template(
+        t2,
+        "T2",
+        "",
+        [SubtaskTemplateItem(item_id="2", name="x", notes="", tags=[], sort_order=0)],
+    )
 
     result = service.apply_subtask_templates(parent, [t1, t2])
     assert result.created_names == ["X"]
@@ -200,20 +245,53 @@ def test_apply_template_archived_tag_blocked(tmp_path) -> None:
     service.create_tag("alpha")
     service.archive_tag("alpha")
     tid = service.create_subtask_template("T", "")
-    service.update_subtask_template(tid, "T", "", [SubtaskTemplateItem(item_id="1", name="X", notes="", tags=["alpha"], sort_order=0)])
+    service.update_subtask_template(
+        tid,
+        "T",
+        "",
+        [
+            SubtaskTemplateItem(
+                item_id="1", name="X", notes="", tags=["alpha"], sort_order=0
+            )
+        ],
+    )
 
     with pytest.raises(ValueError, match="archived"):
         service.apply_subtask_templates(parent, [tid])
 
 
-def test_edit_or_delete_template_later_does_not_modify_created_subtasks(tmp_path) -> None:
+def test_edit_or_delete_template_later_does_not_modify_created_subtasks(
+    tmp_path,
+) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     parent = service.create_task("Parent", "")
     tid = service.create_subtask_template("T", "")
-    service.update_subtask_template(tid, "T", "", [SubtaskTemplateItem(item_id="1", name="X", notes="n", tags=["alpha"], sort_order=0)])
+    service.update_subtask_template(
+        tid,
+        "T",
+        "",
+        [
+            SubtaskTemplateItem(
+                item_id="1", name="X", notes="n", tags=["alpha"], sort_order=0
+            )
+        ],
+    )
     service.apply_subtask_templates(parent, [tid])
 
-    service.update_subtask_template(tid, "T", "", [SubtaskTemplateItem(item_id="1", name="Changed", notes="changed", tags=["beta"], sort_order=0)])
+    service.update_subtask_template(
+        tid,
+        "T",
+        "",
+        [
+            SubtaskTemplateItem(
+                item_id="1",
+                name="Changed",
+                notes="changed",
+                tags=["beta"],
+                sort_order=0,
+            )
+        ],
+    )
     service.delete_subtask_template(tid)
 
     children = service.child_tasks(parent)
@@ -225,10 +303,16 @@ def test_edit_or_delete_template_later_does_not_modify_created_subtasks(tmp_path
 
 def test_template_item_parent_round_trip(tmp_path) -> None:
     store = SubtaskTemplateStore(tmp_path)
-    template = SubtaskTemplate(template_id="t", name="T", items=[
-        SubtaskTemplateItem(item_id="p", name="Parent", sort_order=0),
-        SubtaskTemplateItem(item_id="c", name="Child", parent_item_id="p", sort_order=1),
-    ])
+    template = SubtaskTemplate(
+        template_id="t",
+        name="T",
+        items=[
+            SubtaskTemplateItem(item_id="p", name="Parent", sort_order=0),
+            SubtaskTemplateItem(
+                item_id="c", name="Child", parent_item_id="p", sort_order=1
+            ),
+        ],
+    )
     store.save([template])
     loaded = store.load()[0]
     assert loaded.items[1].parent_item_id == "p"
@@ -238,11 +322,20 @@ def test_template_rejects_depth_greater_than_2(tmp_path) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     tid = service.create_subtask_template("T", "")
     with pytest.raises(ValueError, match="depth"):
-        service.update_subtask_template(tid, "T", "", [
-            SubtaskTemplateItem(item_id="a", name="A", sort_order=0),
-            SubtaskTemplateItem(item_id="b", name="B", parent_item_id="a", sort_order=1),
-            SubtaskTemplateItem(item_id="c", name="C", parent_item_id="b", sort_order=2),
-        ])
+        service.update_subtask_template(
+            tid,
+            "T",
+            "",
+            [
+                SubtaskTemplateItem(item_id="a", name="A", sort_order=0),
+                SubtaskTemplateItem(
+                    item_id="b", name="B", parent_item_id="a", sort_order=1
+                ),
+                SubtaskTemplateItem(
+                    item_id="c", name="C", parent_item_id="b", sort_order=2
+                ),
+            ],
+        )
 
 
 def test_apply_nested_template_creates_hierarchy_and_skips_duplicates(tmp_path) -> None:
@@ -251,16 +344,27 @@ def test_apply_nested_template_creates_hierarchy_and_skips_duplicates(tmp_path) 
     existing = service.create_subtask(root, "Build", "")
     service.create_subtask(existing, "Plan", "")
     tid = service.create_subtask_template("Nested", "")
-    service.update_subtask_template(tid, "Nested", "", [
-        SubtaskTemplateItem(item_id="p1", name="Build", sort_order=0),
-        SubtaskTemplateItem(item_id="c1", name="Plan", parent_item_id="p1", sort_order=1),
-        SubtaskTemplateItem(item_id="c2", name="Execute", parent_item_id="p1", sort_order=2),
-        SubtaskTemplateItem(item_id="p2", name="Review", sort_order=3),
-    ])
+    service.update_subtask_template(
+        tid,
+        "Nested",
+        "",
+        [
+            SubtaskTemplateItem(item_id="p1", name="Build", sort_order=0),
+            SubtaskTemplateItem(
+                item_id="c1", name="Plan", parent_item_id="p1", sort_order=1
+            ),
+            SubtaskTemplateItem(
+                item_id="c2", name="Execute", parent_item_id="p1", sort_order=2
+            ),
+            SubtaskTemplateItem(item_id="p2", name="Review", sort_order=3),
+        ],
+    )
     result = service.apply_subtask_templates(root, [tid])
     children = {c.name: c for c in service.child_tasks(root)}
     assert set(children) == {"Build", "Review"}
-    build_children = sorted(c.name for c in service.child_tasks(children["Build"].task_id))
+    build_children = sorted(
+        c.name for c in service.child_tasks(children["Build"].task_id)
+    )
     assert build_children == ["Execute", "Plan"]
     assert sorted(result.skipped_duplicates) == ["Build", "Plan"]
     assert "Execute" in result.created_names and "Review" in result.created_names

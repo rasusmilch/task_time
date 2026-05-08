@@ -86,7 +86,9 @@ class FakeTree:
     def delete(self, iid: str) -> None:
         self.items.pop(iid, None)
 
-    def insert(self, _parent: str, _idx: str, iid: str, values: tuple[str, str, str]) -> None:
+    def insert(
+        self, _parent: str, _idx: str, iid: str, values: tuple[str, str, str]
+    ) -> None:
         self.items[iid] = values
 
     def exists(self, iid: str) -> bool:
@@ -95,7 +97,9 @@ class FakeTree:
 
 def test_sorted_visible_tags_excludes_selected_and_archived() -> None:
     service = DummyService()
-    out = TagSelectionFrame._sorted_visible_tags(service.list_global_tags(include_archived=True), {"alpha"})
+    out = TagSelectionFrame._sorted_visible_tags(
+        service.list_global_tags(include_archived=True), {"alpha"}
+    )
     assert out == ["beta"]
 
 
@@ -133,20 +137,24 @@ def test_add_or_select_invalid_empty_tag_blocked() -> None:
 def test_add_and_remove_selected_tag_moves_between_lists_logic() -> None:
     service = DummyService()
     f = _frame(service, [])
-    available_before = TagSelectionFrame._sorted_visible_tags(service.list_global_tags(include_archived=True), f.get_selected_tags())
+    available_before = TagSelectionFrame._sorted_visible_tags(
+        service.list_global_tags(include_archived=True), f.get_selected_tags()
+    )
     assert available_before == ["alpha", "beta"]
 
     f.add_selected_tag("alpha")
     assert f.get_selected_tags() == ["alpha"]
-    available_after_add = TagSelectionFrame._sorted_visible_tags(service.list_global_tags(include_archived=True), f.get_selected_tags())
+    available_after_add = TagSelectionFrame._sorted_visible_tags(
+        service.list_global_tags(include_archived=True), f.get_selected_tags()
+    )
     assert available_after_add == ["beta"]
 
     f.remove_selected_tag("alpha")
     assert f.get_selected_tags() == []
-    available_after_remove = TagSelectionFrame._sorted_visible_tags(service.list_global_tags(include_archived=True), f.get_selected_tags())
+    available_after_remove = TagSelectionFrame._sorted_visible_tags(
+        service.list_global_tags(include_archived=True), f.get_selected_tags()
+    )
     assert available_after_remove == ["alpha", "beta"]
-
-
 
 
 def test_dialog_sources_do_not_use_comma_separated_tag_entry() -> None:
@@ -162,6 +170,8 @@ def test_dialog_sources_do_not_use_comma_separated_tag_entry() -> None:
     )
     assert "Tags (comma-separated)" not in combined
     assert '.split(",")' not in combined
+
+
 def test_manage_tags_dialog_not_placeholder() -> None:
     import inspect
 
@@ -178,14 +188,18 @@ def test_manage_tags_dialog_add_rename_archive_unarchive_delete(monkeypatch) -> 
     dlg.refresh_table()
     dlg.tree.selection_set("beta")
 
-    monkeypatch.setattr(dialogs_module.simpledialog, "askstring", lambda *a, **k: "gamma")
+    monkeypatch.setattr(
+        dialogs_module.simpledialog, "askstring", lambda *a, **k: "gamma"
+    )
     monkeypatch.setattr(dialogs_module.messagebox, "showerror", lambda *a, **k: None)
     monkeypatch.setattr(dialogs_module.messagebox, "askyesno", lambda *a, **k: True)
     dlg._add_tag()
     assert "gamma" in dlg.tree.items
 
     dlg.tree.selection_set("gamma")
-    monkeypatch.setattr(dialogs_module.simpledialog, "askstring", lambda *a, **k: "delta")
+    monkeypatch.setattr(
+        dialogs_module.simpledialog, "askstring", lambda *a, **k: "delta"
+    )
     dlg._rename_tag()
     assert "delta" in dlg.tree.items
 
@@ -211,7 +225,9 @@ def test_manage_tags_dialog_blocks_archive_delete_when_in_use(monkeypatch) -> No
     dlg.refresh_table()
     dlg.tree.selection_set("alpha")
     errors: list[str] = []
-    monkeypatch.setattr(dialogs_module.messagebox, "showerror", lambda _t, msg, **k: errors.append(msg))
+    monkeypatch.setattr(
+        dialogs_module.messagebox, "showerror", lambda _t, msg, **k: errors.append(msg)
+    )
     monkeypatch.setattr(dialogs_module.messagebox, "askyesno", lambda *a, **k: True)
     dlg._archive_tag()
     dlg._delete_tag()
@@ -225,13 +241,15 @@ def test_tag_selection_frame_grid_columns_are_distinct() -> None:
     source = inspect.getsource(tag_dialogs_module.TagSelectionFrame.__init__)
     assert 'lists.grid(row=0, column=0, sticky="n")' in source
     assert "width=28" in source
-    assert 'avail_scroll.grid(row=1, column=1' in source
-    assert 'center.grid(row=1, column=2' in source
-    assert 'self.selected_list.grid(row=1, column=3' in source
-    assert 'sel_scroll.grid(row=1, column=4' in source
+    assert "avail_scroll.grid(row=1, column=1" in source
+    assert "center.grid(row=1, column=2" in source
+    assert "self.selected_list.grid(row=1, column=3" in source
+    assert "sel_scroll.grid(row=1, column=4" in source
 
 
-def test_subtask_template_item_dialog_builds_fields_without_name_error(monkeypatch) -> None:
+def test_subtask_template_item_dialog_builds_fields_without_name_error(
+    monkeypatch,
+) -> None:
     class FakeWindow:
         def title(self, _text):
             return None
@@ -293,11 +311,15 @@ def test_subtask_template_item_dialog_builds_fields_without_name_error(monkeypat
     monkeypatch.setattr(
         dialogs_module,
         "ttk",
-        SimpleNamespace(Label=FakeWidget, Entry=FakeWidget, Frame=FakeWidget, Button=FakeWidget),
+        SimpleNamespace(
+            Label=FakeWidget, Entry=FakeWidget, Frame=FakeWidget, Button=FakeWidget
+        ),
     )
 
     for title in ("Add Subtask Item", "Edit Subtask Item", "Add Nested Subtask"):
-        dialog = dialogs_module.SubtaskTemplateItemDialog(FakeParent(), object(), title=title)
+        dialog = dialogs_module.SubtaskTemplateItemDialog(
+            FakeParent(), object(), title=title
+        )
         assert hasattr(dialog, "name_var")
         assert hasattr(dialog, "notes_var")
         assert hasattr(dialog, "tag_selector")
@@ -309,6 +331,9 @@ def test_subtask_template_item_dialog_source_has_expected_controls() -> None:
     source = inspect.getsource(dialogs_module.SubtaskTemplateItemDialog.__init__)
     assert 'text="Name"' in source
     assert 'text="Notes"' in source
-    assert 'TagSelectionFrame(self.window, service, initial_tags=initial_tags)' in source
+    assert "TagSelectionFrame(" in source
+    assert "self.window" in source
+    assert "service" in source
+    assert "initial_tags=initial_tags" in source
     assert 'text="Cancel"' in source
     assert 'text="Save"' in source

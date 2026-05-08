@@ -26,7 +26,9 @@ def detect_local_timezone() -> tzinfo_type:
         pass
 
     now_local = datetime.now().astimezone()
-    fallback_name = getattr(now_local.tzinfo, "key", None) or getattr(now_local.tzinfo, "zone", None)
+    fallback_name = getattr(now_local.tzinfo, "key", None) or getattr(
+        now_local.tzinfo, "zone", None
+    )
     if fallback_name:
         try:
             return ZoneInfo(fallback_name)
@@ -44,7 +46,12 @@ def utc_now() -> datetime:
 
 def to_utc_z(value: datetime) -> str:
     """Serialize datetime to ISO-8601 UTC Z format."""
-    return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        value.astimezone(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def parse_utc_z(text: str) -> datetime:
@@ -76,7 +83,9 @@ def format_decimal_hours(total_seconds: float) -> str:
 
 def format_duration_hm_and_decimal(total_seconds: float) -> str:
     """Format seconds as HH:MM and decimal hours."""
-    return f"{format_duration_hm(total_seconds)} ({format_decimal_hours(total_seconds)} h)"
+    return (
+        f"{format_duration_hm(total_seconds)} ({format_decimal_hours(total_seconds)} h)"
+    )
 
 
 def _split_interval_by_local_boundaries(
@@ -91,7 +100,9 @@ def _split_interval_by_local_boundaries(
     cursor = start_utc
     while cursor < stop_utc:
         cursor_local = cursor.astimezone(local_tz)
-        next_midnight_local = datetime.combine(cursor_local.date() + timedelta(days=1), time.min, local_tz)
+        next_midnight_local = datetime.combine(
+            cursor_local.date() + timedelta(days=1), time.min, local_tz
+        )
         next_boundary_utc = next_midnight_local.astimezone(timezone.utc)
         piece_end = min(stop_utc, next_boundary_utc)
         pieces.append((cursor, piece_end))
@@ -193,7 +204,9 @@ def parse_duration_seconds(value: str) -> float:
     raise ValueError(f"Invalid duration format: {value}")
 
 
-def combine_local_date_time(work_date: date, clock_time: time, local_tz: ZoneInfo) -> datetime:
+def combine_local_date_time(
+    work_date: date, clock_time: time, local_tz: ZoneInfo
+) -> datetime:
     """Return aware local datetime from local date + local time."""
     return datetime.combine(work_date, clock_time, local_tz)
 

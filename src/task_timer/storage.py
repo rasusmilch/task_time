@@ -37,7 +37,9 @@ class EventStorage:
         if not self.active_path.exists():
             self.active_path.write_text("", encoding="utf-8")
         if not self.manifest_path.exists():
-            self._atomic_write_json(self.manifest_path, {"archives": [], "next_sequence": 1})
+            self._atomic_write_json(
+                self.manifest_path, {"archives": [], "next_sequence": 1}
+            )
 
     def append_event(self, event: dict[str, Any]) -> None:
         """Append one event line and durably flush it."""
@@ -81,7 +83,9 @@ class EventStorage:
             event["_read_sequence"] = read_sequence
             read_sequence += 1
             events.append(event)
-        events.sort(key=lambda item: (item["timestamp_utc"], item.get("_read_sequence", 0)))
+        events.sort(
+            key=lambda item: (item["timestamp_utc"], item.get("_read_sequence", 0))
+        )
         if self.corrupt_event_count:
             logger.warning(
                 "Chronicle skipped {} corrupt journal event lines during startup. A copy was saved for inspection.",
@@ -141,7 +145,12 @@ class EventStorage:
                 try:
                     event = json.loads(line)
                 except json.JSONDecodeError as exc:
-                    logger.warning("Skipped corrupt event line in {}:{}: {}", path, line_number, exc)
+                    logger.warning(
+                        "Skipped corrupt event line in {}:{}: {}",
+                        path,
+                        line_number,
+                        exc,
+                    )
                     self._quarantine_corrupt_line(
                         source_path=path,
                         line_number=line_number,
@@ -151,7 +160,12 @@ class EventStorage:
                     continue
                 if not self._is_valid_event_shape(event):
                     message = "Missing required event keys"
-                    logger.warning("Skipped corrupt event line in {}:{}: {}", path, line_number, message)
+                    logger.warning(
+                        "Skipped corrupt event line in {}:{}: {}",
+                        path,
+                        line_number,
+                        message,
+                    )
                     self._quarantine_corrupt_line(
                         source_path=path,
                         line_number=line_number,
@@ -167,15 +181,26 @@ class EventStorage:
     def _is_valid_event_shape(event: Any) -> bool:
         if not isinstance(event, dict):
             return False
-        required_keys = {"schema_version", "event_id", "timestamp_utc", "task_id", "event_type", "payload"}
+        required_keys = {
+            "schema_version",
+            "event_id",
+            "timestamp_utc",
+            "task_id",
+            "event_type",
+            "payload",
+        }
         return required_keys.issubset(event)
 
-    def _quarantine_corrupt_line(self, *, source_path: Path, line_number: int, raw_text: str, error_message: str) -> None:
+    def _quarantine_corrupt_line(
+        self, *, source_path: Path, line_number: int, raw_text: str, error_message: str
+    ) -> None:
         try:
             if self.corrupt_events_path is None:
                 stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
                 self.corrupt_dir.mkdir(parents=True, exist_ok=True)
-                self.corrupt_events_path = self.corrupt_dir / f"corrupt_events_{stamp}.jsonl"
+                self.corrupt_events_path = (
+                    self.corrupt_dir / f"corrupt_events_{stamp}.jsonl"
+                )
             payload = {
                 "source_path": str(source_path),
                 "line_number": line_number,

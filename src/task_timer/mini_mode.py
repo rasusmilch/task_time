@@ -62,7 +62,9 @@ class MiniModeWindow:
         actions.pack(fill="x")
         self.toggle_btn = ttk.Button(actions, text="Start", command=self.toggle)
         self.toggle_btn.pack(side="left", expand=True, fill="x")
-        ttk.Button(actions, text="Show Main", command=self.restore_main).pack(side="left", padx=(6, 0), expand=True, fill="x")
+        ttk.Button(actions, text="Show Main", command=self.restore_main).pack(
+            side="left", padx=(6, 0), expand=True, fill="x"
+        )
 
         self.refresh_structure()
         self.refresh_live_values()
@@ -84,10 +86,15 @@ class MiniModeWindow:
             pass
 
     def _resolve_display_task_id(self) -> str | None:
-        tasks = [task for task in self.service.state.tasks.values() if not task.is_deleted]
+        tasks = [
+            task for task in self.service.state.tasks.values() if not task.is_deleted
+        ]
         if not tasks:
             return None
-        if self.service.state.running_task_id and self.service.state.running_task_id in self.service.state.tasks:
+        if (
+            self.service.state.running_task_id
+            and self.service.state.running_task_id in self.service.state.tasks
+        ):
             running_task = self.service.state.tasks[self.service.state.running_task_id]
             if not running_task.is_deleted:
                 return running_task.task_id
@@ -124,7 +131,11 @@ class MiniModeWindow:
     def refresh_live_values(self) -> None:
         self.refresh_structure()
         self._sync_reminder_indicator()
-        task = self.service.state.tasks.get(self._display_task_id or "") if self._display_task_id else None
+        task = (
+            self.service.state.tasks.get(self._display_task_id or "")
+            if self._display_task_id
+            else None
+        )
         if not task:
             self.task_name_var.set("No tasks available")
             self.elapsed_var.set("00:00")
@@ -135,7 +146,9 @@ class MiniModeWindow:
         is_running = task.is_running
         color = RUNNING_COLOR if is_running else STOPPED_COLOR
         self.task_name_var.set(task.name.strip() or "Untitled Task")
-        self.elapsed_var.set(format_duration_hm(self.service.task_elapsed(task, utc_now())))
+        self.elapsed_var.set(
+            format_duration_hm(self.service.task_elapsed(task, utc_now()))
+        )
         self.toggle_btn.configure(text="Stop" if is_running else "Start")
         self.toggle_btn.state(["!disabled"])
         self.elapsed_bar_label.configure(bg=color)
