@@ -188,3 +188,158 @@ def test_corrupt_warning_is_logged(tmp_path: Path) -> None:
     assert any(
         "Chronicle skipped 1 corrupt journal event lines during startup" in msg for msg in messages
     )
+
+
+def test_corrupt_manifest_is_preserved_and_replaced(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "log_manifest.json"
+    manifest_path.write_text('{"archives": ', encoding="utf-8")
+    storage = EventStorage(tmp_path)
+    manifest = storage.load_manifest()
+    assert manifest == {"archives": [], "next_sequence": 1}
+    assert any(tmp_path.glob("log_manifest.json.corrupt.*"))
+
+
+def test_manifest_wrong_top_level_type_is_preserved_and_replaced(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "log_manifest.json"
+    manifest_path.write_text('["not a dict"]', encoding="utf-8")
+    storage = EventStorage(tmp_path)
+    manifest = storage.load_manifest()
+    assert manifest == {"archives": [], "next_sequence": 1}
+    assert any(tmp_path.glob("log_manifest.json.corrupt.*"))
+
+
+def test_manifest_malformed_archive_entries_are_skipped(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "log_manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "archives": [
+                    {"path": "archives/good.jsonl"},
+                    {"path": "/abs/bad.jsonl"},
+                    {"path": "../bad.jsonl"},
+                    {"path": 123},
+                    "bad-entry",
+                ],
+                "next_sequence": 2,
+            }
+        ),
+        encoding="utf-8",
+    )
+    storage = EventStorage(tmp_path)
+    manifest = storage.load_manifest()
+    assert manifest["archives"] == [{"path": "archives/good.jsonl"}]
+    assert manifest["next_sequence"] == 2
+
+
+def test_non_string_timestamp_is_quarantined(tmp_path: Path) -> None:
+    active = tmp_path / "active_events.jsonl"
+    active.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "event_id": "bad",
+                "timestamp_utc": 123,
+                "task_id": "t1",
+                "event_type": "task_created",
+                "payload": {},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    storage = EventStorage(tmp_path)
+    assert storage.iter_all_events() == []
+    assert storage.corrupt_event_count == 1
+
+
+def test_unparseable_timestamp_is_quarantined(tmp_path: Path) -> None:
+    active = tmp_path / "active_events.jsonl"
+    active.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "event_id": "bad",
+                "timestamp_utc": "not-a-time",
+                "task_id": "t1",
+                "event_type": "task_created",
+                "payload": {},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    storage = EventStorage(tmp_path)
+    assert storage.iter_all_events() == []
+    assert storage.corrupt_event_count == 1
+
+
+def test_non_dict_payload_is_quarantined(tmp_path: Path) -> None:
+    active = tmp_path / "active_events.jsonl"
+    active.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "event_id": "bad",
+                "timestamp_utc": "2026-01-01T00:00:00Z",
+                "task_id": "t1",
+                "event_type": "task_created",
+                "payload": "bad",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    storage = EventStorage(tmp_path)
+    assert storage.iter_all_events() == []
+    assert storage.corrupt_event_count == 1
+
+
+def test_valid_events_around_bad_event_still_load(tmp_path: Path) -> None:
+    active = tmp_path / "active_events.jsonl"
+    active.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "event_id": "1",
+                        "timestamp_utc": "2026-01-01T00:00:00Z",
+                        "task_id": "t1",
+                        "event_type": "task_created",
+                        "payload": {},
+                    }
+                ),
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "event_id": "bad",
+                        "timestamp_utc": "bad-time",
+                        "task_id": "t1",
+                        "event_type": "started",
+                        "payload": {},
+                    }
+                ),
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "event_id": "2",
+                        "timestamp_utc": "2026-01-01T00:00:01Z",
+                        "task_id": "t1",
+                        "event_type": "started",
+                        "payload": {},
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    storage = EventStorage(tmp_path)
+    events = storage.iter_all_events()
+    assert [event["event_id"] for event in events] == ["1", "2"]
+
+
+def test_source_segments_works_after_manifest_recovery(tmp_path: Path) -> None:
+    (tmp_path / "log_manifest.json").write_text("{broken", encoding="utf-8")
+    storage = EventStorage(tmp_path)
+    assert storage.source_segments() == ["active_events.jsonl"]
