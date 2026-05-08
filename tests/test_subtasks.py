@@ -399,3 +399,48 @@ def test_movable_parent_targets_include_depth1_only_when_valid(tmp_path):
     targets = {t.task_id for t in service.movable_parent_targets(nested)}
     assert r1 in targets and r2 in targets and sub in targets
     assert nested not in targets
+
+
+def test_task_depth_detects_cycle(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    child = service.create_subtask(root, "Child", "")
+    service.state.tasks[root].parent_task_id = child
+    with pytest.raises(ValueError, match="Task hierarchy is corrupted"):
+        service.task_depth(root)
+
+
+def test_subtree_height_detects_cycle(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    child = service.create_subtask(root, "Child", "")
+    service.state.tasks[root].parent_task_id = child
+    with pytest.raises(ValueError, match="Task hierarchy is corrupted"):
+        service.subtree_height(root)
+
+
+def test_descendant_tasks_cycle_detected_and_no_hang(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    child = service.create_subtask(root, "Child", "")
+    service.state.tasks[root].parent_task_id = child
+    with pytest.raises(ValueError, match="Task hierarchy is corrupted"):
+        service.descendant_tasks(root)
+
+
+def test_replay_corrupt_task_moved_is_ignored_and_logged(tmp_path, monkeypatch):
+    warnings: list[str] = []
+
+    def _capture_warning(message: str, *args: object) -> None:
+        warnings.append(message.format(*args))
+
+    monkeypatch.setattr("task_timer.service.logger.warning", _capture_warning)
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    child = service.create_subtask(root, "Child", "")
+    nested = service.create_subtask(child, "Nested", "")
+
+    service._append(root, "task_moved", {"old_parent_task_id": None, "new_parent_task_id": nested})
+    rebuilt = TaskTimerService(EventStorage(tmp_path))
+    assert rebuilt.state.tasks[root].parent_task_id is None
+    assert any("Ignored malformed replay event" in msg for msg in warnings)
