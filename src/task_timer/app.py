@@ -109,9 +109,9 @@ class TaskTimerApp:
             anchor="w",
         )
         reminder_label.pack(side="left", fill="x", expand=True, padx=(8, 4), pady=4)
-        ttk.Button(
-            self.reminder_banner, text="Export", command=self._on_reminder_export
-        ).pack(side="left", padx=4, pady=4)
+        ttk.Button(self.reminder_banner, text="Export", command=self._on_reminder_export).pack(
+            side="left", padx=4, pady=4
+        )
         ttk.Button(
             self.reminder_banner,
             text="Dismiss",
@@ -123,12 +123,10 @@ class TaskTimerApp:
         ttk.Button(self.toolbar_frame, text="Add Task", command=self.add_task).pack(
             side="left", padx=(0, 4)
         )
-        ttk.Button(self.toolbar_frame, text="Export", command=self.export).pack(
+        ttk.Button(self.toolbar_frame, text="Export", command=self.export).pack(side="left", padx=4)
+        ttk.Button(self.toolbar_frame, text="Mini Mode", command=self.open_mini_mode).pack(
             side="left", padx=4
         )
-        ttk.Button(
-            self.toolbar_frame, text="Mini Mode", command=self.open_mini_mode
-        ).pack(side="left", padx=4)
         self.keep_mini_open_checkbox = ttk.Checkbutton(
             self.toolbar_frame,
             text="Keep Mini Open",
@@ -143,13 +141,9 @@ class TaskTimerApp:
             command=self._on_sort_toggle,
         )
         self.sort_alpha_checkbox.pack(side="left", padx=(10, 4))
-        self.daily_total_label = ttk.Label(
-            self.toolbar_frame, textvariable=self.daily_var
-        )
+        self.daily_total_label = ttk.Label(self.toolbar_frame, textvariable=self.daily_var)
         self.daily_total_label.pack(side="left", padx=(12, 4))
-        self.weekly_total_label = ttk.Label(
-            self.toolbar_frame, textvariable=self.weekly_var
-        )
+        self.weekly_total_label = ttk.Label(self.toolbar_frame, textvariable=self.weekly_var)
         self.weekly_total_label.pack(side="left", padx=4)
 
         self.table_frame = ttk.Frame(self.root)
@@ -169,22 +163,12 @@ class TaskTimerApp:
     def _build_menus(self) -> None:
         menubar = tk.Menu(self.root)
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(
-            label="Create Backup Now", command=self._create_backup_now
-        )
-        file_menu.add_command(
-            label="Backup Settings", command=self._open_backup_settings
-        )
+        file_menu.add_command(label="Create Backup Now", command=self._create_backup_now)
+        file_menu.add_command(label="Backup Settings", command=self._open_backup_settings)
         file_menu.add_command(label="Open Data Folder", command=self._open_data_folder)
-        file_menu.add_command(
-            label="Open Backup Folder", command=self._open_backup_folder
-        )
-        file_menu.add_command(
-            label="Export Selected Tasks...", command=self.export_selected_tasks
-        )
-        file_menu.add_command(
-            label="Restore From Backup", command=self._restore_from_backup
-        )
+        file_menu.add_command(label="Open Backup Folder", command=self._open_backup_folder)
+        file_menu.add_command(label="Export Selected Tasks...", command=self.export_selected_tasks)
+        file_menu.add_command(label="Restore From Backup", command=self._restore_from_backup)
         file_menu.add_command(
             label="Rebuild Snapshot From Journal",
             command=self._rebuild_snapshot_from_journal,
@@ -225,9 +209,7 @@ class TaskTimerApp:
         selected_template_ids = getattr(dialog, "selected_template_ids", [])
         if selected_template_ids:
             try:
-                result = self.service.apply_subtask_templates(
-                    task_id, selected_template_ids
-                )
+                result = self.service.apply_subtask_templates(task_id, selected_template_ids)
             except ValueError as exc:
                 logger.warning("User-facing validation error: {}", exc)
                 messagebox.showerror("Create Task", str(exc))
@@ -341,21 +323,15 @@ class TaskTimerApp:
             return
         if action == "reset":
             logger.info("Post selected export action: reset")
-            self._create_risky_operation_backup(
-                "before resetting selected exported tasks"
-            )
+            self._create_risky_operation_backup("before resetting selected exported tasks")
             self.service.reset_selected_tasks(selected_task_ids)
             self.refresh_structure()
             self.refresh_live_values()
             return
         if action == "delete":
             logger.info("Post selected export action: delete")
-            self._create_risky_operation_backup(
-                "before deleting selected exported tasks"
-            )
-            affected_ids = set(
-                self.service.delete_selected_tasks(selected_task_ids) or []
-            )
+            self._create_risky_operation_backup("before deleting selected exported tasks")
+            affected_ids = set(self.service.delete_selected_tasks(selected_task_ids) or [])
             self._clear_selection_if_deleted(affected_ids)
             self.refresh_structure()
             self.refresh_live_values()
@@ -404,18 +380,10 @@ class TaskTimerApp:
         self.task_tree.heading("state", text="State")
         self.task_tree.heading("elapsed", text="Elapsed")
         self.task_tree.column("#0", width=240, minwidth=170, stretch=False, anchor="w")
-        self.task_tree.column(
-            "notes", width=280, minwidth=200, stretch=True, anchor="w"
-        )
-        self.task_tree.column(
-            "state", width=130, minwidth=120, stretch=False, anchor="center"
-        )
-        self.task_tree.column(
-            "elapsed", width=80, minwidth=75, stretch=False, anchor="e"
-        )
-        y_scroll = ttk.Scrollbar(
-            self.table_frame, orient="vertical", command=self.task_tree.yview
-        )
+        self.task_tree.column("notes", width=280, minwidth=200, stretch=True, anchor="w")
+        self.task_tree.column("state", width=130, minwidth=120, stretch=False, anchor="center")
+        self.task_tree.column("elapsed", width=80, minwidth=75, stretch=False, anchor="e")
+        y_scroll = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.task_tree.yview)
         self.task_tree.configure(yscrollcommand=y_scroll.set)
         self.task_tree.grid(row=0, column=0, sticky="nsew")
         y_scroll.grid(row=0, column=1, sticky="ns")
@@ -423,9 +391,7 @@ class TaskTimerApp:
         self.table_frame.grid_columnconfigure(0, weight=1)
         if self.parent_name_font is not None:
             self.task_tree.tag_configure("parent", font=self.parent_name_font)
-        self.task_tree.tag_configure(
-            "running", foreground=RUNNING_COLOR, background="#eef8f1"
-        )
+        self.task_tree.tag_configure("running", foreground=RUNNING_COLOR, background="#eef8f1")
         self.task_tree.tag_configure("stopped", foreground=STOPPED_COLOR)
         self.task_tree.bind("<<TreeviewSelect>>", self._on_tree_select)
         self.task_tree.bind("<<TreeviewOpen>>", self._on_tree_open)
@@ -438,14 +404,12 @@ class TaskTimerApp:
 
     def _build_selected_task_panel(self) -> None:
         self.selected_task_panel = ttk.Frame(self.table_frame)
-        self.selected_task_panel.grid(
-            row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0)
-        )
+        self.selected_task_panel.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
         self.selected_task_panel.grid_columnconfigure(0, weight=1)
         self.selected_task_label_var = StringVar(value="Selected: None")
-        ttk.Label(
-            self.selected_task_panel, textvariable=self.selected_task_label_var
-        ).grid(row=0, column=0, sticky="w")
+        ttk.Label(self.selected_task_panel, textvariable=self.selected_task_label_var).grid(
+            row=0, column=0, sticky="w"
+        )
         self.selected_state_label = tk.Label(
             self.selected_task_panel,
             text="",
@@ -454,9 +418,7 @@ class TaskTimerApp:
             padx=8,
             pady=1,
         )
-        self.selected_state_label.grid(
-            row=0, column=1, sticky="e", padx=(8, 0), pady=(0, 6)
-        )
+        self.selected_state_label.grid(row=0, column=1, sticky="e", padx=(8, 0), pady=(0, 6))
         button_bar = ttk.Frame(self.selected_task_panel)
         button_bar.grid(row=1, column=0, sticky="w")
         self.selected_toggle_btn = ttk.Button(
@@ -502,9 +464,7 @@ class TaskTimerApp:
                 text=root.name,
                 values=(root.notes, "■ Stopped", "00:00"),
                 open=root.task_id in self.expanded_parents,
-                tags=self._tree_tags(
-                    root, is_subtask=False, has_children=bool(children)
-                ),
+                tags=self._tree_tags(root, is_subtask=False, has_children=bool(children)),
             )
             for child in children:
                 grandkids = self._sorted_tasks(children_map.get(child.task_id, []))
@@ -517,9 +477,7 @@ class TaskTimerApp:
                     text=child.name,
                     values=(child.notes, "■ Stopped", "00:00"),
                     open=child.task_id in self.expanded_parents,
-                    tags=self._tree_tags(
-                        child, is_subtask=True, has_children=bool(grandkids)
-                    ),
+                    tags=self._tree_tags(child, is_subtask=True, has_children=bool(grandkids)),
                 )
                 for nested in grandkids:
                     self.task_tree.insert(
@@ -528,9 +486,7 @@ class TaskTimerApp:
                         iid=nested.task_id,
                         text=nested.name,
                         values=(nested.notes, "■ Stopped", "00:00"),
-                        tags=self._tree_tags(
-                            nested, is_subtask=True, has_children=False
-                        ),
+                        tags=self._tree_tags(nested, is_subtask=True, has_children=False),
                     )
             if self._has_running_descendant(root.task_id, children_map):
                 self.task_tree.item(root.task_id, open=True)
@@ -546,9 +502,7 @@ class TaskTimerApp:
     def _sorted_tasks(self, tasks: list[TaskState]) -> list[TaskState]:
         if not self.sort_alpha_var.get():
             return tasks
-        return sorted(
-            tasks, key=lambda task: (task.name.strip().casefold(), task.task_id)
-        )
+        return sorted(tasks, key=lambda task: (task.name.strip().casefold(), task.task_id))
 
     def _has_running_descendant(
         self, task_id: str, children_map: dict[str, list[TaskState]]
@@ -593,14 +547,10 @@ class TaskTimerApp:
             if self.task_tree.set(task_id, "state") != state_text:
                 self.task_tree.set(task_id, "state", state_text)
             parent = self.task_tree.parent(task_id)
-            has_children = bool(
-                self.service.child_tasks(task_id, include_deleted=False)
-            )
+            has_children = bool(self.service.child_tasks(task_id, include_deleted=False))
             self.task_tree.item(
                 task_id,
-                tags=self._tree_tags(
-                    task, is_subtask=bool(parent), has_children=has_children
-                ),
+                tags=self._tree_tags(task, is_subtask=bool(parent), has_children=has_children),
             )
         children_map = self.service.task_tree_children_map(include_deleted=False)
         for task_id in list(self.service.state.tasks):
@@ -700,15 +650,11 @@ class TaskTimerApp:
                 break
             path_names.append(parent.name)
             parent_id = parent.parent_task_id
-        self.selected_task_label_var.set(
-            f"Selected: {' / '.join(reversed(path_names))}"
-        )
+        self.selected_task_label_var.set(f"Selected: {' / '.join(reversed(path_names))}")
         state_text = self._task_state_display(task, utc_now())
         if hasattr(self, "selected_state_label"):
             bg, fg = self._selected_state_colors(state_text)
-            self.selected_state_label.configure(
-                text=f"State: {state_text}", bg=bg, fg=fg
-            )
+            self.selected_state_label.configure(text=f"State: {state_text}", bg=bg, fg=fg)
         self.selected_toggle_btn.configure(
             text="Stop" if task.is_running else "Start", state="normal"
         )
@@ -785,9 +731,7 @@ class TaskTimerApp:
             return
         except Exception:
             logger.exception("Unexpected failure while toggling task state")
-            messagebox.showerror(
-                "Task", "Unexpected failure while toggling task state."
-            )
+            messagebox.showerror("Task", "Unexpected failure while toggling task state.")
             return
         self._after_state_change()
 
@@ -848,21 +792,15 @@ class TaskTimerApp:
         )
         if not should_reset:
             return
-        has_active = any(
-            not task.is_deleted for task in self.service.state.tasks.values()
-        )
+        has_active = any(not task.is_deleted for task in self.service.state.tasks.values())
         if not has_active:
-            messagebox.showinfo(
-                "Reset All Task Timers", "There are no active tasks to reset."
-            )
+            messagebox.showinfo("Reset All Task Timers", "There are no active tasks to reset.")
             return
         self._create_risky_operation_backup("before reset all task timers")
         self.service.reset_all_non_deleted_tasks()
         logger.info("Reset all timers")
         self._after_state_change()
-        messagebox.showinfo(
-            "Reset All Task Timers", "All active task timers were reset."
-        )
+        messagebox.showinfo("Reset All Task Timers", "All active task timers were reset.")
 
     def _delete_task(self, task_id: str) -> None:
         task = self.service.state.tasks.get(task_id)
@@ -873,15 +811,12 @@ class TaskTimerApp:
         if children:
             should_delete_tree = messagebox.askokcancel(
                 "Confirm delete",
-                "Deleting this task will also delete all descendant subtasks.\n\n"
-                "Continue?",
+                "Deleting this task will also delete all descendant subtasks.\n\nContinue?",
                 default=messagebox.OK,
             )
             if not should_delete_tree:
                 return
-            self._create_risky_operation_backup(
-                "before deleting selected task and descendants"
-            )
+            self._create_risky_operation_backup("before deleting selected task and descendants")
             try:
                 self.service.delete_task_tree(task_id)
             except ValueError as exc:
@@ -972,9 +907,7 @@ class TaskTimerApp:
         messagebox.showinfo("Backup Created", f"Backup created:\n{backup_path}")
 
     def _open_backup_settings(self) -> None:
-        dialog = BackupSettingsDialog(
-            self.root, self.service, self.service.load_backup_settings()
-        )
+        dialog = BackupSettingsDialog(self.root, self.service, self.service.load_backup_settings())
         if not dialog.confirmed or dialog.settings is None:
             return
         self.service.save_backup_settings(dialog.settings)
@@ -1041,9 +974,7 @@ class TaskTimerApp:
             return
         try:
             self.service.void_last_export_checkpoint(reason)
-            messagebox.showinfo(
-                "Checkpoint reopened", "The active export checkpoint was reopened."
-            )
+            messagebox.showinfo("Checkpoint reopened", "The active export checkpoint was reopened.")
         except Exception as exc:  # noqa: BLE001
             logger.exception("Unexpected failure reopening export checkpoint")
             messagebox.showerror("Reopen failed", str(exc))
@@ -1106,10 +1037,7 @@ class TaskTimerApp:
             return
         if self.ui_settings.month_end_reminder_last_dismissed_local_date == today_iso:
             return
-        if (
-            self.ui_settings.month_end_reminder_last_export_prompted_local_date
-            == today_iso
-        ):
+        if self.ui_settings.month_end_reminder_last_export_prompted_local_date == today_iso:
             return
         if self._startup_reminder_prompted_date == today_iso:
             return
@@ -1126,9 +1054,7 @@ class TaskTimerApp:
         if not dialog.confirmed:
             return
         self.ui_settings.month_end_reminder_enabled = dialog.enabled_var.get()
-        self.ui_settings.month_end_reminder_show_startup_notice = (
-            dialog.startup_var.get()
-        )
+        self.ui_settings.month_end_reminder_show_startup_notice = dialog.startup_var.get()
         self.ui_settings.month_end_reminder_show_close_notice = dialog.close_var.get()
         self.ui_settings_store.save(self.ui_settings)
         self._refresh_month_end_reminder_ui()
@@ -1157,7 +1083,5 @@ class TaskTimerApp:
     def _tick(self) -> None:
         self.refresh_live_values()
         now_local = datetime.now().astimezone(self.service.local_tz)
-        next_delay_ms = max(
-            (60 - now_local.second) * 1000 - (now_local.microsecond // 1000), 1000
-        )
+        next_delay_ms = max((60 - now_local.second) * 1000 - (now_local.microsecond // 1000), 1000)
         self._tick_job = self.root.after(next_delay_ms, self._tick)

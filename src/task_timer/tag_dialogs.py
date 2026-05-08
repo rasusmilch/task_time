@@ -46,18 +46,12 @@ class TagSelectionFrame(ttk.Frame):
         lists.grid_columnconfigure(4, weight=0)
         lists.grid_rowconfigure(1, weight=1)
 
-        ttk.Label(lists, text="Available tags").grid(
-            row=0, column=0, columnspan=2, sticky="w"
-        )
-        ttk.Label(lists, text="Task tags").grid(
-            row=0, column=3, columnspan=2, sticky="w"
-        )
+        ttk.Label(lists, text="Available tags").grid(row=0, column=0, columnspan=2, sticky="w")
+        ttk.Label(lists, text="Task tags").grid(row=0, column=3, columnspan=2, sticky="w")
 
         self.available_list = Listbox(lists, width=28, height=8, exportselection=False)
         self.available_list.grid(row=1, column=0, sticky="nsew")
-        avail_scroll = ttk.Scrollbar(
-            lists, orient="vertical", command=self.available_list.yview
-        )
+        avail_scroll = ttk.Scrollbar(lists, orient="vertical", command=self.available_list.yview)
         avail_scroll.grid(row=1, column=1, sticky="ns")
         self.available_list.configure(yscrollcommand=avail_scroll.set)
 
@@ -66,31 +60,23 @@ class TagSelectionFrame(ttk.Frame):
         ttk.Button(center, text="Add >", command=self._add_selected_available).pack(
             fill="x", pady=(4, 4)
         )
-        ttk.Button(
-            center, text="< Remove", command=self._remove_selected_assigned
-        ).pack(fill="x")
+        ttk.Button(center, text="< Remove", command=self._remove_selected_assigned).pack(fill="x")
 
         self.selected_list = Listbox(lists, width=28, height=8, exportselection=False)
         self.selected_list.grid(row=1, column=3, sticky="nsew")
-        sel_scroll = ttk.Scrollbar(
-            lists, orient="vertical", command=self.selected_list.yview
-        )
+        sel_scroll = ttk.Scrollbar(lists, orient="vertical", command=self.selected_list.yview)
         sel_scroll.grid(row=1, column=4, sticky="ns")
         self.selected_list.configure(yscrollcommand=sel_scroll.set)
 
-        self.available_list.bind(
-            "<Double-Button-1>", lambda _e: self._add_selected_available()
-        )
-        self.selected_list.bind(
-            "<Double-Button-1>", lambda _e: self._remove_selected_assigned()
-        )
+        self.available_list.bind("<Double-Button-1>", lambda _e: self._add_selected_available())
+        self.selected_list.bind("<Double-Button-1>", lambda _e: self._remove_selected_assigned())
 
         actions = ttk.Frame(self)
         actions.grid(row=1, column=0, sticky="ew", pady=(6, 0))
         if allow_new_tags:
-            ttk.Button(
-                actions, text="Add New Tag", command=self._prompt_add_new_tag
-            ).pack(side="left")
+            ttk.Button(actions, text="Add New Tag", command=self._prompt_add_new_tag).pack(
+                side="left"
+            )
         ttk.Label(actions, textvariable=self.error_var, foreground="#b00020").pack(
             side="left", padx=8
         )
@@ -103,11 +89,7 @@ class TagSelectionFrame(ttk.Frame):
         global_tags: Iterable[_TagMeta], selected_tags: Iterable[str]
     ) -> list[str]:
         selected = set(selected_tags)
-        keys = [
-            meta.key
-            for meta in global_tags
-            if not meta.archived and meta.key not in selected
-        ]
+        keys = [meta.key for meta in global_tags if not meta.archived and meta.key not in selected]
         return sorted(keys)
 
     def get_selected_tags(self) -> list[str]:
@@ -175,9 +157,7 @@ class TagSelectionFrame(ttk.Frame):
             if meta.key != normalized:
                 continue
             if meta.archived:
-                raise ValueError(
-                    f"Tag '{normalized}' is archived. Unarchive it from Manage Tags."
-                )
+                raise ValueError(f"Tag '{normalized}' is archived. Unarchive it from Manage Tags.")
             self._selected_tags.add(normalized)
             return self.get_selected_tags()
         self.service.create_tag(normalized)

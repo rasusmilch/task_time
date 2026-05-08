@@ -96,11 +96,7 @@ class ExportService:
         logger.info("Selected export calculation started")
         try:
             wanted = self.service._expand_selected_task_ids(task_ids)
-            rows = [
-                r
-                for r in self.compute_windowed_task_totals(window)
-                if r.task_id in wanted
-            ]
+            rows = [r for r in self.compute_windowed_task_totals(window) if r.task_id in wanted]
             result = SelectedExportData(rows=self._aggregate_parent_rows(rows))
             logger.info("Selected export calculation completed")
             return result
@@ -108,9 +104,7 @@ class ExportService:
             logger.exception("Selected export calculation failed")
             raise
 
-    def compute_global_export_task_totals(
-        self, window: ExportWindow
-    ) -> GlobalExportData:
+    def compute_global_export_task_totals(self, window: ExportWindow) -> GlobalExportData:
         logger.info("Global export calculation started")
         try:
             by_id: dict[str, TaskExportRow] = {}
@@ -141,9 +135,7 @@ class ExportService:
                 ):
                     continue
                 payload = event.get("payload", {})
-                marker_end = parse_utc_z(
-                    payload.get("window_end_utc", event["timestamp_utc"])
-                )
+                marker_end = parse_utc_z(payload.get("window_end_utc", event["timestamp_utc"]))
                 for snapshot in payload.get("task_snapshots", []):
                     task_id = snapshot.get("task_id")
                     if not task_id:
@@ -163,22 +155,12 @@ class ExportService:
                     row.status_notes.append("already entered through selected export")
                     if task and task.is_deleted:
                         row.status_notes.append("task later deleted")
-                    if (
-                        task
-                        and task.last_reset_utc
-                        and task.last_reset_utc >= marker_end
-                    ):
+                    if task and task.last_reset_utc and task.last_reset_utc >= marker_end:
                         row.status_notes.append("task later reset")
-                    daily = payload.get("submitted_daily_totals_by_task", {}).get(
-                        task_id, {}
-                    )
-                    weekly = payload.get("submitted_weekly_totals_by_task", {}).get(
-                        task_id, {}
-                    )
+                    daily = payload.get("submitted_daily_totals_by_task", {}).get(task_id, {})
+                    weekly = payload.get("submitted_weekly_totals_by_task", {}).get(task_id, {})
                     overall = float(
-                        payload.get("submitted_overall_totals_by_task", {}).get(
-                            task_id, 0.0
-                        )
+                        payload.get("submitted_overall_totals_by_task", {}).get(task_id, 0.0)
                     )
                     if daily:
                         merged = dict(row.daily_totals)
@@ -196,9 +178,7 @@ class ExportService:
             self._apply_submission_flags(rows, window)
             tag_daily, tag_weekly = self.compute_tag_totals(window)
             logger.info("Global export calculation completed")
-            return GlobalExportData(
-                rows=rows, tag_daily=tag_daily, tag_weekly=tag_weekly
-            )
+            return GlobalExportData(rows=rows, tag_daily=tag_daily, tag_weekly=tag_weekly)
         except Exception:
             logger.exception("Global export calculation failed")
             raise
@@ -208,19 +188,14 @@ class ExportService:
         out = []
         for row in rows:
             task = self.service.state.tasks.get(row.task_id)
-            if (
-                task
-                and task.parent_task_id is not None
-                and task.parent_task_id in row_by_id
-            ):
+            if task and task.parent_task_id is not None and task.parent_task_id in row_by_id:
                 continue
             direct_children = [
                 r
                 for r in rows
                 if (
                     self.service.state.tasks.get(r.task_id)
-                    and self.service.state.tasks[r.task_id].parent_task_id
-                    == row.task_id
+                    and self.service.state.tasks[r.task_id].parent_task_id == row.task_id
                 )
             ]
             daily = dict(row.daily_totals)
@@ -260,9 +235,7 @@ class ExportService:
         out.sort(key=lambda rr: (rr.name.strip().casefold(), rr.task_id))
         return out
 
-    def _apply_submission_flags(
-        self, rows: list[TaskExportRow], window: ExportWindow
-    ) -> None:
+    def _apply_submission_flags(self, rows: list[TaskExportRow], window: ExportWindow) -> None:
         for row in rows:
             week_flags: dict[str, SubmissionFlag] = {}
             for week_range, seconds in row.weekly_totals:
@@ -287,9 +260,7 @@ class ExportService:
                     marker,
                     seconds,
                     info["already_submitted_seconds"],
-                    info.get(
-                        "submitted_seconds_in_window", info.get("total_seconds", 0.0)
-                    ),
+                    info.get("submitted_seconds_in_window", info.get("total_seconds", 0.0)),
                     info["is_partially_submitted"],
                 )
             row.weekly_submission_flags = week_flags
@@ -300,9 +271,7 @@ class ExportService:
         daily: dict[str, dict[str, TagExportRow]] = {}
         weekly: dict[str, dict[str, TagExportRow]] = {}
         for task in self.service.state.tasks.values():
-            intervals = self.service._windowed_intervals(
-                task, window.start_utc, window.end_utc
-            )
+            intervals = self.service._windowed_intervals(task, window.start_utc, window.end_utc)
             if not intervals:
                 continue
             effective_tags = set(task.tags)
@@ -319,15 +288,13 @@ class ExportService:
                         start_utc,
                         stop_utc,
                         self.service.local_tz,
-                        datetime.combine(
-                            day_cursor, time(hour=12), self.service.local_tz
-                        ),
+                        datetime.combine(day_cursor, time(hour=12), self.service.local_tz),
                     )
                     if secs > 0:
                         for tag in tags:
-                            ent = daily.setdefault(
-                                day_cursor.isoformat(), {}
-                            ).setdefault(tag, TagExportRow(0.0, set()))
+                            ent = daily.setdefault(day_cursor.isoformat(), {}).setdefault(
+                                tag, TagExportRow(0.0, set())
+                            )
                             ent.seconds += secs
                             ent.tasks.add(task_name)
                     day_cursor = day_cursor.fromordinal(day_cursor.toordinal() + 1)

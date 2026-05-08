@@ -149,9 +149,7 @@ class TaskTimerService:
 
     def delete_subtask_template(self, template_id: str) -> None:
         kept = [
-            template
-            for template in self.subtask_templates
-            if template.template_id != template_id
+            template for template in self.subtask_templates if template.template_id != template_id
         ]
         if len(kept) == len(self.subtask_templates):
             return
@@ -172,9 +170,7 @@ class TaskTimerService:
         if not template_ids:
             raise ValueError("At least one template must be selected")
 
-        template_map = {
-            template.template_id: template for template in self.subtask_templates
-        }
+        template_map = {template.template_id: template for template in self.subtask_templates}
         selected_templates: list[SubtaskTemplate] = []
         for template_id in template_ids:
             template = template_map.get(template_id)
@@ -208,9 +204,7 @@ class TaskTimerService:
                     skipped_duplicates.append(item.name)
                     item_to_task[item.item_id] = existing.task_id
                     continue
-                subtask_id = self.create_subtask(
-                    parent_task_id, item.name, item.notes, item.tags
-                )
+                subtask_id = self.create_subtask(parent_task_id, item.name, item.notes, item.tags)
                 created = self.state.tasks[subtask_id]
                 existing_children[normalized_name] = created
                 created_subtask_ids.append(subtask_id)
@@ -229,9 +223,7 @@ class TaskTimerService:
                 if normalized_name in existing_nested:
                     skipped_duplicates.append(item.name)
                     continue
-                nested_id = self.create_subtask(
-                    parent_subtask_id, item.name, item.notes, item.tags
-                )
+                nested_id = self.create_subtask(parent_subtask_id, item.name, item.notes, item.tags)
                 created_subtask_ids.append(nested_id)
                 created_names.append(item.name)
 
@@ -249,9 +241,7 @@ class TaskTimerService:
         for key in normalized:
             meta = self.state.global_tags.get(key)
             if meta and meta.archived:
-                raise ValueError(
-                    f"Tag '{key}' is archived. Unarchive it from Manage Tags."
-                )
+                raise ValueError(f"Tag '{key}' is archived. Unarchive it from Manage Tags.")
         return normalized
 
     def _assert_task_writable(self, task_id: str) -> TaskState:
@@ -347,9 +337,7 @@ class TaskTimerService:
             cursor = parent
         return out
 
-    def descendant_tasks(
-        self, task_id: str, include_deleted: bool = False
-    ) -> list[TaskState]:
+    def descendant_tasks(self, task_id: str, include_deleted: bool = False) -> list[TaskState]:
         if task_id not in self.state.tasks:
             raise ValueError("Task not found")
         out: list[TaskState] = []
@@ -365,9 +353,7 @@ class TaskTimerService:
             stack.extend(reversed(self.child_tasks(task.task_id, include_deleted=True)))
         return out
 
-    def direct_child_tasks(
-        self, task_id: str, include_deleted: bool = False
-    ) -> list[TaskState]:
+    def direct_child_tasks(self, task_id: str, include_deleted: bool = False) -> list[TaskState]:
         return self.child_tasks(task_id, include_deleted=include_deleted)
 
     def subtree_height(self, task_id: str, include_deleted: bool = False) -> int:
@@ -382,9 +368,7 @@ class TaskTimerService:
         )
 
     def max_depth_after_move(self, task_id: str, new_parent_task_id: str | None) -> int:
-        base_depth = (
-            0 if new_parent_task_id is None else self.task_depth(new_parent_task_id) + 1
-        )
+        base_depth = 0 if new_parent_task_id is None else self.task_depth(new_parent_task_id) + 1
         return base_depth + self.subtree_height(task_id, include_deleted=False)
 
     def can_accept_child(self, parent_task_id: str) -> tuple[bool, str]:
@@ -404,12 +388,8 @@ class TaskTimerService:
             )
         return True, ""
 
-    def child_tasks(
-        self, parent_task_id: str, include_deleted: bool = False
-    ) -> list[TaskState]:
-        children = [
-            t for t in self.state.tasks.values() if t.parent_task_id == parent_task_id
-        ]
+    def child_tasks(self, parent_task_id: str, include_deleted: bool = False) -> list[TaskState]:
+        children = [t for t in self.state.tasks.values() if t.parent_task_id == parent_task_id]
         if not include_deleted:
             children = [t for t in children if not t.is_deleted]
         return sorted(children, key=lambda t: (t.created_at_utc, t.task_id))
@@ -430,9 +410,7 @@ class TaskTimerService:
             roots = [t for t in roots if not t.is_deleted]
         return sorted(roots, key=lambda t: (t.created_at_utc, t.task_id))
 
-    def task_tree_children_map(
-        self, include_deleted: bool = False
-    ) -> dict[str, list[TaskState]]:
+    def task_tree_children_map(self, include_deleted: bool = False) -> dict[str, list[TaskState]]:
         output: dict[str, list[TaskState]] = {}
         for task in self.state.tasks.values():
             if task.parent_task_id is None:
@@ -448,9 +426,7 @@ class TaskTimerService:
         task = self.state.tasks.get(task_id)
         if not task or task.is_deleted:
             return []
-        descendants = {
-            t.task_id for t in self.descendant_tasks(task_id, include_deleted=True)
-        }
+        descendants = {t.task_id for t in self.descendant_tasks(task_id, include_deleted=True)}
         out: list[TaskState] = []
         for candidate in sorted(
             self.state.tasks.values(), key=lambda t: (t.created_at_utc, t.task_id)
@@ -467,17 +443,12 @@ class TaskTimerService:
                 continue
             if depth >= MAX_TASK_TREE_DEPTH:
                 continue
-            if (
-                self.max_depth_after_move(task_id, candidate.task_id)
-                > MAX_TASK_TREE_DEPTH
-            ):
+            if self.max_depth_after_move(task_id, candidate.task_id) > MAX_TASK_TREE_DEPTH:
                 continue
             out.append(candidate)
         return out
 
-    def can_move_task(
-        self, task_id: str, new_parent_task_id: str | None
-    ) -> tuple[bool, str]:
+    def can_move_task(self, task_id: str, new_parent_task_id: str | None) -> tuple[bool, str]:
         task = self.state.tasks.get(task_id)
         if not task:
             return False, "Task not found"
@@ -515,10 +486,7 @@ class TaskTimerService:
             cursor = parent
 
         try:
-            if (
-                self.max_depth_after_move(task_id, new_parent_task_id)
-                > MAX_TASK_TREE_DEPTH
-            ):
+            if self.max_depth_after_move(task_id, new_parent_task_id) > MAX_TASK_TREE_DEPTH:
                 return (
                     False,
                     "Cannot move this task there because it would exceed Chronicle's two-level subtask limit.",
@@ -606,9 +574,7 @@ class TaskTimerService:
             raise ValueError(f"Tag '{old_norm}' does not exist")
         if new_norm in self.state.global_tags:
             raise ValueError(f"Tag '{new_norm}' already exists")
-        self._append(
-            "__app__", "tag_renamed", {"old_key": old_norm, "new_key": new_norm}
-        )
+        self._append("__app__", "tag_renamed", {"old_key": old_norm, "new_key": new_norm})
 
     def archive_tag(self, key: str) -> None:
         norm = normalize_tag(key)
@@ -738,12 +704,8 @@ class TaskTimerService:
         self._create_risky_operation_backup("before manual interval edit")
         self._validate_interval_against_checkpoint(start_local, stop_local)
         prior = task.intervals[interval_id]
-        prior_start = prior.start_utc.astimezone(self.local_tz).strftime(
-            "%Y-%m-%d %I:%M %p"
-        )
-        prior_stop = prior.stop_utc.astimezone(self.local_tz).strftime(
-            "%Y-%m-%d %I:%M %p"
-        )
+        prior_start = prior.start_utc.astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
+        prior_stop = prior.stop_utc.astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
         self._append(
             task_id,
             "interval_edited",
@@ -852,11 +814,7 @@ class TaskTimerService:
         if not reason.strip():
             raise ValueError("Reason is required")
         task = self.state.tasks.get(task_id)
-        if (
-            not task
-            or not task.is_running
-            or not task.currently_open_interval_start_utc
-        ):
+        if not task or not task.is_running or not task.currently_open_interval_start_utc:
             raise ValueError("Task is not currently running")
         corrected_stop_utc = corrected_stop_local.astimezone(timezone.utc)
         if corrected_stop_utc <= task.currently_open_interval_start_utc:
@@ -872,9 +830,7 @@ class TaskTimerService:
             "missed_stop_corrected",
             {
                 "interval_id": str(uuid4()),
-                "original_open_start_utc": to_utc_z(
-                    task.currently_open_interval_start_utc
-                ),
+                "original_open_start_utc": to_utc_z(task.currently_open_interval_start_utc),
                 "corrected_stop_utc": to_utc_z(corrected_stop_utc),
                 "reason": reason.strip(),
             },
@@ -893,9 +849,7 @@ class TaskTimerService:
             if include_before_reset
             else self._effective_intervals(task, check_now)
         )
-        intervals = sorted(
-            intervals, key=lambda i: (i.start_utc, i.stop_utc, i.interval_id)
-        )
+        intervals = sorted(intervals, key=lambda i: (i.start_utc, i.stop_utc, i.interval_id))
         return [format_timeline_row(interval, self.local_tz) for interval in intervals]
 
     def export_report(self, target: Path, reset_after: bool) -> None:
@@ -903,9 +857,7 @@ class TaskTimerService:
         now_utc = utc_now()
         active_checkpoint = self.find_active_export_checkpoint()
         window_start_utc = (
-            parse_utc_z(active_checkpoint["timestamp_utc"])
-            if active_checkpoint
-            else None
+            parse_utc_z(active_checkpoint["timestamp_utc"]) if active_checkpoint else None
         )
         window_events = self.events_in_window(window_start_utc, now_utc)
         global_data = self.export_service.compute_global_export_task_totals(
@@ -913,9 +865,7 @@ class TaskTimerService:
         )
         per_task = [self._export_row_to_dict(row) for row in global_data.rows]
         weekly_ranges = self.collect_week_ranges(per_task)
-        history_lines = self.build_human_audit_lines(
-            window_events, window_end_utc=now_utc
-        )
+        history_lines = self.build_human_audit_lines(window_events, window_end_utc=now_utc)
         tag_daily = self._tag_rows_to_dict(global_data.tag_daily)
         tag_weekly = self._tag_rows_to_dict(global_data.tag_weekly)
         content = build_export_text(
@@ -925,9 +875,7 @@ class TaskTimerService:
             window_end_utc=now_utc,
             reset_after=reset_after,
             weekly_headers=weekly_ranges,
-            weekly_summary_rows=self.build_epicor_weekly_summary_rows(
-                per_task, weekly_ranges
-            ),
+            weekly_summary_rows=self.build_epicor_weekly_summary_rows(per_task, weekly_ranges),
             per_task_rows=per_task,
             history_lines=history_lines,
             source_segments=self.storage.source_segments(),
@@ -941,9 +889,7 @@ class TaskTimerService:
             {
                 "path": str(target),
                 "generated_at_utc": to_utc_z(now_utc),
-                "window_start_utc": to_utc_z(window_start_utc)
-                if window_start_utc
-                else None,
+                "window_start_utc": to_utc_z(window_start_utc) if window_start_utc else None,
                 "window_end_utc": to_utc_z(now_utc),
                 "reset_after": reset_after,
             },
@@ -974,10 +920,7 @@ class TaskTimerService:
         affected = [
             task_id
             for task_id in sorted(expanded)
-            if (
-                self.state.tasks.get(task_id)
-                and not self.state.tasks[task_id].is_deleted
-            )
+            if (self.state.tasks.get(task_id) and not self.state.tasks[task_id].is_deleted)
         ]
         for task_id in affected:
             task = self.state.tasks.get(task_id)
@@ -1000,15 +943,11 @@ class TaskTimerService:
                 continue
             intervals = self._effective_intervals(task, check_now)
             today_seconds = sum(
-                interval_seconds_in_local_day(
-                    i.start_utc, i.stop_utc, self.local_tz, day_ref
-                )
+                interval_seconds_in_local_day(i.start_utc, i.stop_utc, self.local_tz, day_ref)
                 for i in intervals
             )
             week_seconds = sum(
-                interval_seconds_in_local_week(
-                    i.start_utc, i.stop_utc, self.local_tz, local_now
-                )
+                interval_seconds_in_local_week(i.start_utc, i.stop_utc, self.local_tz, local_now)
                 for i in intervals
             )
             overall_today += today_seconds
@@ -1038,9 +977,7 @@ class TaskTimerService:
             return 0.0
         return self.task_elapsed(task, now_utc)
 
-    def task_tree_elapsed(
-        self, parent_task_id: str, now_utc: datetime | None = None
-    ) -> float:
+    def task_tree_elapsed(self, parent_task_id: str, now_utc: datetime | None = None) -> float:
         total = self.task_own_elapsed(parent_task_id, now_utc)
         for child in self.child_tasks(parent_task_id, include_deleted=False):
             total += self.task_tree_elapsed(child.task_id, now_utc)
@@ -1134,10 +1071,7 @@ class TaskTimerService:
             if payload_task_ids & task_ids:
                 selected_events.append(event)
                 continue
-            if (
-                related_submission_id
-                and payload.get("submission_id") == related_submission_id
-            ):
+            if related_submission_id and payload.get("submission_id") == related_submission_id:
                 selected_events.append(event)
         return selected_events
 
@@ -1154,9 +1088,7 @@ class TaskTimerService:
     ) -> list[dict[str, Any]]:
         by_id: dict[str, dict[str, Any]] = {}
         for task in self.state.tasks.values():
-            clipped_intervals = self._windowed_intervals(
-                task, window_start_utc, window_end_utc
-            )
+            clipped_intervals = self._windowed_intervals(task, window_start_utc, window_end_utc)
             day_totals = self._compute_daily_totals(clipped_intervals)
             week_totals = self._compute_weekly_totals(clipped_intervals)
             overall_seconds = sum(
@@ -1175,15 +1107,10 @@ class TaskTimerService:
             }
 
         for event in self.events:
-            if (
-                event["task_id"] != "__app__"
-                or event["event_type"] != "time_submission_created"
-            ):
+            if event["task_id"] != "__app__" or event["event_type"] != "time_submission_created":
                 continue
             payload = event.get("payload", {})
-            marker_end = parse_utc_z(
-                payload.get("window_end_utc", event["timestamp_utc"])
-            )
+            marker_end = parse_utc_z(payload.get("window_end_utc", event["timestamp_utc"]))
             for snapshot in payload.get("task_snapshots", []):
                 task_id = snapshot.get("task_id")
                 if not task_id:
@@ -1193,12 +1120,8 @@ class TaskTimerService:
                 if row is None:
                     row = {
                         "task_id": task_id,
-                        "name": snapshot.get(
-                            "task_name", task_opt.name if task_opt else task_id
-                        ),
-                        "notes": snapshot.get(
-                            "notes", task_opt.notes if task_opt else ""
-                        ),
+                        "name": snapshot.get("task_name", task_opt.name if task_opt else task_id),
+                        "notes": snapshot.get("notes", task_opt.notes if task_opt else ""),
                         "daily_totals": [],
                         "weekly_totals": [],
                         "overall_seconds": 0.0,
@@ -1210,16 +1133,10 @@ class TaskTimerService:
                     row["status_notes"].append("task later deleted")
                 if task and task.last_reset_utc and task.last_reset_utc >= marker_end:
                     row["status_notes"].append("task later reset")
-                daily = payload.get("submitted_daily_totals_by_task", {}).get(
-                    task_id, {}
-                )
-                weekly = payload.get("submitted_weekly_totals_by_task", {}).get(
-                    task_id, {}
-                )
+                daily = payload.get("submitted_daily_totals_by_task", {}).get(task_id, {})
+                weekly = payload.get("submitted_weekly_totals_by_task", {}).get(task_id, {})
                 overall = float(
-                    payload.get("submitted_overall_totals_by_task", {}).get(
-                        task_id, 0.0
-                    )
+                    payload.get("submitted_overall_totals_by_task", {}).get(task_id, 0.0)
                 )
                 if daily:
                     merged = dict(row["daily_totals"])
@@ -1246,8 +1163,7 @@ class TaskTimerService:
             task = self.state.tasks.get(task_id)
             if task:
                 expanded.update(
-                    child.task_id
-                    for child in self.descendant_tasks(task_id, include_deleted=True)
+                    child.task_id for child in self.descendant_tasks(task_id, include_deleted=True)
                 )
         return expanded
 
@@ -1262,18 +1178,12 @@ class TaskTimerService:
             normalized.append(task_id)
         return normalized
 
-    def _aggregate_parent_rows(
-        self, rows: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def _aggregate_parent_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         row_by_id = {r["task_id"]: r for r in rows}
         out = []
         for row in rows:
             task = self.state.tasks.get(row["task_id"])
-            if (
-                task
-                and task.parent_task_id is not None
-                and task.parent_task_id in row_by_id
-            ):
+            if task and task.parent_task_id is not None and task.parent_task_id in row_by_id:
                 continue
             direct_children = [
                 r
@@ -1291,18 +1201,16 @@ class TaskTimerService:
                 child_breakdown = child_row.get("breakdown") or [
                     ("Parent/general", child_row["overall_seconds"])
                 ]
-                for label, seconds in child_breakdown:
+                for label, _seconds in child_breakdown:
                     if label == "Parent/general":
                         break
                 total += child_row["overall_seconds"]
-                breakdown.append(
-                    (f"{child_row['name']} total", child_row["overall_seconds"])
-                )
-                for label, seconds in child_breakdown:
+                breakdown.append((f"{child_row['name']} total", child_row["overall_seconds"]))
+                for label, _seconds in child_breakdown:
                     if label == "Parent/general":
-                        breakdown.append((f"  {child_row['name']}/general", seconds))
+                        breakdown.append((f"  {child_row['name']}/general", _seconds))
                     else:
-                        breakdown.append((f"  {label}", seconds))
+                        breakdown.append((f"  {label}", _seconds))
                 for k, v in child_row["daily_totals"]:
                     daily[k] = daily.get(k, 0) + v
                 for k, v in child_row["weekly_totals"]:
@@ -1348,9 +1256,7 @@ class TaskTimerService:
                     "task_id": row["task_id"],
                     "name": row["name"],
                     "notes": row["notes"],
-                    "weeks": [
-                        week_map.get(week_range, 0.0) for week_range in weekly_ranges
-                    ],
+                    "weeks": [week_map.get(week_range, 0.0) for week_range in weekly_ranges],
                     "week_markers": week_values,
                 }
             )
@@ -1359,10 +1265,7 @@ class TaskTimerService:
     def list_time_submissions(self) -> list[TimeSubmission]:
         output: list[TimeSubmission] = []
         for event in sorted(self.events, key=lambda ev: ev["timestamp_utc"]):
-            if (
-                event["task_id"] != "__app__"
-                or event["event_type"] != "time_submission_created"
-            ):
+            if event["task_id"] != "__app__" or event["event_type"] != "time_submission_created":
                 continue
             payload = event.get("payload", {})
             output.append(
@@ -1413,9 +1316,7 @@ class TaskTimerService:
             }
             for tid in valid
         ]
-        per_task = self.compute_selected_task_totals(
-            valid, window_start_utc, window_end_utc
-        )
+        per_task = self.compute_selected_task_totals(valid, window_start_utc, window_end_utc)
         included_by_parent = {
             parent_id: sorted(
                 child.task_id
@@ -1432,9 +1333,7 @@ class TaskTimerService:
             {
                 "submission_id": submission_id,
                 "submitted_at_utc": to_utc_z(utc_now()),
-                "window_start_utc": to_utc_z(window_start_utc)
-                if window_start_utc
-                else None,
+                "window_start_utc": to_utc_z(window_start_utc) if window_start_utc else None,
                 "window_end_utc": to_utc_z(window_end_utc),
                 "selected_task_ids": selected,
                 "task_ids": valid,
@@ -1443,15 +1342,11 @@ class TaskTimerService:
                 "export_path": str(export_path) if export_path else None,
                 "task_snapshots": snapshots,
                 "submitted_daily_totals_by_task": {
-                    row["task_id"]: {
-                        day: seconds for day, seconds in row["daily_totals"]
-                    }
+                    row["task_id"]: {day: seconds for day, seconds in row["daily_totals"]}
                     for row in per_task
                 },
                 "submitted_weekly_totals_by_task": {
-                    row["task_id"]: {
-                        week: seconds for week, seconds in row["weekly_totals"]
-                    }
+                    row["task_id"]: {week: seconds for week, seconds in row["weekly_totals"]}
                     for row in per_task
                 },
                 "submitted_overall_totals_by_task": {
@@ -1490,9 +1385,7 @@ class TaskTimerService:
             window_start_utc=window_start_utc,
             window_end_utc=window_end_utc,
             weekly_headers=weekly_ranges,
-            weekly_summary_rows=self.build_epicor_weekly_summary_rows(
-                per_task, weekly_ranges
-            ),
+            weekly_summary_rows=self.build_epicor_weekly_summary_rows(per_task, weekly_ranges),
             per_task_rows=per_task,
             history_lines=self.build_human_audit_lines(
                 selected_window_events, window_end_utc=window_end_utc
@@ -1515,15 +1408,11 @@ class TaskTimerService:
         for marker in self.list_time_submissions():
             if task_id not in marker.task_ids:
                 continue
-            marker_start = marker.window_start_utc or datetime.min.replace(
-                tzinfo=timezone.utc
-            )
+            marker_start = marker.window_start_utc or datetime.min.replace(tzinfo=timezone.utc)
             overlap_start = max(bucket_start_utc, marker_start)
             overlap_end = min(bucket_end_utc, marker.window_end_utc)
             if overlap_end > overlap_start:
-                submitted = max(
-                    submitted, (overlap_end - overlap_start).total_seconds()
-                )
+                submitted = max(submitted, (overlap_end - overlap_start).total_seconds())
         return {
             "already_submitted_seconds": submitted,
             "total_seconds": total,
@@ -1543,13 +1432,9 @@ class TaskTimerService:
             shared = marker.task_ids & selected
             if not shared:
                 continue
-            marker_start = marker.window_start_utc or datetime.min.replace(
-                tzinfo=timezone.utc
-            )
+            marker_start = marker.window_start_utc or datetime.min.replace(tzinfo=timezone.utc)
             overlap_start = (
-                max(marker_start, window_start_utc)
-                if window_start_utc
-                else marker_start
+                max(marker_start, window_start_utc) if window_start_utc else marker_start
             )
             overlap_end = min(marker.window_end_utc, window_end_utc)
             if overlap_end <= overlap_start:
@@ -1614,9 +1499,7 @@ class TaskTimerService:
             event_type = event["event_type"]
             payload = event["payload"]
             event_ts = parse_utc_z(event["timestamp_utc"])
-            local_stamp = event_ts.astimezone(self.local_tz).strftime(
-                "%Y-%m-%d %I:%M %p"
-            )
+            local_stamp = event_ts.astimezone(self.local_tz).strftime("%Y-%m-%d %I:%M %p")
             task_name = name_by_task_id.get(task_id, task_id)
 
             if event_type == "task_created":
@@ -1690,9 +1573,7 @@ class TaskTimerService:
                 if payload.get("reason"):
                     line += f" (Reason: {payload['reason']})"
             elif event_type == "manual_duration_added":
-                duration_label = format_duration_hm(
-                    payload.get("duration_seconds", 0.0)
-                )
+                duration_label = format_duration_hm(payload.get("duration_seconds", 0.0))
                 line = (
                     f'{local_stamp}  Added manual duration to "{task_name}": {duration_label} '
                     f"on {payload.get('work_date_local', 'unknown date')}"
@@ -1709,9 +1590,7 @@ class TaskTimerService:
                     .astimezone(self.local_tz)
                     .strftime("%Y-%m-%d %I:%M %p")
                 )
-                line = (
-                    f"{local_stamp}  Reopened export checkpoint from {checkpoint_local}"
-                )
+                line = f"{local_stamp}  Reopened export checkpoint from {checkpoint_local}"
                 if payload.get("reason"):
                     line += f" (Reason: {payload['reason']})"
             elif event_type == "missed_stop_corrected":
@@ -1731,9 +1610,7 @@ class TaskTimerService:
             elif event_type == "time_submission_created":
                 task_names = []
                 for submitted_task_id in payload.get("task_ids", []):
-                    task_names.append(
-                        name_by_task_id.get(submitted_task_id, submitted_task_id)
-                    )
+                    task_names.append(name_by_task_id.get(submitted_task_id, submitted_task_id))
                 task_list = ", ".join(task_names)
                 start_label = payload.get("window_start_utc", "beginning")
                 end_label = payload.get("window_end_utc", "unknown")
@@ -1788,9 +1665,7 @@ class TaskTimerService:
         settings = self.load_backup_settings()
         if not settings.auto_backup_on_app_start:
             return
-        if not self.backups.should_create_automatic_backup(
-            "automatic backup on app start"
-        ):
+        if not self.backups.should_create_automatic_backup("automatic backup on app start"):
             return
         self.backups.create_backup("son", "automatic backup on app start")
 
@@ -1839,9 +1714,7 @@ class TaskTimerService:
                 output.append((clipped_start, clipped_stop))
         return output
 
-    def _compute_daily_totals(
-        self, intervals: list[tuple[datetime, datetime]]
-    ) -> dict[str, float]:
+    def _compute_daily_totals(self, intervals: list[tuple[datetime, datetime]]) -> dict[str, float]:
         totals: dict[str, float] = {}
         for start_utc, stop_utc in intervals:
             start_local = start_utc.astimezone(self.local_tz)
@@ -1850,9 +1723,7 @@ class TaskTimerService:
             last_day = stop_local.date()
             while day_cursor <= last_day:
                 day_ref = datetime.combine(day_cursor, time(hour=12), self.local_tz)
-                seconds = interval_seconds_in_local_day(
-                    start_utc, stop_utc, self.local_tz, day_ref
-                )
+                seconds = interval_seconds_in_local_day(start_utc, stop_utc, self.local_tz, day_ref)
                 if seconds > 0:
                     key = day_cursor.isoformat()
                     totals[key] = totals.get(key, 0.0) + seconds
@@ -1884,9 +1755,7 @@ class TaskTimerService:
 
     def compute_tag_totals(
         self, window_start_utc: datetime | None, window_end_utc: datetime
-    ) -> tuple[
-        dict[str, dict[str, dict[str, Any]]], dict[str, dict[str, dict[str, Any]]]
-    ]:
+    ) -> tuple[dict[str, dict[str, dict[str, Any]]], dict[str, dict[str, dict[str, Any]]]]:
         daily, weekly = self.export_service.compute_tag_totals(
             ExportWindow(window_start_utc, window_end_utc)
         )
@@ -1917,8 +1786,7 @@ class TaskTimerService:
     def _tag_rows_to_dict(self, tags: Any) -> dict[str, dict[str, dict[str, Any]]]:
         return {
             bucket: {
-                tag: {"seconds": row.seconds, "tasks": row.tasks}
-                for tag, row in entries.items()
+                tag: {"seconds": row.seconds, "tasks": row.tasks} for tag, row in entries.items()
             }
             for bucket, entries in tags.items()
         }
@@ -1940,9 +1808,7 @@ class TaskTimerService:
                 )
                 if task.currently_open_interval_start_utc
                 else None,
-                "last_reset_utc": to_utc_z(task.last_reset_utc)
-                if task.last_reset_utc
-                else None,
+                "last_reset_utc": to_utc_z(task.last_reset_utc) if task.last_reset_utc else None,
                 "tags": sorted(task.tags),
                 "parent_task_id": task.parent_task_id,
                 "intervals": [
@@ -1993,12 +1859,8 @@ class TaskTimerService:
     def _save_snapshot(self) -> None:
         self.storage.save_snapshot(self.snapshot_dict())
 
-    def _all_intervals(
-        self, task: TaskState, now_utc: datetime
-    ) -> list[IntervalRecord]:
-        intervals = [
-            interval for interval in task.intervals.values() if not interval.deleted
-        ]
+    def _all_intervals(self, task: TaskState, now_utc: datetime) -> list[IntervalRecord]:
+        intervals = [interval for interval in task.intervals.values() if not interval.deleted]
         if task.is_running and task.currently_open_interval_start_utc:
             intervals.append(
                 IntervalRecord(
@@ -2011,15 +1873,11 @@ class TaskTimerService:
             )
         return intervals
 
-    def _effective_intervals(
-        self, task: TaskState, now_utc: datetime
-    ) -> list[IntervalRecord]:
+    def _effective_intervals(self, task: TaskState, now_utc: datetime) -> list[IntervalRecord]:
         effective = self._all_intervals(task, now_utc)
         if task.last_reset_utc:
             effective = [
-                interval
-                for interval in effective
-                if interval.stop_utc > task.last_reset_utc
+                interval for interval in effective if interval.stop_utc > task.last_reset_utc
             ]
             clipped: list[IntervalRecord] = []
             for interval in effective:

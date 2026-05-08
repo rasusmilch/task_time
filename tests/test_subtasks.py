@@ -160,9 +160,7 @@ def test_task_tree_elapsed_and_own_elapsed(tmp_path):
     service.add_manual_interval(
         parent, start_local=start_parent, stop_local=stop_parent, reason="p"
     )
-    service.add_manual_interval(
-        child, start_local=start_child, stop_local=stop_child, reason="c"
-    )
+    service.add_manual_interval(child, start_local=start_child, stop_local=stop_child, reason="c")
     assert service.task_own_elapsed(parent) == 3600
     assert service.task_own_elapsed(child) == 1800
     assert service.task_tree_elapsed(parent) == 5400
@@ -259,9 +257,7 @@ def test_move_appends_event_without_rewriting_task_created(tmp_path):
     created_after = [
         e for e in after if e["event_type"] == "task_created" and e["task_id"] == child
     ]
-    moved_after = [
-        e for e in after if e["event_type"] == "task_moved" and e["task_id"] == child
-    ]
+    moved_after = [e for e in after if e["event_type"] == "task_moved" and e["task_id"] == child]
     assert len(created_before) == 1
     assert len(created_after) == 1
     assert len(moved_after) == 1
@@ -389,9 +385,7 @@ def test_move_under_descendant_blocked_and_invalid_replay_ignored(tmp_path):
     with pytest.raises(ValueError, match="nested subtask"):
         service.move_task(root, nested)
 
-    service._append(
-        root, "task_moved", {"old_parent_task_id": None, "new_parent_task_id": nested}
-    )
+    service._append(root, "task_moved", {"old_parent_task_id": None, "new_parent_task_id": nested})
     rebuilt = TaskTimerService(EventStorage(tmp_path))
     assert rebuilt.state.tasks[root].parent_task_id is None
 

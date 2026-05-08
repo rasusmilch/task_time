@@ -25,18 +25,14 @@ def test_configure_logging_rotation_config_does_not_error(tmp_path: Path) -> Non
     assert log_path.exists()
 
 
-def test_tk_exception_handler_logs_and_shows_message(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_tk_exception_handler_logs_and_shows_message(monkeypatch, tmp_path: Path) -> None:
     log_path = configure_logging(tmp_path)
     app = TaskTimerApp.__new__(TaskTimerApp)
     app.log_path = log_path
     app._showing_error_dialog = False
 
     shown: list[tuple[str, str]] = []
-    monkeypatch.setattr(
-        "task_timer.app.messagebox.showerror", lambda t, m: shown.append((t, m))
-    )
+    monkeypatch.setattr("task_timer.app.messagebox.showerror", lambda t, m: shown.append((t, m)))
 
     try:
         raise ValueError("boom")
@@ -47,9 +43,7 @@ def test_tk_exception_handler_logs_and_shows_message(
     assert shown
     assert shown[0][0] == "Chronicle Error"
     assert "Details were written to the log file" in shown[0][1]
-    assert "Unhandled Tkinter callback exception" in log_path.read_text(
-        encoding="utf-8"
-    )
+    assert "Unhandled Tkinter callback exception" in log_path.read_text(encoding="utf-8")
 
 
 def test_move_task_value_error_logs_warning(monkeypatch) -> None:
@@ -66,9 +60,7 @@ def test_move_task_value_error_logs_warning(monkeypatch) -> None:
     app.refresh_structure = lambda: None
     app.refresh_live_values = lambda: None
     app._refresh_selected_task_panel = lambda: None
-    app.task_tree = SimpleNamespace(
-        exists=lambda _x: False, selection_set=lambda _x: None
-    )
+    app.task_tree = SimpleNamespace(exists=lambda _x: False, selection_set=lambda _x: None)
     app.expanded_parents = set()
 
     class _Dialog:
@@ -78,9 +70,7 @@ def test_move_task_value_error_logs_warning(monkeypatch) -> None:
 
     monkeypatch.setattr("task_timer.app.MoveTaskDialog", lambda *_a, **_k: _Dialog())
     errors: list[str] = []
-    monkeypatch.setattr(
-        "task_timer.app.messagebox.showerror", lambda _t, m: errors.append(m)
-    )
+    monkeypatch.setattr("task_timer.app.messagebox.showerror", lambda _t, m: errors.append(m))
     warnings: list[str] = []
     sink = logger.add(lambda m: warnings.append(str(m)), level="WARNING")
 
@@ -96,14 +86,10 @@ def test_toggle_task_value_error_logs_warning(monkeypatch) -> None:
     app.service = SimpleNamespace(
         state=SimpleNamespace(tasks={"t1": SimpleNamespace(is_running=False)})
     )
-    app.service.start_task = lambda *_a, **_k: (_ for _ in ()).throw(
-        ValueError("missing")
-    )
+    app.service.start_task = lambda *_a, **_k: (_ for _ in ()).throw(ValueError("missing"))
     app._after_state_change = lambda: None
     errors: list[str] = []
-    monkeypatch.setattr(
-        "task_timer.app.messagebox.showerror", lambda _t, m: errors.append(m)
-    )
+    monkeypatch.setattr("task_timer.app.messagebox.showerror", lambda _t, m: errors.append(m))
     warnings: list[str] = []
     sink = logger.add(lambda m: warnings.append(str(m)), level="WARNING")
 

@@ -23,9 +23,7 @@ def test_service_can_edit_and_delete_any_selected_interval_not_only_last(
     )
     sorted_ids = [
         i.interval_id
-        for i in sorted(
-            service.state.tasks[task_id].intervals.values(), key=lambda i: i.start_utc
-        )
+        for i in sorted(service.state.tasks[task_id].intervals.values(), key=lambda i: i.start_utc)
     ]
     first_id = sorted_ids[0]
     second_id = sorted_ids[1]
@@ -35,9 +33,7 @@ def test_service_can_edit_and_delete_any_selected_interval_not_only_last(
     )
     service.delete_interval(task_id, second_id, "wrong task")
 
-    active = [
-        i for i in service.state.tasks[task_id].intervals.values() if not i.deleted
-    ]
+    active = [i for i in service.state.tasks[task_id].intervals.values() if not i.deleted]
     assert len(active) == 1
 
 
@@ -102,9 +98,7 @@ def test_checkpoint_protection_blocks_interval_corrections(tmp_path) -> None:
     interval_id = next(iter(service.state.tasks[task_id].intervals))
 
     with pytest.raises(ValueError):
-        service.edit_interval(
-            task_id, interval_id, before_start, before_stop, "move old"
-        )
+        service.edit_interval(task_id, interval_id, before_start, before_stop, "move old")
 
 
 def test_out_of_order_manual_events_bucket_by_interval_time_not_append_order(
@@ -120,9 +114,7 @@ def test_out_of_order_manual_events_bucket_by_interval_time_not_append_order(
         task_id, _local("2026-01-09 10:00"), _local("2026-01-09 12:00"), "yesterday"
     )
 
-    rows = service.compute_windowed_task_totals(
-        None, datetime(2026, 1, 11, tzinfo=timezone.utc)
-    )
+    rows = service.compute_windowed_task_totals(None, datetime(2026, 1, 11, tzinfo=timezone.utc))
     daily = dict(rows[0]["daily_totals"])
     assert daily["2026-01-09"] == 7200
     assert daily["2026-01-10"] == 3600

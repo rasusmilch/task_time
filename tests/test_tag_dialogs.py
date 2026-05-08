@@ -86,9 +86,7 @@ class FakeTree:
     def delete(self, iid: str) -> None:
         self.items.pop(iid, None)
 
-    def insert(
-        self, _parent: str, _idx: str, iid: str, values: tuple[str, str, str]
-    ) -> None:
+    def insert(self, _parent: str, _idx: str, iid: str, values: tuple[str, str, str]) -> None:
         self.items[iid] = values
 
     def exists(self, iid: str) -> bool:
@@ -188,18 +186,14 @@ def test_manage_tags_dialog_add_rename_archive_unarchive_delete(monkeypatch) -> 
     dlg.refresh_table()
     dlg.tree.selection_set("beta")
 
-    monkeypatch.setattr(
-        dialogs_module.simpledialog, "askstring", lambda *a, **k: "gamma"
-    )
+    monkeypatch.setattr(dialogs_module.simpledialog, "askstring", lambda *a, **k: "gamma")
     monkeypatch.setattr(dialogs_module.messagebox, "showerror", lambda *a, **k: None)
     monkeypatch.setattr(dialogs_module.messagebox, "askyesno", lambda *a, **k: True)
     dlg._add_tag()
     assert "gamma" in dlg.tree.items
 
     dlg.tree.selection_set("gamma")
-    monkeypatch.setattr(
-        dialogs_module.simpledialog, "askstring", lambda *a, **k: "delta"
-    )
+    monkeypatch.setattr(dialogs_module.simpledialog, "askstring", lambda *a, **k: "delta")
     dlg._rename_tag()
     assert "delta" in dlg.tree.items
 
@@ -311,15 +305,11 @@ def test_subtask_template_item_dialog_builds_fields_without_name_error(
     monkeypatch.setattr(
         dialogs_module,
         "ttk",
-        SimpleNamespace(
-            Label=FakeWidget, Entry=FakeWidget, Frame=FakeWidget, Button=FakeWidget
-        ),
+        SimpleNamespace(Label=FakeWidget, Entry=FakeWidget, Frame=FakeWidget, Button=FakeWidget),
     )
 
     for title in ("Add Subtask Item", "Edit Subtask Item", "Add Nested Subtask"):
-        dialog = dialogs_module.SubtaskTemplateItemDialog(
-            FakeParent(), object(), title=title
-        )
+        dialog = dialogs_module.SubtaskTemplateItemDialog(FakeParent(), object(), title=title)
         assert hasattr(dialog, "name_var")
         assert hasattr(dialog, "notes_var")
         assert hasattr(dialog, "tag_selector")

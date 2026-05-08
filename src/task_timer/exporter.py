@@ -14,15 +14,11 @@ def _render_table(headers: list[str], rows: list[list[str]]) -> list[str]:
     for row in rows:
         for idx, value in enumerate(row):
             widths[idx] = max(widths[idx], len(value))
-    header_line = " | ".join(
-        value.ljust(widths[idx]) for idx, value in enumerate(headers)
-    )
+    header_line = " | ".join(value.ljust(widths[idx]) for idx, value in enumerate(headers))
     separator = "-+-".join("-" * width for width in widths)
     output = [header_line, separator]
     for row in rows:
-        output.append(
-            " | ".join(value.ljust(widths[idx]) for idx, value in enumerate(row))
-        )
+        output.append(" | ".join(value.ljust(widths[idx]) for idx, value in enumerate(row)))
     return output
 
 
@@ -142,23 +138,16 @@ def build_export_text(
             for day, seconds in row["daily_totals"]:
                 marker = (
                     "*"
-                    if any(
-                        "already entered" in note
-                        for note in row.get("status_notes", [])
-                    )
+                    if any("already entered" in note for note in row.get("status_notes", []))
                     else ""
                 )
-                lines.append(
-                    f"    - {day}: {format_duration_hm_and_decimal(seconds)}{marker}"
-                )
+                lines.append(f"    - {day}: {format_duration_hm_and_decimal(seconds)}{marker}")
         else:
             lines.append("    - None")
         lines.append("  Weekly totals (Sunday start):")
         if row["weekly_totals"]:
             for week_range, seconds in row["weekly_totals"]:
-                lines.append(
-                    f"    - {week_range}: {format_duration_hm_and_decimal(seconds)}"
-                )
+                lines.append(f"    - {week_range}: {format_duration_hm_and_decimal(seconds)}")
         else:
             lines.append("    - None")
         lines.append(
@@ -167,9 +156,7 @@ def build_export_text(
         if row.get("breakdown"):
             lines.append("  Breakdown:")
             for label, seconds in row["breakdown"]:
-                lines.append(
-                    f"    - {label}: {format_duration_hm_and_decimal(seconds)}"
-                )
+                lines.append(f"    - {label}: {format_duration_hm_and_decimal(seconds)}")
     lines.append("")
 
     lines.append("Human-readable audit history (since checkpoint)")
@@ -248,17 +235,13 @@ def build_selected_tasks_export_text(
         lines.append("  Weekly totals:")
         if row["weekly_totals"]:
             for week_range, seconds in row["weekly_totals"]:
-                lines.append(
-                    f"    - {week_range}: {format_duration_hm_and_decimal(seconds)}"
-                )
+                lines.append(f"    - {week_range}: {format_duration_hm_and_decimal(seconds)}")
         else:
             lines.append("    - None")
         if row.get("breakdown"):
             lines.append("  Breakdown:")
             for label, seconds in row["breakdown"]:
-                lines.append(
-                    f"    - {label}: {format_duration_hm_and_decimal(seconds)}"
-                )
+                lines.append(f"    - {label}: {format_duration_hm_and_decimal(seconds)}")
     lines.append("")
     lines.append("Selected task audit history")
     if history_lines:
