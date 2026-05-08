@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from tempfile import mkdtemp
 from typing import Any
+
+from loguru import logger
 
 from .settings import BackupSettings, BackupSettingsStore
 from .time_utils import utc_now
@@ -42,10 +44,11 @@ class BackupManager:
         self.settings_store.load()
 
     def create_backup(self, backup_type: str, reason: str) -> Path:
+        logger.info("Starting backup creation: type={} reason={}", backup_type, reason)
         now = utc_now()
         target_dir = self._backup_dir(backup_type)
         timestamp = now.astimezone(timezone.utc).strftime("%Y-%m-%d_%H%M%S_%f")
-        zip_path = target_dir / f"task_timer_{backup_type}_{timestamp}.zip"
+        zip_path = target_dir / f"chronicle_{backup_type}_{timestamp}.zip"
         included = self._build_backup_archive(zip_path)
         manifest = {
             "backup_created_utc": now.replace(microsecond=0)
@@ -57,6 +60,7 @@ class BackupManager:
             "included_files": included,
             "reason": reason,
             "schema_version": 1,
+            "app_name": "Chronicle",
         }
         with zipfile.ZipFile(zip_path, "a", compression=zipfile.ZIP_DEFLATED) as zf:
             zf.writestr(
@@ -67,6 +71,7 @@ class BackupManager:
         if backup_type == "son":
             self._maybe_promote_periodic(now, reason)
         self.apply_retention()
+        logger.info("Backup creation completed: {}", zip_path)
         return zip_path
 
     def create_safety_backup(self, reason: str) -> Path:
@@ -111,7 +116,7 @@ class BackupManager:
     def should_create_automatic_backup(
         self, reason: str, now_utc: datetime | None = None
     ) -> bool:
-        del reason  # reserved for future reason-specific policy
+        del reason
         settings = self.settings_store.load()
         now = (now_utc or utc_now()).astimezone(timezone.utc)
         newest = self._newest_backup_created_utc()
@@ -121,19 +126,35 @@ class BackupManager:
         return elapsed_seconds >= settings.auto_backup_min_interval_minutes * 60
 
     def restore_backup(self, backup_zip: Path) -> None:
+        logger.info("Starting restore from backup: {}", backup_zip)
         manifest = self._read_manifest(backup_zip)
         if not manifest:
             raise ValueError("Invalid backup zip: missing backup_manifest.json")
-        self.create_safety_backup("before restore")
-        temp_dir = self.data_dir.parent / f".restore_tmp_{os.getpid()}"
-        if temp_dir.exists():
-            shutil.rmtree(temp_dir)
-        temp_dir.mkdir(parents=True, exist_ok=True)
+        app_name = manifest.get("app_name")
+        if app_name not in (None, "Chronicle", "Task Timer"):
+            raise ValueError("Backup manifest is from an unsupported application")
+
+        safety_backup = self.create_safety_backup("before restore")
+        logger.info("Safety backup created before restore: {}", safety_backup)
+        temp_dir = Path(mkdtemp(prefix=".restore_tmp_", dir=self.data_dir.parent))
+        restore_snapshot = Path(
+            mkdtemp(prefix=".restore_snapshot_", dir=self.data_dir.parent)
+        )
         try:
             with zipfile.ZipFile(backup_zip, "r") as zf:
-                zf.extractall(temp_dir)
+                self._extract_zip_safely(zf, temp_dir)
             if not (temp_dir / "active_events.jsonl").exists():
                 raise ValueError("Backup archive is missing active_events.jsonl")
+
+            for entry in self.data_dir.iterdir():
+                if entry.name == "backups":
+                    continue
+                destination = restore_snapshot / entry.name
+                if entry.is_dir():
+                    shutil.copytree(entry, destination)
+                else:
+                    shutil.copy2(entry, destination)
+
             for entry in self.data_dir.iterdir():
                 if entry.name == "backups":
                     continue
@@ -141,6 +162,7 @@ class BackupManager:
                     shutil.rmtree(entry)
                 else:
                     entry.unlink(missing_ok=True)
+
             for extracted in temp_dir.iterdir():
                 if extracted.name == "backup_manifest.json":
                     continue
@@ -149,8 +171,17 @@ class BackupManager:
                     shutil.copytree(extracted, destination)
                 else:
                     shutil.copy2(extracted, destination)
+            logger.info("Restore completed from backup: {}", backup_zip)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Restore failed for backup: {}", backup_zip)
+            if any(restore_snapshot.iterdir()):
+                self._restore_snapshot(restore_snapshot)
+            raise RuntimeError(
+                "Restore failed. Your current data was preserved and can still be used."
+            ) from exc
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
+            shutil.rmtree(restore_snapshot, ignore_errors=True)
 
     def open_backup_folder(self) -> Path:
         return self.backups_dir
@@ -201,7 +232,7 @@ class BackupManager:
 
         stem = path.stem
         parts = stem.split("_")
-        if len(parts) >= 5:
+        if len(parts) >= 5 and parts[0] in {"task", "chronicle"}:
             timestamp = "_".join(parts[-3:])
             try:
                 parsed = datetime.strptime(timestamp, "%Y-%m-%d_%H%M%S_%f")
@@ -221,6 +252,45 @@ class BackupManager:
                     return json.loads(handle.read().decode("utf-8"))
         except Exception:  # noqa: BLE001
             return {}
+
+    @staticmethod
+    def _extract_zip_safely(zf: zipfile.ZipFile, target_dir: Path) -> None:
+        target_root = target_dir.resolve()
+        for member in zf.infolist():
+            member_name = member.filename
+            member_path = Path(member_name)
+            if (
+                member_path.is_absolute()
+                or member_path.drive
+                or (len(member_name) >= 2 and member_name[1] == ":")
+            ):
+                logger.warning("Rejected unsafe zip member path: {}", member_name)
+                raise ValueError(f"Unsafe backup entry path: {member_name}")
+            resolved = (target_root / member_path).resolve()
+            if resolved != target_root and target_root not in resolved.parents:
+                logger.warning("Rejected unsafe zip member path: {}", member_name)
+                raise ValueError(f"Unsafe backup entry path: {member_name}")
+            if member.is_dir():
+                resolved.mkdir(parents=True, exist_ok=True)
+            else:
+                resolved.parent.mkdir(parents=True, exist_ok=True)
+                with zf.open(member, "r") as src, resolved.open("wb") as dst:
+                    shutil.copyfileobj(src, dst)
+
+    def _restore_snapshot(self, restore_snapshot: Path) -> None:
+        for entry in self.data_dir.iterdir():
+            if entry.name == "backups":
+                continue
+            if entry.is_dir():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink(missing_ok=True)
+        for snapshot_entry in restore_snapshot.iterdir():
+            destination = self.data_dir / snapshot_entry.name
+            if snapshot_entry.is_dir():
+                shutil.copytree(snapshot_entry, destination)
+            else:
+                shutil.copy2(snapshot_entry, destination)
 
     def _newest_backup_created_utc(self) -> datetime | None:
         newest: datetime | None = None
