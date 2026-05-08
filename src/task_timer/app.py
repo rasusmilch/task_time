@@ -1642,10 +1642,14 @@ class TaskTimerService:
         return normalized
 
     def _apply_event(self, event: dict[str, Any]) -> None:
-        task_id = event["task_id"]
-        event_type = event["event_type"]
-        payload = event["payload"]
-        timestamp = parse_utc_z(event["timestamp_utc"])
+        try:
+            task_id = event["task_id"]
+            event_type = event["event_type"]
+            payload = event["payload"]
+            timestamp = parse_utc_z(event["timestamp_utc"])
+        except (KeyError, TypeError, ValueError) as exc:
+            logger.warning("Skipped malformed replay event {}: {}", event.get("event_id", "<unknown>"), exc)
+            return
         if task_id == "__app__":
             if event_type == "tag_created":
                 try:
@@ -1771,72 +1775,87 @@ class TaskTimerService:
                 return
             task.parent_task_id = new_parent_task_id
         elif event_type == "manual_interval_added":
-            interval = IntervalRecord(
-                interval_id=payload["interval_id"],
-                task_id=task_id,
-                start_utc=parse_utc_z(payload["start_utc"]),
-                stop_utc=parse_utc_z(payload["stop_utc"]),
-                source="manual",
-                entry_mode=payload.get("entry_mode", "interval"),
-                work_date_local=payload.get("work_date_local"),
-                duration_seconds=payload.get("duration_seconds"),
-                edit_reason=payload.get("reason"),
-            )
-            task.intervals[interval.interval_id] = interval
-        elif event_type == "manual_duration_added":
-            interval = IntervalRecord(
-                interval_id=payload["interval_id"],
-                task_id=task_id,
-                start_utc=parse_utc_z(payload["start_utc"]),
-                stop_utc=parse_utc_z(payload["stop_utc"]),
-                source="manual_duration",
-                entry_mode="duration",
-                work_date_local=payload.get("work_date_local"),
-                duration_seconds=payload.get("duration_seconds"),
-                edit_reason=payload.get("reason"),
-            )
-            task.intervals[interval.interval_id] = interval
-        elif event_type == "interval_edited":
-            prior = task.intervals.get(payload["interval_id"])
-            if prior:
-                prior.deleted = True
-            interval = IntervalRecord(
-                interval_id=payload["new_interval_id"],
-                task_id=task_id,
-                start_utc=parse_utc_z(payload["start_utc"]),
-                stop_utc=parse_utc_z(payload["stop_utc"]),
-                source="edit",
-                entry_mode=payload.get("entry_mode", "interval"),
-                work_date_local=payload.get("work_date_local"),
-                duration_seconds=payload.get("duration_seconds"),
-                replaced_interval_id=payload["interval_id"],
-                edit_reason=payload.get("reason"),
-            )
-            task.intervals[interval.interval_id] = interval
-        elif event_type == "interval_deleted":
-            interval = task.intervals.get(payload["interval_id"])
-            if interval:
-                interval.deleted = True
-                interval.edit_reason = payload.get("reason")
-        elif event_type == "missed_stop_corrected":
-            original_open_start = parse_utc_z(payload["original_open_start_utc"])
-            corrected_stop = parse_utc_z(payload["corrected_stop_utc"])
-            if task.is_running and task.currently_open_interval_start_utc == original_open_start and corrected_stop > original_open_start:
+            try:
                 interval = IntervalRecord(
-                    interval_id=payload.get("interval_id", str(uuid4())),
+                    interval_id=payload["interval_id"],
                     task_id=task_id,
-                    start_utc=original_open_start,
-                    stop_utc=corrected_stop,
-                    source="edit",
-                    entry_mode="interval",
+                    start_utc=parse_utc_z(payload["start_utc"]),
+                    stop_utc=parse_utc_z(payload["stop_utc"]),
+                    source="manual",
+                    entry_mode=payload.get("entry_mode", "interval"),
+                    work_date_local=payload.get("work_date_local"),
+                    duration_seconds=payload.get("duration_seconds"),
                     edit_reason=payload.get("reason"),
                 )
                 task.intervals[interval.interval_id] = interval
-                task.is_running = False
-                task.currently_open_interval_start_utc = None
-                task.display_color = "neutral"
-                if self.state.running_task_id == task_id:
-                    self.state.running_task_id = None
+            except (KeyError, TypeError, ValueError) as exc:
+                logger.warning("Skipped malformed replay event {}: {}", event.get("event_id", "<unknown>"), exc)
+        elif event_type == "manual_duration_added":
+            try:
+                interval = IntervalRecord(
+                    interval_id=payload["interval_id"],
+                    task_id=task_id,
+                    start_utc=parse_utc_z(payload["start_utc"]),
+                    stop_utc=parse_utc_z(payload["stop_utc"]),
+                    source="manual_duration",
+                    entry_mode="duration",
+                    work_date_local=payload.get("work_date_local"),
+                    duration_seconds=payload.get("duration_seconds"),
+                    edit_reason=payload.get("reason"),
+                )
+                task.intervals[interval.interval_id] = interval
+            except (KeyError, TypeError, ValueError) as exc:
+                logger.warning("Skipped malformed replay event {}: {}", event.get("event_id", "<unknown>"), exc)
+        elif event_type == "interval_edited":
+            try:
+                prior = task.intervals.get(payload["interval_id"])
+                if prior:
+                    prior.deleted = True
+                interval = IntervalRecord(
+                    interval_id=payload["new_interval_id"],
+                    task_id=task_id,
+                    start_utc=parse_utc_z(payload["start_utc"]),
+                    stop_utc=parse_utc_z(payload["stop_utc"]),
+                    source="edit",
+                    entry_mode=payload.get("entry_mode", "interval"),
+                    work_date_local=payload.get("work_date_local"),
+                    duration_seconds=payload.get("duration_seconds"),
+                    replaced_interval_id=payload["interval_id"],
+                    edit_reason=payload.get("reason"),
+                )
+                task.intervals[interval.interval_id] = interval
+            except (KeyError, TypeError, ValueError) as exc:
+                logger.warning("Skipped malformed replay event {}: {}", event.get("event_id", "<unknown>"), exc)
+        elif event_type == "interval_deleted":
+            try:
+                interval = task.intervals.get(payload["interval_id"])
+                if interval:
+                    interval.deleted = True
+                    interval.edit_reason = payload.get("reason")
+            except (KeyError, TypeError) as exc:
+                logger.warning("Skipped malformed replay event {}: {}", event.get("event_id", "<unknown>"), exc)
+        elif event_type == "missed_stop_corrected":
+            try:
+                original_open_start = parse_utc_z(payload["original_open_start_utc"])
+                corrected_stop = parse_utc_z(payload["corrected_stop_utc"])
+                if task.is_running and task.currently_open_interval_start_utc == original_open_start and corrected_stop > original_open_start:
+                    interval = IntervalRecord(
+                        interval_id=payload.get("interval_id", str(uuid4())),
+                        task_id=task_id,
+                        start_utc=original_open_start,
+                        stop_utc=corrected_stop,
+                        source="edit",
+                        entry_mode="interval",
+                        edit_reason=payload.get("reason"),
+                    )
+                    task.intervals[interval.interval_id] = interval
+                    task.is_running = False
+                    task.currently_open_interval_start_utc = None
+                    task.display_color = "neutral"
+                    if self.state.running_task_id == task_id:
+                        self.state.running_task_id = None
+            except (KeyError, TypeError, ValueError) as exc:
+                logger.warning("Skipped malformed replay event {}: {}", event.get("event_id", "<unknown>"), exc)
 
     @staticmethod
     def _clean_notes(notes: str) -> str:
