@@ -1,17 +1,24 @@
-# Python cache/build artifacts
+# Python bytecode/cache
 __pycache__/
-*.pyc
+*.py[cod]
+
+# Test/tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Packaging/build artifacts
+*.egg-info/
+build/
+dist/
+
+# Coverage artifacts
+.coverage
+htmlcov/
 
 # Local virtual environment
 .venv/
 
-# PyInstaller/build outputs
-build/
-dist/
-*.pyo
-*.pyd
-
-# Local packaging artifacts
+# Local archives/patches
 *.zip
-src/task_timer.egg-info/*
 *.diff
