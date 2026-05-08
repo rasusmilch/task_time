@@ -4,6 +4,8 @@ import json
 import zipfile
 from datetime import datetime, timedelta, timezone
 
+from loguru import logger
+
 from task_timer.backups import BackupManager
 from task_timer.settings import BackupSettings, BackupSettingsStore
 
@@ -102,6 +104,33 @@ def test_backup_settings_persist_and_reload(tmp_path) -> None:
     assert reloaded.son_keep_days == 3
     assert reloaded.father_keep_days == 4
     assert reloaded.grandfather_keep_days == 5
+
+
+def test_restore_failure_logs_error(tmp_path) -> None:
+    manager = BackupManager(tmp_path)
+    broken = tmp_path / "broken.zip"
+    with zipfile.ZipFile(broken, "w") as zf:
+        zf.writestr("backup_manifest.json", json.dumps({"app_name": "Chronicle"}))
+        zf.writestr("active_events.jsonl", "{}\n")
+    original = manager._extract_zip_safely
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("boom")
+
+    manager._extract_zip_safely = _boom  # type: ignore[assignment]
+    messages: list[str] = []
+    sink = logger.add(lambda m: messages.append(str(m)), level="ERROR")
+    try:
+        try:
+            manager.restore_backup(broken)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("Expected restore to fail")
+    finally:
+        manager._extract_zip_safely = original  # type: ignore[assignment]
+        logger.remove(sink)
+    assert any("Restore failed for backup" in msg for msg in messages)
 
 
 def test_restore_rejects_invalid_backup_zip(tmp_path) -> None:

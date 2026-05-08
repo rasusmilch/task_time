@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from loguru import logger
+
 from task_timer.window_chrome import disable_snap_maximize, install_zoom_guard
 
 
@@ -75,6 +77,19 @@ def test_disable_snap_maximize_windows_graceful_when_win32_missing(monkeypatch) 
     disable_snap_maximize(win)
 
     assert win.resizable_calls == [(False, False)]
+
+
+def test_disable_snap_maximize_logs_debug_on_windows_style_failures(monkeypatch) -> None:
+    win = _FakeWindow()
+    monkeypatch.setattr("task_timer.window_chrome.sys.platform", "win32")
+    monkeypatch.setattr("task_timer.window_chrome.ctypes.windll", object(), raising=False)
+    messages: list[str] = []
+    sink = logger.add(lambda m: messages.append(str(m)), level="DEBUG")
+    try:
+        disable_snap_maximize(win)
+    finally:
+        logger.remove(sink)
+    assert any("Unable to apply Windows chrome style updates" in msg for msg in messages)
 
 
 def test_install_zoom_guard_restores_from_zoomed(monkeypatch) -> None:

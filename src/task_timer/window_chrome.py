@@ -6,6 +6,8 @@ import ctypes
 import sys
 import tkinter as tk
 
+from loguru import logger
+
 GWL_STYLE = -16
 WS_MAXIMIZEBOX = 0x00010000
 WS_THICKFRAME = 0x00040000
@@ -24,7 +26,8 @@ def disable_snap_maximize(window: tk.Tk | tk.Toplevel) -> None:
     try:
         window.update_idletasks()
         hwnd = int(window.winfo_id())
-    except Exception:
+    except Exception as exc:
+        logger.debug("Unable to access native window handle for chrome update: {}", exc)
         return
 
     try:
@@ -48,8 +51,8 @@ def disable_snap_maximize(window: tk.Tk | tk.Toplevel) -> None:
             0,
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
         )
-    except Exception:
-        # If Win32 APIs are unavailable in this runtime, keep default tkinter behavior.
+    except Exception as exc:
+        logger.debug("Unable to apply Windows chrome style updates: {}", exc)
         return
 
 

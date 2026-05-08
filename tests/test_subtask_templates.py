@@ -3,6 +3,7 @@ from __future__ import annotations
 import zipfile
 
 import pytest
+from loguru import logger
 
 from task_timer.service import TaskTimerService
 from task_timer.backups import BackupManager
@@ -27,6 +28,19 @@ def test_corrupt_subtask_templates_file_does_not_crash(tmp_path) -> None:
     store = SubtaskTemplateStore(tmp_path)
     assert store.load() == []
     assert list(tmp_path.glob("subtask_templates.json.corrupt.*"))
+
+
+def test_corrupt_subtask_templates_file_logs_warning(tmp_path) -> None:
+    path = tmp_path / "subtask_templates.json"
+    path.write_text("{nope", encoding="utf-8")
+    store = SubtaskTemplateStore(tmp_path)
+    messages: list[str] = []
+    sink = logger.add(lambda m: messages.append(str(m)), level="WARNING")
+    try:
+        assert store.load() == []
+    finally:
+        logger.remove(sink)
+    assert any("Corrupt subtask template file detected" in msg for msg in messages)
 
 
 def test_templates_save_load_round_trip_and_order_preserved(tmp_path) -> None:

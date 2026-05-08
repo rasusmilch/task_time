@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from loguru import logger
+
 from .tags import normalize_tag_list
 
 
@@ -81,8 +83,14 @@ class SubtaskTemplateStore:
         self.ensure_file_exists()
         try:
             payload = json.loads(self.path.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001
-            self._mark_corrupt_file()
+        except (json.JSONDecodeError, OSError) as exc:
+            corrupt_path = self._mark_corrupt_file()
+            logger.warning(
+                "Corrupt subtask template file detected at {}. Preserved as {}. Error: {}",
+                self.path,
+                corrupt_path,
+                exc,
+            )
             self.save([])
             return []
         templates_raw = payload.get("templates", []) if isinstance(payload, dict) else []
@@ -111,8 +119,14 @@ class SubtaskTemplateStore:
                         updated_at_utc=str(row.get("updated_at_utc", "")),
                     )
                 )
-        except Exception:  # noqa: BLE001
-            self._mark_corrupt_file()
+        except (json.JSONDecodeError, OSError) as exc:
+            corrupt_path = self._mark_corrupt_file()
+            logger.warning(
+                "Corrupt subtask template file detected at {}. Preserved as {}. Error: {}",
+                self.path,
+                corrupt_path,
+                exc,
+            )
             self.save([])
             return []
         return output
@@ -129,9 +143,10 @@ class SubtaskTemplateStore:
             os.fsync(handle.fileno())
         temp_path.replace(self.path)
 
-    def _mark_corrupt_file(self) -> None:
+    def _mark_corrupt_file(self) -> Path | None:
         if not self.path.exists():
-            return
+            return None
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         corrupt_path = self.path.with_name(f"{self.path.name}.corrupt.{stamp}")
         self.path.replace(corrupt_path)
+        return corrupt_path
