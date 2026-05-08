@@ -303,22 +303,9 @@ class TaskTimerService:
         task = self.state.tasks.get(task_id)
         if not task:
             raise ValueError("Task not found")
-        depth = 0
-        seen: set[str] = {task_id}
-        cursor = task
-        while cursor.parent_task_id is not None:
-            parent_id = cursor.parent_task_id
-            if parent_id in seen:
-                return depth
-            parent = self.state.tasks.get(parent_id)
-            if not parent:
-                return depth
-            seen.add(parent_id)
-            depth += 1
-            cursor = parent
-        return depth
+        return len(self._ancestor_chain(task_id))
 
-    def ancestor_tasks(self, task_id: str) -> list[TaskState]:
+    def _ancestor_chain(self, task_id: str) -> list[TaskState]:
         task = self.state.tasks.get(task_id)
         if not task:
             raise ValueError("Task not found")
@@ -337,6 +324,9 @@ class TaskTimerService:
             cursor = parent
         return out
 
+    def ancestor_tasks(self, task_id: str) -> list[TaskState]:
+        return self._ancestor_chain(task_id)
+
     def descendant_tasks(self, task_id: str, include_deleted: bool = False) -> list[TaskState]:
         if task_id not in self.state.tasks:
             raise ValueError("Task not found")
@@ -346,7 +336,7 @@ class TaskTimerService:
         while stack:
             task = stack.pop()
             if task.task_id in seen:
-                continue
+                raise ValueError("Task hierarchy is corrupted")
             seen.add(task.task_id)
             if include_deleted or not task.is_deleted:
                 out.append(task)
@@ -359,13 +349,21 @@ class TaskTimerService:
     def subtree_height(self, task_id: str, include_deleted: bool = False) -> int:
         if task_id not in self.state.tasks:
             raise ValueError("Task not found")
-        children = self.child_tasks(task_id, include_deleted=include_deleted)
-        if not children:
-            return 0
-        return 1 + max(
-            self.subtree_height(child.task_id, include_deleted=include_deleted)
-            for child in children
-        )
+        seen: set[str] = set()
+
+        def _height(current_task_id: str) -> int:
+            if current_task_id in seen:
+                raise ValueError("Task hierarchy is corrupted")
+            seen.add(current_task_id)
+            try:
+                children = self.child_tasks(current_task_id, include_deleted=include_deleted)
+                if not children:
+                    return 0
+                return 1 + max(_height(child.task_id) for child in children)
+            finally:
+                seen.remove(current_task_id)
+
+        return _height(task_id)
 
     def max_depth_after_move(self, task_id: str, new_parent_task_id: str | None) -> int:
         base_depth = 0 if new_parent_task_id is None else self.task_depth(new_parent_task_id) + 1
@@ -426,7 +424,10 @@ class TaskTimerService:
         task = self.state.tasks.get(task_id)
         if not task or task.is_deleted:
             return []
-        descendants = {t.task_id for t in self.descendant_tasks(task_id, include_deleted=True)}
+        try:
+            descendants = {t.task_id for t in self.descendant_tasks(task_id, include_deleted=True)}
+        except ValueError:
+            return []
         out: list[TaskState] = []
         for candidate in sorted(
             self.state.tasks.values(), key=lambda t: (t.created_at_utc, t.task_id)
@@ -440,7 +441,7 @@ class TaskTimerService:
             try:
                 depth = self.task_depth(candidate.task_id)
             except ValueError:
-                continue
+                return []
             if depth >= MAX_TASK_TREE_DEPTH:
                 continue
             if self.max_depth_after_move(task_id, candidate.task_id) > MAX_TASK_TREE_DEPTH:
@@ -456,6 +457,11 @@ class TaskTimerService:
             return False, "Task is deleted"
         if new_parent_task_id == task_id:
             return False, "Cannot move a task under itself or one of its descendants."
+        try:
+            self.task_depth(task_id)
+            self.subtree_height(task_id, include_deleted=False)
+        except ValueError:
+            return False, "Task hierarchy is corrupted"
 
         if new_parent_task_id is None:
             return True, ""
@@ -471,19 +477,15 @@ class TaskTimerService:
                 return False, "Cannot move a task under a nested subtask."
             return False, message
 
-        seen: set[str] = set()
-        cursor = new_parent
-        while cursor.parent_task_id is not None and cursor.parent_task_id not in seen:
-            if cursor.parent_task_id == task_id:
-                return (
-                    False,
-                    "Cannot move a task under itself or one of its descendants.",
-                )
-            seen.add(cursor.parent_task_id)
-            parent = self.state.tasks.get(cursor.parent_task_id)
-            if not parent:
-                break
-            cursor = parent
+        try:
+            for ancestor in self._ancestor_chain(new_parent_task_id):
+                if ancestor.task_id == task_id:
+                    return (
+                        False,
+                        "Cannot move a task under itself or one of its descendants.",
+                    )
+        except ValueError:
+            return False, "Task hierarchy is corrupted"
 
         try:
             if self.max_depth_after_move(task_id, new_parent_task_id) > MAX_TASK_TREE_DEPTH:
@@ -2064,28 +2066,47 @@ class TaskTimerService:
         elif event_type == "task_moved":
             new_parent_task_id = payload.get("new_parent_task_id")
             if new_parent_task_id == task_id:
+                logger.warning(
+                    "Ignored malformed replay event {}: task moved under itself",
+                    event.get("event_id", "<unknown>"),
+                )
                 return
             if new_parent_task_id is None:
                 task.parent_task_id = None
                 return
             new_parent = self.state.tasks.get(new_parent_task_id)
             if not new_parent or new_parent.is_deleted:
+                logger.warning(
+                    "Ignored malformed replay event {}: move parent missing/deleted",
+                    event.get("event_id", "<unknown>"),
+                )
                 return
-            seen: set[str] = {task_id}
-            cursor = new_parent
-            while cursor.parent_task_id is not None:
-                parent_id = cursor.parent_task_id
-                if parent_id in seen:
-                    return
-                parent = self.state.tasks.get(parent_id)
-                if not parent:
-                    return
-                seen.add(parent_id)
-                cursor = parent
+            try:
+                for ancestor in self._ancestor_chain(new_parent_task_id):
+                    if ancestor.task_id == task_id:
+                        logger.warning(
+                            "Ignored malformed replay event {}: move would create cycle",
+                            event.get("event_id", "<unknown>"),
+                        )
+                        return
+            except ValueError:
+                logger.warning(
+                    "Ignored malformed replay event {}: hierarchy corrupted",
+                    event.get("event_id", "<unknown>"),
+                )
+                return
             try:
                 if self.max_depth_after_move(task_id, new_parent_task_id) > 2:
+                    logger.warning(
+                        "Ignored malformed replay event {}: move exceeds max depth",
+                        event.get("event_id", "<unknown>"),
+                    )
                     return
             except ValueError:
+                logger.warning(
+                    "Ignored malformed replay event {}: hierarchy corrupted",
+                    event.get("event_id", "<unknown>"),
+                )
                 return
             task.parent_task_id = new_parent_task_id
         elif event_type == "manual_interval_added":
