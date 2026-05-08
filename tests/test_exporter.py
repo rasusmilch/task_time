@@ -877,6 +877,83 @@ def test_subtask_alone_selected_does_not_include_parent_and_inherits_parent_tags
     assert "alpha" in g and "beta" in g
 
 
+def test_depth2_global_and_selected_exports_aggregate_without_double_counting(
+    tmp_path: Path, monkeypatch
+) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    child = service.create_subtask(root, "Child", "")
+    grandchild = service.create_subtask(child, "Grandchild", "")
+    service.update_task_tags(root, ["alpha"])
+    service.update_task_tags(child, ["beta"])
+    service.update_task_tags(grandchild, ["gamma"])
+    service.add_manual_interval(
+        root,
+        parse_utc_z("2026-01-10T10:00:00Z").astimezone(),
+        parse_utc_z("2026-01-10T11:00:00Z").astimezone(),
+        "r",
+    )
+    service.add_manual_interval(
+        child,
+        parse_utc_z("2026-01-10T11:00:00Z").astimezone(),
+        parse_utc_z("2026-01-10T13:00:00Z").astimezone(),
+        "c",
+    )
+    service.add_manual_interval(
+        grandchild,
+        parse_utc_z("2026-01-10T13:00:00Z").astimezone(),
+        parse_utc_z("2026-01-10T16:00:00Z").astimezone(),
+        "g",
+    )
+    end = parse_utc_z("2026-01-31T00:00:00Z")
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
+
+    service.export_report(tmp_path / "global.txt", reset_after=False)
+    global_text = (tmp_path / "global.txt").read_text(encoding="utf-8")
+    assert "- Root" in global_text
+    assert "\n- Child\n" not in global_text
+    assert "\n- Grandchild\n" not in global_text
+    assert "06:00 (6.00 h)" in global_text
+    assert "Parent/general: 01:00 (1.00 h)" in global_text
+    assert "Child total: 05:00 (5.00 h)" in global_text
+    assert "Child/general: 02:00 (2.00 h)" in global_text
+    assert "Grandchild total: 03:00 (3.00 h)" in global_text
+    assert "alpha" in global_text and "beta" in global_text and "gamma" in global_text
+
+    service.export_selected_tasks_report(
+        tmp_path / "selected_root.txt",
+        [root, child, grandchild],
+        None,
+        end,
+        mark_submitted=False,
+        reason="",
+    )
+    root_text = (tmp_path / "selected_root.txt").read_text(encoding="utf-8")
+    assert "- Root" in root_text
+    assert "\n- Child\n" not in root_text
+    assert "\n- Grandchild\n" not in root_text
+    assert "06:00 (6.00 h)" in root_text
+
+    service.export_selected_tasks_report(
+        tmp_path / "selected_child.txt", [child], None, end, mark_submitted=False, reason=""
+    )
+    child_text = (tmp_path / "selected_child.txt").read_text(encoding="utf-8")
+    assert "- Child" in child_text and "- Root" not in child_text
+    assert "05:00 (5.00 h)" in child_text
+
+    service.export_selected_tasks_report(
+        tmp_path / "selected_grandchild.txt",
+        [grandchild],
+        None,
+        end,
+        mark_submitted=False,
+        reason="",
+    )
+    grandchild_text = (tmp_path / "selected_grandchild.txt").read_text(encoding="utf-8")
+    assert "- Grandchild" in grandchild_text and "- Child" not in grandchild_text
+    assert "03:00 (3.00 h)" in grandchild_text
+
+
 def test_depth2_hierarchy_export_selected_tags_and_markers(tmp_path: Path, monkeypatch) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     root = service.create_task("Root", "")
@@ -943,3 +1020,31 @@ def test_depth2_hierarchy_export_selected_tags_and_markers(tmp_path: Path, monke
     assert "Root Task Total" not in global_text  # sanity current heading style unchanged
     assert "00:30 (0.50 h)" in global_text
     assert "alpha" in global_text and "beta" in global_text and "gamma" in global_text
+
+
+def test_depth2_selected_submitted_then_deleted_grandchild_still_rolls_up_global(
+    tmp_path: Path, monkeypatch
+) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    root = service.create_task("Root", "")
+    child = service.create_subtask(root, "Child", "")
+    grandchild = service.create_subtask(child, "Grandchild", "")
+    service.add_manual_interval(
+        grandchild,
+        parse_utc_z("2026-01-10T13:00:00Z").astimezone(),
+        parse_utc_z("2026-01-10T14:00:00Z").astimezone(),
+        "g",
+    )
+    end = parse_utc_z("2026-01-31T00:00:00Z")
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
+
+    service.export_selected_tasks_report(
+        tmp_path / "sel.txt", [root], None, end, mark_submitted=True, reason="done"
+    )
+    service.delete_task(grandchild)
+    service.export_report(tmp_path / "global.txt", reset_after=False)
+    text = (tmp_path / "global.txt").read_text(encoding="utf-8")
+    assert "- Root" in text
+    assert "01:00 (1.00 h)" in text
+    assert "already entered through selected export" in text
+    assert "task later deleted" in text

@@ -184,54 +184,64 @@ class ExportService:
             raise
 
     def _aggregate_parent_rows(self, rows: list[TaskExportRow]) -> list[TaskExportRow]:
-        row_by_id = {r.task_id: r for r in rows}
-        out = []
+        row_by_id = {row.task_id: row for row in rows}
+        children_by_parent: dict[str, list[str]] = {}
         for row in rows:
             task = self.service.state.tasks.get(row.task_id)
-            if task and task.parent_task_id is not None and task.parent_task_id in row_by_id:
-                continue
-            direct_children = [
-                r
-                for r in rows
-                if (
-                    self.service.state.tasks.get(r.task_id)
-                    and self.service.state.tasks[r.task_id].parent_task_id == row.task_id
-                )
-            ]
+            parent_id = task.parent_task_id if task else None
+            if parent_id and parent_id in row_by_id:
+                children_by_parent.setdefault(parent_id, []).append(row.task_id)
+
+        def _merge_totals(target: dict[str, float], items: list[tuple[str, float]]) -> None:
+            for key, value in items:
+                target[key] = target.get(key, 0.0) + value
+
+        cache: dict[str, TaskExportRow] = {}
+
+        def _aggregate_row(task_id: str) -> TaskExportRow:
+            if task_id in cache:
+                return cache[task_id]
+            row = row_by_id[task_id]
             daily = dict(row.daily_totals)
             weekly = dict(row.weekly_totals)
             total = row.overall_seconds
-            breakdown = [("Parent/general", row.overall_seconds)]
-            for child_row in direct_children:
-                total += child_row.overall_seconds
-                breakdown.append((f"{child_row.name} total", child_row.overall_seconds))
-                for label, seconds in child_row.breakdown or [
-                    ("Parent/general", child_row.overall_seconds)
-                ]:
-                    breakdown.append(
-                        (
-                            f"  {child_row.name}/general"
-                            if label == "Parent/general"
-                            else f"  {label}",
-                            seconds,
-                        )
+            breakdown: list[tuple[str, float]] = [("Parent/general", row.overall_seconds)]
+
+            for child_id in sorted(
+                children_by_parent.get(task_id, []),
+                key=lambda cid: (row_by_id[cid].name.strip().casefold(), cid),
+            ):
+                child_agg = _aggregate_row(child_id)
+                total += child_agg.overall_seconds
+                breakdown.append((f"{child_agg.name} total", child_agg.overall_seconds))
+                for label, seconds in child_agg.breakdown:
+                    nested_label = (
+                        f"{child_agg.name}/general" if label == "Parent/general" else label
                     )
-                for k, v in child_row.daily_totals:
-                    daily[k] = daily.get(k, 0) + v
-                for k, v in child_row.weekly_totals:
-                    weekly[k] = weekly.get(k, 0) + v
-            out.append(
-                TaskExportRow(
-                    row.task_id,
-                    row.name,
-                    row.notes,
-                    sorted(daily.items()),
-                    sorted(weekly.items()),
-                    total,
-                    sorted(set(row.status_notes)),
-                    breakdown,
-                )
+                    breakdown.append((f"  {nested_label}", seconds))
+                _merge_totals(daily, child_agg.daily_totals)
+                _merge_totals(weekly, child_agg.weekly_totals)
+
+            cache[task_id] = TaskExportRow(
+                row.task_id,
+                row.name,
+                row.notes,
+                sorted(daily.items()),
+                sorted(weekly.items()),
+                total,
+                sorted(set(row.status_notes)),
+                breakdown,
             )
+            return cache[task_id]
+
+        out: list[TaskExportRow] = []
+        for row in rows:
+            task = self.service.state.tasks.get(row.task_id)
+            parent_id = task.parent_task_id if task else None
+            if parent_id and parent_id in row_by_id:
+                continue
+            out.append(_aggregate_row(row.task_id))
+
         out.sort(key=lambda rr: (rr.name.strip().casefold(), rr.task_id))
         return out
 
