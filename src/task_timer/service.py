@@ -17,7 +17,7 @@ from .exporter import (
     build_selected_tasks_export_text,
     write_export_file,
 )
-from .export_service import ExportService, ExportWindow
+from .export_service import ExportService, ExportWindow, SubmissionFlag, TaskExportRow
 from .models import (
     AppState,
     IntervalRecord,
@@ -1092,75 +1092,10 @@ class TaskTimerService:
     def compute_global_export_task_totals(
         self, window_start_utc: datetime | None, window_end_utc: datetime
     ) -> list[dict[str, Any]]:
-        by_id: dict[str, dict[str, Any]] = {}
-        for task in self.state.tasks.values():
-            clipped_intervals = self._windowed_intervals(task, window_start_utc, window_end_utc)
-            day_totals = self._compute_daily_totals(clipped_intervals)
-            week_totals = self._compute_weekly_totals(clipped_intervals)
-            overall_seconds = sum(
-                (stop - start).total_seconds() for start, stop in clipped_intervals
-            )
-            if overall_seconds <= 0:
-                continue
-            by_id[task.task_id] = {
-                "task_id": task.task_id,
-                "name": task.name,
-                "notes": task.notes,
-                "daily_totals": sorted(day_totals.items()),
-                "weekly_totals": sorted(week_totals.items()),
-                "overall_seconds": overall_seconds,
-                "status_notes": ["task later deleted"] if task.is_deleted else [],
-            }
-
-        for event in self.events:
-            if event["task_id"] != "__app__" or event["event_type"] != "time_submission_created":
-                continue
-            payload = event.get("payload", {})
-            marker_end = parse_utc_z(payload.get("window_end_utc", event["timestamp_utc"]))
-            for snapshot in payload.get("task_snapshots", []):
-                task_id = snapshot.get("task_id")
-                if not task_id:
-                    continue
-                task_opt = self.state.tasks.get(task_id)
-                row = by_id.get(task_id)
-                if row is None:
-                    row = {
-                        "task_id": task_id,
-                        "name": snapshot.get("task_name", task_opt.name if task_opt else task_id),
-                        "notes": snapshot.get("notes", task_opt.notes if task_opt else ""),
-                        "daily_totals": [],
-                        "weekly_totals": [],
-                        "overall_seconds": 0.0,
-                        "status_notes": [],
-                    }
-                    by_id[task_id] = row
-                row["status_notes"].append("already entered through selected export")
-                if task and task.is_deleted:
-                    row["status_notes"].append("task later deleted")
-                if task and task.last_reset_utc and task.last_reset_utc >= marker_end:
-                    row["status_notes"].append("task later reset")
-                daily = payload.get("submitted_daily_totals_by_task", {}).get(task_id, {})
-                weekly = payload.get("submitted_weekly_totals_by_task", {}).get(task_id, {})
-                overall = float(
-                    payload.get("submitted_overall_totals_by_task", {}).get(task_id, 0.0)
-                )
-                if daily:
-                    merged = dict(row["daily_totals"])
-                    for day, seconds in daily.items():
-                        merged[day] = merged.get(day, 0.0) + float(seconds)
-                    row["daily_totals"] = sorted(merged.items())
-                if weekly:
-                    merged_w = dict(row["weekly_totals"])
-                    for week, seconds in weekly.items():
-                        merged_w[week] = merged_w.get(week, 0.0) + float(seconds)
-                    row["weekly_totals"] = sorted(merged_w.items())
-                row["overall_seconds"] += overall
-        output = [row for row in by_id.values() if row["overall_seconds"] > 0]
-        output = self._aggregate_parent_rows(output)
-        for row in output:
-            row["status_notes"] = sorted(set(row.get("status_notes", [])))
-        output.sort(key=lambda row: (row["name"].strip().casefold(), row["task_id"]))
-        return output
+        data = self.export_service.compute_global_export_task_totals(
+            ExportWindow(window_start_utc, window_end_utc)
+        )
+        return [self._export_row_to_dict(row) for row in data.rows]
 
     def _expand_selected_task_ids(self, task_ids: list[str]) -> set[str]:
         selected = set(task_ids)
@@ -1183,51 +1118,6 @@ class TaskTimerService:
                 continue
             normalized.append(task_id)
         return normalized
-
-    def _aggregate_parent_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        row_by_id = {r["task_id"]: r for r in rows}
-        out = []
-        for row in rows:
-            task = self.state.tasks.get(row["task_id"])
-            if task and task.parent_task_id is not None and task.parent_task_id in row_by_id:
-                continue
-            direct_children = [
-                r
-                for r in rows
-                if (
-                    self.state.tasks.get(r["task_id"])
-                    and self.state.tasks[r["task_id"]].parent_task_id == row["task_id"]
-                )
-            ]
-            daily = dict(row["daily_totals"])
-            weekly = dict(row["weekly_totals"])
-            total = row["overall_seconds"]
-            breakdown = [("Parent/general", row["overall_seconds"])]
-            for child_row in direct_children:
-                child_breakdown = child_row.get("breakdown") or [
-                    ("Parent/general", child_row["overall_seconds"])
-                ]
-                for label, _seconds in child_breakdown:
-                    if label == "Parent/general":
-                        break
-                total += child_row["overall_seconds"]
-                breakdown.append((f"{child_row['name']} total", child_row["overall_seconds"]))
-                for label, _seconds in child_breakdown:
-                    if label == "Parent/general":
-                        breakdown.append((f"  {child_row['name']}/general", _seconds))
-                    else:
-                        breakdown.append((f"  {label}", _seconds))
-                for k, v in child_row["daily_totals"]:
-                    daily[k] = daily.get(k, 0) + v
-                for k, v in child_row["weekly_totals"]:
-                    weekly[k] = weekly.get(k, 0) + v
-            merged = dict(row)
-            merged["daily_totals"] = sorted(daily.items())
-            merged["weekly_totals"] = sorted(weekly.items())
-            merged["overall_seconds"] = total
-            merged["breakdown"] = breakdown
-            out.append(merged)
-        return out
 
     def compute_selected_task_totals(
         self,
@@ -1465,30 +1355,10 @@ class TaskTimerService:
         window_start_utc: datetime | None,
         window_end_utc: datetime,
     ) -> None:
-        for row in per_task_rows:
-            week_flags: dict[str, dict[str, Any]] = {}
-            for week_range, seconds in row["weekly_totals"]:
-                start_s, end_s = week_range.split(" to ")
-                week_start_local = datetime.combine(
-                    date.fromisoformat(start_s), time.min, self.local_tz
-                )
-                week_end_local = datetime.combine(
-                    date.fromisoformat(end_s), time.max, self.local_tz
-                )
-                info = self.find_submitted_seconds_for_task_window(
-                    row["task_id"],
-                    week_start_local.astimezone(timezone.utc),
-                    week_end_local.astimezone(timezone.utc),
-                )
-                marker = "*" if info["already_submitted_seconds"] > 0 else ""
-                if info["is_partially_submitted"]:
-                    marker = "~"
-                week_flags[week_range] = {
-                    **info,
-                    "marker": marker,
-                    "week_seconds": seconds,
-                }
-            row["weekly_submission_flags"] = week_flags
+        window = ExportWindow(window_start_utc, window_end_utc)
+        dto_rows = [self._dict_to_export_row(row) for row in per_task_rows]
+        self.export_service._apply_submission_flags(dto_rows, window)
+        per_task_rows[:] = [self._export_row_to_dict(row) for row in dto_rows]
 
     def build_human_audit_lines(
         self, window_events: list[dict[str, Any]], window_end_utc: datetime
@@ -1788,6 +1658,28 @@ class TaskTimerService:
                 for k, v in getattr(row, "weekly_submission_flags", {}).items()
             },
         }
+
+    def _dict_to_export_row(self, row: dict[str, Any]) -> TaskExportRow:
+        return TaskExportRow(
+            task_id=row["task_id"],
+            name=row["name"],
+            notes=row["notes"],
+            daily_totals=list(row.get("daily_totals", [])),
+            weekly_totals=list(row.get("weekly_totals", [])),
+            overall_seconds=float(row.get("overall_seconds", 0.0)),
+            status_notes=list(row.get("status_notes", [])),
+            breakdown=list(row.get("breakdown", [])),
+            weekly_submission_flags={
+                k: SubmissionFlag(
+                    marker=v.get("marker", ""),
+                    week_seconds=float(v.get("week_seconds", 0.0)),
+                    already_submitted_seconds=float(v.get("already_submitted_seconds", 0.0)),
+                    submitted_seconds_in_window=float(v.get("submitted_seconds_in_window", 0.0)),
+                    is_partially_submitted=bool(v.get("is_partially_submitted", False)),
+                )
+                for k, v in row.get("weekly_submission_flags", {}).items()
+            },
+        )
 
     def _tag_rows_to_dict(self, tags: Any) -> dict[str, dict[str, dict[str, Any]]]:
         return {
