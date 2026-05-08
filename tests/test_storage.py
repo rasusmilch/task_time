@@ -55,9 +55,7 @@ def test_manual_interval_add_edit_delete(tmp_path: Path) -> None:
     service.edit_interval(
         task_id, interval_id, start, datetime(2026, 1, 1, 12, 0).astimezone(), "edit"
     )
-    new_ids = [
-        k for k, v in service.state.tasks[task_id].intervals.items() if not v.deleted
-    ]
+    new_ids = [k for k, v in service.state.tasks[task_id].intervals.items() if not v.deleted]
     assert len(new_ids) == 1
     service.delete_interval(task_id, new_ids[0], "bad")
     assert all(v.deleted for v in service.state.tasks[task_id].intervals.values())
@@ -165,6 +163,5 @@ def test_corrupt_warning_is_logged(tmp_path: Path) -> None:
     finally:
         logger.remove(sink_id)
     assert any(
-        "Chronicle skipped 1 corrupt journal event lines during startup" in msg
-        for msg in messages
+        "Chronicle skipped 1 corrupt journal event lines during startup" in msg for msg in messages
     )

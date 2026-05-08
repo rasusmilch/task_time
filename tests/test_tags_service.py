@@ -155,11 +155,6 @@ def test_deterministic_replay_equal_timestamps(tmp_path) -> None:
     rebuilt = TaskTimerService(storage)
     assert rebuilt.state.tasks["t1"].tags == {"b"}
 
-    raw_lines = (
-        (tmp_path / "active_events.jsonl")
-        .read_text(encoding="utf-8")
-        .strip()
-        .splitlines()
-    )
+    raw_lines = (tmp_path / "active_events.jsonl").read_text(encoding="utf-8").strip().splitlines()
     payloads = [json.loads(line) for line in raw_lines]
     assert [row["event_id"] for row in payloads] == ["1", "2"]

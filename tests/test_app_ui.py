@@ -73,9 +73,7 @@ def _test_refresh_live_values_does_not_call_structure_or_full_row_refresh() -> N
     task_id = "task-1"
     calls: list[str] = []
     app.service = SimpleNamespace(
-        state=SimpleNamespace(
-            tasks={task_id: SimpleNamespace(is_running=False, is_deleted=False)}
-        ),
+        state=SimpleNamespace(tasks={task_id: SimpleNamespace(is_running=False, is_deleted=False)}),
         compute_totals=lambda _now: (0, 0, 0),
     )
     app.rows = {task_id: {}}
@@ -347,9 +345,7 @@ def _test_refresh_row_parent_and_subtask_hierarchy_styles() -> None:
     assert "padding" not in app.rows[child_id]["name_label"].config
 
 
-def _test_refresh_row_uses_default_font_for_non_parent_rows_and_never_empty_font() -> (
-    None
-):
+def _test_refresh_row_uses_default_font_for_non_parent_rows_and_never_empty_font() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     parent_id = "parent"
     child_id = "child"
@@ -383,9 +379,7 @@ def _test_refresh_row_uses_default_font_for_non_parent_rows_and_never_empty_font
 
     app.rows = {parent_id: _row(), child_id: _row(), solo_id: _row()}
     app.service = SimpleNamespace(
-        state=SimpleNamespace(
-            tasks={parent_id: parent, child_id: child, solo_id: solo}
-        ),
+        state=SimpleNamespace(tasks={parent_id: parent, child_id: child, solo_id: solo}),
         child_tasks=lambda task_id, **_kwargs: [child] if task_id == parent_id else [],
         is_subtask=lambda task_id: task_id == child_id,
     )
@@ -414,12 +408,8 @@ def _test_table_column_widths_match_column_specs() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     widths = TaskTimerApp._table_column_widths(app)
     specs = TaskTimerApp._column_specs(app)
-    assert widths["name"] == next(
-        spec["minsize"] for spec in specs if spec["key"] == "name"
-    )
-    assert widths["notes"] == next(
-        spec["minsize"] for spec in specs if spec["key"] == "notes"
-    )
+    assert widths["name"] == next(spec["minsize"] for spec in specs if spec["key"] == "name")
+    assert widths["notes"] == next(spec["minsize"] for spec in specs if spec["key"] == "notes")
 
 
 def test_open_mini_mode_minimizes_main_window_when_keep_unchecked() -> None:
@@ -616,9 +606,7 @@ def test_mini_mode_refresh_live_values_stopped_uses_red_elapsed_bar() -> None:
     assert mini.elapsed_bar_label.config["bg"] == MINI_STOPPED_COLOR
 
 
-def test_mini_mode_refresh_live_values_no_task_sets_default_and_disables_toggle() -> (
-    None
-):
+def test_mini_mode_refresh_live_values_no_task_sets_default_and_disables_toggle() -> None:
     class _Var:
         def __init__(self) -> None:
             self.value = ""
@@ -716,13 +704,9 @@ def test_auto_backup_on_app_start_and_min_interval(tmp_path, monkeypatch) -> Non
     assert len(service_2.list_managed_backups()) == 1
 
 
-def test_manual_create_backup_now_not_blocked_by_interval_setting(
-    tmp_path, monkeypatch
-) -> None:
+def test_manual_create_backup_now_not_blocked_by_interval_setting(tmp_path, monkeypatch) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
-    settings = BackupSettings(
-        auto_backup_on_app_start=False, auto_backup_min_interval_minutes=9999
-    )
+    settings = BackupSettings(auto_backup_on_app_start=False, auto_backup_min_interval_minutes=9999)
     service.save_backup_settings(settings)
     fixed = _local_dt("2026-01-10 10:00").astimezone(timezone.utc)
     counter = {"i": 0}
@@ -753,9 +737,7 @@ def test_mini_mode_configure_window_chrome_applies_snap_guard(monkeypatch) -> No
     monkeypatch.setattr(
         "task_timer.mini_mode.disable_snap_maximize", lambda _w: calls.append("disable")
     )
-    monkeypatch.setattr(
-        "task_timer.mini_mode.install_zoom_guard", lambda _w: calls.append("guard")
-    )
+    monkeypatch.setattr("task_timer.mini_mode.install_zoom_guard", lambda _w: calls.append("guard"))
 
     MiniModeWindow._configure_window_chrome(mini)
 
@@ -1061,9 +1043,7 @@ def test_reset_task_only_leaves_descendants_intact_path(monkeypatch) -> None:
 
     import task_timer.app as app_module
 
-    monkeypatch.setattr(
-        app_module.messagebox, "askyesnocancel", lambda *_a, **_k: False
-    )
+    monkeypatch.setattr(app_module.messagebox, "askyesnocancel", lambda *_a, **_k: False)
 
     TaskTimerApp._reset_task(app, "p1")
     assert calls == [("backup", "x"), ("only", "p1"), ("refresh", "x")]
@@ -1154,9 +1134,7 @@ def test_reset_all_task_timers_requires_confirmation_and_handles_cancel(
     import task_timer.app as app_module
 
     monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *_a, **_k: False)
-    monkeypatch.setattr(
-        app_module.messagebox, "showinfo", lambda *_a, **_k: calls.append("info")
-    )
+    monkeypatch.setattr(app_module.messagebox, "showinfo", lambda *_a, **_k: calls.append("info"))
 
     TaskTimerApp._reset_all_task_timers(app)
     assert calls == []
@@ -1175,9 +1153,7 @@ def test_reset_all_task_timers_confirmed_runs_backup_reset_refresh(monkeypatch) 
     import task_timer.app as app_module
 
     monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *_a, **_k: True)
-    monkeypatch.setattr(
-        app_module.messagebox, "showinfo", lambda *_a, **_k: calls.append("info")
-    )
+    monkeypatch.setattr(app_module.messagebox, "showinfo", lambda *_a, **_k: calls.append("info"))
 
     TaskTimerApp._reset_all_task_timers(app)
     assert calls == [
@@ -1201,9 +1177,7 @@ def test_reset_all_task_timers_no_active_tasks_shows_message(monkeypatch) -> Non
     import task_timer.app as app_module
 
     monkeypatch.setattr(app_module.messagebox, "askyesno", lambda *_a, **_k: True)
-    monkeypatch.setattr(
-        app_module.messagebox, "showinfo", lambda *_a, **_k: calls.append("info")
-    )
+    monkeypatch.setattr(app_module.messagebox, "showinfo", lambda *_a, **_k: calls.append("info"))
 
     TaskTimerApp._reset_all_task_timers(app)
     assert calls == ["info"]
@@ -1265,9 +1239,7 @@ def test_add_task_dialog_confirm_collects_selected_template_ids() -> None:
     dialog.name_var = SimpleNamespace(get=lambda: "New Task")
     dialog.notes_var = SimpleNamespace(get=lambda: "Note")
     dialog.tag_selector = SimpleNamespace(get_selected_tags=lambda: ["alpha"])
-    dialog.template_selector = SimpleNamespace(
-        get_selected_template_ids=lambda: ["t1", "t2"]
-    )
+    dialog.template_selector = SimpleNamespace(get_selected_template_ids=lambda: ["t1", "t2"])
     dialog.window = SimpleNamespace(destroy=lambda: None)
     dialog.confirmed = False
 
@@ -1282,9 +1254,7 @@ def test_add_task_applies_selected_templates_after_parent_creation() -> None:
     app.expanded_parents = set()
     calls: list[tuple[str, tuple[object, ...]]] = []
     app.service = SimpleNamespace(
-        create_task=lambda n, no, t: (
-            calls.append(("create_task", (n, no, t))) or "parent-1"
-        ),
+        create_task=lambda n, no, t: calls.append(("create_task", (n, no, t))) or "parent-1",
         apply_subtask_templates=lambda parent_id, tids: (
             calls.append(("apply", (parent_id, tids)))
             or SimpleNamespace(
@@ -1331,9 +1301,7 @@ def test_add_task_without_templates_keeps_normal_flow() -> None:
     app.root = object()
     calls: list[tuple[str, tuple[object, ...]]] = []
     app.service = SimpleNamespace(
-        create_task=lambda n, no, t: (
-            calls.append(("create_task", (n, no, t))) or "parent-1"
-        ),
+        create_task=lambda n, no, t: calls.append(("create_task", (n, no, t))) or "parent-1",
         apply_subtask_templates=lambda *_args: calls.append(("apply", tuple())),
     )
     app.refresh_structure = lambda: None
@@ -1443,19 +1411,11 @@ def test_edit_task_dialog_has_move_task_button() -> None:
     assert 'text="Move Task..."' in source
 
 
-def test_build_move_task_option_labels_hides_task_ids_and_disambiguates_duplicates() -> (
-    None
-):
+def test_build_move_task_option_labels_hides_task_ids_and_disambiguates_duplicates() -> None:
     tasks = [
-        SimpleNamespace(
-            task_id="123e4567-e89b-12d3-a456-426614174000", name="Harness Build"
-        ),
-        SimpleNamespace(
-            task_id="223e4567-e89b-12d3-a456-426614174001", name="Harness Build"
-        ),
-        SimpleNamespace(
-            task_id="323e4567-e89b-12d3-a456-426614174002", name=" Another "
-        ),
+        SimpleNamespace(task_id="123e4567-e89b-12d3-a456-426614174000", name="Harness Build"),
+        SimpleNamespace(task_id="223e4567-e89b-12d3-a456-426614174001", name="Harness Build"),
+        SimpleNamespace(task_id="323e4567-e89b-12d3-a456-426614174002", name=" Another "),
     ]
 
     labels, task_ids = build_move_task_option_labels(tasks)
@@ -1499,9 +1459,7 @@ def test_edit_task_dialog_move_opens_move_dialog() -> None:
         state=SimpleNamespace(
             tasks={"task-1": SimpleNamespace(parent_task_id=None, is_deleted=False)}
         ),
-        move_task=lambda task_id, parent_id, reason: moved.append(
-            (task_id, parent_id, reason)
-        ),
+        move_task=lambda task_id, parent_id, reason: moved.append((task_id, parent_id, reason)),
     )
 
     import task_timer.dialogs as dialogs_module
@@ -1515,9 +1473,7 @@ def test_edit_task_dialog_move_opens_move_dialog() -> None:
             self.reason = "reorganize"
 
     dialogs_module.MoveTaskDialog = _Dialog
-    dialog.service.state.tasks["parent-2"] = SimpleNamespace(
-        parent_task_id=None, is_deleted=False
-    )
+    dialog.service.state.tasks["parent-2"] = SimpleNamespace(parent_task_id=None, is_deleted=False)
     try:
         EditTaskDialog._move_task(dialog)
     finally:
@@ -1571,9 +1527,7 @@ def test_edit_task_dialog_move_promote_subtask_updates_parent_and_closes() -> No
     move_calls: list[tuple[str, object, object]] = []
     dialog.service = SimpleNamespace(
         state=SimpleNamespace(
-            tasks={
-                "task-1": SimpleNamespace(parent_task_id="parent-1", is_deleted=False)
-            }
+            tasks={"task-1": SimpleNamespace(parent_task_id="parent-1", is_deleted=False)}
         ),
         move_task=lambda *args: move_calls.append(args),
     )
@@ -1747,9 +1701,7 @@ def test_edit_task_dialog_add_subtask_depth_limit_shows_error() -> None:
 
     errors: list[str] = []
     dialogs_module.AddTaskDialog = _Dialog
-    dialogs_module.messagebox.showerror = lambda _title, msg, **_kwargs: errors.append(
-        msg
-    )
+    dialogs_module.messagebox.showerror = lambda _title, msg, **_kwargs: errors.append(msg)
     try:
         EditTaskDialog._add_subtask(dialog)
     finally:
@@ -1851,9 +1803,7 @@ def test_edit_task_dialog_apply_subtask_templates_refreshes_and_summarizes() -> 
 
     infos: list[str] = []
     dialogs_module.ApplySubtaskTemplatesDialog = _ApplyDialog
-    dialogs_module.messagebox.showinfo = lambda _title, msg, **_kwargs: infos.append(
-        msg
-    )
+    dialogs_module.messagebox.showinfo = lambda _title, msg, **_kwargs: infos.append(msg)
     try:
         EditTaskDialog._apply_subtask_templates(dialog)
     finally:
@@ -1891,9 +1841,7 @@ def test_edit_task_dialog_apply_subtask_templates_all_duplicates_message() -> No
 
     infos: list[str] = []
     dialogs_module.ApplySubtaskTemplatesDialog = _ApplyDialog
-    dialogs_module.messagebox.showinfo = lambda _title, msg, **_kwargs: infos.append(
-        msg
-    )
+    dialogs_module.messagebox.showinfo = lambda _title, msg, **_kwargs: infos.append(msg)
     try:
         EditTaskDialog._apply_subtask_templates(dialog)
     finally:
@@ -1913,9 +1861,7 @@ def test_apply_subtask_templates_dialog_requires_selection() -> None:
 
     original_error = dialogs_module.messagebox.showerror
     errors: list[str] = []
-    dialogs_module.messagebox.showerror = lambda _title, msg, **_kwargs: errors.append(
-        msg
-    )
+    dialogs_module.messagebox.showerror = lambda _title, msg, **_kwargs: errors.append(msg)
     try:
         ApplySubtaskTemplatesDialog._confirm(dialog)
     finally:
@@ -1972,12 +1918,8 @@ def test_selected_export_handler_uses_selected_service_not_normal_export(
         delete_selected_tasks=lambda *_a, **_k: called.__setitem__(
             "selected_delete", called["selected_delete"] + 1
         ),
-        export_report=lambda *a, **k: called.__setitem__(
-            "normal", called["normal"] + 1
-        ),
-        reset_all_non_deleted_tasks=lambda: called.__setitem__(
-            "reset", called["reset"] + 1
-        ),
+        export_report=lambda *a, **k: called.__setitem__("normal", called["normal"] + 1),
+        reset_all_non_deleted_tasks=lambda: called.__setitem__("reset", called["reset"] + 1),
     )
     app.mark_month_end_reminder_handled_today = lambda: called.__setitem__(
         "month", called["month"] + 1
@@ -1997,9 +1939,7 @@ def test_selected_export_handler_uses_selected_service_not_normal_export(
         )
     )
     app_module.filedialog.asksaveasfilename = lambda **_k: str(tmp_path / "x.txt")
-    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(
-        choice="leave"
-    )
+    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(choice="leave")
     app_module.messagebox.showinfo = lambda *a, **k: None
 
     assert TaskTimerApp.export_selected_tasks(app) is True
@@ -2098,9 +2038,7 @@ def test_selected_export_mark_submitted_overlap_continue_appends_marker(
     )
     app_module.messagebox.askyesno = lambda *a, **k: True
     app_module.filedialog.asksaveasfilename = lambda **_k: str(tmp_path / "x.txt")
-    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(
-        choice="leave"
-    )
+    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(choice="leave")
     app_module.messagebox.showinfo = lambda *a, **k: None
     assert TaskTimerApp.export_selected_tasks(app) is True
     assert called["selected"] == 1
@@ -2136,9 +2074,7 @@ def test_selected_export_post_action_reset_creates_single_backup_and_resets_sele
             reason="",
         )
     )
-    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(
-        choice="reset"
-    )
+    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(choice="reset")
     app_module.filedialog.asksaveasfilename = lambda **_k: str(tmp_path / "x.txt")
     app_module.messagebox.showinfo = lambda *a, **k: None
 
@@ -2178,9 +2114,7 @@ def test_selected_export_post_action_delete_creates_single_backup_and_deletes_se
             reason="",
         )
     )
-    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(
-        choice="delete"
-    )
+    app_module.PostSelectedExportActionDialog = lambda _root: SimpleNamespace(choice="delete")
     app_module.filedialog.asksaveasfilename = lambda **_k: str(tmp_path / "x.txt")
     app_module.messagebox.showinfo = lambda *a, **k: None
 
@@ -2216,9 +2150,7 @@ def test_keep_mini_toggle_unchecked_saves_without_closing_open_mini() -> None:
         save=lambda settings: saves.append(settings.keep_mini_open)
     )
     app.keep_mini_open_var = SimpleNamespace(get=lambda: False)
-    app.mini_mode_window = SimpleNamespace(
-        window=SimpleNamespace(winfo_exists=lambda: True)
-    )
+    app.mini_mode_window = SimpleNamespace(window=SimpleNamespace(winfo_exists=lambda: True))
 
     TaskTimerApp._on_keep_mini_open_toggle(app)
 
@@ -2261,9 +2193,7 @@ def test_init_schedules_startup_mini_mode_activation_when_setting_persisted() ->
     try:
         app_module.install_zoom_guard = lambda _root: None
         app_module.StringVar = lambda: SimpleNamespace()
-        app_module.tk.BooleanVar = lambda value=False: SimpleNamespace(
-            get=lambda: value
-        )
+        app_module.tk.BooleanVar = lambda value=False: SimpleNamespace(get=lambda: value)
         app_module.TaskTimerApp._build_ui = lambda self: None
         app_module.TaskTimerApp.refresh_structure = lambda self: None
         app_module.TaskTimerApp._refresh_month_end_reminder_ui = lambda self: None
@@ -2284,12 +2214,8 @@ def test_init_schedules_startup_mini_mode_activation_when_setting_persisted() ->
         app_module.tk.BooleanVar = original_boolvar
         app_module.TaskTimerApp._build_ui = original_build_ui
         app_module.TaskTimerApp.refresh_structure = original_refresh_structure
-        app_module.TaskTimerApp._refresh_month_end_reminder_ui = (
-            original_refresh_reminder
-        )
-        app_module.TaskTimerApp._maybe_show_startup_reminder_popup = (
-            original_maybe_popup
-        )
+        app_module.TaskTimerApp._refresh_month_end_reminder_ui = original_refresh_reminder
+        app_module.TaskTimerApp._maybe_show_startup_reminder_popup = original_maybe_popup
         app_module.TaskTimerApp.refresh_live_values = original_refresh_live
         app_module.TaskTimerApp._tick = original_tick
         app_module.UISettingsStore = original_store
@@ -2308,9 +2234,7 @@ def test_open_mini_mode_keep_checked_lifts_existing_without_duplicate() -> None:
     app.ui_settings = UISettings(keep_mini_open=True)
     lifts: list[str] = []
     existing = SimpleNamespace(
-        window=SimpleNamespace(
-            winfo_exists=lambda: True, lift=lambda: lifts.append("lift")
-        )
+        window=SimpleNamespace(winfo_exists=lambda: True, lift=lambda: lifts.append("lift"))
     )
     app.mini_mode_window = existing
 
@@ -2636,9 +2560,7 @@ def test_selected_panel_none_disables_controls(tmp_path) -> None:
     app.task_tree = SimpleNamespace(selection=lambda: ())
     state: dict[str, dict[str, str]] = {}
     app.selected_task_label_var = SimpleNamespace(
-        set=lambda value: state.setdefault("label", {"text": value}).update(
-            {"text": value}
-        )
+        set=lambda value: state.setdefault("label", {"text": value}).update({"text": value})
     )
     app.selected_toggle_btn = SimpleNamespace(
         configure=lambda **kwargs: state.setdefault("toggle", {}).update(kwargs)
@@ -2681,9 +2603,7 @@ def test_selected_panel_subtask_label_and_toggle_text(tmp_path) -> None:
     app.task_tree = SimpleNamespace(selection=lambda: (child_id,))
     state: dict[str, dict[str, str]] = {}
     app.selected_task_label_var = SimpleNamespace(
-        set=lambda value: state.setdefault("label", {"text": value}).update(
-            {"text": value}
-        )
+        set=lambda value: state.setdefault("label", {"text": value}).update({"text": value})
     )
     app.selected_toggle_btn = SimpleNamespace(
         configure=lambda **kwargs: state.setdefault("toggle", {}).update(kwargs)
@@ -2691,9 +2611,7 @@ def test_selected_panel_subtask_label_and_toggle_text(tmp_path) -> None:
     app.selected_state_label = SimpleNamespace(
         configure=lambda **kwargs: state.setdefault("state", {}).update(kwargs)
     )
-    app._selected_state_colors = TaskTimerApp._selected_state_colors.__get__(
-        app, TaskTimerApp
-    )
+    app._selected_state_colors = TaskTimerApp._selected_state_colors.__get__(app, TaskTimerApp)
     app.root = SimpleNamespace(cget=lambda _name: "#f0f0f0")
     app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
     app.selected_reset_btn = SimpleNamespace(
@@ -2730,9 +2648,7 @@ def test_selected_panel_nested_subtask_path_label(tmp_path) -> None:
     app.task_tree = SimpleNamespace(selection=lambda: (nested_id,))
     state: dict[str, dict[str, str]] = {}
     app.selected_task_label_var = SimpleNamespace(
-        set=lambda value: state.setdefault("label", {"text": value}).update(
-            {"text": value}
-        )
+        set=lambda value: state.setdefault("label", {"text": value}).update({"text": value})
     )
     app.selected_toggle_btn = SimpleNamespace(
         configure=lambda **kwargs: state.setdefault("toggle", {}).update(kwargs)
@@ -2755,9 +2671,7 @@ def test_selected_panel_nested_subtask_path_label(tmp_path) -> None:
     app.selected_timeline_btn = SimpleNamespace(
         configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs)
     )
-    app._selected_state_colors = TaskTimerApp._selected_state_colors.__get__(
-        app, TaskTimerApp
-    )
+    app._selected_state_colors = TaskTimerApp._selected_state_colors.__get__(app, TaskTimerApp)
     app.root = SimpleNamespace(cget=lambda _name: "#f0f0f0")
     app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
     TaskTimerApp._refresh_selected_task_panel(app)
@@ -2816,9 +2730,7 @@ def test_selected_panel_state_updates_with_task_start_stop(tmp_path) -> None:
     app.root = SimpleNamespace(cget=lambda _name: "#f0f0f0")
     state: dict[str, dict[str, str]] = {}
     app.selected_task_label_var = SimpleNamespace(
-        set=lambda value: state.setdefault("label", {"text": value}).update(
-            {"text": value}
-        )
+        set=lambda value: state.setdefault("label", {"text": value}).update({"text": value})
     )
     app.selected_toggle_btn = SimpleNamespace(
         configure=lambda **kwargs: state.setdefault("toggle", {}).update(kwargs)
@@ -2961,9 +2873,7 @@ def test_task_state_display_labels() -> None:
     assert TaskTimerApp._task_state_display(app, stopped, now) == "■ Stopped"
     assert TaskTimerApp._task_state_display(app, running, now) == "▶ Running"
     assert TaskTimerApp._task_state_display(app, long_running, now) == "⚠ Long-running"
-    assert (
-        TaskTimerApp._task_state_display(app, running_missing_start, now) == "▶ Running"
-    )
+    assert TaskTimerApp._task_state_display(app, running_missing_start, now) == "▶ Running"
 
 
 def test_selected_state_colors() -> None:
@@ -2994,9 +2904,7 @@ def test_move_task_calls_service_and_expands_parent(tmp_path, monkeypatch) -> No
     app.selected_task_id = root_a
     app._refresh_selected_task_panel = lambda: None
     app.refresh_live_values = lambda: None
-    app.task_tree = SimpleNamespace(
-        exists=lambda iid: True, selection_set=lambda iid: None
-    )
+    app.task_tree = SimpleNamespace(exists=lambda iid: True, selection_set=lambda iid: None)
     app.refresh_structure = lambda: None
 
     class _Dialog:
@@ -3023,9 +2931,7 @@ def test_move_task_promote_subtask_to_root(tmp_path, monkeypatch) -> None:
     app.selected_task_id = child
     app._refresh_selected_task_panel = lambda: None
     app.refresh_live_values = lambda: None
-    app.task_tree = SimpleNamespace(
-        exists=lambda iid: True, selection_set=lambda iid: None
-    )
+    app.task_tree = SimpleNamespace(exists=lambda iid: True, selection_set=lambda iid: None)
     app.refresh_structure = lambda: None
 
     class _Dialog:
@@ -3052,9 +2958,7 @@ def test_move_task_service_error_shows_message(tmp_path, monkeypatch) -> None:
     app.selected_task_id = p1
     app._refresh_selected_task_panel = lambda: None
     app.refresh_live_values = lambda: None
-    app.task_tree = SimpleNamespace(
-        exists=lambda iid: True, selection_set=lambda iid: None
-    )
+    app.task_tree = SimpleNamespace(exists=lambda iid: True, selection_set=lambda iid: None)
     app.refresh_structure = lambda: None
 
     class _Dialog:
@@ -3078,35 +2982,23 @@ def test_move_task_service_error_shows_message(tmp_path, monkeypatch) -> None:
 def test_handle_selected_export_post_action_leave_no_changes() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     calls = {"backup": 0, "refresh": 0, "reset": 0, "delete": 0}
-    app._create_risky_operation_backup = lambda _r: calls.__setitem__(
-        "backup", calls["backup"] + 1
-    )
+    app._create_risky_operation_backup = lambda _r: calls.__setitem__("backup", calls["backup"] + 1)
     app.refresh_structure = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
     app.refresh_live_values = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
     app.service = SimpleNamespace(
-        reset_selected_tasks=lambda _ids: calls.__setitem__(
-            "reset", calls["reset"] + 1
-        ),
-        delete_selected_tasks=lambda _ids: calls.__setitem__(
-            "delete", calls["delete"] + 1
-        ),
+        reset_selected_tasks=lambda _ids: calls.__setitem__("reset", calls["reset"] + 1),
+        delete_selected_tasks=lambda _ids: calls.__setitem__("delete", calls["delete"] + 1),
     )
     TaskTimerApp._handle_selected_export_post_action(app, "leave", ["t1"])
     assert calls == {"backup": 0, "refresh": 0, "reset": 0, "delete": 0}
 
 
-def test_handle_selected_export_post_action_delete_clears_selection_and_refreshes() -> (
-    None
-):
+def test_handle_selected_export_post_action_delete_clears_selection_and_refreshes() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     calls = {"backup": 0, "refresh": 0}
     app.selected_task_id = "t1"
-    app.task_tree = SimpleNamespace(
-        selection=lambda: ["t1"], selection_remove=lambda *_ids: None
-    )
-    app._create_risky_operation_backup = lambda _r: calls.__setitem__(
-        "backup", calls["backup"] + 1
-    )
+    app.task_tree = SimpleNamespace(selection=lambda: ["t1"], selection_remove=lambda *_ids: None)
+    app._create_risky_operation_backup = lambda _r: calls.__setitem__("backup", calls["backup"] + 1)
     app.refresh_structure = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
     app.refresh_live_values = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
     app.service = SimpleNamespace(delete_selected_tasks=lambda _ids: ["t1"])
@@ -3121,9 +3013,7 @@ def test_handle_selected_export_post_action_delete_clears_selection_and_refreshe
 def test_app_create_risky_operation_backup_delegates_to_service() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     seen: list[str] = []
-    app.service = SimpleNamespace(
-        _create_risky_operation_backup=lambda reason: seen.append(reason)
-    )
+    app.service = SimpleNamespace(_create_risky_operation_backup=lambda reason: seen.append(reason))
 
     TaskTimerApp._create_risky_operation_backup(app, "before reset")
 
@@ -3133,9 +3023,7 @@ def test_app_create_risky_operation_backup_delegates_to_service() -> None:
 def test_handle_selected_export_post_action_reset_calls_backup_and_reset() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     calls = {"backup": 0, "refresh": 0, "reset": 0}
-    app._create_risky_operation_backup = lambda _r: calls.__setitem__(
-        "backup", calls["backup"] + 1
-    )
+    app._create_risky_operation_backup = lambda _r: calls.__setitem__("backup", calls["backup"] + 1)
     app.refresh_structure = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
     app.refresh_live_values = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
     app.service = SimpleNamespace(

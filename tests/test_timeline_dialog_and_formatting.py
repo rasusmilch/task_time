@@ -19,9 +19,7 @@ def test_edit_timeline_methods_do_not_use_chained_askstring_for_entry() -> None:
 
 
 def test_edit_timeline_dialog_includes_local_timezone_label() -> None:
-    assert "Times shown in local timezone:" in inspect.getsource(
-        EditTimelineDialog.__init__
-    )
+    assert "Times shown in local timezone:" in inspect.getsource(EditTimelineDialog.__init__)
 
 
 def test_format_timeline_row_same_day_local_times() -> None:
@@ -97,13 +95,9 @@ def test_add_interval_uses_single_dialog_result(monkeypatch) -> None:
         add_manual_interval=lambda task_id, start, stop, reason: captured.append(
             (task_id, start, stop, reason)
         ),
-        add_manual_duration=lambda *_args: (_ for _ in ()).throw(
-            AssertionError("wrong method")
-        ),
+        add_manual_duration=lambda *_args: (_ for _ in ()).throw(AssertionError("wrong method")),
     )
-    monkeypatch.setattr(
-        "task_timer.dialogs.messagebox.showerror", lambda *_args, **_kwargs: None
-    )
+    monkeypatch.setattr("task_timer.dialogs.messagebox.showerror", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         "task_timer.dialogs.TimelineEntryDialog",
         lambda *_args, **_kwargs: SimpleNamespace(
@@ -129,16 +123,12 @@ def test_add_duration_uses_single_dialog_result(monkeypatch) -> None:
     dlg.changed = False
     dlg._refresh_table = lambda: None
     dlg.service = SimpleNamespace(
-        add_manual_interval=lambda *_args: (_ for _ in ()).throw(
-            AssertionError("wrong method")
-        ),
-        add_manual_duration=lambda task_id, work_date, duration_seconds, reason: (
-            captured.append((task_id, work_date, duration_seconds, reason))
+        add_manual_interval=lambda *_args: (_ for _ in ()).throw(AssertionError("wrong method")),
+        add_manual_duration=lambda task_id, work_date, duration_seconds, reason: captured.append(
+            (task_id, work_date, duration_seconds, reason)
         ),
     )
-    monkeypatch.setattr(
-        "task_timer.dialogs.messagebox.showerror", lambda *_args, **_kwargs: None
-    )
+    monkeypatch.setattr("task_timer.dialogs.messagebox.showerror", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         "task_timer.dialogs.TimelineEntryDialog",
         lambda *_args, **_kwargs: SimpleNamespace(
@@ -174,19 +164,13 @@ def test_edit_selected_uses_single_dialog_result(monkeypatch) -> None:
     dlg._selected_interval_id = lambda: "i1"
     dlg.service = SimpleNamespace(
         local_tz=timezone.utc,
-        state=SimpleNamespace(
-            tasks={"task": SimpleNamespace(intervals={"i1": interval})}
-        ),
+        state=SimpleNamespace(tasks={"task": SimpleNamespace(intervals={"i1": interval})}),
         edit_interval=lambda task_id, interval_id, start, stop, reason: captured.append(
             (task_id, interval_id, start, stop, reason)
         ),
-        edit_duration_interval=lambda *_args: (_ for _ in ()).throw(
-            AssertionError("wrong method")
-        ),
+        edit_duration_interval=lambda *_args: (_ for _ in ()).throw(AssertionError("wrong method")),
     )
-    monkeypatch.setattr(
-        "task_timer.dialogs.messagebox.showerror", lambda *_args, **_kwargs: None
-    )
+    monkeypatch.setattr("task_timer.dialogs.messagebox.showerror", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         "task_timer.dialogs.TimelineEntryDialog",
         lambda *_args, **_kwargs: SimpleNamespace(
@@ -223,13 +207,11 @@ def test_fix_running_uses_single_dialog_result(monkeypatch) -> None:
                 )
             }
         ),
-        correct_running_interval_stop=lambda task_id, corrected_stop, reason: (
-            captured.append((task_id, corrected_stop, reason))
+        correct_running_interval_stop=lambda task_id, corrected_stop, reason: captured.append(
+            (task_id, corrected_stop, reason)
         ),
     )
-    monkeypatch.setattr(
-        "task_timer.dialogs.messagebox.showerror", lambda *_args, **_kwargs: None
-    )
+    monkeypatch.setattr("task_timer.dialogs.messagebox.showerror", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         "task_timer.dialogs.TimelineEntryDialog",
         lambda *_args, **_kwargs: SimpleNamespace(

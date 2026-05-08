@@ -7,9 +7,7 @@ from task_timer.dialogs import SelectedTaskExportDialog
 
 
 def _svc() -> object:
-    return SimpleNamespace(
-        local_tz=timezone.utc, find_active_export_checkpoint=lambda: None
-    )
+    return SimpleNamespace(local_tz=timezone.utc, find_active_export_checkpoint=lambda: None)
 
 
 def test_dialog_validation_requires_task_selection() -> None:
@@ -95,8 +93,7 @@ def test_dialog_layout_uses_dedicated_task_list_frame_with_adjacent_scrollbar() 
     assert "borderwidth=0" in source
     assert "highlightthickness=0" in source
     assert (
-        'scroll = ttk.Scrollbar(task_list_frame, orient="vertical", command=canvas.yview)'
-        in source
+        'scroll = ttk.Scrollbar(task_list_frame, orient="vertical", command=canvas.yview)' in source
     )
     assert 'canvas.grid(row=0, column=0, sticky="nsew")' in source
     assert 'scroll.grid(row=0, column=1, sticky="ns")' in source
@@ -107,15 +104,9 @@ def test_dialog_layout_has_controls_and_actions_outside_scrollable_task_list() -
     assert "control_buttons = ttk.Frame(task_area)" in source
     assert "options_frame = ttk.Frame(frame)" in source
     assert "reason_row = ttk.Frame(options_frame)" in source
-    assert (
-        'ttk.Button(actions, text="Export Selected", command=self._confirm).pack('
-        in source
-    )
+    assert 'ttk.Button(actions, text="Export Selected", command=self._confirm).pack(' in source
     assert 'side="right"' in source
-    assert (
-        'ttk.Button(actions, text="Cancel", command=self.window.destroy).pack('
-        in source
-    )
+    assert 'ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(' in source
     assert "padx=4" in source
 
 
@@ -123,10 +114,7 @@ def test_dialog_contains_mark_submitted_and_reason_controls() -> None:
     source = open("src/task_timer/dialogs.py", encoding="utf-8").read()
     assert "Mark exported time as already entered into Epicor" in source
     assert 'ttk.Label(reason_row, text="Reason")' in source
-    assert (
-        'self.reason_var = StringVar(value="Job closing / entered into Epicor")'
-        in source
-    )
+    assert 'self.reason_var = StringVar(value="Job closing / entered into Epicor")' in source
 
 
 def test_dialog_task_canvas_border_and_highlight_are_disabled() -> None:

@@ -86,9 +86,7 @@ class MiniModeWindow:
             pass
 
     def _resolve_display_task_id(self) -> str | None:
-        tasks = [
-            task for task in self.service.state.tasks.values() if not task.is_deleted
-        ]
+        tasks = [task for task in self.service.state.tasks.values() if not task.is_deleted]
         if not tasks:
             return None
         if (
@@ -149,9 +147,7 @@ class MiniModeWindow:
         is_running = task.is_running
         color = RUNNING_COLOR if is_running else STOPPED_COLOR
         self.task_name_var.set(task.name.strip() or "Untitled Task")
-        self.elapsed_var.set(
-            format_duration_hm(self.service.task_elapsed(task, utc_now()))
-        )
+        self.elapsed_var.set(format_duration_hm(self.service.task_elapsed(task, utc_now())))
         self.toggle_btn.configure(text="Stop" if is_running else "Start")
         self.toggle_btn.state(["!disabled"])
         self.elapsed_bar_label.configure(bg=color)

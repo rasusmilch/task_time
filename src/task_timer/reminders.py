@@ -14,6 +14,4 @@ def should_show_month_end_banner(settings: UISettings, local_today: date) -> boo
         return False
     if not is_last_business_day(local_today):
         return False
-    return (
-        settings.month_end_reminder_last_dismissed_local_date != local_today.isoformat()
-    )
+    return settings.month_end_reminder_last_dismissed_local_date != local_today.isoformat()

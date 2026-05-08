@@ -26,8 +26,7 @@ def format_timeline_row(interval: Any, local_tz: Any) -> dict[str, str]:
         start_text = "--"
         stop_text = "--"
         duration_seconds = (
-            interval.duration_seconds
-            or (interval.stop_utc - interval.start_utc).total_seconds()
+            interval.duration_seconds or (interval.stop_utc - interval.start_utc).total_seconds()
         )
     else:
         display_date = start_local.date().isoformat()

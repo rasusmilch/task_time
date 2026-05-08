@@ -101,9 +101,7 @@ def test_parse_duration_seconds_invalid() -> None:
 
 
 def test_detect_local_timezone_prefers_tzlocal_zoneinfo(monkeypatch) -> None:
-    fake_tzlocal = SimpleNamespace(
-        get_localzone=lambda: SimpleNamespace(key="America/New_York")
-    )
+    fake_tzlocal = SimpleNamespace(get_localzone=lambda: SimpleNamespace(key="America/New_York"))
     monkeypatch.setitem(sys.modules, "tzlocal", fake_tzlocal)
     detected = detect_local_timezone()
     assert getattr(detected, "key", "") == "America/New_York"
@@ -112,12 +110,8 @@ def test_detect_local_timezone_prefers_tzlocal_zoneinfo(monkeypatch) -> None:
 def test_last_business_day_rules() -> None:
     assert last_business_day_of_month(date(2026, 4, 1)) == date(2026, 4, 30)  # Thu
     assert last_business_day_of_month(date(2026, 5, 1)) == date(2026, 5, 29)  # Sun->Fri
-    assert last_business_day_of_month(date(2026, 10, 1)) == date(
-        2026, 10, 30
-    )  # Sat->Fri
-    assert last_business_day_of_month(date(2028, 2, 1)) == date(
-        2028, 2, 29
-    )  # Leap year
+    assert last_business_day_of_month(date(2026, 10, 1)) == date(2026, 10, 30)  # Sat->Fri
+    assert last_business_day_of_month(date(2028, 2, 1)) == date(2028, 2, 29)  # Leap year
     assert last_business_day_of_month(date(2026, 2, 1)) == date(2026, 2, 27)  # non-leap
 
 

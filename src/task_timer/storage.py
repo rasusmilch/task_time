@@ -37,9 +37,7 @@ class EventStorage:
         if not self.active_path.exists():
             self.active_path.write_text("", encoding="utf-8")
         if not self.manifest_path.exists():
-            self._atomic_write_json(
-                self.manifest_path, {"archives": [], "next_sequence": 1}
-            )
+            self._atomic_write_json(self.manifest_path, {"archives": [], "next_sequence": 1})
 
     def append_event(self, event: dict[str, Any]) -> None:
         """Append one event line and durably flush it."""
@@ -83,9 +81,7 @@ class EventStorage:
             event["_read_sequence"] = read_sequence
             read_sequence += 1
             events.append(event)
-        events.sort(
-            key=lambda item: (item["timestamp_utc"], item.get("_read_sequence", 0))
-        )
+        events.sort(key=lambda item: (item["timestamp_utc"], item.get("_read_sequence", 0)))
         if self.corrupt_event_count:
             logger.warning(
                 "Chronicle skipped {} corrupt journal event lines during startup. A copy was saved for inspection.",
@@ -198,9 +194,7 @@ class EventStorage:
             if self.corrupt_events_path is None:
                 stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
                 self.corrupt_dir.mkdir(parents=True, exist_ok=True)
-                self.corrupt_events_path = (
-                    self.corrupt_dir / f"corrupt_events_{stamp}.jsonl"
-                )
+                self.corrupt_events_path = self.corrupt_dir / f"corrupt_events_{stamp}.jsonl"
             payload = {
                 "source_path": str(source_path),
                 "line_number": line_number,

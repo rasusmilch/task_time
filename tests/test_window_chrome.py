@@ -70,9 +70,7 @@ def test_disable_snap_maximize_non_windows_still_sets_resizable(monkeypatch) -> 
 def test_disable_snap_maximize_windows_graceful_when_win32_missing(monkeypatch) -> None:
     win = _FakeWindow()
     monkeypatch.setattr("task_timer.window_chrome.sys.platform", "win32")
-    monkeypatch.setattr(
-        "task_timer.window_chrome.ctypes.windll", SimpleNamespace(), raising=False
-    )
+    monkeypatch.setattr("task_timer.window_chrome.ctypes.windll", SimpleNamespace(), raising=False)
 
     disable_snap_maximize(win)
 

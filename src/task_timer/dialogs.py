@@ -79,9 +79,7 @@ class TimelineEntryDialog:
         row = 0
         if not force_fix_stop:
             mode_bar = ttk.Frame(self.window)
-            mode_bar.grid(
-                row=row, column=0, columnspan=2, padx=8, pady=(8, 4), sticky="w"
-            )
+            mode_bar.grid(row=row, column=0, columnspan=2, padx=8, pady=(8, 4), sticky="w")
             ttk.Radiobutton(
                 mode_bar,
                 text="Start / End",
@@ -104,9 +102,7 @@ class TimelineEntryDialog:
             )
             row += 1
 
-        ttk.Label(self.window, text="Date").grid(
-            row=row, column=0, padx=(8, 4), pady=2, sticky="w"
-        )
+        ttk.Label(self.window, text="Date").grid(row=row, column=0, padx=(8, 4), pady=2, sticky="w")
         if DateEntry is not None:
             self.date_widget = DateEntry(self.window, date_pattern="yyyy-mm-dd")
             self.date_widget.grid(row=row, column=1, padx=(0, 8), pady=2, sticky="ew")
@@ -120,36 +116,24 @@ class TimelineEntryDialog:
 
         self.start_row = row
         self.start_label = ttk.Label(self.window, text="Start")
-        self.start_label.grid(
-            row=self.start_row, column=0, padx=(8, 4), pady=2, sticky="w"
-        )
+        self.start_label.grid(row=self.start_row, column=0, padx=(8, 4), pady=2, sticky="w")
         self.start_entry = ttk.Entry(self.window, textvariable=self.start_var)
-        self.start_entry.grid(
-            row=self.start_row, column=1, padx=(0, 8), pady=2, sticky="ew"
-        )
+        self.start_entry.grid(row=self.start_row, column=1, padx=(0, 8), pady=2, sticky="ew")
         row += 1
 
         self.stop_row = row
         stop_label = "Corrected stop" if force_fix_stop else "Stop"
         self.stop_label = ttk.Label(self.window, text=stop_label)
-        self.stop_label.grid(
-            row=self.stop_row, column=0, padx=(8, 4), pady=2, sticky="w"
-        )
+        self.stop_label.grid(row=self.stop_row, column=0, padx=(8, 4), pady=2, sticky="w")
         self.stop_entry = ttk.Entry(self.window, textvariable=self.stop_var)
-        self.stop_entry.grid(
-            row=self.stop_row, column=1, padx=(0, 8), pady=2, sticky="ew"
-        )
+        self.stop_entry.grid(row=self.stop_row, column=1, padx=(0, 8), pady=2, sticky="ew")
         row += 1
 
         self.duration_row = row
         self.duration_label = ttk.Label(self.window, text="Duration")
-        self.duration_label.grid(
-            row=self.duration_row, column=0, padx=(8, 4), pady=2, sticky="w"
-        )
+        self.duration_label.grid(row=self.duration_row, column=0, padx=(8, 4), pady=2, sticky="w")
         self.duration_entry = ttk.Entry(self.window, textvariable=self.duration_var)
-        self.duration_entry.grid(
-            row=self.duration_row, column=1, padx=(0, 8), pady=2, sticky="ew"
-        )
+        self.duration_entry.grid(row=self.duration_row, column=1, padx=(0, 8), pady=2, sticky="ew")
         row += 1
 
         ttk.Label(self.window, text="Reason").grid(
@@ -167,9 +151,7 @@ class TimelineEntryDialog:
 
         actions = ttk.Frame(self.window)
         actions.grid(row=row, column=0, columnspan=2, padx=8, pady=(2, 8), sticky="e")
-        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(
-            side="right", padx=4
-        )
+        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(actions, text="OK", command=self._confirm).pack(side="right")
 
         self.window.grid_columnconfigure(1, weight=1)
@@ -255,9 +237,7 @@ class TimelineEntryDialog:
 class EditTimelineDialog:
     """Dialog for append-only timeline corrections on a task."""
 
-    def __init__(
-        self, parent: tk.Tk | Toplevel, service: "TaskTimerService", task_id: str
-    ) -> None:
+    def __init__(self, parent: tk.Tk | Toplevel, service: "TaskTimerService", task_id: str) -> None:
         self.changed = False
         self.service = service
         self.task_id = task_id
@@ -290,9 +270,7 @@ class EditTimelineDialog:
             "notes",
             "interval_id",
         )
-        self.tree = ttk.Treeview(
-            self.window, columns=columns, show="headings", height=12
-        )
+        self.tree = ttk.Treeview(self.window, columns=columns, show="headings", height=12)
         headings = {
             "date": "Date",
             "start": "Start time",
@@ -324,18 +302,16 @@ class EditTimelineDialog:
         ttk.Button(button_bar, text="Add duration", command=self._add_duration).pack(
             side="left", padx=2
         )
-        ttk.Button(
-            button_bar, text="Edit selected interval", command=self._edit_selected
-        ).pack(side="left", padx=2)
-        ttk.Button(
-            button_bar, text="Delete selected interval", command=self._delete_selected
-        ).pack(side="left", padx=2)
-        ttk.Button(
-            button_bar, text="Fix running/missed stop", command=self._fix_running
-        ).pack(side="left", padx=2)
-        ttk.Button(button_bar, text="Close", command=self.window.destroy).pack(
-            side="right", padx=2
+        ttk.Button(button_bar, text="Edit selected interval", command=self._edit_selected).pack(
+            side="left", padx=2
         )
+        ttk.Button(button_bar, text="Delete selected interval", command=self._delete_selected).pack(
+            side="left", padx=2
+        )
+        ttk.Button(button_bar, text="Fix running/missed stop", command=self._fix_running).pack(
+            side="left", padx=2
+        )
+        ttk.Button(button_bar, text="Close", command=self.window.destroy).pack(side="right", padx=2)
 
         self._refresh_table()
         self.window.transient(parent)
@@ -431,9 +407,7 @@ class EditTimelineDialog:
             interval = task.intervals[interval_id]
             start_local = interval.start_utc.astimezone(self.service.local_tz)
             stop_local = interval.stop_utc.astimezone(self.service.local_tz)
-            default_mode = (
-                "duration" if interval.entry_mode == "duration" else "start_end"
-            )
+            default_mode = "duration" if interval.entry_mode == "duration" else "start_end"
             entry = TimelineEntryDialog(
                 self.window,
                 self.service,
@@ -479,9 +453,7 @@ class EditTimelineDialog:
     def _delete_selected(self) -> None:
         try:
             interval_id = self._selected_interval_id()
-            reason = simpledialog.askstring(
-                "Delete interval", "Reason:", parent=self.window
-            )
+            reason = simpledialog.askstring("Delete interval", "Reason:", parent=self.window)
             if reason is None or not reason.strip():
                 raise ValueError("Reason is required")
             if not messagebox.askyesno(
@@ -501,9 +473,7 @@ class EditTimelineDialog:
             task = self.service.state.tasks[self.task_id]
             if not task.is_running or not task.currently_open_interval_start_utc:
                 raise ValueError("Task is not currently running")
-            local_start = task.currently_open_interval_start_utc.astimezone(
-                self.service.local_tz
-            )
+            local_start = task.currently_open_interval_start_utc.astimezone(self.service.local_tz)
             entry = TimelineEntryDialog(
                 self.window,
                 self.service,
@@ -515,9 +485,7 @@ class EditTimelineDialog:
             ).result
             if not entry or not entry.stop_local:
                 return
-            self.service.correct_running_interval_stop(
-                self.task_id, entry.stop_local, entry.reason
-            )
+            self.service.correct_running_interval_stop(self.task_id, entry.stop_local, entry.reason)
             self.changed = True
             self._refresh_table()
         except Exception as exc:  # noqa: BLE001
@@ -556,14 +524,10 @@ class AddTaskDialog:
         self.notes_entry.grid(row=1, column=1, padx=(0, 6), pady=2, sticky="ew")
 
         self.tag_selector = TagSelectionFrame(self.window, service, initial_tags=[])
-        self.tag_selector.grid(
-            row=2, column=0, columnspan=2, padx=6, pady=4, sticky="nsew"
-        )
+        self.tag_selector.grid(row=2, column=0, columnspan=2, padx=6, pady=4, sticky="nsew")
 
         self.template_selector = SubtaskTemplateSelectionFrame(self.window, service)
-        self.template_selector.grid(
-            row=3, column=0, columnspan=2, padx=6, pady=4, sticky="nsew"
-        )
+        self.template_selector.grid(row=3, column=0, columnspan=2, padx=6, pady=4, sticky="nsew")
 
         button_row = ttk.Frame(self.window)
         button_row.grid(row=4, column=0, columnspan=2, padx=6, pady=6, sticky="e")
@@ -589,9 +553,7 @@ class AddTaskDialog:
         self.notes = notes
         self.tags = self.tag_selector.get_selected_tags()
         selector = getattr(self, "template_selector", None)
-        self.selected_template_ids = (
-            selector.get_selected_template_ids() if selector else []
-        )
+        self.selected_template_ids = selector.get_selected_template_ids() if selector else []
         self.confirmed = True
         self.window.destroy()
 
@@ -604,22 +566,16 @@ class SubtaskTemplateSelectionFrame(ttk.LabelFrame):
         self.grid_columnconfigure(0, weight=1)
 
         list_container = ttk.Frame(self)
-        list_container.grid(
-            row=0, column=0, columnspan=2, sticky="nsew", padx=4, pady=(4, 2)
-        )
+        list_container.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=4, pady=(4, 2))
         list_container.grid_rowconfigure(0, weight=1)
         list_container.grid_columnconfigure(0, weight=1)
         list_canvas = tk.Canvas(list_container, highlightthickness=0, height=120)
-        list_scroll = ttk.Scrollbar(
-            list_container, orient="vertical", command=list_canvas.yview
-        )
+        list_scroll = ttk.Scrollbar(list_container, orient="vertical", command=list_canvas.yview)
         list_canvas.configure(yscrollcommand=list_scroll.set)
         list_canvas.grid(row=0, column=0, sticky="nsew")
         list_scroll.grid(row=0, column=1, sticky="ns")
         list_frame = ttk.Frame(list_canvas)
-        list_window_id = list_canvas.create_window(
-            (0, 0), window=list_frame, anchor="nw"
-        )
+        list_window_id = list_canvas.create_window((0, 0), window=list_frame, anchor="nw")
         list_frame.bind(
             "<Configure>",
             lambda _e: list_canvas.configure(scrollregion=list_canvas.bbox("all")),
@@ -645,14 +601,10 @@ class SubtaskTemplateSelectionFrame(ttk.LabelFrame):
             row=1, column=1, sticky="w", padx=4, pady=2
         )
         self.selected_label = ttk.Label(self, text="Selected: none")
-        self.selected_label.grid(
-            row=2, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 4)
-        )
+        self.selected_label.grid(row=2, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 4))
 
     def get_selected_template_ids(self) -> list[str]:
-        return [
-            template_id for template_id, var in self._template_vars.items() if var.get()
-        ]
+        return [template_id for template_id, var in self._template_vars.items() if var.get()]
 
     def select_all(self) -> None:
         for var in self._template_vars.values():
@@ -697,9 +649,7 @@ class BackupSettingsDialog:
         self.grandfather_days_var = StringVar(value=str(initial.grandfather_keep_days))
         self.risky_var = BooleanVar(value=initial.auto_backup_before_risky_operations)
         self.app_start_var = BooleanVar(value=initial.auto_backup_on_app_start)
-        self.min_interval_var = StringVar(
-            value=str(initial.auto_backup_min_interval_minutes)
-        )
+        self.min_interval_var = StringVar(value=str(initial.auto_backup_min_interval_minutes))
 
         ttk.Label(self.window, text="Son retention days").grid(
             row=0, column=0, padx=(6, 4), pady=2, sticky="w"
@@ -782,9 +732,7 @@ class BackupSettingsDialog:
 
         return BackupSettings(
             son_keep_days=_as_positive_int(son_keep_days, "Son retention days"),
-            father_keep_days=_as_positive_int(
-                father_keep_days, "Father retention days"
-            ),
+            father_keep_days=_as_positive_int(father_keep_days, "Father retention days"),
             grandfather_keep_days=_as_positive_int(
                 grandfather_keep_days, "Grandfather retention days"
             ),
@@ -808,9 +756,7 @@ class MonthEndReminderSettingsDialog:
         self.window.grab_set()
 
         self.enabled_var = BooleanVar(value=initial.month_end_reminder_enabled)
-        self.startup_var = BooleanVar(
-            value=initial.month_end_reminder_show_startup_notice
-        )
+        self.startup_var = BooleanVar(value=initial.month_end_reminder_show_startup_notice)
         self.close_var = BooleanVar(value=initial.month_end_reminder_show_close_notice)
 
         ttk.Checkbutton(
@@ -831,9 +777,7 @@ class MonthEndReminderSettingsDialog:
 
         actions = ttk.Frame(self.window)
         actions.pack(fill="x", padx=10, pady=(0, 10))
-        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(
-            side="right", padx=4
-        )
+        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(actions, text="Save", command=self._confirm).pack(side="right")
 
         parent.wait_window(self.window)
@@ -864,9 +808,7 @@ class MonthEndCloseReminderDialog:
         actions = ttk.Frame(self.window)
         actions.pack(fill="x", padx=10, pady=(0, 10))
         ttk.Button(actions, text="Export Time", command=self._export).pack(side="left")
-        ttk.Button(actions, text="Return to App", command=self._return).pack(
-            side="left", padx=6
-        )
+        ttk.Button(actions, text="Return to App", command=self._return).pack(side="left", padx=6)
         ttk.Button(actions, text="Close Anyway", command=self._close).pack(side="right")
 
         parent.wait_window(self.window)
@@ -934,9 +876,7 @@ class SelectedTaskExportDialog:
         ).pack(anchor="w")
         dates = ttk.Frame(frame)
         dates.pack(fill="x", pady=(2, 8))
-        ttk.Label(dates, text="Start date (YYYY-MM-DD)").grid(
-            row=0, column=0, sticky="w"
-        )
+        ttk.Label(dates, text="Start date (YYYY-MM-DD)").grid(row=0, column=0, sticky="w")
         ttk.Entry(dates, textvariable=self.start_date_var).grid(
             row=0, column=1, sticky="ew", padx=(6, 0)
         )
@@ -981,9 +921,7 @@ class SelectedTaskExportDialog:
         list_frame = ttk.Frame(canvas)
         list_frame.bind(
             "<Configure>",
-            lambda _e: canvas.configure(
-                scrollregion=canvas.bbox("all") or (0, 0, 0, 0)
-            ),
+            lambda _e: canvas.configure(scrollregion=canvas.bbox("all") or (0, 0, 0, 0)),
         )
         canvas.create_window((4, 4), window=list_frame, anchor="nw")
         canvas.configure(yscrollcommand=scroll.set)
@@ -1022,21 +960,19 @@ class SelectedTaskExportDialog:
                 self._child_parent[child.task_id] = task.task_id
                 row = ttk.Frame(list_frame)
                 row.pack(fill="x", anchor="w", padx=(18, 0))
-                ttk.Checkbutton(
-                    row, text=f"└─ {child.name} — {child.notes}", variable=cvar
-                ).pack(side="left", anchor="w")
+                ttk.Checkbutton(row, text=f"└─ {child.name} — {child.notes}", variable=cvar).pack(
+                    side="left", anchor="w"
+                )
                 label = ttk.Label(row, text="")
                 label.pack(side="left", padx=(6, 0))
                 self._included_labels[child.task_id] = label
 
         control_buttons = ttk.Frame(task_area)
         control_buttons.grid(row=0, column=1, sticky="ne", padx=(10, 0))
-        ttk.Button(
-            control_buttons, text="Select All", command=self.select_all_tasks
-        ).pack(fill="x")
-        ttk.Button(
-            control_buttons, text="Clear All", command=self.clear_all_tasks
-        ).pack(fill="x", pady=(4, 0))
+        ttk.Button(control_buttons, text="Select All", command=self.select_all_tasks).pack(fill="x")
+        ttk.Button(control_buttons, text="Clear All", command=self.clear_all_tasks).pack(
+            fill="x", pady=(4, 0)
+        )
 
         self._refresh_included_states()
 
@@ -1057,12 +993,8 @@ class SelectedTaskExportDialog:
 
         actions = ttk.Frame(frame)
         actions.pack(fill="x", pady=(10, 0))
-        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(
-            side="right", padx=4
-        )
-        ttk.Button(actions, text="Export Selected", command=self._confirm).pack(
-            side="right"
-        )
+        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
+        ttk.Button(actions, text="Export Selected", command=self._confirm).pack(side="right")
 
         parent.wait_window(self.window)
 
@@ -1113,9 +1045,7 @@ class SelectedTaskExportDialog:
         else:
             start_date = datetime.strptime(start_date_text.strip(), "%Y-%m-%d").date()
             end_date = datetime.strptime(end_date_text.strip(), "%Y-%m-%d").date()
-            start_local = combine_local_date_time(
-                start_date, time.min, service.local_tz
-            )
+            start_local = combine_local_date_time(start_date, time.min, service.local_tz)
             end_local = combine_local_date_time(end_date, time.max, service.local_tz)
             start = start_local.astimezone(timezone.utc)
             end = end_local.astimezone(timezone.utc)
@@ -1174,9 +1104,9 @@ class PostSelectedExportActionDialog:
         ttk.Button(actions, text="Leave tasks unchanged", command=self._leave).pack(
             fill="x", pady=2
         )
-        ttk.Button(
-            actions, text="Reset selected task timers to zero", command=self._reset
-        ).pack(fill="x", pady=2)
+        ttk.Button(actions, text="Reset selected task timers to zero", command=self._reset).pack(
+            fill="x", pady=2
+        )
         ttk.Button(
             actions,
             text="Delete/remove selected tasks from active list",
@@ -1200,29 +1130,21 @@ class PostSelectedExportActionDialog:
 
 def build_move_task_option_labels(tasks: list[Any]) -> tuple[list[str], list[str]]:
     """Build move-target labels with stable task-id mapping."""
-    ordered_tasks = sorted(
-        tasks, key=lambda task: (task.name.strip().casefold(), task.task_id)
-    )
+    ordered_tasks = sorted(tasks, key=lambda task: (task.name.strip().casefold(), task.task_id))
     duplicate_counts: dict[str, int] = {}
     labels: list[str] = []
     task_ids: list[str] = []
     for task in ordered_tasks:
         base_label = task.name.strip() or "Untitled Task"
         duplicate_counts[base_label] = duplicate_counts.get(base_label, 0) + 1
-        suffix = (
-            f" ({duplicate_counts[base_label]})"
-            if duplicate_counts[base_label] > 1
-            else ""
-        )
+        suffix = f" ({duplicate_counts[base_label]})" if duplicate_counts[base_label] > 1 else ""
         labels.append(f"{base_label}{suffix}")
         task_ids.append(task.task_id)
     return labels, task_ids
 
 
 class MoveTaskDialog:
-    def __init__(
-        self, parent: tk.Tk | Toplevel, service: "TaskTimerService", task_id: str
-    ) -> None:
+    def __init__(self, parent: tk.Tk | Toplevel, service: "TaskTimerService", task_id: str) -> None:
         self.service = service
         self.task_id = task_id
         self.confirmed = False
@@ -1239,13 +1161,9 @@ class MoveTaskDialog:
         self.window.grab_set()
 
         move_targets = service.movable_parent_targets(task_id)
-        self._labels, self._target_task_ids = build_move_task_option_labels(
-            move_targets
-        )
+        self._labels, self._target_task_ids = build_move_task_option_labels(move_targets)
 
-        mode_default = (
-            "top" if task.parent_task_id is not None or not self._labels else "parent"
-        )
+        mode_default = "top" if task.parent_task_id is not None or not self._labels else "parent"
         self.mode_var = StringVar(value=mode_default)
         self.parent_var = StringVar(value=self._labels[0] if self._labels else "")
 
@@ -1280,9 +1198,7 @@ class MoveTaskDialog:
             variable=self.mode_var,
             command=self._on_mode_change,
         )
-        self.parent_radio.grid(
-            row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(2, 0)
-        )
+        self.parent_radio.grid(row=row, column=0, columnspan=2, sticky="w", padx=10, pady=(2, 0))
         row += 1
 
         self.parent_combo = ttk.Combobox(
@@ -1292,16 +1208,12 @@ class MoveTaskDialog:
             state="readonly",
             width=48,
         )
-        self.parent_combo.grid(
-            row=row, column=0, columnspan=2, sticky="ew", padx=28, pady=(2, 8)
-        )
+        self.parent_combo.grid(row=row, column=0, columnspan=2, sticky="ew", padx=28, pady=(2, 8))
         row += 1
 
         bar = ttk.Frame(self.window)
         bar.grid(row=row, column=0, columnspan=2, sticky="e", padx=10, pady=(2, 10))
-        ttk.Button(bar, text="Cancel", command=self.window.destroy).pack(
-            side="right", padx=(6, 0)
-        )
+        ttk.Button(bar, text="Cancel", command=self.window.destroy).pack(side="right", padx=(6, 0))
         ttk.Button(bar, text="Move", command=self._move).pack(side="right")
 
         self.window.grid_columnconfigure(0, weight=1)
@@ -1314,9 +1226,7 @@ class MoveTaskDialog:
         if not has_targets and self.mode_var.get() == "parent":
             self.mode_var.set("top")
         self.parent_combo.configure(
-            state="readonly"
-            if self.mode_var.get() == "parent" and has_targets
-            else "disabled"
+            state="readonly" if self.mode_var.get() == "parent" and has_targets else "disabled"
         )
 
     def _move(self) -> None:
@@ -1332,18 +1242,14 @@ class MoveTaskDialog:
                 self._target_task_ids[selected_index] if selected_index >= 0 else None
             )
             if not self.new_parent_task_id:
-                messagebox.showerror(
-                    "Move Task", "Select a parent task.", parent=self.window
-                )
+                messagebox.showerror("Move Task", "Select a parent task.", parent=self.window)
                 return
         self.confirmed = True
         self.window.destroy()
 
 
 class EditTaskDialog:
-    def __init__(
-        self, parent: tk.Tk | Toplevel, service: "TaskTimerService", task_id: str
-    ) -> None:
+    def __init__(self, parent: tk.Tk | Toplevel, service: "TaskTimerService", task_id: str) -> None:
         self.changed = False
         self.added_subtask = False
         self.service = service
@@ -1361,23 +1267,16 @@ class EditTaskDialog:
         self.notes_var = StringVar(value=task.notes)
         row = 0
         ttk.Label(self.window, text="Task name").grid(row=row, column=0, sticky="w")
-        ttk.Entry(self.window, textvariable=self.name_var).grid(
-            row=row, column=1, sticky="ew"
-        )
+        ttk.Entry(self.window, textvariable=self.name_var).grid(row=row, column=1, sticky="ew")
         row += 1
         ttk.Label(self.window, text="Task note").grid(row=row, column=0, sticky="w")
-        ttk.Entry(self.window, textvariable=self.notes_var).grid(
-            row=row, column=1, sticky="ew"
-        )
+        ttk.Entry(self.window, textvariable=self.notes_var).grid(row=row, column=1, sticky="ew")
         row += 1
         if self.is_subtask:
             parent_names = [
-                ancestor.name
-                for ancestor in reversed(self.service.ancestor_tasks(task_id))
+                ancestor.name for ancestor in reversed(self.service.ancestor_tasks(task_id))
             ]
-            self.parent_label_var = StringVar(
-                value=f"Parent task: {' / '.join(parent_names)}"
-            )
+            self.parent_label_var = StringVar(value=f"Parent task: {' / '.join(parent_names)}")
             ttk.Label(self.window, textvariable=self.parent_label_var).grid(
                 row=row, column=0, columnspan=2, sticky="w", pady=(2, 4)
             )
@@ -1386,9 +1285,7 @@ class EditTaskDialog:
         tag_selector_row = ttk.Frame(self.window)
         tag_selector_row.grid(row=row, column=0, columnspan=2, sticky="ew", pady=4)
         tag_selector_row.grid_columnconfigure(0, weight=1)
-        self.tag_selector = TagSelectionFrame(
-            tag_selector_row, service, initial_tags=task.tags
-        )
+        self.tag_selector = TagSelectionFrame(tag_selector_row, service, initial_tags=task.tags)
         self.tag_selector.grid(row=0, column=0)
         row += 1
 
@@ -1417,9 +1314,9 @@ class EditTaskDialog:
             self.subtask_tree.configure(yscrollcommand=subtask_scroll.set)
             subtask_buttons = ttk.Frame(subtask_frame)
             subtask_buttons.grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 4))
-            ttk.Button(
-                subtask_buttons, text="Add Subtask", command=self._add_subtask
-            ).pack(side="left", padx=(0, 4))
+            ttk.Button(subtask_buttons, text="Add Subtask", command=self._add_subtask).pack(
+                side="left", padx=(0, 4)
+            )
             ttk.Button(
                 subtask_buttons,
                 text="Edit Selected Subtask",
@@ -1436,9 +1333,7 @@ class EditTaskDialog:
                     text="Apply Subtask Template...",
                     command=self._apply_subtask_templates,
                 ).pack(side="left", padx=4)
-            self.subtask_tree.bind(
-                "<Double-1>", lambda _event: self._edit_selected_subtask()
-            )
+            self.subtask_tree.bind("<Double-1>", lambda _event: self._edit_selected_subtask())
             self._refresh_subtasks()
             row += 1
         elif self.task_depth >= 2:
@@ -1449,12 +1344,8 @@ class EditTaskDialog:
 
         bar = ttk.Frame(self.window)
         bar.grid(row=row, column=0, columnspan=2, sticky="e")
-        ttk.Button(bar, text="Edit Timeline", command=self._edit_timeline).pack(
-            side="left"
-        )
-        ttk.Button(bar, text="Move Task...", command=self._move_task).pack(
-            side="left", padx=(6, 0)
-        )
+        ttk.Button(bar, text="Edit Timeline", command=self._edit_timeline).pack(side="left")
+        ttk.Button(bar, text="Move Task...", command=self._move_task).pack(side="left", padx=(6, 0))
         ttk.Button(bar, text="Cancel", command=self.window.destroy).pack(side="right")
         ttk.Button(bar, text="Save", command=self._save).pack(side="right")
         self.window.grid_columnconfigure(1, weight=1)
@@ -1469,9 +1360,7 @@ class EditTaskDialog:
     def _move_task(self) -> None:
         task = self.service.state.tasks.get(self.task_id)
         if not task or task.is_deleted:
-            messagebox.showerror(
-                "Move Task", "Task no longer exists.", parent=self.window
-            )
+            messagebox.showerror("Move Task", "Task no longer exists.", parent=self.window)
             self.changed = True
             self.window.destroy()
             return
@@ -1529,9 +1418,7 @@ class EditTaskDialog:
         if not dialog.confirmed:
             return
         try:
-            self.service.create_subtask(
-                self.task_id, dialog.name, dialog.notes, dialog.tags
-            )
+            self.service.create_subtask(self.task_id, dialog.name, dialog.notes, dialog.tags)
         except ValueError as exc:
             messagebox.showerror("Add Subtask", str(exc), parent=self.window)
             return
@@ -1554,9 +1441,7 @@ class EditTaskDialog:
         dialog = ApplySubtaskTemplatesDialog(self.window, self.service)
         if not dialog.confirmed or not dialog.selected_template_ids:
             return
-        result = self.service.apply_subtask_templates(
-            self.task_id, dialog.selected_template_ids
-        )
+        result = self.service.apply_subtask_templates(self.task_id, dialog.selected_template_ids)
         self.changed = True
         self.added_subtask = bool(result.created_subtask_ids)
         self._refresh_subtasks()
@@ -1610,9 +1495,7 @@ class ApplySubtaskTemplatesDialog:
         self.template_selector.grid(row=0, column=0, padx=8, pady=8, sticky="nsew")
         actions = ttk.Frame(self.window)
         actions.grid(row=1, column=0, sticky="e", padx=8, pady=(0, 8))
-        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(
-            side="right", padx=4
-        )
+        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(actions, text="Apply", command=self._confirm).pack(side="right")
         parent.wait_window(self.window)
 
@@ -1651,30 +1534,20 @@ class SubtaskTemplateItemDialog:
         self.notes_var = StringVar(value=getattr(item, "notes", ""))
         initial_tags = list(getattr(item, "tags", []))
 
-        ttk.Label(self.window, text="Name").grid(
-            row=0, column=0, padx=8, pady=(8, 2), sticky="w"
-        )
+        ttk.Label(self.window, text="Name").grid(row=0, column=0, padx=8, pady=(8, 2), sticky="w")
         ttk.Entry(self.window, textvariable=self.name_var).grid(
             row=0, column=1, padx=8, pady=(8, 2), sticky="ew"
         )
-        ttk.Label(self.window, text="Notes").grid(
-            row=1, column=0, padx=8, pady=2, sticky="w"
-        )
+        ttk.Label(self.window, text="Notes").grid(row=1, column=0, padx=8, pady=2, sticky="w")
         ttk.Entry(self.window, textvariable=self.notes_var).grid(
             row=1, column=1, padx=8, pady=2, sticky="ew"
         )
-        self.tag_selector = TagSelectionFrame(
-            self.window, service, initial_tags=initial_tags
-        )
-        self.tag_selector.grid(
-            row=2, column=0, columnspan=2, padx=8, pady=4, sticky="nsew"
-        )
+        self.tag_selector = TagSelectionFrame(self.window, service, initial_tags=initial_tags)
+        self.tag_selector.grid(row=2, column=0, columnspan=2, padx=8, pady=4, sticky="nsew")
 
         actions = ttk.Frame(self.window)
         actions.grid(row=3, column=0, columnspan=2, padx=8, pady=(2, 8), sticky="e")
-        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(
-            side="right", padx=4
-        )
+        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(actions, text="Save", command=self._save).pack(side="right")
         self.window.grid_columnconfigure(1, weight=1)
         self.window.grid_rowconfigure(2, weight=1)
@@ -1683,9 +1556,7 @@ class SubtaskTemplateItemDialog:
     def _save(self) -> None:
         name = self.name_var.get().strip()
         if not name:
-            messagebox.showerror(
-                "Subtask Item", "Item name is required.", parent=self.window
-            )
+            messagebox.showerror("Subtask Item", "Item name is required.", parent=self.window)
             return
         self.result = {
             "name": name,
@@ -1725,17 +1596,11 @@ class ManageSubtaskTemplatesDialog:
         self.template_list.configure(yscrollcommand=template_list_scroll.set)
         self.template_list.pack(side="left", fill="both", expand=True)
         template_list_scroll.pack(side="right", fill="y")
-        self.template_list.bind(
-            "<<ListboxSelect>>", lambda _e: self._on_select_template()
-        )
+        self.template_list.bind("<<ListboxSelect>>", lambda _e: self._on_select_template())
         b = ttk.Frame(left)
         b.pack(fill="x", pady=(6, 0))
-        ttk.Button(b, text="Add Template", command=self._add_template).pack(
-            fill="x", pady=2
-        )
-        ttk.Button(b, text="Delete Template", command=self._delete_template).pack(
-            fill="x", pady=2
-        )
+        ttk.Button(b, text="Add Template", command=self._add_template).pack(fill="x", pady=2)
+        ttk.Button(b, text="Delete Template", command=self._delete_template).pack(fill="x", pady=2)
         self.template_name_var = StringVar()
         self.template_notes_var = StringVar()
         ttk.Label(right, text="Template name").grid(row=0, column=0, sticky="w")
@@ -1783,12 +1648,8 @@ class ManageSubtaskTemplatesDialog:
             ttk.Button(btns, text=txt, command=cmd).pack(side="left", padx=2)
         actions = ttk.Frame(right)
         actions.grid(row=6, column=0, sticky="e", pady=4)
-        ttk.Button(actions, text="Save", command=self._save_current).pack(
-            side="right", padx=2
-        )
-        ttk.Button(actions, text="Close", command=self._close).pack(
-            side="right", padx=2
-        )
+        ttk.Button(actions, text="Save", command=self._save_current).pack(side="right", padx=2)
+        ttk.Button(actions, text="Close", command=self._close).pack(side="right", padx=2)
         right.grid_columnconfigure(0, weight=1)
         right.grid_rowconfigure(4, weight=1)
         self.template_name_var.trace_add("write", lambda *_: self._mark_dirty())
@@ -1933,9 +1794,7 @@ class ManageSubtaskTemplatesDialog:
         t = self._current()
         if not t:
             return
-        d = SubtaskTemplateItemDialog(
-            self.window, self.service, title="Add Subtask Item"
-        )
+        d = SubtaskTemplateItemDialog(self.window, self.service, title="Add Subtask Item")
         if not d.result:
             return
         from .subtask_templates import SubtaskTemplateItem
@@ -1970,9 +1829,7 @@ class ManageSubtaskTemplatesDialog:
                 parent=self.window,
             )
             return
-        d = SubtaskTemplateItemDialog(
-            self.window, self.service, title="Add Nested Subtask"
-        )
+        d = SubtaskTemplateItemDialog(self.window, self.service, title="Add Nested Subtask")
         if not d.result:
             return
         from .subtask_templates import SubtaskTemplateItem
@@ -2000,9 +1857,7 @@ class ManageSubtaskTemplatesDialog:
             messagebox.showerror("Edit Subtask Item", str(exc), parent=self.window)
             return
         it = next(i for i in t.items if i.item_id == iid)
-        d = SubtaskTemplateItemDialog(
-            self.window, self.service, title="Edit Subtask Item", item=it
-        )
+        d = SubtaskTemplateItemDialog(self.window, self.service, title="Edit Subtask Item", item=it)
         if not d.result:
             return
         it.name = d.result["name"]
@@ -2090,24 +1945,14 @@ class ManageTagsDialog:
 
         controls = ttk.Frame(self.window)
         controls.grid(row=1, column=0, columnspan=2, sticky="ew", padx=8, pady=(0, 8))
-        ttk.Button(controls, text="Add", command=self._add_tag).pack(
-            side="left", padx=2
-        )
-        ttk.Button(controls, text="Rename", command=self._rename_tag).pack(
-            side="left", padx=2
-        )
-        ttk.Button(controls, text="Archive", command=self._archive_tag).pack(
-            side="left", padx=2
-        )
+        ttk.Button(controls, text="Add", command=self._add_tag).pack(side="left", padx=2)
+        ttk.Button(controls, text="Rename", command=self._rename_tag).pack(side="left", padx=2)
+        ttk.Button(controls, text="Archive", command=self._archive_tag).pack(side="left", padx=2)
         ttk.Button(controls, text="Unarchive", command=self._unarchive_tag).pack(
             side="left", padx=2
         )
-        ttk.Button(controls, text="Delete", command=self._delete_tag).pack(
-            side="left", padx=2
-        )
-        ttk.Button(controls, text="Close", command=self.window.destroy).pack(
-            side="right", padx=2
-        )
+        ttk.Button(controls, text="Delete", command=self._delete_tag).pack(side="left", padx=2)
+        ttk.Button(controls, text="Close", command=self.window.destroy).pack(side="right", padx=2)
 
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_rowconfigure(0, weight=1)
@@ -2131,9 +1976,7 @@ class ManageTagsDialog:
         for meta in self.service.list_global_tags(include_archived=True):
             status = "archived" if meta.archived else "active"
             usage = usage_counts.get(meta.key, 0)
-            self.tree.insert(
-                "", "end", iid=meta.key, values=(meta.key, status, str(usage))
-            )
+            self.tree.insert("", "end", iid=meta.key, values=(meta.key, status, str(usage)))
         if previous_key and self.tree.exists(previous_key):
             self.tree.selection_set(previous_key)
             self.tree.focus(previous_key)

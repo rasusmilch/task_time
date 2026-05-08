@@ -46,12 +46,7 @@ def utc_now() -> datetime:
 
 def to_utc_z(value: datetime) -> str:
     """Serialize datetime to ISO-8601 UTC Z format."""
-    return (
-        value.astimezone(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def parse_utc_z(text: str) -> datetime:
@@ -83,9 +78,7 @@ def format_decimal_hours(total_seconds: float) -> str:
 
 def format_duration_hm_and_decimal(total_seconds: float) -> str:
     """Format seconds as HH:MM and decimal hours."""
-    return (
-        f"{format_duration_hm(total_seconds)} ({format_decimal_hours(total_seconds)} h)"
-    )
+    return f"{format_duration_hm(total_seconds)} ({format_decimal_hours(total_seconds)} h)"
 
 
 def _split_interval_by_local_boundaries(
@@ -204,9 +197,7 @@ def parse_duration_seconds(value: str) -> float:
     raise ValueError(f"Invalid duration format: {value}")
 
 
-def combine_local_date_time(
-    work_date: date, clock_time: time, local_tz: tzinfo_type
-) -> datetime:
+def combine_local_date_time(work_date: date, clock_time: time, local_tz: tzinfo_type) -> datetime:
     """Return aware local datetime from local date + local time."""
     return datetime.combine(work_date, clock_time, local_tz)
 
