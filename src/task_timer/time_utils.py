@@ -7,6 +7,8 @@ from datetime import date, datetime, timezone, time, timedelta
 from datetime import tzinfo as tzinfo_type
 from zoneinfo import ZoneInfo
 
+from loguru import logger
+
 
 def detect_local_timezone() -> tzinfo_type:
     """Return best-effort local timezone, preferring a real IANA zone."""
@@ -18,12 +20,12 @@ def detect_local_timezone() -> tzinfo_type:
         if zone_key:
             try:
                 return ZoneInfo(zone_key)
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Failed to resolve IANA timezone {}: {}", zone_key, exc)
         if local_zone is not None:
             return local_zone
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("tzlocal detection failed; falling back to system timezone: {}", exc)
 
     now_local = datetime.now().astimezone()
     fallback_name = getattr(now_local.tzinfo, "key", None) or getattr(
@@ -32,8 +34,8 @@ def detect_local_timezone() -> tzinfo_type:
     if fallback_name:
         try:
             return ZoneInfo(fallback_name)
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Failed to resolve fallback timezone {}: {}", fallback_name, exc)
     if now_local.tzinfo is not None:
         return now_local.tzinfo
     return ZoneInfo("UTC")
