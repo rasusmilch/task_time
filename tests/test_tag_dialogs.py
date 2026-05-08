@@ -229,3 +229,86 @@ def test_tag_selection_frame_grid_columns_are_distinct() -> None:
     assert 'center.grid(row=1, column=2' in source
     assert 'self.selected_list.grid(row=1, column=3' in source
     assert 'sel_scroll.grid(row=1, column=4' in source
+
+
+def test_subtask_template_item_dialog_builds_fields_without_name_error(monkeypatch) -> None:
+    class FakeWindow:
+        def title(self, _text):
+            return None
+
+        def transient(self, _parent):
+            return None
+
+        def grab_set(self):
+            return None
+
+        def resizable(self, _x, _y):
+            return None
+
+        def grid_columnconfigure(self, _col, **_kwargs):
+            return None
+
+        def grid_rowconfigure(self, _row, **_kwargs):
+            return None
+
+        def destroy(self):
+            return None
+
+    class FakeParent:
+        def wait_window(self, _window):
+            return None
+
+    class FakeVar:
+        def __init__(self, value="") -> None:
+            self._value = value
+
+        def get(self):
+            return self._value
+
+        def set(self, value):
+            self._value = value
+
+    class FakeWidget:
+        def __init__(self, *args, **kwargs) -> None:
+            self.args = args
+            self.kwargs = kwargs
+
+        def grid(self, *args, **kwargs):
+            return None
+
+        def pack(self, *args, **kwargs):
+            return None
+
+    class FakeTagSelectionFrame(FakeWidget):
+        def __init__(self, _parent, _service, initial_tags=None):
+            super().__init__()
+            self._selected = sorted(initial_tags or [])
+
+        def get_selected_tags(self):
+            return self._selected
+
+    monkeypatch.setattr(dialogs_module, "Toplevel", lambda _parent: FakeWindow())
+    monkeypatch.setattr(dialogs_module, "StringVar", FakeVar)
+    monkeypatch.setattr(dialogs_module, "TagSelectionFrame", FakeTagSelectionFrame)
+    monkeypatch.setattr(
+        dialogs_module,
+        "ttk",
+        SimpleNamespace(Label=FakeWidget, Entry=FakeWidget, Frame=FakeWidget, Button=FakeWidget),
+    )
+
+    for title in ("Add Subtask Item", "Edit Subtask Item", "Add Nested Subtask"):
+        dialog = dialogs_module.SubtaskTemplateItemDialog(FakeParent(), object(), title=title)
+        assert hasattr(dialog, "name_var")
+        assert hasattr(dialog, "notes_var")
+        assert hasattr(dialog, "tag_selector")
+
+
+def test_subtask_template_item_dialog_source_has_expected_controls() -> None:
+    import inspect
+
+    source = inspect.getsource(dialogs_module.SubtaskTemplateItemDialog.__init__)
+    assert 'text="Name"' in source
+    assert 'text="Notes"' in source
+    assert 'TagSelectionFrame(self.window, service, initial_tags=initial_tags)' in source
+    assert 'text="Cancel"' in source
+    assert 'text="Save"' in source

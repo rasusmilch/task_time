@@ -1081,7 +1081,7 @@ class EditTaskDialog:
         ttk.Button(bar, text="Cancel", command=self.window.destroy).pack(side="right")
         ttk.Button(bar, text="Save", command=self._save).pack(side="right")
         self.window.grid_columnconfigure(1, weight=1)
-        self.window.grid_rowconfigure(max(0, row - 1), weight=1)
+        self.window.grid_rowconfigure(2, weight=1)
         parent.wait_window(self.window)
 
     def _edit_timeline(self) -> None:
@@ -1247,7 +1247,7 @@ class SubtaskTemplateItemDialog:
         ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
         ttk.Button(actions, text="Save", command=self._save).pack(side="right")
         self.window.grid_columnconfigure(1, weight=1)
-        self.window.grid_rowconfigure(max(0, row - 1), weight=1)
+        self.window.grid_rowconfigure(2, weight=1)
         parent.wait_window(self.window)
 
     def _save(self) -> None:
