@@ -126,3 +126,7 @@ Subtask Templates are reusable groups of subtask definitions. Applying a templat
 For internal Windows executable packaging with PyInstaller (default `onedir` output), see [`BUILDING.md`](BUILDING.md).
 
 Distribution guidance: ship the entire `dist\Chronicle\` folder and run `Chronicle.exe` from that folder. User data remains external in `~/.task_timer_data`.
+
+## Logging
+
+Chronicle writes application logs to `<data_dir>/logs/chronicle.log` with rotation, retention, and zip compression. Logs may include task names/notes, so treat logs as private and share the log file when reporting issues.
