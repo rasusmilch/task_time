@@ -11,8 +11,10 @@ from task_timer.time_utils import (
     interval_seconds_in_local_week,
     is_last_business_day,
     last_business_day_of_month,
+    parse_utc_z,
     parse_duration_seconds,
     parse_flexible_time,
+    to_utc_z,
 )
 
 
@@ -118,3 +120,18 @@ def test_last_business_day_rules() -> None:
 def test_is_last_business_day() -> None:
     assert is_last_business_day(date(2026, 3, 31)) is True  # Tuesday month-end
     assert is_last_business_day(date(2026, 3, 30)) is False
+
+
+def test_to_utc_z_preserves_microseconds() -> None:
+    value = datetime(2026, 1, 1, 12, 34, 56, 123456, tzinfo=timezone.utc)
+    assert to_utc_z(value) == "2026-01-01T12:34:56.123456Z"
+
+
+def test_parse_utc_z_accepts_second_precision() -> None:
+    parsed = parse_utc_z("2026-01-01T12:34:56Z")
+    assert parsed == datetime(2026, 1, 1, 12, 34, 56, tzinfo=timezone.utc)
+
+
+def test_parse_utc_z_accepts_microsecond_precision() -> None:
+    parsed = parse_utc_z("2026-01-01T12:34:56.123456Z")
+    assert parsed == datetime(2026, 1, 1, 12, 34, 56, 123456, tzinfo=timezone.utc)

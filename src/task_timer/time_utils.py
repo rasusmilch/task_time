@@ -48,7 +48,7 @@ def utc_now() -> datetime:
 
 def to_utc_z(value: datetime) -> str:
     """Serialize datetime to ISO-8601 UTC Z format."""
-    return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def parse_utc_z(text: str) -> datetime:

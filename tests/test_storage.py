@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 
@@ -27,6 +27,29 @@ def test_auto_stop_prior_task_on_start(tmp_path: Path) -> None:
     service.start_task(b)
     assert service.state.running_task_id == b
     assert not service.state.tasks[a].is_running
+
+
+def test_rapid_start_stop_microseconds_produce_positive_duration(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from task_timer import service as service_module
+
+    timestamps = iter(
+        [
+            datetime(2026, 1, 1, 0, 0, 0, 50000, tzinfo=timezone.utc),
+            datetime(2026, 1, 1, 0, 0, 0, 100000, tzinfo=timezone.utc),
+            datetime(2026, 1, 1, 0, 0, 0, 200000, tzinfo=timezone.utc),
+            datetime(2026, 1, 1, 0, 0, 0, 300000, tzinfo=timezone.utc),
+        ]
+    )
+    monkeypatch.setattr(service_module, "utc_now", lambda: next(timestamps))
+
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("A", "")
+    service.start_task(task_id)
+    service.stop_task(task_id)
+
+    assert service.task_elapsed(service.state.tasks[task_id]) > 0
 
 
 def test_reset_excludes_older_intervals(tmp_path: Path) -> None:
