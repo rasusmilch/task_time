@@ -182,3 +182,113 @@ def test_retention_cleanup_deletes_old_father_and_grandfather_backups_by_age(
     manager.apply_retention()
     assert not old_father.exists()
     assert not old_grandfather.exists()
+
+
+def _seed_data_dir(tmp_path) -> None:
+    (tmp_path / "active_events.jsonl").write_text("{}\n", encoding="utf-8")
+    (tmp_path / "log_manifest.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "state_snapshot.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "subtask_templates.json").write_text("[]", encoding="utf-8")
+
+
+def test_new_backup_uses_chronicle_prefix(tmp_path) -> None:
+    _seed_data_dir(tmp_path)
+    backup = BackupManager(tmp_path).create_backup("son", "test")
+    assert backup.name.startswith("chronicle_son_")
+
+
+def test_old_task_timer_backup_still_listed_and_restored(tmp_path) -> None:
+    _seed_data_dir(tmp_path)
+    manager = BackupManager(tmp_path)
+    backup = manager.create_backup("son", "seed")
+    legacy = backup.with_name(backup.name.replace("chronicle_", "task_timer_"))
+    backup.rename(legacy)
+
+    listed = manager.list_backups()
+    assert any(item.path == legacy for item in listed)
+
+    (tmp_path / "active_events.jsonl").write_text(
+        '{"changed":true}\n', encoding="utf-8"
+    )
+    manager.restore_backup(legacy)
+    assert (tmp_path / "active_events.jsonl").read_text(encoding="utf-8") == "{}\n"
+
+
+def test_old_manifest_without_app_name_is_accepted(tmp_path) -> None:
+    _seed_data_dir(tmp_path)
+    manager = BackupManager(tmp_path)
+    backup = manager.create_backup("son", "seed")
+    with zipfile.ZipFile(backup, "a") as zf:
+        manifest = json.loads(zf.read("backup_manifest.json").decode("utf-8"))
+        manifest.pop("app_name", None)
+        zf.writestr("backup_manifest.json", json.dumps(manifest))
+    manager.restore_backup(backup)
+
+
+def test_restore_rejects_unsafe_parent_path(tmp_path, caplog) -> None:
+    manager = BackupManager(tmp_path)
+    bad = tmp_path / "bad_parent.zip"
+    with zipfile.ZipFile(bad, "w") as zf:
+        zf.writestr("backup_manifest.json", json.dumps({"app_name": "Chronicle"}))
+        zf.writestr("../evil.txt", "x")
+        zf.writestr("active_events.jsonl", "{}\n")
+    try:
+        manager.restore_backup(bad)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("Expected unsafe zip to be rejected")
+
+
+def test_restore_rejects_unsafe_absolute_path(tmp_path) -> None:
+    manager = BackupManager(tmp_path)
+    bad = tmp_path / "bad_absolute.zip"
+    with zipfile.ZipFile(bad, "w") as zf:
+        zf.writestr("backup_manifest.json", json.dumps({"app_name": "Chronicle"}))
+        zf.writestr("/tmp/evil.txt", "x")
+        zf.writestr("active_events.jsonl", "{}\n")
+    try:
+        manager.restore_backup(bad)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("Expected unsafe zip to be rejected")
+
+
+def test_restore_rejects_drive_letter_path(tmp_path) -> None:
+    manager = BackupManager(tmp_path)
+    bad = tmp_path / "bad_drive.zip"
+    with zipfile.ZipFile(bad, "w") as zf:
+        zf.writestr("backup_manifest.json", json.dumps({"app_name": "Chronicle"}))
+        zf.writestr("C:/evil.txt", "x")
+        zf.writestr("active_events.jsonl", "{}\n")
+    try:
+        manager.restore_backup(bad)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("Expected unsafe zip to be rejected")
+
+
+def test_restore_failure_does_not_wipe_current_data(tmp_path) -> None:
+    _seed_data_dir(tmp_path)
+    manager = BackupManager(tmp_path)
+    manager.create_backup("son", "seed")
+    (tmp_path / "active_events.jsonl").write_text(
+        '{"local":"keep"}\n', encoding="utf-8"
+    )
+
+    broken = tmp_path / "broken.zip"
+    with zipfile.ZipFile(broken, "w") as zf:
+        zf.writestr("backup_manifest.json", json.dumps({"app_name": "Chronicle"}))
+        zf.writestr("state_snapshot.json", "{}")
+
+    try:
+        manager.restore_backup(broken)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("Expected restore to fail")
+    assert (tmp_path / "active_events.jsonl").read_text(
+        encoding="utf-8"
+    ) == '{"local":"keep"}\n'
