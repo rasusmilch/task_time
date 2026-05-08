@@ -89,3 +89,26 @@ def test_move_task_value_error_logs_warning(monkeypatch) -> None:
     logger.remove(sink)
     assert errors == ["bad move"]
     assert any("User-facing validation error" in item for item in warnings)
+
+
+def test_toggle_task_value_error_logs_warning(monkeypatch) -> None:
+    app = TaskTimerApp.__new__(TaskTimerApp)
+    app.service = SimpleNamespace(
+        state=SimpleNamespace(tasks={"t1": SimpleNamespace(is_running=False)})
+    )
+    app.service.start_task = lambda *_a, **_k: (_ for _ in ()).throw(
+        ValueError("missing")
+    )
+    app._after_state_change = lambda: None
+    errors: list[str] = []
+    monkeypatch.setattr(
+        "task_timer.app.messagebox.showerror", lambda _t, m: errors.append(m)
+    )
+    warnings: list[str] = []
+    sink = logger.add(lambda m: warnings.append(str(m)), level="WARNING")
+
+    TaskTimerApp._toggle_task(app, "t1")
+
+    logger.remove(sink)
+    assert errors == ["missing"]
+    assert any("User-facing validation error" in item for item in warnings)
