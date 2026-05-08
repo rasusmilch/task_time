@@ -670,6 +670,7 @@ class TaskTimerService:
     def add_manual_interval(
         self, task_id: str, start_local: datetime, stop_local: datetime, reason: str
     ) -> None:
+        self._assert_task_writable(task_id)
         if stop_local <= start_local:
             raise ValueError("Stop must be after start")
         if not reason.strip():
@@ -698,8 +699,8 @@ class TaskTimerService:
             raise ValueError("Stop must be after start")
         if not reason.strip():
             raise ValueError("Reason is required")
-        task = self.state.tasks.get(task_id)
-        if not task or interval_id not in task.intervals:
+        task = self._assert_task_writable(task_id)
+        if interval_id not in task.intervals:
             raise ValueError("Interval not found")
         self._create_risky_operation_backup("before manual interval edit")
         self._validate_interval_against_checkpoint(start_local, stop_local)
@@ -732,8 +733,8 @@ class TaskTimerService:
             raise ValueError("Duration must be greater than zero")
         if not reason.strip():
             raise ValueError("Reason is required")
-        task = self.state.tasks.get(task_id)
-        if not task or interval_id not in task.intervals:
+        task = self._assert_task_writable(task_id)
+        if interval_id not in task.intervals:
             raise ValueError("Interval not found")
         self._create_risky_operation_backup("before manual duration edit")
         self._validate_duration_against_checkpoint(work_date_local)
@@ -762,8 +763,8 @@ class TaskTimerService:
     def delete_interval(self, task_id: str, interval_id: str, reason: str) -> None:
         if not reason.strip():
             raise ValueError("Reason is required")
-        task = self.state.tasks.get(task_id)
-        if not task or interval_id not in task.intervals:
+        task = self._assert_task_writable(task_id)
+        if interval_id not in task.intervals:
             raise ValueError("Interval not found")
         interval = task.intervals[interval_id]
         checkpoint_utc = self.find_last_export_checkpoint_utc()
@@ -787,6 +788,9 @@ class TaskTimerService:
     def add_manual_duration(
         self, task_id: str, work_date_local: date, duration_seconds: float, reason: str
     ) -> None:
+        self._assert_task_writable(task_id)
+        if duration_seconds <= 0:
+            raise ValueError("Duration must be greater than zero")
         if not reason.strip():
             raise ValueError("Reason is required")
         self._validate_duration_against_checkpoint(work_date_local)
@@ -813,8 +817,8 @@ class TaskTimerService:
     ) -> None:
         if not reason.strip():
             raise ValueError("Reason is required")
-        task = self.state.tasks.get(task_id)
-        if not task or not task.is_running or not task.currently_open_interval_start_utc:
+        task = self._assert_task_writable(task_id)
+        if not task.is_running or not task.currently_open_interval_start_utc:
             raise ValueError("Task is not currently running")
         corrected_stop_utc = corrected_stop_local.astimezone(timezone.utc)
         if corrected_stop_utc <= task.currently_open_interval_start_utc:

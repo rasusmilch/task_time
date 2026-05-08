@@ -227,3 +227,44 @@ def test_fix_running_uses_single_dialog_result(monkeypatch) -> None:
     )
     EditTimelineDialog._fix_running(dlg)
     assert captured and captured[0][0] == "task"
+
+
+def test_add_duration_validation_error_logs_warning_and_shows_message(monkeypatch) -> None:
+    warnings: list[str] = []
+    shown: list[tuple[str, str]] = []
+
+    dlg = EditTimelineDialog.__new__(EditTimelineDialog)
+    dlg.window = SimpleNamespace()
+    dlg.task_id = "missing"
+    dlg.changed = False
+    dlg._refresh_table = lambda: None
+    dlg.service = SimpleNamespace(
+        add_manual_interval=lambda *_args: None,
+        add_manual_duration=lambda *_args: (_ for _ in ()).throw(ValueError("Task not found")),
+    )
+
+    monkeypatch.setattr(
+        "task_timer.dialogs.logger.warning", lambda msg, exc: warnings.append(msg.format(exc))
+    )
+    monkeypatch.setattr(
+        "task_timer.dialogs.messagebox.showerror",
+        lambda title, body, **_kwargs: shown.append((title, body)),
+    )
+    monkeypatch.setattr(
+        "task_timer.dialogs.TimelineEntryDialog",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            result=TimelineEntryResult(
+                mode="duration",
+                work_date=datetime(2026, 1, 1).date(),
+                start_local=None,
+                stop_local=None,
+                duration_seconds=0.0,
+                reason="bad",
+            )
+        ),
+    )
+
+    EditTimelineDialog._add_duration(dlg)
+
+    assert warnings == ["User-facing validation error: Task not found"]
+    assert shown == [("Invalid duration", "Task not found")]

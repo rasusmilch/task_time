@@ -7,6 +7,7 @@ from datetime import date, datetime, time, timezone
 from tkinter import BooleanVar, StringVar, Toplevel, messagebox, simpledialog, ttk
 import tkinter as tk
 
+from loguru import logger
 from typing import TYPE_CHECKING, Any
 
 from .models import NOTES_MAX_LENGTH
@@ -363,8 +364,11 @@ class EditTimelineDialog:
                 raise ValueError("Invalid timeline entry")
             self.changed = True
             self._refresh_table()
-        except Exception as exc:  # noqa: BLE001
+        except ValueError as exc:
+            logger.warning("User-facing validation error: {}", exc)
             messagebox.showerror("Invalid interval", str(exc))
+        except Exception:
+            messagebox.showerror("Invalid interval", "Unexpected failure while adding interval.")
 
     def _add_duration(self) -> None:
         try:
@@ -388,8 +392,11 @@ class EditTimelineDialog:
                 raise ValueError("Invalid timeline entry")
             self.changed = True
             self._refresh_table()
-        except Exception as exc:  # noqa: BLE001
+        except ValueError as exc:
+            logger.warning("User-facing validation error: {}", exc)
             messagebox.showerror("Invalid duration", str(exc))
+        except Exception:
+            messagebox.showerror("Invalid duration", "Unexpected failure while adding duration.")
 
     def _selected_interval_id(self) -> str:
         selected = self.tree.selection()
@@ -447,8 +454,11 @@ class EditTimelineDialog:
                 raise ValueError("Invalid timeline entry")
             self.changed = True
             self._refresh_table()
-        except Exception as exc:  # noqa: BLE001
+        except ValueError as exc:
+            logger.warning("User-facing validation error: {}", exc)
             messagebox.showerror("Invalid edit", str(exc))
+        except Exception:
+            messagebox.showerror("Invalid edit", "Unexpected failure while editing interval.")
 
     def _delete_selected(self) -> None:
         try:
@@ -465,8 +475,11 @@ class EditTimelineDialog:
             self.service.delete_interval(self.task_id, interval_id, reason.strip())
             self.changed = True
             self._refresh_table()
-        except Exception as exc:  # noqa: BLE001
+        except ValueError as exc:
+            logger.warning("User-facing validation error: {}", exc)
             messagebox.showerror("Delete failed", str(exc))
+        except Exception:
+            messagebox.showerror("Delete failed", "Unexpected failure while deleting interval.")
 
     def _fix_running(self) -> None:
         try:
@@ -488,8 +501,13 @@ class EditTimelineDialog:
             self.service.correct_running_interval_stop(self.task_id, entry.stop_local, entry.reason)
             self.changed = True
             self._refresh_table()
-        except Exception as exc:  # noqa: BLE001
+        except ValueError as exc:
+            logger.warning("User-facing validation error: {}", exc)
             messagebox.showerror("Fix missed stop failed", str(exc))
+        except Exception:
+            messagebox.showerror(
+                "Fix missed stop failed", "Unexpected failure while correcting running interval."
+            )
 
 
 class AddTaskDialog:

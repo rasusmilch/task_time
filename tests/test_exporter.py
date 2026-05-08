@@ -632,7 +632,7 @@ def test_selected_export_audit_history_is_scoped_to_selected_tasks(
         "sel",
     )
     service.add_manual_interval(
-        other,
+        other_active,
         datetime(2026, 1, 10, 12, tzinfo=timezone.utc).astimezone(),
         datetime(2026, 1, 10, 13, tzinfo=timezone.utc).astimezone(),
         "other",
@@ -662,6 +662,7 @@ def test_selected_export_audit_history_is_scoped_to_selected_tasks(
     assert 'Reset task "ZZ-9999-001"' not in text
     assert 'Deleted task "ZZ-9999-001"' not in text
     assert 'Added manual interval to "ZZ-9999-001"' not in text
+    assert 'Added manual interval to "ZZ-8888-001"' not in text
     assert 'Updated task "ZZ-9999-001"' not in text
     assert "Reason: unrelated" not in text
 

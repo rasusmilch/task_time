@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from task_timer.service import TaskTimerService
@@ -59,3 +61,42 @@ def test_service_missing_and_deleted_validation(tmp_path):
 
     with pytest.raises(ValueError):
         service.apply_subtask_templates(t1, ["missing-template"])
+
+
+def test_manual_add_rejects_missing_deleted_and_invalid_duration(tmp_path):
+    service = TaskTimerService(EventStorage(tmp_path))
+    task_id = service.create_task("A", "")
+    deleted = service.create_task("B", "")
+    service.delete_task_only(deleted)
+
+    baseline_events = len(service.events)
+
+    with pytest.raises(ValueError, match="Task not found"):
+        service.add_manual_interval(
+            "missing",
+            service.parse_local_datetime_inputs(date(2026, 1, 1), "9:00 AM"),
+            service.parse_local_datetime_inputs(date(2026, 1, 1), "10:00 AM"),
+            "reason",
+        )
+
+    with pytest.raises(ValueError, match="Task is deleted"):
+        service.add_manual_interval(
+            deleted,
+            service.parse_local_datetime_inputs(date(2026, 1, 1), "9:00 AM"),
+            service.parse_local_datetime_inputs(date(2026, 1, 1), "10:00 AM"),
+            "reason",
+        )
+
+    with pytest.raises(ValueError, match="Task not found"):
+        service.add_manual_duration("missing", date(2026, 1, 1), 3600, "reason")
+
+    with pytest.raises(ValueError, match="Task is deleted"):
+        service.add_manual_duration(deleted, date(2026, 1, 1), 3600, "reason")
+
+    with pytest.raises(ValueError, match="Duration must be greater than zero"):
+        service.add_manual_duration(task_id, date(2026, 1, 1), 0, "reason")
+
+    with pytest.raises(ValueError, match="Duration must be greater than zero"):
+        service.add_manual_duration(task_id, date(2026, 1, 1), -3600, "reason")
+
+    assert len(service.events) == baseline_events
