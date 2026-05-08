@@ -14,6 +14,8 @@ from tkinter import StringVar, Tk, Toplevel, filedialog, messagebox, simpledialo
 from typing import Any
 from uuid import uuid4
 
+from loguru import logger
+
 from .backups import BackupManager
 from .dialogs import (
     AddTaskDialog,
@@ -1847,7 +1849,11 @@ class TaskTimerApp:
     def __init__(self, root: Tk, service: TaskTimerService) -> None:
         self.root = root
         self.service = service
+        self.log_path = getattr(service, "log_path", service.storage.data_dir / "logs" / "chronicle.log")
+        self._showing_error_dialog = False
         self.root.title("Chronicle")
+        self.root.report_callback_exception = self._handle_tk_exception
+        logger.info("UI startup")
         self.root.resizable(True, True)
         self.root.minsize(800, 500)
         install_zoom_guard(self.root)
@@ -1873,6 +1879,18 @@ class TaskTimerApp:
         self.refresh_live_values()
         self.root.after_idle(self._open_mini_mode_if_persistent_enabled)
         self._tick()
+
+    def _handle_tk_exception(self, exc_type, exc_value, exc_traceback) -> None:
+        logger.opt(exception=(exc_type, exc_value, exc_traceback)).error("Unhandled Tkinter callback exception")
+        if self._showing_error_dialog:
+            return
+        self._showing_error_dialog = True
+        try:
+            messagebox.showerror("Chronicle Error", "Chronicle encountered an unexpected error.\nDetails were written to the log file.\n\nLog file:\n" + str(self.log_path))
+        except Exception:
+            logger.exception("Failed to show Tkinter error dialog")
+        finally:
+            self._showing_error_dialog = False
 
     def _build_ui(self) -> None:
         self._init_row_fonts()
@@ -1953,6 +1971,7 @@ class TaskTimerApp:
         selected_template_ids = getattr(dialog, "selected_template_ids", [])
         if selected_template_ids:
             result = self.service.apply_subtask_templates(task_id, selected_template_ids)
+            logger.info("Subtask template apply: created_count={} skipped_count={}", result.created_count, result.skipped_count)
             if result.created_subtask_ids:
                 self.expanded_parents.add(task_id)
                 summary = f"Created {len(result.created_subtask_ids)} subtasks."
@@ -1968,10 +1987,12 @@ class TaskTimerApp:
         if not target:
             return False
         self.service.export_report(Path(target), reset_after=False)
+        logger.info("Normal export created at {}", target)
         self.mark_month_end_reminder_handled_today()
         should_reset = messagebox.askyesno("Reset after export", "Export done. Reset all non-deleted task timers?")
         if should_reset:
             self.service.reset_all_non_deleted_tasks()
+        logger.info("Reset all timers")
         self.refresh_structure()
         self.refresh_live_values()
         self._refresh_month_end_reminder_ui()
@@ -2008,6 +2029,7 @@ class TaskTimerApp:
         target = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text", "*.txt")])
         if not target:
             return False
+        logger.info("Selected export started")
         self.service.export_selected_tasks_report(
             Path(target),
             dialog.result.task_ids,
@@ -2017,6 +2039,9 @@ class TaskTimerApp:
             reason=dialog.result.reason,
         )
 
+        logger.info("Selected export created at {}", target)
+        if dialog.result.mark_submitted:
+            logger.info("Selected export marked as submitted")
         post_action = PostSelectedExportActionDialog(self.root).choice
         self._handle_selected_export_post_action(post_action, dialog.result.task_ids)
 
@@ -2034,12 +2059,14 @@ class TaskTimerApp:
         if action == "leave":
             return
         if action == "reset":
+            logger.info("Post selected export action: reset")
             self._create_risky_operation_backup("before resetting selected exported tasks")
             self.service.reset_selected_tasks(selected_task_ids)
             self.refresh_structure()
             self.refresh_live_values()
             return
         if action == "delete":
+            logger.info("Post selected export action: delete")
             self._create_risky_operation_backup("before deleting selected exported tasks")
             affected_ids = set(self.service.delete_selected_tasks(selected_task_ids) or [])
             self._clear_selection_if_deleted(affected_ids)
@@ -2408,6 +2435,7 @@ class TaskTimerApp:
             return
         self._create_risky_operation_backup("before reset all task timers")
         self.service.reset_all_non_deleted_tasks()
+        logger.info("Reset all timers")
         self._after_state_change()
         messagebox.showinfo("Reset All Task Timers", "All active task timers were reset.")
 
@@ -2467,7 +2495,9 @@ class TaskTimerApp:
 
         try:
             self.service.move_task(task_id, dialog.new_parent_task_id, getattr(dialog, "reason", "") or None)
+            logger.info("Task move/re-parent completed for task_id={}", task_id)
         except ValueError as exc:
+            logger.warning("User-facing validation error: {}", exc)
             messagebox.showerror("Move Task", str(exc))
             return
 
@@ -2496,6 +2526,7 @@ class TaskTimerApp:
 
     def _create_backup_now(self) -> None:
         backup_path = self.service.create_backup_now("manual backup from UI")
+        logger.info("Backup created at {}", backup_path)
         messagebox.showinfo("Backup Created", f"Backup created:\n{backup_path}")
 
     def _open_backup_settings(self) -> None:
@@ -2535,7 +2566,9 @@ class TaskTimerApp:
             "A safety backup of current data will be created first.\nContinue restore?",
         ):
             return
+        logger.info("Restore started from {}", selected.path)
         self.service.restore_from_backup(selected.path)
+        logger.info("Restore completed from {}", selected.path)
         self._after_state_change()
         messagebox.showinfo("Restore", f"Restore complete from:\n{selected.path.name}")
 
@@ -2566,6 +2599,7 @@ class TaskTimerApp:
             self.service.void_last_export_checkpoint(reason)
             messagebox.showinfo("Checkpoint reopened", "The active export checkpoint was reopened.")
         except Exception as exc:  # noqa: BLE001
+            logger.exception("Unexpected failure reopening export checkpoint")
             messagebox.showerror("Reopen failed", str(exc))
 
     @staticmethod
