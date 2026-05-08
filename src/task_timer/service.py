@@ -12,16 +12,46 @@ from uuid import uuid4
 from loguru import logger
 
 from .backups import BackupManager
-from .exporter import build_export_text, build_selected_tasks_export_text, write_export_file
-from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TagMeta, TaskState, TimeSubmission, event_dict
+from .exporter import (
+    build_export_text,
+    build_selected_tasks_export_text,
+    write_export_file,
+)
+from .export_service import ExportService, ExportWindow
+from .models import (
+    AppState,
+    IntervalRecord,
+    NOTES_MAX_LENGTH,
+    TagMeta,
+    TaskState,
+    TimeSubmission,
+    event_dict,
+)
 from .storage import EventStorage
 from .settings import BackupSettings
-from .subtask_templates import SubtaskTemplate, SubtaskTemplateItem, SubtaskTemplateStore
+from .subtask_templates import (
+    SubtaskTemplate,
+    SubtaskTemplateItem,
+    SubtaskTemplateStore,
+)
 from .tags import normalize_tag, normalize_tag_list
 from .timeline import format_timeline_row
-from .time_utils import (detect_local_timezone, format_duration_hm, combine_local_date_time, interval_seconds_in_local_day, interval_seconds_in_local_week, parse_duration_seconds, parse_flexible_time, parse_utc_z, sunday_week_start, to_utc_z, utc_now)
+from .time_utils import (
+    detect_local_timezone,
+    format_duration_hm,
+    combine_local_date_time,
+    interval_seconds_in_local_day,
+    interval_seconds_in_local_week,
+    parse_duration_seconds,
+    parse_flexible_time,
+    parse_utc_z,
+    sunday_week_start,
+    to_utc_z,
+    utc_now,
+)
 
 MAX_TASK_TREE_DEPTH = 2
+
 
 @dataclass(slots=True)
 class ApplySubtaskTemplatesResult:
@@ -53,6 +83,7 @@ class TaskTimerService:
         self._rebuild_state(self.events)
         self._save_snapshot()
         self._maybe_create_app_start_backup()
+        self.export_service = ExportService(self)
 
     def list_subtask_templates(self) -> list[SubtaskTemplate]:
         return list(self.subtask_templates)
@@ -877,13 +908,16 @@ class TaskTimerService:
             else None
         )
         window_events = self.events_in_window(window_start_utc, now_utc)
-        per_task = self.compute_global_export_task_totals(window_start_utc, now_utc)
-        self._apply_submission_flags(per_task, window_start_utc, now_utc)
+        global_data = self.export_service.compute_global_export_task_totals(
+            ExportWindow(window_start_utc, now_utc)
+        )
+        per_task = [self._export_row_to_dict(row) for row in global_data.rows]
         weekly_ranges = self.collect_week_ranges(per_task)
         history_lines = self.build_human_audit_lines(
             window_events, window_end_utc=now_utc
         )
-        tag_daily, tag_weekly = self.compute_tag_totals(window_start_utc, now_utc)
+        tag_daily = self._tag_rows_to_dict(global_data.tag_daily)
+        tag_weekly = self._tag_rows_to_dict(global_data.tag_weekly)
         content = build_export_text(
             generated_at_utc=now_utc,
             local_timezone=self.local_tz_name,
@@ -1110,30 +1144,10 @@ class TaskTimerService:
     def compute_windowed_task_totals(
         self, window_start_utc: datetime | None, window_end_utc: datetime
     ) -> list[dict[str, Any]]:
-        rows: list[dict[str, Any]] = []
-        for task in self.state.tasks.values():
-            if task.is_deleted:
-                continue
-            clipped_intervals = self._windowed_intervals(
-                task, window_start_utc, window_end_utc
-            )
-            day_totals = self._compute_daily_totals(clipped_intervals)
-            week_totals = self._compute_weekly_totals(clipped_intervals)
-            overall_seconds = sum(
-                (stop - start).total_seconds() for start, stop in clipped_intervals
-            )
-            rows.append(
-                {
-                    "task_id": task.task_id,
-                    "name": task.name,
-                    "notes": task.notes,
-                    "daily_totals": sorted(day_totals.items()),
-                    "weekly_totals": sorted(week_totals.items()),
-                    "overall_seconds": overall_seconds,
-                }
-            )
-        rows.sort(key=lambda row: (row["name"].strip().casefold(), row["task_id"]))
-        return rows
+        rows = self.export_service.compute_windowed_task_totals(
+            ExportWindow(window_start_utc, window_end_utc)
+        )
+        return [self._export_row_to_dict(row) for row in rows]
 
     def compute_global_export_task_totals(
         self, window_start_utc: datetime | None, window_end_utc: datetime
@@ -1307,10 +1321,10 @@ class TaskTimerService:
         window_start_utc: datetime | None,
         window_end_utc: datetime,
     ) -> list[dict[str, Any]]:
-        wanted = self._expand_selected_task_ids(task_ids)
-        rows = self.compute_windowed_task_totals(window_start_utc, window_end_utc)
-        filtered = [row for row in rows if row["task_id"] in wanted]
-        return self._aggregate_parent_rows(filtered)
+        data = self.export_service.compute_selected_task_totals(
+            task_ids, ExportWindow(window_start_utc, window_end_utc)
+        )
+        return [self._export_row_to_dict(row) for row in data.rows]
 
     def collect_week_ranges(self, per_task_rows: list[dict[str, Any]]) -> list[str]:
         week_ranges: set[str] = set()
@@ -1873,54 +1887,41 @@ class TaskTimerService:
     ) -> tuple[
         dict[str, dict[str, dict[str, Any]]], dict[str, dict[str, dict[str, Any]]]
     ]:
-        daily: dict[str, dict[str, dict[str, Any]]] = {}
-        weekly: dict[str, dict[str, dict[str, Any]]] = {}
-        for task in self.state.tasks.values():
-            intervals = self._windowed_intervals(task, window_start_utc, window_end_utc)
-            if not intervals:
-                continue
-            effective_tags = set(task.tags)
-            for ancestor in self.ancestor_tasks(task.task_id):
-                effective_tags |= ancestor.tags
-            tags = tuple(sorted(effective_tags)) or ("untagged",)
-            task_name = task.name.strip() or task.task_id
-            for start_utc, stop_utc in intervals:
-                start_local = start_utc.astimezone(self.local_tz)
-                stop_local = stop_utc.astimezone(self.local_tz)
-                day_cursor = start_local.date()
-                last_day = stop_local.date()
-                while day_cursor <= last_day:
-                    day_ref = datetime.combine(day_cursor, time(hour=12), self.local_tz)
-                    seconds = interval_seconds_in_local_day(
-                        start_utc, stop_utc, self.local_tz, day_ref
-                    )
-                    if seconds > 0:
-                        day_key = day_cursor.isoformat()
-                        day_bucket = daily.setdefault(day_key, {})
-                        for tag in tags:
-                            entry = day_bucket.setdefault(
-                                tag, {"seconds": 0.0, "tasks": set()}
-                            )
-                            entry["seconds"] += seconds
-                            entry["tasks"].add(task_name)
-                    day_cursor += timedelta(days=1)
+        daily, weekly = self.export_service.compute_tag_totals(
+            ExportWindow(window_start_utc, window_end_utc)
+        )
+        return self._tag_rows_to_dict(daily), self._tag_rows_to_dict(weekly)
 
-                week_cursor = sunday_week_start(start_local)
-                while week_cursor <= stop_local:
-                    week_label = self._week_range_label(week_cursor.date())
-                    seconds = interval_seconds_in_local_week(
-                        start_utc, stop_utc, self.local_tz, week_cursor
-                    )
-                    if seconds > 0:
-                        week_bucket = weekly.setdefault(week_label, {})
-                        for tag in tags:
-                            entry = week_bucket.setdefault(
-                                tag, {"seconds": 0.0, "tasks": set()}
-                            )
-                            entry["seconds"] += seconds
-                            entry["tasks"].add(task_name)
-                    week_cursor += timedelta(days=7)
-        return daily, weekly
+    def _export_row_to_dict(self, row: Any) -> dict[str, Any]:
+        return {
+            "task_id": row.task_id,
+            "name": row.name,
+            "notes": row.notes,
+            "daily_totals": row.daily_totals,
+            "weekly_totals": row.weekly_totals,
+            "overall_seconds": row.overall_seconds,
+            "status_notes": list(getattr(row, "status_notes", [])),
+            "breakdown": list(getattr(row, "breakdown", [])),
+            "weekly_submission_flags": {
+                k: {
+                    "marker": v.marker,
+                    "week_seconds": v.week_seconds,
+                    "already_submitted_seconds": v.already_submitted_seconds,
+                    "submitted_seconds_in_window": v.submitted_seconds_in_window,
+                    "is_partially_submitted": v.is_partially_submitted,
+                }
+                for k, v in getattr(row, "weekly_submission_flags", {}).items()
+            },
+        }
+
+    def _tag_rows_to_dict(self, tags: Any) -> dict[str, dict[str, dict[str, Any]]]:
+        return {
+            bucket: {
+                tag: {"seconds": row.seconds, "tasks": row.tasks}
+                for tag, row in entries.items()
+            }
+            for bucket, entries in tags.items()
+        }
 
     def snapshot_dict(self) -> dict[str, Any]:
         tasks_payload: dict[str, Any] = {}
@@ -2335,5 +2336,3 @@ class TaskTimerService:
     @staticmethod
     def _clean_notes(notes: str) -> str:
         return notes.replace("\n", " ").strip()[:NOTES_MAX_LENGTH]
-
-
