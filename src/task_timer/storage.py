@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
+from task_timer.time_utils import parse_utc_z
 
 
 class EventStorage:
@@ -49,7 +50,18 @@ class EventStorage:
         self.rotate_if_needed()
 
     def load_manifest(self) -> dict[str, Any]:
-        return json.loads(self.manifest_path.read_text(encoding="utf-8"))
+        default_manifest = {"archives": [], "next_sequence": 1}
+        try:
+            manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError, TypeError, ValueError) as exc:
+            self._preserve_corrupt_manifest(reason=str(exc))
+            self.save_manifest(default_manifest)
+            return default_manifest
+        if not self._is_valid_manifest_shape(manifest):
+            self._preserve_corrupt_manifest(reason="Invalid manifest shape")
+            self.save_manifest(default_manifest)
+            return default_manifest
+        return self._sanitize_manifest_archives(manifest)
 
     def load_snapshot(self) -> dict[str, Any] | None:
         if not self.snapshot_path.exists():
@@ -154,19 +166,19 @@ class EventStorage:
                         error_message=str(exc),
                     )
                     continue
-                if not self._is_valid_event_shape(event):
-                    message = "Missing required event keys"
+                invalid_reason = self._invalid_event_reason(event)
+                if invalid_reason:
                     logger.warning(
                         "Skipped corrupt event line in {}:{}: {}",
                         path,
                         line_number,
-                        message,
+                        invalid_reason,
                     )
                     self._quarantine_corrupt_line(
                         source_path=path,
                         line_number=line_number,
                         raw_text=raw_line.rstrip("\n"),
-                        error_message=message,
+                        error_message=invalid_reason,
                     )
                     continue
                 output.append(event)
@@ -175,8 +187,12 @@ class EventStorage:
 
     @staticmethod
     def _is_valid_event_shape(event: Any) -> bool:
+        return EventStorage._invalid_event_reason(event) is None
+
+    @staticmethod
+    def _invalid_event_reason(event: Any) -> str | None:
         if not isinstance(event, dict):
-            return False
+            return "Event is not a JSON object"
         required_keys = {
             "schema_version",
             "event_id",
@@ -185,7 +201,68 @@ class EventStorage:
             "event_type",
             "payload",
         }
-        return required_keys.issubset(event)
+        if not required_keys.issubset(event):
+            return "Missing required event keys"
+        if not isinstance(event["event_id"], str) or not event["event_id"].strip():
+            return "event_id must be a non-empty string"
+        if not isinstance(event["timestamp_utc"], str):
+            return "timestamp_utc must be a string"
+        try:
+            parse_utc_z(event["timestamp_utc"])
+        except ValueError:
+            return "timestamp_utc is not parseable as UTC Z time"
+        if not isinstance(event["task_id"], str) or not event["task_id"].strip():
+            return "task_id must be a non-empty string"
+        if not isinstance(event["event_type"], str) or not event["event_type"].strip():
+            return "event_type must be a non-empty string"
+        if not isinstance(event["payload"], dict):
+            return "payload must be a JSON object"
+        return None
+
+    def _preserve_corrupt_manifest(self, *, reason: str) -> None:
+        try:
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            backup_path = self.manifest_path.with_name(f"{self.manifest_path.name}.corrupt.{stamp}")
+            self.manifest_path.replace(backup_path)
+            logger.warning(
+                "Recovered from corrupt manifest at {} (reason: {}). Saved copy to {}",
+                self.manifest_path,
+                reason,
+                backup_path,
+            )
+        except OSError as exc:
+            logger.warning("Failed to preserve corrupt manifest at {}: {}", self.manifest_path, exc)
+
+    @staticmethod
+    def _is_valid_manifest_shape(manifest: Any) -> bool:
+        return (
+            isinstance(manifest, dict)
+            and isinstance(manifest.get("archives"), list)
+            and isinstance(manifest.get("next_sequence"), int)
+            and manifest["next_sequence"] > 0
+        )
+
+    def _sanitize_manifest_archives(self, manifest: dict[str, Any]) -> dict[str, Any]:
+        archives = manifest.get("archives", [])
+        valid_archives: list[dict[str, Any]] = []
+        for entry in archives:
+            if not isinstance(entry, dict):
+                logger.warning("Skipping malformed manifest archive entry (not object): {}", entry)
+                continue
+            path_value = entry.get("path")
+            if not isinstance(path_value, str) or not self._is_safe_archive_path(path_value):
+                logger.warning("Skipping malformed manifest archive entry path: {}", path_value)
+                continue
+            valid_archives.append(entry)
+        manifest["archives"] = valid_archives
+        return manifest
+
+    @staticmethod
+    def _is_safe_archive_path(path_value: str) -> bool:
+        archive_path = Path(path_value)
+        if archive_path.is_absolute():
+            return False
+        return ".." not in archive_path.parts
 
     def _quarantine_corrupt_line(
         self, *, source_path: Path, line_number: int, raw_text: str, error_message: str
