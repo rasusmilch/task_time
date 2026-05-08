@@ -743,6 +743,31 @@ def test_global_export_includes_selected_submitted_task_even_if_deleted_or_reset
     assert "* = already entered through selected-task export" in text
 
 
+def test_global_export_submission_status_notes_ignore_unrelated_new_task(
+    tmp_path: Path, monkeypatch
+) -> None:
+    service = TaskTimerService(EventStorage(tmp_path))
+    submitted = service.create_task("Submitted", "")
+    start = parse_utc_z("2026-05-01T00:00:00Z")
+    end = parse_utc_z("2026-05-02T00:00:00Z")
+    service.add_manual_interval(
+        submitted,
+        parse_utc_z("2026-05-01T10:00:00Z").astimezone(),
+        parse_utc_z("2026-05-01T11:00:00Z").astimezone(),
+        "s",
+    )
+    monkeypatch.setattr("task_timer.service.utc_now", lambda: end)
+    service.create_time_submission_marker([submitted], start, end, "submit", None)
+    unrelated = service.create_task("Unrelated", "")
+    service.delete_task(unrelated)
+
+    rows = service.compute_global_export_task_totals(None, end)
+    submitted_row = next(row for row in rows if row["task_id"] == submitted)
+    assert "already entered through selected export" in submitted_row["status_notes"]
+    assert "task later deleted" not in submitted_row["status_notes"]
+    assert "task later reset" not in submitted_row["status_notes"]
+
+
 def test_time_submission_marker_stores_daily_weekly_and_overall_totals(
     tmp_path: Path, monkeypatch
 ) -> None:
