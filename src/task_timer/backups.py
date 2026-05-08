@@ -51,6 +51,7 @@ class BackupManager:
         zip_path = target_dir / f"chronicle_{backup_type}_{timestamp}.zip"
         included = self._build_backup_archive(zip_path)
         manifest = {
+            # Keep second precision in the manifest for readability; backup filename already carries microseconds.
             "backup_created_utc": now.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
             "backup_type": backup_type,
             "app_version": self.app_version,
