@@ -270,21 +270,43 @@ class TaskTimerService:
             skipped_count=len(skipped_duplicates),
         )
 
+    def _validate_tags_assignable(self, tags: list[str]) -> list[str]:
+        normalized = normalize_tag_list(tags)
+        for key in normalized:
+            meta = self.state.global_tags.get(key)
+            if meta and meta.archived:
+                raise ValueError(
+                    f"Tag '{key}' is archived. Unarchive it from Manage Tags."
+                )
+        return normalized
+
+    def _assert_task_writable(self, task_id: str) -> TaskState:
+        task = self.state.tasks.get(task_id)
+        if not task:
+            raise ValueError("Task not found")
+        if task.is_deleted:
+            raise ValueError("Task is deleted")
+        return task
+
     def create_task(self, name: str, notes: str, tags: list[str] | None = None) -> str:
+        if not name.strip():
+            raise ValueError("Task name is required")
+        clean_notes = self._clean_notes(notes)
+        tag_list = self._validate_tags_assignable(tags or [])
+        for key in tag_list:
+            if key not in self.state.global_tags:
+                self._append("__app__", "tag_created", {"key": key})
         task_id = str(uuid4())
-        tag_list = normalize_tag_list(tags or [])
         self._append(
             task_id,
             "task_created",
             {
                 "name": name.strip(),
-                "notes": self._clean_notes(notes),
+                "notes": clean_notes,
                 "tags": tag_list,
                 "parent_task_id": None,
             },
         )
-        for key in tag_list:
-            self.ensure_tag_exists(key)
         return task_id
 
     def create_subtask(
@@ -295,20 +317,22 @@ class TaskTimerService:
             raise ValueError(message)
         if not name.strip():
             raise ValueError("Task name is required")
+        clean_notes = self._clean_notes(notes)
+        tag_list = self._validate_tags_assignable(tags or [])
+        for key in tag_list:
+            if key not in self.state.global_tags:
+                self._append("__app__", "tag_created", {"key": key})
         task_id = str(uuid4())
-        tag_list = normalize_tag_list(tags or [])
         self._append(
             task_id,
             "task_created",
             {
                 "name": name.strip(),
-                "notes": self._clean_notes(notes),
+                "notes": clean_notes,
                 "tags": tag_list,
                 "parent_task_id": parent_task_id,
             },
         )
-        for key in tag_list:
-            self.ensure_tag_exists(key)
         return task_id
 
     def task_depth(self, task_id: str) -> int:
@@ -551,6 +575,7 @@ class TaskTimerService:
         self._append(task_id, "task_moved", payload)
 
     def update_task(self, task_id: str, name: str, notes: str) -> None:
+        self._assert_task_writable(task_id)
         self._append(
             task_id,
             "task_updated",
@@ -558,9 +583,11 @@ class TaskTimerService:
         )
 
     def update_task_tags(self, task_id: str, tags: list[str]) -> None:
-        norm = normalize_tag_list(tags)
+        self._assert_task_writable(task_id)
+        norm = self._validate_tags_assignable(tags)
         for key in norm:
-            self.ensure_tag_exists(key)
+            if key not in self.state.global_tags:
+                self._append("__app__", "tag_created", {"key": key})
         self._append(task_id, "task_tags_updated", {"tags": norm})
 
     def ensure_tag_exists(self, key: str) -> None:
@@ -655,21 +682,18 @@ class TaskTimerService:
         self.delete_task_tree(task_id)
 
     def delete_task_only(self, task_id: str) -> None:
-        task = self.state.tasks.get(task_id)
-        if not task or task.is_deleted:
-            return
+        self._assert_task_writable(task_id)
         self.stop_task(task_id)
         self._append(task_id, "task_deleted", {})
 
     def delete_task_tree(self, task_id: str) -> None:
-        task = self.state.tasks.get(task_id)
-        if not task or task.is_deleted:
-            return
+        self._assert_task_writable(task_id)
         for child in self.child_tasks(task_id):
             self.delete_task_tree(child.task_id)
         self.delete_task_only(task_id)
 
     def start_task(self, task_id: str) -> None:
+        self._assert_task_writable(task_id)
         if self.state.running_task_id == task_id:
             return
         if self.state.running_task_id:
@@ -677,8 +701,8 @@ class TaskTimerService:
         self._append(task_id, "started", {})
 
     def stop_task(self, task_id: str) -> None:
-        task = self.state.tasks.get(task_id)
-        if not task or not task.is_running:
+        task = self._assert_task_writable(task_id)
+        if not task.is_running:
             return
         self._append(task_id, "stopped", {"interval_id": str(uuid4())})
 
@@ -686,13 +710,12 @@ class TaskTimerService:
         self.reset_task_only(task_id)
 
     def reset_task_only(self, task_id: str) -> None:
+        self._assert_task_writable(task_id)
         self.stop_task(task_id)
         self._append(task_id, "reset", {})
 
     def reset_task_tree(self, task_id: str) -> None:
-        task = self.state.tasks.get(task_id)
-        if not task:
-            return
+        self._assert_task_writable(task_id)
         for child in self.child_tasks(task_id):
             self.reset_task_tree(child.task_id)
         self.reset_task_only(task_id)
@@ -889,7 +912,7 @@ class TaskTimerService:
         include_before_reset: bool = False,
         now_utc: datetime | None = None,
     ) -> list[dict[str, str]]:
-        task = self.state.tasks[task_id]
+        task = self._assert_task_writable(task_id)
         check_now = now_utc or utc_now()
         intervals = (
             self._all_intervals(task, check_now)
@@ -980,6 +1003,9 @@ class TaskTimerService:
             )
         ]
         for task_id in affected:
+            task = self.state.tasks.get(task_id)
+            if not task or task.is_deleted:
+                continue
             self.delete_task(task_id)
         return affected
 
@@ -2543,12 +2569,22 @@ class TaskTimerApp:
         dialog = AddTaskDialog(self.root, self.service)
         if not dialog.confirmed:
             return
-        task_id = self.service.create_task(dialog.name, dialog.notes, dialog.tags)
+        try:
+            task_id = self.service.create_task(dialog.name, dialog.notes, dialog.tags)
+        except ValueError as exc:
+            logger.warning("User-facing validation error: {}", exc)
+            messagebox.showerror("Create Task", str(exc))
+            return
         selected_template_ids = getattr(dialog, "selected_template_ids", [])
         if selected_template_ids:
-            result = self.service.apply_subtask_templates(
-                task_id, selected_template_ids
-            )
+            try:
+                result = self.service.apply_subtask_templates(
+                    task_id, selected_template_ids
+                )
+            except ValueError as exc:
+                logger.warning("User-facing validation error: {}", exc)
+                messagebox.showerror("Create Task", str(exc))
+                return
             logger.info(
                 "Subtask template apply: created_count={} skipped_count={}",
                 result.created_count,
@@ -3091,10 +3127,21 @@ class TaskTimerApp:
         task = self.service.state.tasks.get(task_id)
         if task is None:
             return
-        if task.is_running:
-            self.service.stop_task(task_id)
-        else:
-            self.service.start_task(task_id)
+        try:
+            if task.is_running:
+                self.service.stop_task(task_id)
+            else:
+                self.service.start_task(task_id)
+        except ValueError as exc:
+            logger.warning("User-facing validation error: {}", exc)
+            messagebox.showerror("Task", str(exc))
+            return
+        except Exception:
+            logger.exception("Unexpected failure while toggling task state")
+            messagebox.showerror(
+                "Task", "Unexpected failure while toggling task state."
+            )
+            return
         self._after_state_change()
 
     def _reset_task(self, task_id: str) -> None:
@@ -3118,16 +3165,31 @@ class TaskTimerApp:
                 self._create_risky_operation_backup(
                     "before resetting selected task and descendants"
                 )
-                self.service.reset_task_tree(task_id)
+                try:
+                    self.service.reset_task_tree(task_id)
+                except ValueError as exc:
+                    logger.warning("User-facing validation error: {}", exc)
+                    messagebox.showerror("Reset Task", str(exc))
+                    return
             else:
                 self._create_risky_operation_backup("before resetting selected task")
-                self.service.reset_task_only(task_id)
+                try:
+                    self.service.reset_task_only(task_id)
+                except ValueError as exc:
+                    logger.warning("User-facing validation error: {}", exc)
+                    messagebox.showerror("Reset Task", str(exc))
+                    return
             self._after_state_change()
             return
 
         if messagebox.askyesno("Confirm reset", "Reset this task timer to zero?"):
             self._create_risky_operation_backup("before resetting selected task")
-            self.service.reset_task_only(task_id)
+            try:
+                self.service.reset_task_only(task_id)
+            except ValueError as exc:
+                logger.warning("User-facing validation error: {}", exc)
+                messagebox.showerror("Reset Task", str(exc))
+                return
             self._after_state_change()
 
     def _reset_all_task_timers(self) -> None:
@@ -3173,14 +3235,24 @@ class TaskTimerApp:
             self._create_risky_operation_backup(
                 "before deleting selected task and descendants"
             )
-            self.service.delete_task_tree(task_id)
+            try:
+                self.service.delete_task_tree(task_id)
+            except ValueError as exc:
+                logger.warning("User-facing validation error: {}", exc)
+                messagebox.showerror("Delete Task", str(exc))
+                return
             self.expanded_parents.discard(task_id)
             self._after_state_change()
             return
 
         if messagebox.askyesno("Confirm delete", "Delete this task from active view?"):
             self._create_risky_operation_backup("before deleting selected task")
-            self.service.delete_task_only(task_id)
+            try:
+                self.service.delete_task_only(task_id)
+            except ValueError as exc:
+                logger.warning("User-facing validation error: {}", exc)
+                messagebox.showerror("Delete Task", str(exc))
+                return
             self._after_state_change()
 
     def _edit_task(self, task_id: str) -> None:
