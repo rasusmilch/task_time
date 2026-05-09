@@ -363,6 +363,29 @@ def test_template_item_parent_round_trip(tmp_path) -> None:
     assert loaded.items[1].parent_item_id == "p"
 
 
+def test_timestamp_string_item_ids_remain_load_save_compatible(tmp_path) -> None:
+    store = SubtaskTemplateStore(tmp_path)
+    template = SubtaskTemplate(
+        template_id="t-ts",
+        name="Legacy IDs",
+        notes="",
+        items=[
+            SubtaskTemplateItem(item_id="1735689600.123456", name="Parent", sort_order=0),
+            SubtaskTemplateItem(
+                item_id="1735689601.654321",
+                name="Child",
+                parent_item_id="1735689600.123456",
+                sort_order=1,
+            ),
+        ],
+    )
+    store.save([template])
+
+    loaded = store.load()[0]
+    assert [item.item_id for item in loaded.items] == ["1735689600.123456", "1735689601.654321"]
+    assert loaded.items[1].parent_item_id == "1735689600.123456"
+
+
 def test_template_rejects_depth_greater_than_2(tmp_path) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     tid = service.create_subtask_template("T", "")
