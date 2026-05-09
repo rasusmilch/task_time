@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from uuid import UUID
 
 import task_timer.app as app_module
 from task_timer.app import (
@@ -2331,6 +2332,69 @@ def test_manage_subtask_templates_dialog_opens(monkeypatch) -> None:
     monkeypatch.setattr(app_module, "ManageSubtaskTemplatesDialog", _Dialog)
     TaskTimerApp._manage_subtask_templates(app)
     assert called["opened"] == 1
+
+
+def test_manage_subtask_templates_add_item_uses_uuid() -> None:
+    import task_timer.dialogs as dialogs_module
+
+    dialog = dialogs_module.ManageSubtaskTemplatesDialog.__new__(
+        dialogs_module.ManageSubtaskTemplatesDialog
+    )
+    item = SimpleNamespace(item_id="existing", parent_item_id=None)
+    template = SimpleNamespace(template_id="t1", name="T1", items=[item])
+    dialog._current = lambda: template
+    dialog.service = SimpleNamespace()
+    dialog.window = object()
+    dialog.dirty = False
+    dialog._load_current = lambda: None
+
+    class _ItemDialog:
+        def __init__(self, *_args, **_kwargs) -> None:
+            self.result = {"name": "New Item", "notes": "n", "tags": ["x"]}
+
+    original = dialogs_module.SubtaskTemplateItemDialog
+    dialogs_module.SubtaskTemplateItemDialog = _ItemDialog
+    try:
+        dialogs_module.ManageSubtaskTemplatesDialog._add_item(dialog)
+    finally:
+        dialogs_module.SubtaskTemplateItemDialog = original
+
+    assert len(template.items) == 2
+    created = template.items[-1]
+    assert created.parent_item_id is None
+    assert str(UUID(created.item_id)) == created.item_id
+
+
+def test_manage_subtask_templates_add_nested_item_uses_uuid_and_parent_linkage() -> None:
+    import task_timer.dialogs as dialogs_module
+
+    dialog = dialogs_module.ManageSubtaskTemplatesDialog.__new__(
+        dialogs_module.ManageSubtaskTemplatesDialog
+    )
+    parent = SimpleNamespace(item_id="parent-id", parent_item_id=None)
+    template = SimpleNamespace(template_id="t1", name="T1", items=[parent])
+    dialog._current = lambda: template
+    dialog._selected_item_id = lambda: "parent-id"
+    dialog.service = SimpleNamespace()
+    dialog.window = object()
+    dialog.dirty = False
+    dialog._load_current = lambda: None
+
+    class _ItemDialog:
+        def __init__(self, *_args, **_kwargs) -> None:
+            self.result = {"name": "Child", "notes": "n", "tags": []}
+
+    original = dialogs_module.SubtaskTemplateItemDialog
+    dialogs_module.SubtaskTemplateItemDialog = _ItemDialog
+    try:
+        dialogs_module.ManageSubtaskTemplatesDialog._add_nested_item(dialog)
+    finally:
+        dialogs_module.SubtaskTemplateItemDialog = original
+
+    assert len(template.items) == 2
+    created = template.items[-1]
+    assert created.parent_item_id == "parent-id"
+    assert str(UUID(created.item_id)) == created.item_id
 
 
 def test_treeview_structure_and_iids(tmp_path) -> None:

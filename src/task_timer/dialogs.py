@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
+from uuid import uuid4
 from tkinter import BooleanVar, StringVar, Toplevel, messagebox, simpledialog, ttk
 import tkinter as tk
 
@@ -1819,7 +1820,7 @@ class ManageSubtaskTemplatesDialog:
 
         t.items.append(
             SubtaskTemplateItem(
-                item_id=str(datetime.now().timestamp()),
+                item_id=str(uuid4()),
                 name=d.result["name"],
                 parent_item_id=None,
                 notes=d.result["notes"],
@@ -1854,7 +1855,7 @@ class ManageSubtaskTemplatesDialog:
 
         t.items.append(
             SubtaskTemplateItem(
-                item_id=str(datetime.now().timestamp()),
+                item_id=str(uuid4()),
                 name=d.result["name"],
                 parent_item_id=iid,
                 notes=d.result["notes"],
