@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import subprocess
 import tkinter as tk
@@ -31,7 +32,7 @@ from .dialogs import (
 )
 from .exporter import build_export_text, build_selected_tasks_export_text, write_export_file
 from .mini_mode import MiniModeWindow
-from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, ProjectState, TagMeta, TaskState, TimeSubmission, event_dict
+from .models import AppState, DatedDurationRecord, IntervalRecord, NOTES_MAX_LENGTH, ProjectState, TagMeta, TaskState, TimeSubmission, event_dict
 from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
 from .storage import EventStorage
@@ -1617,6 +1618,20 @@ class TaskTimerService:
                 "tags": sorted(task.tags),
                 "parent_task_id": task.parent_task_id,
                 "project_id": task.project_id,
+                "dated_durations": [
+                    {
+                        "entry_id": entry.entry_id,
+                        "task_id": entry.task_id,
+                        "work_date_local": entry.work_date_local.isoformat(),
+                        "duration_seconds": entry.duration_seconds,
+                        "reason": entry.reason,
+                        "created_at_utc": to_utc_z(entry.created_at_utc),
+                        "updated_at_utc": to_utc_z(entry.updated_at_utc),
+                        "revision_event_id": entry.revision_event_id,
+                        "deleted": entry.deleted,
+                    }
+                    for entry in task.dated_durations.values()
+                ],
                 "intervals": [
                     {
                         "interval_id": interval.interval_id,
@@ -1711,6 +1726,66 @@ class TaskTimerService:
         elif isinstance(task_id, str) and task_id in self.state.projects:
             raise ValueError("A project cannot be used as a task")
 
+    def _validate_dated_duration_event(self, event: dict[str, Any]) -> None:
+        """Validate the isolated dated-entry lifecycle before any state change."""
+        event_type = event.get("event_type")
+        if event_type not in ("dated_duration_added", "dated_duration_corrected", "dated_duration_deleted"):
+            return
+        task_id = event.get("task_id")
+        self._validate_uuid(task_id)
+        task = self._require_task(task_id)
+        self._validate_uuid(event.get("event_id"))
+        try:
+            timestamp = event["timestamp_utc"]
+            if not isinstance(timestamp, str) or to_utc_z(parse_utc_z(timestamp)) != timestamp:
+                raise ValueError
+        except (KeyError, ValueError, OverflowError):
+            raise ValueError("Dated duration events require a UTC Z timestamp at second precision") from None
+
+        payload = event.get("payload")
+        fields = {"entry_id", "reason"}
+        if event_type != "dated_duration_deleted":
+            fields |= {"work_date_local", "duration_seconds"}
+        if not isinstance(payload, dict) or set(payload) != fields:
+            raise ValueError("Invalid dated duration payload fields")
+        entry_id = payload["entry_id"]
+        self._validate_uuid(entry_id)
+        if not isinstance(payload["reason"], str) or not payload["reason"].strip():
+            raise ValueError("Dated duration reason must be a non-empty string")
+
+        if event_type != "dated_duration_deleted":
+            work_date = payload["work_date_local"]
+            try:
+                if not isinstance(work_date, str) or date.fromisoformat(work_date).isoformat() != work_date:
+                    raise ValueError
+            except ValueError:
+                raise ValueError("Work date must be an ISO calendar date (YYYY-MM-DD)") from None
+            seconds = payload["duration_seconds"]
+            try:
+                valid_seconds = (
+                    isinstance(seconds, (int, float))
+                    and not isinstance(seconds, bool)
+                    and math.isfinite(seconds)
+                    and seconds > 0
+                )
+            except OverflowError:
+                valid_seconds = False
+            if not valid_seconds:
+                raise ValueError("Duration must be finite positive seconds")
+
+        if event_type == "dated_duration_added":
+            if any(
+                entry_id in owner.dated_durations or entry_id in owner.intervals
+                for owner in self.state.tasks.values()
+            ):
+                raise ValueError("Dated duration entry ID already exists")
+        else:
+            entry = task.dated_durations.get(entry_id)
+            if entry is None or entry.task_id != task_id:
+                raise ValueError("Dated duration not found for this task")
+            if entry.deleted:
+                raise ValueError("Dated duration is deleted")
+
     def _append(self, task_id: str, event_type: str, payload: dict[str, Any]) -> None:
         self._validate_project_event(task_id, event_type, payload)
         event = event_dict(
@@ -1721,6 +1796,7 @@ class TaskTimerService:
             payload=payload,
             event_id=str(uuid4()),
         )
+        self._validate_dated_duration_event(event)
         self.storage.append_event(event)
         self.events.append(event)
         self._apply_event(event)
@@ -1772,7 +1848,12 @@ class TaskTimerService:
 
     def _rebuild_state(self, events: list[dict[str, Any]]) -> None:
         self.state = AppState()
-        for event in sorted(events, key=lambda ev: (ev["timestamp_utc"], ev.get("_read_sequence", 0))):
+        # Live appends have no read metadata; keep their original list position.
+        ordered = sorted(
+            enumerate(events),
+            key=lambda item: (item[1]["timestamp_utc"], item[1].get("_read_sequence", item[0])),
+        )
+        for _, event in ordered:
             self._apply_event(event)
 
     @staticmethod
@@ -1791,6 +1872,7 @@ class TaskTimerService:
         return normalized
 
     def _apply_event(self, event: dict[str, Any]) -> None:
+        self._validate_dated_duration_event(event)
         task_id = event["task_id"]
         event_type = event["event_type"]
         payload = event["payload"]
@@ -1873,7 +1955,29 @@ class TaskTimerService:
         if not task:
             return
         task.updated_at_utc = timestamp
-        if event_type == "task_project_assigned":
+        if event_type == "dated_duration_added":
+            entry_id = payload["entry_id"]
+            task.dated_durations[entry_id] = DatedDurationRecord(
+                entry_id=entry_id,
+                task_id=task_id,
+                work_date_local=date.fromisoformat(payload["work_date_local"]),
+                duration_seconds=payload["duration_seconds"],
+                reason=payload["reason"].strip(),
+                created_at_utc=timestamp,
+                updated_at_utc=timestamp,
+                revision_event_id=event["event_id"],
+            )
+        elif event_type in ("dated_duration_corrected", "dated_duration_deleted"):
+            entry = task.dated_durations[payload["entry_id"]]
+            if event_type == "dated_duration_corrected":
+                entry.work_date_local = date.fromisoformat(payload["work_date_local"])
+                entry.duration_seconds = payload["duration_seconds"]
+            else:
+                entry.deleted = True
+            entry.reason = payload["reason"].strip()
+            entry.updated_at_utc = timestamp
+            entry.revision_event_id = event["event_id"]
+        elif event_type == "task_project_assigned":
             task.project_id = payload["project_id"]
         elif event_type == "task_updated":
             task.name = payload.get("name", task.name)

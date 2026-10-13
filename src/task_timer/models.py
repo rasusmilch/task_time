@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 
@@ -25,6 +25,21 @@ class IntervalRecord:
     duration_seconds: float | None = None
     replaced_interval_id: str | None = None
     edit_reason: str | None = None
+    deleted: bool = False
+
+
+@dataclass(slots=True)
+class DatedDurationRecord:
+    """Declared work on one calendar date, with no clock-based endpoints."""
+
+    entry_id: str
+    task_id: str
+    work_date_local: date
+    duration_seconds: float
+    reason: str
+    created_at_utc: datetime
+    updated_at_utc: datetime
+    revision_event_id: str
     deleted: bool = False
 
 
@@ -57,6 +72,7 @@ class TaskState:
     tags: set[str] = field(default_factory=set)
     parent_task_id: str | None = None
     project_id: str | None = None
+    dated_durations: dict[str, DatedDurationRecord] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

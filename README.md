@@ -32,6 +32,13 @@ data, or migrate `~/.task_timer_data`. Service tests use isolated temporary data
 directories. See [Design Notes](DESIGN_NOTES.md#projecttask-service-foundation)
 for the implemented APIs and event contract.
 
+The replay foundation also supports `DatedDurationRecord`: a separate task-owned
+work date and duration amount with audit timestamps and append-only corrections
+and deletion. These records have no start/stop timestamps. This support is
+**not enabled in production time entry or totals yet**; the existing duration UI
+still uses its legacy representation. No public dated-duration writer, reporting
+integration, historical migration, or data-directory cutover is included.
+
 ## Run from source (repo root)
 
 From the repository root, run:

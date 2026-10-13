@@ -74,6 +74,65 @@ operations on existing user data. A service initialized with an isolated empty
 directory does not import tasks, submissions, projects, or templates from any
 other directory. No external-system integration or task numbers are introduced.
 
+## Dated-duration replay foundation
+
+`DatedDurationRecord` is distinct from `IntervalRecord` and lives in the separate
+`TaskState.dated_durations` collection, keyed by stable entry UUID. Its fields are
+entry/task UUIDs, a `date`-typed `work_date_local`, positive `duration_seconds`,
+`reason`, creation/update audit timestamps, `revision_event_id`, and `deleted`.
+It has no start/stop fields or nullable endpoint placeholders. A long duration
+remains one declared amount on its selected date; no synthetic interval or second
+work date is generated. Creation/update timestamps describe audit actions, not
+the beginning or end of that work.
+
+The existing event envelope, task ownership and JSONL store are reused:
+
+| Event | Required payload |
+| --- | --- |
+| `dated_duration_added` | `entry_id`, `work_date_local`, `duration_seconds`, `reason` |
+| `dated_duration_corrected` | same complete fields, with the existing `entry_id` |
+| `dated_duration_deleted` | `entry_id`, `reason` |
+
+The owning task UUID is the envelope's `task_id`. Creation requires an unused
+work-entry UUID across all tasks, including intervals and dated-entry tombstones.
+Correction updates that entry's effective date/amount/reason without allocating another
+entry or changing ownership or creation time. Deletion marks the record deleted
+while retaining its last date/amount. Both actions update its audit timestamp and
+revision to the current event UUID. Original amounts, dates and reasons remain
+recoverable from the unchanged earlier events, rather than duplicated in another
+history file.
+
+Shared internal validation runs before private append and before replay mutates
+state. It requires canonical task/entry/event UUIDs, an existing task owner rather
+than a project, exact payload fields, a canonical `YYYY-MM-DD` calendar date,
+finite positive numeric seconds (not booleans), and a nonempty string reason.
+Audit timestamps use the existing UTC `Z`, second-precision event convention.
+Unexpected endpoint fields, duplicate identities, missing/deleted entry targets
+and cross-task corrections/deletions raise `ValueError` without partially
+changing task or record state. Existing legacy event handlers are not migrated.
+
+Replay retains the existing `(timestamp_utc, _read_sequence)` ordering contract:
+equal-second events follow their original segment read order, not their UUID
+order. Events appended in memory without read metadata use their original list
+position, so a same-second correction after restart stays after loaded creation
+events. The latest effective record is stored once under its original entry UUID;
+its `revision_event_id` identifies the latest creation/correction/deletion event.
+Snapshots serialize dated records separately, with an ISO work date and audit
+timestamps but no clock endpoints. Startup and snapshot rebuild derive them
+again from archived plus active events. Existing backup/restore mechanisms carry
+the same logs and snapshots without introducing a new persistent file.
+
+This is a replay/snapshot foundation only. New lifecycle events are currently
+exercised through isolated fixtures and internal validation; **there is no new
+public duration writer**. `add_manual_duration`, `edit_duration_interval`, legacy
+synthetic records, real interval handling, resets, checkpoints, timeline UI,
+mini-mode, totals, tags, exports and submission behavior remain unchanged.
+Those consumers do not include the new records yet. Mixed accounting and reader
+integration must be validated together before the new workflow emits these
+events. Date-only reset/checkpoint eligibility remains a later reviewed policy,
+not an inferred clock position. No legacy migration or fresh-directory cutover
+is performed; `~/.task_timer_data` remains outside this development workflow.
+
 ## Event schema
 
 Each event line is JSON with:
