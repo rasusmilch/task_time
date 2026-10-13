@@ -12,6 +12,26 @@ A local-only Windows-friendly desktop task time tracker built with Python + tkin
 - Resets are logical cut lines for *current* totals (history is preserved).
 - Export to human-readable text with totals and audit history.
 
+## Project/task foundation (service only)
+
+The service now keeps projects and tasks as separate domain objects. Projects
+have UUIDs, names, notes, and creation/update timestamps; they cannot own time
+intervals or operate timers. Tasks retain their own UUIDs and intervals, and can
+optionally belong to a project. Unassigned tasks and duplicate task names are
+valid. Assignment, reassignment, and project renaming never transfer or reset
+recorded time.
+
+This is a staged foundation: project navigation and the new daily timesheet
+exports are **not available yet**. The existing UI, hierarchical exports,
+submission markers, and launcher data path remain in use. Legacy task hierarchy
+is retained for that existing workflow; no historical conversion is performed.
+
+The eventual fresh-start project workflow will use a **separate data directory**
+once it is usable. This change does not activate that directory, import historical
+data, or migrate `~/.task_timer_data`. Service tests use isolated temporary data
+directories. See [Design Notes](DESIGN_NOTES.md#projecttask-service-foundation)
+for the implemented APIs and event contract.
+
 ## Run from source (repo root)
 
 From the repository root, run:

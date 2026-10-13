@@ -12,7 +12,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from tkinter import StringVar, Tk, Toplevel, filedialog, messagebox, simpledialog, ttk
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from .backups import BackupManager
 from .dialogs import (
@@ -31,7 +31,7 @@ from .dialogs import (
 )
 from .exporter import build_export_text, build_selected_tasks_export_text, write_export_file
 from .mini_mode import MiniModeWindow
-from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, TagMeta, TaskState, TimeSubmission, event_dict
+from .models import AppState, IntervalRecord, NOTES_MAX_LENGTH, ProjectState, TagMeta, TaskState, TimeSubmission, event_dict
 from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
 from .storage import EventStorage
@@ -221,10 +221,75 @@ class TaskTimerService:
         )
 
 
-    def create_task(self, name: str, notes: str, tags: list[str] | None = None) -> str:
+    def _require_task(self, task_id: str) -> TaskState:
+        if not isinstance(task_id, str):
+            raise ValueError("Task ID must be a string")
+        if task_id in self.state.projects:
+            raise ValueError("A project cannot be used as a task")
+        task = self.state.tasks.get(task_id)
+        if task is None:
+            raise ValueError("Task not found")
+        return task
+
+    def _require_project(self, project_id: str) -> ProjectState:
+        if not isinstance(project_id, str):
+            raise ValueError("Project ID must be a string")
+        project = self.state.projects.get(project_id)
+        if project is None:
+            raise ValueError("Project not found")
+        return project
+
+    @staticmethod
+    def _validate_name(name: str) -> str:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("Name must be a non-empty string")
+        return name.strip()
+
+    def create_project(self, name: str, notes: str = "") -> str:
+        project_id = str(uuid4())
+        self._append("__app__", "project_created", {
+            "project_id": project_id,
+            "name": self._validate_name(name),
+            "notes": self._clean_notes(notes),
+        })
+        return project_id
+
+    def update_project(self, project_id: str, *, name: str | None = None, notes: str | None = None) -> None:
+        project = self._require_project(project_id)
+        payload: dict[str, Any] = {"project_id": project_id}
+        if name is not None:
+            payload["name"] = self._validate_name(name)
+        if notes is not None:
+            payload["notes"] = self._clean_notes(notes)
+        if any(value != getattr(project, key) for key, value in payload.items() if key != "project_id"):
+            self._append("__app__", "project_updated", payload)
+
+    def rename_project(self, project_id: str, name: str) -> None:
+        self.update_project(project_id, name=name)
+
+    def list_projects(self) -> list[ProjectState]:
+        return sorted(self.state.projects.values(), key=lambda project: (project.name.casefold(), project.project_id))
+
+    def assign_task_to_project(self, task_id: str, project_id: str | None) -> None:
+        task = self._require_task(task_id)
+        if task.is_deleted:
+            raise ValueError("Task is deleted")
+        if project_id is not None:
+            self._require_project(project_id)
+        if task.project_id != project_id:
+            self._append(task_id, "task_project_assigned", {"project_id": project_id})
+
+    def unassign_task_from_project(self, task_id: str) -> None:
+        self.assign_task_to_project(task_id, None)
+
+    def create_task(
+        self, name: str, notes: str, tags: list[str] | None = None, *, project_id: str | None = None
+    ) -> str:
+        if project_id is not None:
+            self._require_project(project_id)
         task_id = str(uuid4())
         tag_list = normalize_tag_list(tags or [])
-        self._append(task_id, "task_created", {"name": name.strip(), "notes": self._clean_notes(notes), "tags": tag_list, "parent_task_id": None})
+        self._append(task_id, "task_created", {"name": self._validate_name(name), "notes": self._clean_notes(notes), "tags": tag_list, "parent_task_id": None, "project_id": project_id})
         for key in tag_list:
             self.ensure_tag_exists(key)
         return task_id
@@ -540,21 +605,24 @@ class TaskTimerService:
         self.delete_task_tree(task_id)
 
     def delete_task_only(self, task_id: str) -> None:
-        task = self.state.tasks.get(task_id)
-        if not task or task.is_deleted:
+        task = self._require_task(task_id)
+        if task.is_deleted:
             return
         self.stop_task(task_id)
         self._append(task_id, "task_deleted", {})
 
     def delete_task_tree(self, task_id: str) -> None:
-        task = self.state.tasks.get(task_id)
-        if not task or task.is_deleted:
+        task = self._require_task(task_id)
+        if task.is_deleted:
             return
         for child in self.child_tasks(task_id):
             self.delete_task_tree(child.task_id)
         self.delete_task_only(task_id)
 
     def start_task(self, task_id: str) -> None:
+        task = self._require_task(task_id)
+        if task.is_deleted:
+            raise ValueError("Task is deleted")
         if self.state.running_task_id == task_id:
             return
         if self.state.running_task_id:
@@ -562,8 +630,8 @@ class TaskTimerService:
         self._append(task_id, "started", {})
 
     def stop_task(self, task_id: str) -> None:
-        task = self.state.tasks.get(task_id)
-        if not task or not task.is_running:
+        task = self._require_task(task_id)
+        if not task.is_running:
             return
         self._append(task_id, "stopped", {"interval_id": str(uuid4())})
 
@@ -575,9 +643,7 @@ class TaskTimerService:
         self._append(task_id, "reset", {})
 
     def reset_task_tree(self, task_id: str) -> None:
-        task = self.state.tasks.get(task_id)
-        if not task:
-            return
+        self._require_task(task_id)
         for child in self.child_tasks(task_id):
             self.reset_task_tree(child.task_id)
         self.reset_task_only(task_id)
@@ -590,6 +656,7 @@ class TaskTimerService:
         return parse_duration_seconds(duration_text)
 
     def add_manual_interval(self, task_id: str, start_local: datetime, stop_local: datetime, reason: str) -> None:
+        self._require_task(task_id)
         if stop_local <= start_local:
             raise ValueError("Stop must be after start")
         if not reason.strip():
@@ -607,12 +674,12 @@ class TaskTimerService:
         )
 
     def edit_interval(self, task_id: str, interval_id: str, start_local: datetime, stop_local: datetime, reason: str) -> None:
+        task = self._require_task(task_id)
         if stop_local <= start_local:
             raise ValueError("Stop must be after start")
         if not reason.strip():
             raise ValueError("Reason is required")
-        task = self.state.tasks.get(task_id)
-        if not task or interval_id not in task.intervals:
+        if interval_id not in task.intervals:
             raise ValueError("Interval not found")
         self._create_risky_operation_backup("before manual interval edit")
         self._validate_interval_against_checkpoint(start_local, stop_local)
@@ -636,12 +703,12 @@ class TaskTimerService:
     def edit_duration_interval(
         self, task_id: str, interval_id: str, work_date_local: date, duration_seconds: float, reason: str
     ) -> None:
+        task = self._require_task(task_id)
         if duration_seconds <= 0:
             raise ValueError("Duration must be greater than zero")
         if not reason.strip():
             raise ValueError("Reason is required")
-        task = self.state.tasks.get(task_id)
-        if not task or interval_id not in task.intervals:
+        if interval_id not in task.intervals:
             raise ValueError("Interval not found")
         self._create_risky_operation_backup("before manual duration edit")
         self._validate_duration_against_checkpoint(work_date_local)
@@ -666,10 +733,10 @@ class TaskTimerService:
         )
 
     def delete_interval(self, task_id: str, interval_id: str, reason: str) -> None:
+        task = self._require_task(task_id)
         if not reason.strip():
             raise ValueError("Reason is required")
-        task = self.state.tasks.get(task_id)
-        if not task or interval_id not in task.intervals:
+        if interval_id not in task.intervals:
             raise ValueError("Interval not found")
         interval = task.intervals[interval_id]
         checkpoint_utc = self.find_last_export_checkpoint_utc()
@@ -687,6 +754,9 @@ class TaskTimerService:
         )
 
     def add_manual_duration(self, task_id: str, work_date_local: date, duration_seconds: float, reason: str) -> None:
+        self._require_task(task_id)
+        if duration_seconds <= 0:
+            raise ValueError("Duration must be greater than zero")
         if not reason.strip():
             raise ValueError("Reason is required")
         self._validate_duration_against_checkpoint(work_date_local)
@@ -707,10 +777,10 @@ class TaskTimerService:
         )
 
     def correct_running_interval_stop(self, task_id: str, corrected_stop_local: datetime, reason: str) -> None:
+        task = self._require_task(task_id)
         if not reason.strip():
             raise ValueError("Reason is required")
-        task = self.state.tasks.get(task_id)
-        if not task or not task.is_running or not task.currently_open_interval_start_utc:
+        if not task.is_running or not task.currently_open_interval_start_utc:
             raise ValueError("Task is not currently running")
         corrected_stop_utc = corrected_stop_local.astimezone(timezone.utc)
         if corrected_stop_utc <= task.currently_open_interval_start_utc:
@@ -786,6 +856,8 @@ class TaskTimerService:
                 self.reset_task(task.task_id)
 
     def reset_selected_tasks(self, task_ids: list[str]) -> list[str]:
+        for task_id in task_ids:
+            self._require_task(task_id)
         normalized = self._normalize_selected_task_ids(task_ids)
         expanded = self._expand_selected_task_ids(normalized)
         affected: list[str] = []
@@ -797,6 +869,8 @@ class TaskTimerService:
         return affected
 
     def delete_selected_tasks(self, task_ids: list[str]) -> list[str]:
+        for task_id in task_ids:
+            self._require_task(task_id)
         normalized = self._normalize_selected_task_ids(task_ids)
         expanded = self._expand_selected_task_ids(normalized)
         affected = [task_id for task_id in sorted(expanded) if (self.state.tasks.get(task_id) and not self.state.tasks[task_id].is_deleted)]
@@ -1542,6 +1616,7 @@ class TaskTimerService:
                 "last_reset_utc": to_utc_z(task.last_reset_utc) if task.last_reset_utc else None,
                 "tags": sorted(task.tags),
                 "parent_task_id": task.parent_task_id,
+                "project_id": task.project_id,
                 "intervals": [
                     {
                         "interval_id": interval.interval_id,
@@ -1559,9 +1634,85 @@ class TaskTimerService:
                     for interval in task.intervals.values()
                 ],
             }
-        return {"tasks": tasks_payload, "running_task_id": self.state.running_task_id, "global_tags": {k:{"key":v.key,"archived":v.archived,"created_at_utc":to_utc_z(v.created_at_utc),"updated_at_utc":to_utc_z(v.updated_at_utc)} for k,v in self.state.global_tags.items()}}
+        projects_payload = {
+            project_id: {
+                "project_id": project.project_id,
+                "name": project.name,
+                "notes": project.notes,
+                "created_at_utc": to_utc_z(project.created_at_utc),
+                "updated_at_utc": to_utc_z(project.updated_at_utc),
+            }
+            for project_id, project in self.state.projects.items()
+        }
+        return {"projects": projects_payload, "tasks": tasks_payload, "running_task_id": self.state.running_task_id, "global_tags": {k:{"key":v.key,"archived":v.archived,"created_at_utc":to_utc_z(v.created_at_utc),"updated_at_utc":to_utc_z(v.updated_at_utc)} for k,v in self.state.global_tags.items()}}
+
+    @staticmethod
+    def _validate_uuid(value: str) -> None:
+        try:
+            valid = isinstance(value, str) and str(UUID(value)) == value
+        except ValueError:
+            valid = False
+        if not valid:
+            raise ValueError("ID must be a canonical UUID string")
+
+    def _validate_project_event(self, task_id: str, event_type: str, payload: dict[str, Any]) -> None:
+        """Validate the new project/membership contract before append or replay.
+
+        Legacy task events without project_id retain their existing replay path.
+        """
+        if event_type == "task_created" and not isinstance(payload, dict):
+            raise ValueError("Task creation requires a payload object")
+        if event_type in {"project_created", "project_updated"}:
+            if task_id != "__app__":
+                raise ValueError("Project events must use the application envelope")
+            if not isinstance(payload, dict) or set(payload) - {"project_id", "name", "notes"}:
+                raise ValueError("Invalid project event payload")
+            if "project_id" not in payload:
+                raise ValueError("Project event requires project_id")
+            project_id = payload["project_id"]
+            self._validate_uuid(project_id)
+            if event_type == "project_created":
+                if project_id in self.state.projects or project_id in self.state.tasks:
+                    raise ValueError("ID already exists")
+                if "name" not in payload:
+                    raise ValueError("Project creation requires name")
+            else:
+                self._require_project(project_id)
+                if not {"name", "notes"} & payload.keys():
+                    raise ValueError("Project update requires name or notes")
+            if "name" in payload:
+                self._validate_name(payload["name"])
+            if "notes" in payload and not isinstance(payload["notes"], str):
+                raise ValueError("Notes must be a string")
+        elif event_type == "task_project_assigned":
+            if not isinstance(payload, dict) or set(payload) != {"project_id"}:
+                raise ValueError("Assignment event requires only project_id")
+            task = self._require_task(task_id)
+            if task.is_deleted:
+                raise ValueError("Task is deleted")
+            if payload["project_id"] is not None:
+                self._require_project(payload["project_id"])
+        elif event_type == "task_created" and isinstance(payload, dict) and "project_id" in payload:
+            self._validate_uuid(task_id)
+            if task_id in self.state.tasks or task_id in self.state.projects:
+                raise ValueError("ID already exists")
+            if set(payload) - {"name", "notes", "tags", "parent_task_id", "project_id"}:
+                raise ValueError("Invalid task creation payload")
+            self._validate_name(payload.get("name"))
+            if not isinstance(payload.get("notes", ""), str):
+                raise ValueError("Notes must be a string")
+            tags = payload.get("tags", [])
+            if not isinstance(tags, list) or any(not isinstance(tag, str) for tag in tags):
+                raise ValueError("Tags must be a list of strings")
+            if payload.get("parent_task_id") is not None:
+                raise ValueError("Project task creation must be independent")
+            if payload["project_id"] is not None:
+                self._require_project(payload["project_id"])
+        elif isinstance(task_id, str) and task_id in self.state.projects:
+            raise ValueError("A project cannot be used as a task")
 
     def _append(self, task_id: str, event_type: str, payload: dict[str, Any]) -> None:
+        self._validate_project_event(task_id, event_type, payload)
         event = event_dict(
             timestamp_utc=to_utc_z(utc_now()),
             local_timezone=self.local_tz_name,
@@ -1643,9 +1794,26 @@ class TaskTimerService:
         task_id = event["task_id"]
         event_type = event["event_type"]
         payload = event["payload"]
+        self._validate_project_event(task_id, event_type, payload)
         timestamp = parse_utc_z(event["timestamp_utc"])
         if task_id == "__app__":
-            if event_type == "tag_created":
+            if event_type == "project_created":
+                project_id = payload["project_id"]
+                self.state.projects[project_id] = ProjectState(
+                    project_id=project_id,
+                    name=payload["name"].strip(),
+                    notes=self._clean_notes(payload.get("notes", "")),
+                    created_at_utc=timestamp,
+                    updated_at_utc=timestamp,
+                )
+            elif event_type == "project_updated":
+                project = self.state.projects[payload["project_id"]]
+                if "name" in payload:
+                    project.name = payload["name"].strip()
+                if "notes" in payload:
+                    project.notes = self._clean_notes(payload["notes"])
+                project.updated_at_utc = timestamp
+            elif event_type == "tag_created":
                 try:
                     key = normalize_tag(payload["key"])
                 except (KeyError, TypeError, ValueError):
@@ -1695,6 +1863,7 @@ class TaskTimerService:
                 updated_at_utc=timestamp,
                 tags=tags,
                 parent_task_id=payload.get("parent_task_id"),
+                project_id=payload.get("project_id"),
             )
             for key in tags:
                 if key not in self.state.global_tags:
@@ -1704,7 +1873,9 @@ class TaskTimerService:
         if not task:
             return
         task.updated_at_utc = timestamp
-        if event_type == "task_updated":
+        if event_type == "task_project_assigned":
+            task.project_id = payload["project_id"]
+        elif event_type == "task_updated":
             task.name = payload.get("name", task.name)
             task.notes = self._clean_notes(payload.get("notes", task.notes))
         elif event_type == "task_deleted":
@@ -1838,6 +2009,8 @@ class TaskTimerService:
 
     @staticmethod
     def _clean_notes(notes: str) -> str:
+        if not isinstance(notes, str):
+            raise ValueError("Notes must be a string")
         return notes.replace("\n", " ").strip()[:NOTES_MAX_LENGTH]
 
 

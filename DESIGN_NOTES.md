@@ -11,6 +11,69 @@ The app uses an event-sourced model:
 
 The complete event stream across archived + active segments is the source of truth.
 
+## Project/task service foundation
+
+`AppState.projects` and `AppState.tasks` are separate UUID-keyed collections.
+`ProjectState` stores only `project_id`, `name`, optional notes, and creation/update
+timestamps. It has no intervals, timer state, reset boundary, or elapsed counters.
+`TaskState.project_id` is optional; each task continues to own its intervals and
+recorded time independently. Names are display labels, not identity or matching
+keys, and duplicate project or task names do not merge records.
+
+Implemented service operations:
+
+- `create_project(name, notes="")`, `list_projects()`.
+- `update_project(project_id, *, name=None, notes=None)` and
+  `rename_project(project_id, name)`.
+- `create_task(name, notes, tags=None, *, project_id=None)` creates an independent
+  task, optionally assigned to an existing project.
+- `assign_task_to_project(task_id, project_id)` assigns or moves just that task;
+  `None` removes membership. `unassign_task_from_project(task_id)` is the explicit
+  unassignment operation. Unchanged updates/membership are no-ops.
+
+Project updates affect project metadata only. Membership changes preserve task
+UUIDs, intervals, running starts, tags, notes, and all earlier event evidence.
+There are no persisted project roll-up totals; derived project reporting remains
+future work. Notes use the existing single-line, 160-character convention.
+
+The existing event envelope and durable storage are reused:
+
+| Event | Envelope `task_id` | Payload |
+| --- | --- | --- |
+| `project_created` | `__app__` | `project_id`, `name`, optional `notes` |
+| `project_updated` | `__app__` | `project_id`, at least one of `name`/`notes` |
+| `task_project_assigned` | task UUID | `project_id` (project UUID or `null`) |
+
+New independent `task_created` events include `project_id` (possibly `null`) and
+`parent_task_id: null`. Project/membership events and this new creation shape are
+validated before append and again during replay: required fields, field types,
+non-empty names, canonical creation UUIDs, ID collisions, and references must be
+valid. Malformed events raise `ValueError`; they are not silently applied or
+repaired. Legacy task events without `project_id` retain their existing replay
+path. Snapshots include projects and membership, but are derived: startup and
+explicit rebuild replay archived plus active events, preserving equal-timestamp
+read order. Storage flush/fsync, rotation, and backup architecture are unchanged.
+
+Task-only timer, manual-time, correction, reset, and deletion operations reject
+project or unknown task IDs before mutation. Starting a task validates the target
+before stopping valid running work. Bulk reset/delete selection validates all
+requested IDs before touching any task. Valid task switching still enforces the
+one-running-task rule. Historical corrections to existing deleted task records
+retain the previous behavior; deleted tasks cannot be started or reassigned.
+
+This foundation does not change the production UI, export calculations,
+submission/checkpoint semantics, report rendering, templates, or launcher path.
+Legacy `parent_task_id`, `create_subtask`, and `move_task` remain for the current
+workflow; project assignment uses the separate operation above and does not
+implicitly move legacy descendants. No migration or conversion events exist.
+
+Fresh-start cutover will activate a separate data directory only after project
+navigation and timesheet exports are usable. Until then the launcher still uses
+`~/.task_timer_data`; it must not be used to experiment with the new service
+operations on existing user data. A service initialized with an isolated empty
+directory does not import tasks, submissions, projects, or templates from any
+other directory. No external-system integration or task numbers are introduced.
+
 ## Event schema
 
 Each event line is JSON with:

@@ -29,6 +29,17 @@ class IntervalRecord:
 
 
 @dataclass(slots=True)
+class ProjectState:
+    """An organizational container with no independently recorded time."""
+
+    project_id: str
+    name: str
+    created_at_utc: datetime
+    updated_at_utc: datetime
+    notes: str = ""
+
+
+@dataclass(slots=True)
 class TaskState:
     """Derived task state from replaying events."""
 
@@ -45,6 +56,7 @@ class TaskState:
     intervals: dict[str, IntervalRecord] = field(default_factory=dict)
     tags: set[str] = field(default_factory=set)
     parent_task_id: str | None = None
+    project_id: str | None = None
 
 
 @dataclass(slots=True)
@@ -64,6 +76,7 @@ class AppState:
     tasks: dict[str, TaskState] = field(default_factory=dict)
     running_task_id: str | None = None
     global_tags: dict[str, TagMeta] = field(default_factory=dict)
+    projects: dict[str, ProjectState] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
