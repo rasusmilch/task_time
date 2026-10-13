@@ -16,6 +16,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from .backups import BackupManager
+from .accounting import calculate_date_window
 from .dialogs import (
     AddTaskDialog,
     EditTaskDialog,
@@ -74,6 +75,19 @@ class ApplySubtaskTemplatesResult:
 
 class TaskTimerService:
     """Business logic layer that emits events and derives state."""
+
+    def calculate_date_window(
+        self, start_date: date, end_date: date, *, cutoff_utc: datetime,
+        all_tasks: bool = False, task_ids: tuple[str, ...] = (),
+        project_ids: tuple[str, ...] = (), include_unassigned: bool = False,
+        include_deleted: bool = False,
+    ) -> dict[str, Any]:
+        """Read-only mixed historical accounting; not used by production readers."""
+        return calculate_date_window(
+            self.state, self.local_tz, start_date, end_date, cutoff_utc=cutoff_utc,
+            all_tasks=all_tasks, task_ids=task_ids, project_ids=project_ids,
+            include_unassigned=include_unassigned, include_deleted=include_deleted,
+        )
 
     def __init__(self, storage: EventStorage) -> None:
         self.storage = storage

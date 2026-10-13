@@ -33,8 +33,9 @@ Implemented service operations:
 
 Project updates affect project metadata only. Membership changes preserve task
 UUIDs, intervals, running starts, tags, notes, and all earlier event evidence.
-There are no persisted project roll-up totals; derived project reporting remains
-future work. Notes use the existing single-line, 160-character convention.
+There are no persisted project roll-up totals; the separate service calculation
+below derives project subtotals. Production project reporting remains future
+work. Notes use the existing single-line, 160-character convention.
 
 The existing event envelope and durable storage are reused:
 
@@ -122,16 +123,97 @@ timestamps but no clock endpoints. Startup and snapshot rebuild derive them
 again from archived plus active events. Existing backup/restore mechanisms carry
 the same logs and snapshots without introducing a new persistent file.
 
-This is a replay/snapshot foundation only. New lifecycle events are currently
+New lifecycle events are currently
 exercised through isolated fixtures and internal validation; **there is no new
 public duration writer**. `add_manual_duration`, `edit_duration_interval`, legacy
 synthetic records, real interval handling, resets, checkpoints, timeline UI,
 mini-mode, totals, tags, exports and submission behavior remain unchanged.
-Those consumers do not include the new records yet. Mixed accounting and reader
-integration must be validated together before the new workflow emits these
-events. Date-only reset/checkpoint eligibility remains a later reviewed policy,
+Those production consumers do not include the new records yet. The separate
+mixed calculation below is available for service use; reader integration must
+be validated before the new workflow emits these events. Date-only
+reset/checkpoint eligibility remains a later reviewed policy,
 not an inferred clock position. No legacy migration or fresh-directory cutover
 is performed; `~/.task_timer_data` remains outside this development workflow.
+
+## Mixed date-window accounting (service only)
+
+`TaskTimerService.calculate_date_window(start_date, end_date, *, cutoff_utc,
+all_tasks=False, task_ids=(), project_ids=(), include_unassigned=False,
+include_deleted=False)` is an independent, read-only service API. Supply Python
+`date` objects for an inclusive, ordered local-calendar window and one aware
+datetime cutoff. The end boundary must be representable (not `date.max`). The
+service's detected local timezone supplies the calendar boundaries.
+
+Selection is the union of explicit task UUIDs, the current member tasks of
+selected project UUIDs, and Unassigned tasks when requested. `all_tasks=True`
+explicitly selects all eligible tasks. Defaults and explicit empty selections
+select nothing. Duplicate selections are deduplicated by task UUID; task-only
+selection never expands to siblings or legacy descendants. Unknown task/project
+references are rejected before contribution calculation, even with `all_tasks`.
+Deleted tasks are excluded by default, including explicit task selections.
+`include_deleted=True` includes their valid historical work under the same
+selection rules. This policy is recorded in the returned report.
+
+Each included task's daily seconds combine two distinct authoritative sources:
+
+- Nondeleted effective `IntervalRecord` versions with `entry_mode="interval"`:
+  genuine endpoints are clipped to the report's local midnight boundaries and
+  the single cutoff. Local day boundaries are converted to UTC, preserving
+  actual elapsed seconds on 23/25-hour DST days. Separately recorded overlapping
+  intervals count individually. Negative stored spans raise `ValueError`; zero
+  spans contribute zero. Running work uses its existing start and the fixed
+  cutoff, without appending events or changing timer state. A cutoff before the
+  running start contributes zero.
+- Nondeleted effective `DatedDurationRecord` entries: their full seconds belong
+  entirely to `work_date_local` when that date is in scope. Audit timestamps and
+  cutoff do not allocate, clip, or split dated amounts. Corrected predecessors
+  and deleted entries contribute nothing. No temporary endpoints are created.
+
+Historical actuals ignore `last_reset_utc`; resets do not erase earlier calendar
+work. This API uses current effective revisions, deletion status, tags, and
+membership. The cutoff caps timed work, including closed endpoints after it;
+it does **not** reconstruct application state as of an earlier instant. It does
+not decide eligibility for timestamp checkpoints or reset-based dated counters.
+
+The returned detached dictionaries contain `tasks` and `projects` keyed by UUID,
+plus `unassigned`, `application`, and `tags`. Each total row has sparse
+`daily_seconds` maps keyed by local `date`, `weekly_seconds` maps keyed by Sunday
+`date`, and `window_seconds`. Missing date/week buckets mean zero. Weekly totals
+derive from daily totals only, and partial weeks contain only requested dates.
+Raw seconds are summed with `math.fsum`; no formatted hours/minutes are accounting
+inputs. Task rows retain names as labels and deletion/membership metadata.
+Aggregate rows list their included `task_ids`.
+
+Project rows derive solely from included member task rows. Their `scope` is
+`full_project` when all members eligible under the chosen deletion policy are
+included, otherwise `selected_tasks`; `eligible_task_count` makes the distinction
+explicit. Explicitly selected projects and all projects under `all_tasks` appear
+even when empty. Reassignment groups the task's entire historical window under
+its **current** project, preserving task amounts and application actual time.
+There is no historical membership splitting or project-owned contribution.
+
+Conservation invariants are task daily sum = task weekly sum = task window total;
+sum of task totals = application actual; sum of project subtotals + Unassigned =
+application actual. Project subtotals are never added to tasks again. `tags` uses
+these same task rows and direct task tags, with intentionally non-exclusive
+categories and no project/ancestor inheritance. The `None` key denotes untagged
+tasks, distinct from a literal `"untagged"` tag. Tag totals must not be summed as
+exclusive application actuals. Submission amounts, export snapshots, and frozen
+submission evidence are never consulted or added.
+
+An effective legacy `entry_mode="duration"` interval raises
+`UnsupportedLegacyDurationError` if its declared work date **or** synthetic
+endpoint span touches the requested window. The endpoint check detects fabricated
+spillover; it never allocates seconds. An invalid legacy work date also fails
+explicitly. Deleted legacy records, unselected tasks, and legacy records entirely
+outside the window do not contribute. No legacy conversion or event rewriting
+is performed; the old production reporting path continues unchanged.
+
+This API persists nothing and activates no writer, UI, export, submission,
+checkpoint, reset-counter, or mini-mode consumer. The event logs and their
+effective projections remain authoritative; snapshots remain rebuildable. New
+reader/writer integration and the separate empty-directory cutover are later
+tasks. Tests use isolated temporary datasets and leave existing user data alone.
 
 ## Event schema
 
