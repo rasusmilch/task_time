@@ -17,6 +17,9 @@ test evidence and release-qualification boundaries.
 decision evidence, rationale, provenance and supersessions. Current-state
 requirements take precedence for present selected behavior; decision history
 does not replace current authority or close Open matters.
+[docs/EXPORT_EVIDENCE_CONTRACT.md](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the
+approved technical export-snapshot, decimal-hour, materialization/recovery and
+POL-R confirmation-batch contracts. Approval does not mean implementation.
 
 The user and ChatGPT approve product behavior and architecture. Codex implements
 approved tasks and reports constraints; it must not independently decide
@@ -36,6 +39,7 @@ legacy behavior as permanent replacement-product policy.
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Current development phases, priorities, dependencies, completion gates and deferred work. |
 | [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) | Proportional validation scope, evidence requirements and release-qualification boundaries. |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Historical product/architecture decision evidence, rationale, provenance and supersessions. |
+| [docs/EXPORT_EVIDENCE_CONTRACT.md](docs/EXPORT_EVIDENCE_CONTRACT.md) | Approved export evidence, decimal representation, verification/recovery and confirmation technical contracts. |
 | [DESIGN_NOTES.md](DESIGN_NOTES.md) | Current service/event/storage contracts and verified limitations. |
 | [BUILDING.md](BUILDING.md) | Existing Windows launch, packaging and distribution instructions. |
 | [pyproject.toml](pyproject.toml) | Python requirement, package dependencies and pytest configuration. |

@@ -12,6 +12,9 @@ limitations. [AGENTS.md](../AGENTS.md) routes repository work;
 Windows packaging instructions; [CHANGELOG.md](../CHANGELOG.md) is the sole
 historical change record. Tests are evidence, not independent product authority.
 An expectation below does not establish an existing test or a passing result.
+Future export/confirmation tests follow the selected
+[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md), the sole technical
+owner of event, decimal, verification/recovery and batch semantics.
 
 ## Principles and applicability
 
@@ -116,16 +119,54 @@ export conventions across setting changes. Existing Sunday tests do not establis
 this requirement. Allocation-period tests follow adjudicated allocation behavior
 when that deferred feature is implemented; limits must never prevent recording.
 
-For renderer/service changes, additionally assert precise output against supplied
-accounting totals, authoritative scope/timezone, partial weeks, Unicode escape
-reversibility, complete wrapped names, aligned borders and no repeated chargeable
-values on continuation rows. Capture input/state/events/files to test purity.
+For current exact renderer/service changes, assert output against supplied seconds.
+For replacement decimal rendering, assert the selected displayed-cell sums while
+preserving full-precision accounting. Both need authoritative scope/timezone,
+partial weeks, Unicode escape reversibility, complete wrapped names, aligned
+borders and no repeated chargeable values on continuation rows. Pure generation
+and rendering must not mutate inputs/state/files. Evidence registration changes
+its intended evidence only, never Actual records, timers or export checkpoints.
+
+## Future decimal and export-evidence validation
+
+The technical contract is selected but these capabilities are not implemented.
+Future tests must validate:
+
+- Exactly two decimal places, integer hundredths and deterministic ROUND_HALF_UP
+  conversion without binary-float presentation artifacts. Check the supplied
+  3.00, 3.25, 3.33, 1.50, 0.75 and 0.02 examples, halfway boundaries and supported
+  fractional seconds; nonzero work rounding to 0.00 retains its Actual and is not
+  auto-confirmed as zero.
+- Rollups sum rounded task/day cells: three distinct 60-second task/day cells
+  display 0.02 each, totaling 0.06, while Actual remains 180 seconds. Project and
+  application display both conserve that 0.06, never 0.12 through double counting.
+- One calculation/cutoff produces consistent structured cells, frozen labels,
+  metadata, exact UTF-8 text and digest before registration. Renderer changes,
+  work corrections, renames, regrouping and week changes never alter old evidence.
+- Successful durable registration and authoritative verification precede any
+  external publication. A snapshot-linked copy contains frozen bytes, not a
+  recalculation. Full-byte comparison and digest integrity agree; no success is
+  reported for a mismatching file.
+- PENDING/READY/MISSING/CONFLICT/UNVERIFIABLE derive from the snapshot and path;
+  changed/missing copies are rechecked. Matching existing files may be recognized,
+  conflicting files are never overwritten, and retry at a different path retains
+  the original snapshot/identity without another export event.
+- Ambiguous registration reuses a valid journal event, retries a demonstrably
+  absent event only with a healthy journal and the same identity, and fails closed
+  on malformed/partial/unknown registration. Derived-snapshot failure does not
+  undo valid evidence; restart, archive replay, rebuild and backup/restore retain
+  pending exports. Duplicate identities cannot duplicate effective evidence.
+
+These are future expectations, not existing passing coverage or a new recovery
+mechanism selected by tests. Preserve current exact renderer and legacy regression
+assertions during staged development; decimal replacement rendering precedes
+persistent export-snapshot integration as a focused implementation outcome.
 
 ## Future POL-R reconciliation acceptance
 
 These obligations come from the product contract, **not an implemented system**.
-After relevant contracts are approved, validate Actual, immutable Exported and
-latest Confirmed POL-R independently:
+Use the approved technical contract to validate Actual, immutable Exported and
+latest Confirmed POL-R independently when implemented:
 
 - Preview has no persistence effect; saving does not confirm external entry.
   Export or confirmation amounts never increase Actual.
@@ -162,7 +203,17 @@ Also test Actual 3:00 confirmed at 3:00, then corrected to 2:30:
 **Delta = -0:30; Enter in POL-R = 2:30**.
 
 No automatic POL-R connection or independent external verification is implied.
-External entry format remains Open; do not infer it from Chronicle's text format.
+POL-R-facing values use the selected two-place decimal contract: displayed Actual
+hundredths minus confirmed hundredths gives Delta; Enter is current displayed
+Actual. Test 5.00/3.00/+2.00/5.00 and the 2.50/3.00/-0.50/2.50 correction alongside
+the original work-time semantics. Unknown still gives Unverified Delta.
+
+Validate whole-batch rejection, duplicate cell keys, invalid references/amounts,
+explicit zero and export-linked frozen values. One valid operation appends one
+whole batch event. Check optimistic prior-identity changes between proposal and
+commit, stale acknowledgements bound to the observed identity and cell-specific
+conflict, full/checked-cell parity, deterministic replay and immutable earlier
+evidence. No batch changes Actual, exported snapshots or timers.
 
 ## Persistence, replay and recovery evidence
 
@@ -184,10 +235,10 @@ orders archived/active reads and replaces derived JSON files. The service valida
 new project/dated lifecycle events before append and replay. These mechanisms
 do not establish universal transactional or power-loss guarantees.
 
-Future export/confirmation events need appropriate replay and fault injection;
-confirmation batches require all-or-nothing tests **after** their persistence
-contract is approved. This document selects no event names, serialized fields,
-transaction format or recovery mechanism.
+Future export/confirmation events need replay and fault injection against the
+[selected technical contract](EXPORT_EVIDENCE_CONTRACT.md). Validate one-event
+confirmation batch integrity and authoritative journal precedence over derived
+snapshots. This strategy defines tests, not another event/schema/recovery owner.
 
 ## File publication and cross-resource failures
 
@@ -206,14 +257,17 @@ Test original-error propagation and staging-only cleanup before publication;
 after publication, cleanup failure must not remove the complete final report or
 a concurrent replacement. Capture unrelated files and timekeeping state.
 
-Future immutable export evidence adds a cross-resource validation boundary.
-After adjudication, test event-log append failures and relevant interruptions
-alongside file-output failures according to the approved consistency contract.
-Backup/restore interruptions require corresponding recovery evidence where
-applicable. File/event coordination remains Open: this strategy does not choose
-commit order, rollback rules or a crash-recovery transaction. Staging fsync is
-not directory fsync or guaranteed power-loss durability; do not claim either
-without implemented, applicable verification.
+Future immutable export evidence adds a cross-resource boundary governed by the
+approved snapshot-first contract. Inject failures before/during registration,
+after durable registration but before publication, during derived-snapshot writes,
+through staging/publication and during final verification. Validate no external
+publication without established registration, retained pending evidence, stable
+retry identity, no overwrite and no false success for byte disagreement. Recheck
+externally changed files before status/confirmation use. Backup/restore
+interruptions require corresponding recovery evidence where applicable.
+The strategy adds no alternate transaction or recovery policy. Staging fsync is
+not directory fsync or guaranteed power-loss durability; no such claim follows
+from architecture approval or simulated interruption tests.
 
 ## Windows desktop and release qualification
 
@@ -328,7 +382,8 @@ targeted review are acceptable evidence sources.
 
 Reconcile this strategy and related owners when approved behavior or actual
 validation capability changes. Keep expectations separate from implemented
-coverage and results. Event contracts, cross-resource consistency, external
-format, allocation details and replacement cutover remain with user/ChatGPT
-adjudication; POL-R backend facts remain Unverified. Testing governance alone
-does not complete roadmap Phase 1 or qualify the release.
+coverage and results. Export/confirmation, consistency/recovery and decimal rules
+are selected in their technical owner, not implemented by this strategy.
+Allocation details, first-release inclusion and replacement cutover remain with
+user/ChatGPT adjudication; POL-R backend facts remain Unverified. Testing governance
+alone does not complete roadmap Phase 1 or qualify the release.

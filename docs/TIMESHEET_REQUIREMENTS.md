@@ -21,9 +21,10 @@ are in [AGENTS.md](../AGENTS.md), inspected technical behavior in
 - **DEFERRED**: approved functionality belonging to a later phase. Deferral does
   not withdraw approval or imply implementation.
 
-The behavioral requirements below are Selected. Exact serialized event contracts
-and cross-resource recovery policies remain Open as identified below. Those
-implementation decisions require separate user/ChatGPT adjudication.
+The behavioral requirements below are Selected. The approved export-evidence,
+decimal-hour, recovery and confirmation technical contracts are owned by
+[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); they are not yet
+implemented. Unrelated Open matters remain reserved for user/ChatGPT adjudication.
 
 ## SELECTED — Replacement, installation and data boundary
 
@@ -95,6 +96,17 @@ Exported and confirmed amounts are never additional actual work. They must not
 be added to elapsed totals. There is no automatic POL-R connection or
 synchronization: the user enters and corrects external values.
 
+## SELECTED — Decimal-hour replacement output
+
+Replacement exports and POL-R-facing reconciliation use decimal hours with exactly
+two places. Keep full-precision accounting seconds unchanged; round each task/day
+cell once using deterministic ROUND_HALF_UP to integer hundredths. Displayed
+weekly, project and overall totals sum displayed task/day cells, not independently
+rounded raw aggregates. This presentation does not create additional Actual.
+Nonzero work rounding to 0.00 stays nonzero internally and is not automatically
+confirmed as zero. The technical rules are in the
+[decimal contract](EXPORT_EVIDENCE_CONTRACT.md#decimal-hour-representation).
+
 ## SELECTED — Daily reconciliation
 
 Every task/day reconciliation record supports **Actual**, **Confirmed POL-R**,
@@ -120,6 +132,12 @@ Unknown is different from zero. If no external amount has ever been confirmed:
 
 Do not assume an unconfirmed cell contains zero or calculate a fictitious exact
 outstanding amount from an unknown previous external value.
+
+POL-R-facing Delta uses displayed Actual hundredths minus confirmed hundredths;
+Enter uses current displayed Actual. Underlying Actual retains exact seconds.
+The mandatory HH:MM examples below preserve work semantics; their selected
+decimal representations are specified in the
+[reconciliation contract](EXPORT_EVIDENCE_CONTRACT.md#displayed-reconciliation).
 
 ## SELECTED — Mandatory 3:00 → 5:00 contractual behavior test
 
@@ -155,11 +173,21 @@ Saving never automatically marks work as entered into POL-R.
 Saved exports remain unchanged after later work, corrections, project movement
 or task renaming. Repeated exports never add their hours to actual work.
 
+One immutable journal-backed snapshot is authoritative; external files are
+reproducible copies. Register and verify that snapshot before file publication,
+then verify complete file bytes before reporting successful export. A failed
+materialization leaves recoverable pending evidence. Retry the same snapshot
+without recalculating work or overwriting existing files; a conflicting destination
+requires another user-selected path. Matching existing bytes may be recognized.
+File status is derived and must be reverified, not assumed permanently correct.
+The [technical contract](EXPORT_EVIDENCE_CONTRACT.md) owns identity, contents,
+registration uncertainty, materialization and recovery rules.
+
 **CURRENT IMPLEMENTATION distinction:** the staged save service publishes a
-report file but does not register an immutable export-snapshot event. Durable
-export registration is Selected and not yet implemented. Coordination between
-safe file publication and durable export evidence, including interruption or
-logging failure, is Open and must be adjudicated before implementation.
+report file but does not register an immutable export-snapshot event. It still
+uses exact HH:MM:SS output and lacks snapshot-linked byte verification/recovery.
+Snapshot-first registration, decimal rendering and confirmation remain Selected
+and not yet implemented; architecture approval does not activate them.
 
 ## SELECTED — Explicit POL-R confirmation workflow
 
@@ -198,9 +226,10 @@ without independent additive project totals, outstanding balances or Delta
 counters.
 
 Confirmations may reference an export. Manual confirmation must also work without
-a saved export. Exact event names, IDs, payload layouts, validation/replay
-contracts and cross-resource recovery mechanics remain Open; they require
-separate user/ChatGPT adjudication before the first persistent implementation.
+a saved export. The approved
+[confirmation technical contract](EXPORT_EVIDENCE_CONTRACT.md#confirmation-event-structure)
+defines one validated batch event, expected prior identities and conflict-specific
+acknowledgement; persistent implementation remains pending.
 
 ## SELECTED — Corrections and stale exports
 
@@ -283,22 +312,18 @@ Source describes what executes, not an alternative product contract. See
 | Week configuration and allocations | No selectable week-start setting or selected weekly-allocation management. |
 | Data/installation | Launcher still uses the existing data path; fresh-directory release cutover is inactive. No historical migration implemented. |
 
-Current text `HH:MM:SS[.fraction]` reporting does not establish POL-R's required
-entry format. Current source Sunday-start handling is not a fixed future policy.
+Current text `HH:MM:SS[.fraction]` reporting remains staged source behavior;
+two-decimal replacement output is selected but not implemented. Current source
+Sunday-start handling is not a fixed future policy.
 Backend foundations do not make the redesigned production workflow operational.
 
 ## OPEN — Reserved user/ChatGPT decisions
 
-- **Internal event contract:** exact export-snapshot and POL-R-confirmation event
-  names, payload schemas, event IDs, validation, replay and recovery rules.
-- **Cross-resource save consistency:** coordination of successful report-file
-  publication with durable immutable export evidence, including interruption
-  and logging failure. No failure-recovery policy is selected here.
-- **External entry format:** decimal hours, HH:MM or another POL-R format; do not
-  infer it from Chronicle's current report format.
 - **Allocation configuration details:** recurring defaults, overrides,
   allocation-edit controls and existing allocations/overrides after week-start
   changes.
+- **First-release allocation scope:** whether allocation management is required
+  for the first replacement release.
 - **Replacement cutover:** exact release installation and old-data handling.
   Migration is not required; automatic deletion is not authorized.
 
@@ -314,5 +339,7 @@ not independent external verification. Do not turn these assumptions into policy
 Future implementation includes configurable week starts, immutable saved-export
 evidence, explicit POL-R confirmations/reconciliation, the low-friction UI,
 weekly allocation tracking and replacement installation/cutover. Their Selected
-behavior remains binding, but implementation of Open architecture waits for
-adjudication. This document creates no event schema, persistence, setting or UI.
+behavior remains binding. Export/confirmation development follows the approved
+technical contract through separately reviewed outcomes; unrelated Open allocation
+and cutover decisions still require adjudication. No production workflow is active
+merely because its contract is documented.

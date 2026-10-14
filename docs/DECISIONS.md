@@ -10,17 +10,21 @@ this history. [Design Notes](../DESIGN_NOTES.md) describes implementation,
 [ROADMAP.md](ROADMAP.md) owns sequencing/gates, and
 [TESTING_STRATEGY.md](TESTING_STRATEGY.md) owns validation. Historical project
 changes belong to [CHANGELOG.md](../CHANGELOG.md).
+The approved [export evidence contract](EXPORT_EVIDENCE_CONTRACT.md) owns the
+technical event, decimal, verification/recovery and batch rules recorded below.
 
 The user and ChatGPT approve product/architecture choices. Codex records and
 implements approved work; recording a choice does not make Codex its approver.
-The active choices below are explicit user confirmations preserved in the
-approved product contract and reaffirmed in the user-supplied decision-history
-instructions. Corrections and supersession identify their separate provenance.
+Product choices below are explicit user confirmations preserved in the approved
+contract. The later snapshot-first and decimal-hour direction is directly
+user-approved; its concrete technical contracts were selected by ChatGPT under
+that direction. Entries distinguish those provenances. Corrections and
+supersession identify their separate evidence.
 Source observations establish execution, not approval of target policy.
 
 Precise decision dates are not established here and are omitted. Commit dates
-are not decision dates. No exact quotations, undocumented rejected alternatives
-or attributed ChatGPT proposal origins are supplied. A user-approved ChatGPT
+are not decision dates. Unsupported quotations, rejected alternatives and
+proposal origins are omitted. A user-approved ChatGPT
 recommendation is distinct from direct user selection; that provenance requires
 evidence of both the recommendation and acceptance, not an assistant proposal
 alone. This record does not infer it where the available evidence establishes
@@ -97,9 +101,10 @@ explicitly confirmed by the user. Neither evidence type creates additional work;
 saving does not confirm external entry. The selected model requires immutable
 event-backed saved-export and confirmation evidence, auditable earlier records,
 whole-batch validation without partial commitment, and derived Delta/outstanding
-values rather than independent balance counters. Exact event serialization and
-file/event recovery remain open. The staged file-only service does not fulfill
-immutable export registration merely by publishing text.
+values rather than independent balance counters. Event and recovery questions
+previously reserved for adjudication are now selected in the
+[technical contract](EXPORT_EVIDENCE_CONTRACT.md). The staged file-only service
+does not fulfill immutable export registration merely by publishing text.
 
 ### Absolute daily external confirmations
 
@@ -120,6 +125,40 @@ Enter in POL-R = 5:00**. Updating the external cell to 5:00 and confirming it
 produces **Delta = 0:00**. The cell is replaced with 5:00, not a second independent
 2:00 entry. If Actual 3:00 is corrected to 2:30 after confirmation at 3:00,
 **Delta = -0:30; Enter in POL-R = 2:30**; the earlier evidence remains intact.
+These preserve the original work-time acceptance semantics. The later selected
+decimal representation displays the corresponding values as 5.00, 3.00, +2.00
+and, for the correction, 2.50 and -0.50.
+
+### Authoritative snapshot-first publication and recoverable exports
+
+**Status:** current. **Provenance:** explicit user approval of one authoritative
+immutable snapshot registered before external publication, reproducible verified
+copies, recoverable pending exports and no overwrite. ChatGPT selected the
+concrete event identities, contents, registration/retry, verification and batch
+contracts under that user-approved direction. Technical owner:
+[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); product owner:
+[saved exports](TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports).
+
+The journal holds export truth before file materialization. A failed file write
+leaves reusable evidence rather than an apparent successful export without a
+matching authoritative record. Retry uses the same frozen work and identity;
+success requires verified bytes. This resolves the earlier Open consistency and
+event-contract direction without claiming an implementation or general crash
+transaction. The separately rejected file-first proposal is recorded below.
+
+### Decimal-hour replacement reporting
+
+**Status:** current. **Provenance:** explicit user requirement for decimal-hour
+replacement output; ChatGPT selected two places, ROUND_HALF_UP, integer hundredths
+and displayed-cell rollups under that approval. Technical owner:
+[decimal representation](EXPORT_EVIDENCE_CONTRACT.md#decimal-hour-representation);
+product owner:
+[replacement output](TIMESHEET_REQUIREMENTS.md#selected--decimal-hour-replacement-output).
+
+Exact accounting seconds remain authoritative. Rounded external cells and their
+summed displayed rollups reconcile with values entered into POL-R without creating
+work. Decimal format was previously Open and is now selected; the existing exact
+HH:MM:SS renderer remains a staged implementation, not the replacement format.
 
 ### Low-friction explicit confirmation
 
@@ -164,6 +203,18 @@ believes is present, not independent external verification. Zero Delta therefore
 means agreement with the latest confirmation, not a verified POL-R query.
 
 ## Material corrections, supersession and legacy evidence
+
+### File-first, event-second proposal
+
+**Status:** rejected. **Provenance:** explicit user rejection supplied in the
+approved export/evidence architecture direction. Current technical owner:
+[snapshot-first sequence](EXPORT_EVIDENCE_CONTRACT.md#snapshot-first-creation-and-publication).
+
+The earlier proposal to publish an external file before registering its evidence
+was rejected in favor of the approved authoritative-snapshot-first direction.
+This records rejection of a proposal, not supersession of a previously approved
+user architecture. Current staged file-only code remains an implementation
+observation; it does not implement the rejected two-resource proposal.
 
 ### Replacement clarification
 
@@ -224,18 +275,15 @@ and [roadmap dependency boundaries](ROADMAP.md#dependency-constraints-and-adjudi
 This summary preserves unresolved decision context, not a competing requirements
 owner or candidate implementation design.
 
-- Saved-export and POL-R confirmation event contracts: exact names, schemas,
-  identity, validation and replay details.
-- Coordination of report-file publication and durable export registration,
-  including logging failure, interruption and recovery.
-- Required external POL-R entry format.
 - Allocation defaults/overrides and their interaction with week-start changes.
 - Exact installation replacement and old-data cutover.
 - Whether allocations belong in the first replacement release (reserved release
   scope in the roadmap, not a choice delegated to Codex).
 
-No transaction order, serialization, rollback or recovery policy is selected by
-this historical record. POL-R allotment administration/enforcement remains an
+Formerly Open export event, confirmation, consistency/recovery and decimal-format
+questions are now resolved by the approved technical owner, with provenance
+recorded above. This history defines no alternate schema or recovery authority.
+POL-R allotment administration/enforcement remains an
 [Unverified external fact](TIMESHEET_REQUIREMENTS.md#unverified-external-behavior--pol-r-backend),
 not a resolved decision.
 
@@ -251,4 +299,5 @@ Keep explicit user confirmation, accepted ChatGPT recommendation, user correctio
 source observation and open question provenance distinct. Where evidence is
 insufficient, omit the historical assertion rather than fill it by assumption.
 Design-purpose statements do not imply undocumented user quotations or reasoning.
-This history grants no implementation authorization and closes no Open matter.
+This history records approved resolutions but grants no implementation
+authorization and makes no independent product or architecture decisions.

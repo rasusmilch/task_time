@@ -5,6 +5,9 @@ limitations. The [approved replacement/POL-R contract](docs/TIMESHEET_REQUIREMEN
 owns selected future product behavior, including Open architectural decisions.
 Legacy behavior below remains current during staging; it is not permanent policy
 for the replacement application. See [AGENTS.md](AGENTS.md) for the ownership map.
+The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the selected,
+unimplemented snapshot-first, decimal-hour and confirmation architecture; the
+source descriptions below remain current implementation observations.
 
 ## Architecture
 
@@ -290,6 +293,10 @@ the renderer does not independently reconstruct deletion or selection state.
 Durations use `HH:MM:SS[.fraction]`, with unbounded hours and fractional seconds
 retained from the supplied numeric value's round-trip decimal representation.
 There is no decimal-hours rounding or truncation of nonzero subsecond work.
+This describes the current renderer. The approved replacement uses two-decimal
+task/day cells and displayed-cell rollups under the
+[decimal contract](docs/EXPORT_EVIDENCE_CONTRACT.md#decimal-hour-representation);
+that renderer change is not implemented.
 The timed-work cutoff header preserves fractional timestamp precision too.
 
 The dedicated `_render_timesheet_table()` leaves legacy `_render_table()`
@@ -400,9 +407,13 @@ execution is unavailable in this environment and is not claimed as validated.
 
 Generating is read-only accounting; current saving is file output only and does
 not persist immutable export-snapshot evidence. The
-[selected saved-export/confirmation contract](docs/TIMESHEET_REQUIREMENTS.md)
-requires that future evidence and POL-R reconciliation, while reserving exact
-event schemas and file/event consistency recovery for user/ChatGPT adjudication.
+[selected saved-export/confirmation requirement](docs/TIMESHEET_REQUIREMENTS.md)
+requires future immutable evidence and POL-R reconciliation. The
+[approved technical contract](docs/EXPORT_EVIDENCE_CONTRACT.md) now selects
+snapshot-first registration, decimal output, verified materialization, pending
+recovery and confirmation batches; none is implemented in this service. The
+current method regenerates text on each call, rejects existing destinations even
+if matching, and does not perform snapshot-linked postpublication byte verification.
 A saved report is **not submission evidence**. Neither operation appends events, updates
 snapshots, creates backups, changes selection/membership, operates timers, resets
 counters, consults timestamp checkpoints or changes submission flags/coverage.

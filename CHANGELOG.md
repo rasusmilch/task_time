@@ -37,3 +37,8 @@ starts and weekly allocation management are not implemented.
   deferred work and unverified external behavior.
 - Reconcile overview and technical status with those owners. Documenting approved
   future behavior does not represent shipped application functionality.
+- Record the approved technical contract for journal-first immutable export
+  evidence, verified recoverable file copies, two-decimal-hour presentation and
+  atomic absolute POL-R confirmation batches. Reconcile decision history and
+  validation/development guidance; these replacement capabilities remain
+  unimplemented.

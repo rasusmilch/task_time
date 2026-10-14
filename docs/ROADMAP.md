@@ -17,6 +17,8 @@ The [testing strategy](TESTING_STRATEGY.md) owns validation applicability,
 evidence requirements and release-qualification boundaries.
 Historical rationale, provenance and supersessions belong in
 [DECISIONS.md](DECISIONS.md), not in this current-state roadmap.
+The selected technical export/confirmation architecture is owned by
+[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); implementation is pending.
 
 ## Status and gate rules
 
@@ -56,8 +58,9 @@ target policy. Platform/integrated validation remains **VALIDATION PENDING**.
 
 ## Phase 1 — Remaining governance and architecture
 
-**Status:** approved development priority; not complete. Persistent-evidence
-implementation is **BLOCKED ON ADJUDICATION**.
+**Status:** approved development priority; not marked Complete. Export/evidence
+architecture is selected and recorded; independent review of the reconciled
+contract remains pending. Architectural approval is not operational functionality.
 
 **Outcome:** establish missing governance and approved technical contracts before
 persistent POL-R evidence is implemented. Keep the following independently
@@ -68,16 +71,16 @@ reviewable documentation outcomes separate:
   replay/correction, persistent integrity, reconciliation, backup/restore,
   filesystem failures, Windows integration, release and data safety. Establishing
   this governance does not complete Phase 1 or perform runtime qualification;
-  persistent-evidence adjudication remains outstanding.
+  implementation and integrated validation remain separate outcomes.
 - **Architectural decision history — established:** [DECISIONS.md](DECISIONS.md)
   preserves approved choices, established rationale, provenance and genuine
-  corrections/supersessions. Its existence does not approve the remaining
-  persistent-evidence contracts or complete Phase 1.
-- **Persistent-evidence adjudication:** the user and ChatGPT must approve export
-  snapshot and POL-R confirmation event contracts, exact persistence/replay
-  requirements, batch atomicity, and export-file/event consistency and failure
-  recovery. Document decisions in their appropriate authority before code work.
-  Codex may inspect constraints but cannot choose those contracts.
+  corrections/supersessions. History does not replace technical authority or
+  complete Phase 1.
+- **Export/evidence architecture — selected:**
+  [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md) records snapshot-first
+  journal registration, decimal-hour cells, verified recoverable file copies and
+  confirmation batch integrity. These formerly Open contracts are approved, not
+  implemented. Codex must follow them rather than choose alternative mechanisms.
 
 **Completion gate:** required testing governance exists; material decisions and
 supersessions are traceable; persistent-evidence architecture is approved;
@@ -85,8 +88,14 @@ affected authorities agree; no necessary Open issue has been silently resolved.
 
 ## Phase 2 — POL-R evidence and reconciliation
 
-**Status:** **APPROVED / NOT IMPLEMENTED**; persistent implementation is
-**BLOCKED ON ADJUDICATION** of the relevant Phase 1 contracts.
+**Status:** **APPROVED / NOT IMPLEMENTED**. Relevant technical contracts are
+selected; independently accepted documentation and focused implementation are
+still required.
+
+**Dependencies:** follow the [approved contract](EXPORT_EVIDENCE_CONTRACT.md).
+First implement and validate decimal-hour replacement rendering as a separate
+semantic outcome, before persistent export-snapshot integration. This dependency
+does not reorder the six development phases or activate the production UI.
 
 **Outcome:** implement the approved distinction between Actual, Exported and
 Confirmed POL-R. The [product contract](TIMESHEET_REQUIREMENTS.md) remains the
@@ -121,8 +130,9 @@ no partially committed confirmation batches; export/confirmation values never
 increase Actual; required examples and correction cases pass; failure handling
 is validated; legacy submission/checkpoint assumptions do not enter this model.
 
-Generate separate focused implementation tasks later, after each relevant
-contract is adjudicated; this phase is not one broad execution authorization.
+Generate separate focused implementation tasks against the approved contract
+after independent acceptance; this phase is not one broad execution authorization.
+Return any newly necessary material decision for user/ChatGPT adjudication.
 
 ## Phase 3 — Time entry and project workflow
 
@@ -167,8 +177,8 @@ accounting; representative operator UI workflows are validated.
 
 **Dependencies:** validated Phase 2 evidence/reconciliation and corresponding
 production readers; correct date-based contributions for configurable weeks.
-POL-R's required numeric entry format remains Open and must be adjudicated
-before dependent external-entry formatting is implemented.
+POL-R-facing formatting follows the selected two-decimal-hour representation
+and displayed-cell rollups in the [technical contract](EXPORT_EVIDENCE_CONTRACT.md).
 
 **Completion gate:** a normal reporting week can be managed through the UI;
 whole-export confirmation needs minimal interaction; partial confirmation leaves
@@ -242,21 +252,21 @@ allowed, but it does not authorize premature implementation.
 
 | Development outcome | Prerequisite or reserved decision |
 | --- | --- |
-| Persistent export/confirmation events | Approved event, replay, atomicity and failure-recovery contracts from Phase 1. |
+| Persistent export/confirmation events | Selected technical contract and validated decimal replacement rendering before export-snapshot integration. |
 | POL-R reconciliation | Reliable confirmation evidence; Unknown/zero and replacement semantics. |
 | Confirmation from saved exports | Frozen export evidence, not a recalculation of current Actual. |
 | Production date-only entry | Corresponding mixed-accounting and active-reader integration. |
-| Production reconciliation UI | Validated evidence and calculations; external-entry format adjudication where needed. |
+| Production reconciliation UI | Validated evidence/calculations and the selected decimal representation. |
 | Configurable weekly presentation | Correct date-based contributions and preservation of old evidence conventions. |
 | Allocation configuration | Approved remaining recurrence/override/week-change behavior. |
 | Release cutover | Separately approved installation/old-data handling contract. |
 | Final release readiness | Integrated workflow and actual Windows validation plus independent review. |
 
-The product contract's Open matters remain Open: internal evidence events;
-cross-resource save consistency; POL-R entry format; allocation configuration;
-replacement cutover. POL-R backend allotment administration/enforcement remains
-Unverified. First-release allocation scope also requires release adjudication.
-No event schema, file/event recovery strategy or external format is selected here.
+Allocation configuration, week-change interactions, replacement cutover and
+first-release allocation inclusion remain Open. POL-R backend allotment
+administration/enforcement remains Unverified. Export event/confirmation contracts,
+snapshot-first consistency/recovery and decimal representation are selected in
+their technical owner; this roadmap neither duplicates nor replaces that contract.
 
 ## Maintenance
 

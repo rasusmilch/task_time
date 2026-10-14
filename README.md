@@ -10,16 +10,17 @@ Selected functionality is not automatically implemented.
 
 | Status | What it means here |
 | --- | --- |
-| Approved target | Replacement workflow, configurable week starts and separate Actual/Exported/Confirmed POL-R reconciliation are selected; consult the contract for the complete behavior. |
+| Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
 | Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, text rendering/generation and safe file publication are implemented independently of the production UI. |
-| Production still pending | Replacement UI, new date-only writers, immutable saved-export registration, POL-R confirmations/reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
+| Production still pending | Decimal replacement rendering, replacement UI, new date-only writers, immutable export registration/recovery, POL-R confirmations/reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
 
 Current production still uses legacy parent/subtask interfaces, synthetic manual
 duration intervals, timestamp checkpoints and legacy submission markers. This
 staging does not select a permanent parallel legacy interface. Saving through
 the new service creates a file only, without durable frozen export-event evidence
-or POL-R confirmation. The coordination of future export evidence with file
-publication remains Open.
+or POL-R confirmation. The approved snapshot-first technical contract requires
+verified registration before file publication and recoverable pending exports;
+that future workflow is not implemented.
 
 See [repository instructions](AGENTS.md), [current technical design](DESIGN_NOTES.md)
 and the [canonical changelog](CHANGELOG.md) for their respective authority scopes.
@@ -29,6 +30,8 @@ The [testing strategy](docs/TESTING_STRATEGY.md) defines validation applicabilit
 evidence expectations and release-qualification boundaries.
 The [decision history](docs/DECISIONS.md) preserves historical rationale,
 provenance and supersessions.
+The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns approved
+decimal-hour, snapshot, file verification/recovery and confirmation semantics.
 
 ## Overview
 
