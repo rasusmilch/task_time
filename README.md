@@ -11,8 +11,8 @@ Selected functionality is not automatically implemented.
 | Status | What it means here |
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, text rendering/generation and safe file publication are implemented independently of the production UI. |
-| Production still pending | Decimal replacement rendering, replacement UI, new date-only writers, immutable export registration/recovery, POL-R confirmations/reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
+| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact report generation and safe file publication are implemented independently of the production UI. |
+| Production still pending | Decimal export integration, replacement UI, new date-only writers, immutable export registration/recovery, POL-R confirmations/reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
 
 Current production still uses legacy parent/subtask interfaces, synthetic manual
 duration intervals, timestamp checkpoints and legacy submission markers. This
@@ -90,8 +90,18 @@ This renderer is independently callable and
 [renderer contract](DESIGN_NOTES.md#independent-task-timesheet-renderer-staged)
 for authoritative metadata, wrapping and partial-week behavior.
 
+`build_decimal_timesheet_text()` is a separate pure replacement renderer using
+the same accounting result and safe layout. It displays two-place decimal hours:
+`seconds_to_decimal_hundredths()` rounds each task/day once with decimal
+ROUND_HALF_UP, then displayed rollups sum integer hundredths. Three tasks with
+60 seconds each display `0.02` each and total `0.06`, while Actual remains
+180 seconds. Nonzero work may display `0.00` without changing its recorded amount.
+See the [decimal renderer](DESIGN_NOTES.md#decimal-hour-timesheet-renderer-staged).
+No snapshot evidence, file output or production integration is added by rendering.
+
 The service now connects accounting and rendering through
-`generate_date_range_timesheet()`. `save_date_range_timesheet()` optionally writes
+`generate_date_range_timesheet()`, which continues using the exact renderer.
+`save_date_range_timesheet()` optionally writes
 the complete report to private same-directory staging, then atomically publishes
 a caller-chosen **new** UTF-8 file with a no-overwrite hard link. Existing
 destinations are protected, and cleanup never deletes the final path. Filesystems

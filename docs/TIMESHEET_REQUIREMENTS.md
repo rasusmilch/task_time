@@ -23,8 +23,9 @@ are in [AGENTS.md](../AGENTS.md), inspected technical behavior in
 
 The behavioral requirements below are Selected. The approved export-evidence,
 decimal-hour, recovery and confirmation technical contracts are owned by
-[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); they are not yet
-implemented. Unrelated Open matters remain reserved for user/ChatGPT adjudication.
+[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md). Pure decimal rendering
+is implemented/staged; persistent export evidence, recovery and confirmation are
+not implemented. Unrelated Open matters remain reserved for user/ChatGPT adjudication.
 
 ## SELECTED — Replacement, installation and data boundary
 
@@ -186,8 +187,9 @@ registration uncertainty, materialization and recovery rules.
 **CURRENT IMPLEMENTATION distinction:** the staged save service publishes a
 report file but does not register an immutable export-snapshot event. It still
 uses exact HH:MM:SS output and lacks snapshot-linked byte verification/recovery.
-Snapshot-first registration, decimal rendering and confirmation remain Selected
-and not yet implemented; architecture approval does not activate them.
+The separate pure decimal renderer is implemented/staged but is not used by these
+service APIs. Snapshot-first registration, decimal export integration and
+confirmation remain Selected and not yet implemented.
 
 ## SELECTED — Explicit POL-R confirmation workflow
 
@@ -305,15 +307,16 @@ Source describes what executes, not an alternative product contract. See
 | Project/task foundation | Separate UUID-based service records, optional current project membership and independent task-owned time. |
 | Date-only duration foundation | Separate endpoint-free records with append-only creation/correction/deletion replay and snapshots; new production duration writers are inactive. |
 | Mixed accounting | Read-only explicit local-date windows, real intervals plus effective dated records, derived project/Unassigned/application totals, and fixed Sunday-start weeks. |
-| Timesheet rendering/generation | Staged independent-task text report with authoritative scope/timezone metadata, precise durations, safe calendar slots, reversible escaping and wrapped borders. |
+| Timesheet rendering/generation | Staged independent-task exact and decimal renderers with authoritative scope/timezone metadata, safe calendar slots, reversible escaping and wrapped borders. Decimal output rounds task/day cells once and sums displayed hundredths; service generation still uses exact durations. |
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
 | Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; current duration UI still uses synthetic intervals. |
 | POL-R target workflow | No new latest-absolute confirmation/reconciliation system or immutable saved-export registration. Legacy markers are not this replacement contract. |
 | Week configuration and allocations | No selectable week-start setting or selected weekly-allocation management. |
 | Data/installation | Launcher still uses the existing data path; fresh-directory release cutover is inactive. No historical migration implemented. |
 
-Current text `HH:MM:SS[.fraction]` reporting remains staged source behavior;
-two-decimal replacement output is selected but not implemented. Current source
+Current text `HH:MM:SS[.fraction]` reporting remains available and unchanged;
+two-decimal replacement rendering is independently callable and staged, without
+persistent evidence or production export integration. Current source
 Sunday-start handling is not a fixed future policy.
 Backend foundations do not make the redesigned production workflow operational.
 

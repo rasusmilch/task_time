@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import date, datetime, timezone
-from decimal import Decimal
+from decimal import Context, Decimal, ROUND_HALF_UP, localcontext
 from pathlib import Path
 from typing import Any
 import unicodedata
@@ -119,6 +119,31 @@ def _format_timesheet_duration(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{remainder:02d}" + (f".{fraction}" if fraction else "")
 
 
+def seconds_to_decimal_hundredths(seconds: int | float) -> int:
+    """Round finite nonnegative int/float seconds to hundredths, HALF_UP.
+
+    Decimal input representation and an independent sufficient-precision context
+    avoid binary division, ambient context changes and loss of large integers.
+    """
+    if isinstance(seconds, bool) or not isinstance(seconds, (int, float)):
+        raise ValueError("Timesheet seconds must be int or float")
+    amount = Decimal(seconds) if isinstance(seconds, int) else Decimal(str(seconds))
+    if not amount.is_finite() or amount < 0:
+        raise ValueError("Timesheet seconds must be finite and nonnegative")
+    digits = amount.as_tuple()
+    precision = max(28, len(digits.digits) + max(digits.exponent, 0) + 4)
+    with localcontext(Context(prec=precision)):
+        return int((amount / 36).to_integral_value(rounding=ROUND_HALF_UP))
+
+
+def _format_decimal_hundredths(hundredths: int) -> str:
+    """Format validated integer hundredths without floating-point arithmetic."""
+    if isinstance(hundredths, bool) or not isinstance(hundredths, int) or hundredths < 0:
+        raise ValueError("Decimal hundredths must be a nonnegative integer")
+    whole, fraction = divmod(hundredths, 100)
+    return f"{whole}.{fraction:02d}"
+
+
 def build_timesheet_text(
     report: dict[str, Any], *, local_timezone: str | None = None, scope: str | None = None,
 ) -> str:
@@ -128,6 +153,25 @@ def build_timesheet_text(
     are assertions and must match. All numeric cells use supplied daily/weekly
     seconds, including informational subtotals.
     """
+    return _build_timesheet_text(report, local_timezone=local_timezone, scope=scope)
+
+
+def build_decimal_timesheet_text(
+    report: dict[str, Any], *, local_timezone: str | None = None, scope: str | None = None,
+) -> str:
+    """Render two-place hours from rounded task/day cells, without state changes.
+
+    Raw accounting aggregates remain untouched. Every displayed subtotal derives
+    from the included task/day integer hundredths, not rounded raw aggregates.
+    """
+    return _build_timesheet_text(report, local_timezone=local_timezone, scope=scope, decimal=True)
+
+
+def _build_timesheet_text(
+    report: dict[str, Any], *, local_timezone: str | None = None,
+    scope: str | None = None, decimal: bool = False,
+) -> str:
+    """Shared pure layout; exact and decimal renderers retain distinct amounts."""
     actual_scope = report.get("scope")
     actual_timezone = report.get("local_timezone")
     if actual_scope not in ("complete", "selected"):
@@ -141,6 +185,12 @@ def build_timesheet_text(
     scope, local_timezone = actual_scope, actual_timezone
     start, end = report["start_date"], report["end_date"]
     tasks, projects = report["tasks"], report["projects"]
+    # Convert once per authoritative task/day, before any displayed rollups.
+    displayed = {
+        task_id: {day: seconds_to_decimal_hundredths(seconds)
+                  for day, seconds in row["daily_seconds"].items()}
+        for task_id, row in tasks.items()
+    } if decimal else None
     duplicate_names = Counter(row["name"] for row in tasks.values())
     duplicate_projects = Counter(row["name"] for row in projects.values())
     total_label = "Application total" if scope == "complete" else "Selected-scope total"
@@ -151,8 +201,13 @@ def build_timesheet_text(
         f"Local timezone: {local_timezone}", f"Timed-work calculation cutoff UTC: {cutoff}",
         f"Scope: {'Complete eligible-task scope' if scope == 'complete' else 'Selected scope'}",
         f"Deleted historical tasks included: {'Yes' if report['include_deleted'] else 'No'}",
-        "Duration format: HH:MM:SS[.fraction]; seconds are preserved, without rounding.",
-        "out of scope = outside requested dates; 00:00:00 = no recorded work on an included date.",
+        *(["Duration format: Decimal hours, two places.",
+           "Task/day cells use ROUND_HALF_UP; displayed totals sum rounded task/day cells.",
+           "Full-precision recorded seconds remain unchanged.",
+           "Nonzero recorded seconds may display as 0.00 after rounding."] if decimal else
+          ["Duration format: HH:MM:SS[.fraction]; seconds are preserved, without rounding."]),
+        ("out of scope = outside requested dates; 0.00 = zero displayed hours on an included date."
+         if decimal else "out of scope = outside requested dates; 00:00:00 = no recorded work on an included date."),
         "unrepresentable = calendar slot outside Python's supported dates; no work is assigned.",
         r"Labels preserve content; pipes, backslashes and controls use reversible escapes (\u007c, \\, \n, \t).",
         "Project subtotals are informational; they are not additional task entries.",
@@ -171,7 +226,17 @@ def build_timesheet_text(
                    *[f"{('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')[offset]} {day.isoformat() if day is not None else 'unrepresentable'}"
                      for offset, day in enumerate(days)], "Weekly total (in scope)"]
 
-        def cells(row: dict[str, Any]) -> list[str]:
+        def cells(row: dict[str, Any], task_ids) -> list[str]:
+            if displayed is not None:
+                # UUID union: project rows never add independent time.
+                members = set(task_ids)
+                if not members <= displayed.keys():
+                    raise ValueError("Timesheet group contains an unknown task reference")
+                daily = [sum(displayed[key].get(day, 0) for key in members)
+                         if day is not None and start <= day <= end else 0 for day in days]
+                return ["unrepresentable" if day is None else
+                        _format_decimal_hundredths(amount) if start <= day <= end else "out of scope"
+                        for day, amount in zip(days, daily)] + [_format_decimal_hundredths(sum(daily))]
             return [
                 "unrepresentable" if day is None else
                 _format_timesheet_duration(row["daily_seconds"].get(day, 0))
@@ -183,7 +248,7 @@ def build_timesheet_text(
             for task_id in sorted(task_ids, key=lambda key: (tasks[key]["name"], key)):
                 row = tasks[task_id]
                 rows.append([row["name"], "Inactive (deleted)" if row["is_deleted"] else "Active",
-                             task_id if duplicate_names[row["name"]] > 1 else "—", *cells(row)])
+                             task_id if duplicate_names[row["name"]] > 1 else "—", *cells(row, (task_id,))])
             return rows
 
         for project_id in sorted(projects, key=lambda key: (projects[key]["name"], key)):
@@ -195,16 +260,16 @@ def build_timesheet_text(
                 lines.append("No eligible tasks included in this project.")
             subtotal_label = ("Project total — informational" if project["scope"] == "full_project"
                               else "Selected tasks subtotal — informational")
-            rows.append([subtotal_label, "—", "—", *cells(project)])
+            rows.append([subtotal_label, "—", "—", *cells(project, project["task_ids"])])
             lines.extend([*_render_timesheet_table(headers, rows), ""])
 
         unassigned = report["unassigned"]
         if unassigned["task_ids"]:
             lines.append("Unassigned")
             rows = task_rows(unassigned["task_ids"])
-            rows.append(["Unassigned subtotal — informational", "—", "—", *cells(unassigned)])
+            rows.append(["Unassigned subtotal — informational", "—", "—", *cells(unassigned, unassigned["task_ids"])])
             lines.extend([*_render_timesheet_table(headers, rows), ""])
-        lines.extend([*_render_timesheet_table(headers, [[total_label, "—", "—", *cells(report["application"])]]), ""])
+        lines.extend([*_render_timesheet_table(headers, [[total_label, "—", "—", *cells(report["application"], tasks)]]), ""])
     return "\n".join(lines) + "\n"
 
 

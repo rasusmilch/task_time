@@ -5,9 +5,10 @@ limitations. The [approved replacement/POL-R contract](docs/TIMESHEET_REQUIREMEN
 owns selected future product behavior, including Open architectural decisions.
 Legacy behavior below remains current during staging; it is not permanent policy
 for the replacement application. See [AGENTS.md](AGENTS.md) for the ownership map.
-The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the selected,
-unimplemented snapshot-first, decimal-hour and confirmation architecture; the
-source descriptions below remain current implementation observations.
+The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the selected
+snapshot-first, decimal-hour and confirmation architecture. Pure decimal rendering
+is staged; persistent export/confirmation evidence and recovery are unimplemented.
+The source descriptions below remain current implementation observations.
 
 ## Architecture
 
@@ -293,10 +294,10 @@ the renderer does not independently reconstruct deletion or selection state.
 Durations use `HH:MM:SS[.fraction]`, with unbounded hours and fractional seconds
 retained from the supplied numeric value's round-trip decimal representation.
 There is no decimal-hours rounding or truncation of nonzero subsecond work.
-This describes the current renderer. The approved replacement uses two-decimal
+This describes the unchanged exact renderer. The replacement renderer uses two-decimal
 task/day cells and displayed-cell rollups under the
 [decimal contract](docs/EXPORT_EVIDENCE_CONTRACT.md#decimal-hour-representation);
-that renderer change is not implemented.
+its separate staged API is described below.
 The timed-work cutoff header preserves fractional timestamp precision too.
 
 The dedicated `_render_timesheet_table()` leaves legacy `_render_table()`
@@ -338,6 +339,45 @@ and `build_selected_tasks_export_text()` and their service/UI routes remain
 unchanged. This renderer is not activated in the production export menu; new
 duration writers, submission/checkpoint policies and the separate fresh-start
 data-directory cutover remain separate implementation outcomes.
+
+## Decimal-hour timesheet renderer (staged)
+
+`task_timer.exporter.build_decimal_timesheet_text(report, *, local_timezone=None,
+scope=None)` returns complete newline-terminated Unicode text from the same
+detached accounting result. Scope/timezone arguments are matching assertions,
+not independent labels. It shares the exact renderer's pure layout helpers,
+Sunday-start calendar slots, grouping, selection labels, deleted-task status,
+UUID disambiguation, reversible Unicode escapes and wrapped table geometry.
+It does not alter `build_timesheet_text()` output or the accounting result schema.
+
+Public `seconds_to_decimal_hundredths(seconds)` accepts finite nonnegative
+`int`/`float` seconds and rejects booleans, other types, negative and nonfinite
+values. Decimal arithmetic uses the input's decimal representation and an isolated
+precision context to compute `ROUND_HALF_UP(seconds / 36)` as integer hundredths.
+It avoids binary-float division and legacy `format_decimal_hours()` rounding.
+A private formatter emits exactly two fractional digits from validated integer
+hundredths. For example, 18 seconds becomes `0.01`, 12000 becomes `3.33` and
+50400 becomes `14.00`.
+
+Each included task/day's authoritative `daily_seconds` value is rounded once.
+Displayed task weekly, project daily/weekly, Unassigned and application totals sum
+those integer task/day hundredths, not separately rounded aggregate seconds.
+Three tasks with 60 seconds each display `0.02` each and total `0.06`; underlying
+Actual remains 180 seconds. Project subtotals are informational and never added
+again to application totals. Raw daily/weekly aggregate fields are not decimal
+rounding inputs. Selection/group membership remains supplied by the report.
+
+Included days display decimal values such as `0.00`; valid dates outside the
+window say `out of scope`, and nonexistent calendar slots say `unrepresentable`.
+Positive seconds may round to `0.00` without changing their source records.
+The report labels its two-place format and rounding rule. No intervals or dated
+records are recalculated, and no report/state/events/files are mutated.
+
+This renderer is independently callable only: existing generation/save services
+still use the exact renderer. Export-snapshot and confirmation persistence,
+materialization/recovery, production export/UI integration, configurable week
+starts and fresh-directory cutover remain unimplemented. The shared Unicode-width
+and extreme-date accounting limitations described above still apply.
 
 ## Date-range timesheet service (staged)
 

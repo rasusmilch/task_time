@@ -69,6 +69,7 @@ their assertions before selecting a run.
 | Date-only replay | [test_dated_durations.py](../tests/test_dated_durations.py): endpoint-free records, correction/deletion, ownership/payload rejection, equal-second replay, archives, rebuild and backup/restore. Uses isolated private event fixtures; it does not activate production writers. |
 | Accounting and time boundaries | [test_mixed_accounting.py](../tests/test_mixed_accounting.py), [test_time_utils.py](../tests/test_time_utils.py): conservation, selection, cutoffs, midnight/DST, corrections, resets, fractional amounts and fixed Sunday weeks. |
 | Rendering | [test_timesheet_renderer.py](../tests/test_timesheet_renderer.py): scope, partial/multiple weeks, calendar boundaries, exact durations, duplicate identity, wrapping/geometry and Unicode escaping. |
+| Decimal rendering | [test_decimal_timesheet_renderer.py](../tests/test_decimal_timesheet_renderer.py): ROUND_HALF_UP conversion/boundaries, invalid numbers, task/day rounding and displayed-rollup conservation, selection/identity, partial/multiple weeks, calendar edges, Unicode wrapping, purity and exact/legacy byte compatibility. This is a pure staged renderer, not export-evidence persistence. |
 | Reporting/file publication | [test_timesheet_service.py](../tests/test_timesheet_service.py): real service orchestration, UTF-8 bytes, no-clobber publication, concurrent targets, injected staging/publication/cleanup failures and state/file purity. |
 | Existing storage and backups | [test_storage.py](../tests/test_storage.py), [test_backups.py](../tests/test_backups.py), plus project/dated/accounting fixtures: restart, rotation, snapshots, backup contents, retention and restore behavior. |
 | Legacy compatibility | [test_exporter.py](../tests/test_exporter.py), [test_timeline_corrections.py](../tests/test_timeline_corrections.py), and neighboring tags/subtask/template/selected-export tests protect current behavior during staging. Legacy submission/checkpoint tests are not proof of replacement POL-R semantics. |
@@ -127,10 +128,12 @@ borders and no repeated chargeable values on continuation rows. Pure generation
 and rendering must not mutate inputs/state/files. Evidence registration changes
 its intended evidence only, never Actual records, timers or export checkpoints.
 
-## Future decimal and export-evidence validation
+## Decimal rendering and future export-evidence validation
 
-The technical contract is selected but these capabilities are not implemented.
-Future tests must validate:
+The pure decimal renderer and conversion helper are implemented/staged, with
+coverage in the test source above. Persistent export evidence, confirmations and
+recovery remain unimplemented. Apply the selected technical contract to current
+rendering changes and future evidence implementation:
 
 - Exactly two decimal places, integer hundredths and deterministic ROUND_HALF_UP
   conversion without binary-float presentation artifacts. Check the supplied
@@ -157,10 +160,11 @@ Future tests must validate:
   undo valid evidence; restart, archive replay, rebuild and backup/restore retain
   pending exports. Duplicate identities cannot duplicate effective evidence.
 
-These are future expectations, not existing passing coverage or a new recovery
-mechanism selected by tests. Preserve current exact renderer and legacy regression
-assertions during staged development; decimal replacement rendering precedes
-persistent export-snapshot integration as a focused implementation outcome.
+Decimal conversion and displayed-rollup assertions have existing focused coverage;
+evidence registration/materialization/recovery assertions are future expectations,
+not existing passing coverage or a mechanism selected by tests. Preserve current
+exact renderer and legacy regression assertions during staged development. The
+decimal renderer requires independent GO review before export-snapshot integration.
 
 ## Future POL-R reconciliation acceptance
 

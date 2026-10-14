@@ -2,7 +2,7 @@
 
 ## Authority and availability
 
-This is the single authority for the **approved, not yet implemented** technical
+This is the single authority for the **approved** technical
 contract covering export snapshots, decimal representation, file materialization,
 verification/recovery, POL-R confirmation events and batch integrity. The user
 approved the architectural direction; ChatGPT selected the concrete contracts
@@ -15,9 +15,12 @@ below under that direction. Codex records them without selecting an alternative.
 [TESTING_STRATEGY.md](TESTING_STRATEGY.md) owns validation applicability.
 
 Current mixed accounting, exact HH:MM:SS rendering and safe file-only saving are
-staged services. Decimal replacement rendering, these events, reconciliation and
-recovery workflows are not operational. Approval is not implementation or proof
-of Windows/NTFS compatibility or power-loss safety.
+staged services. Pure decimal replacement rendering is also implemented/staged:
+`build_decimal_timesheet_text()` and reusable `seconds_to_decimal_hundredths()`
+apply the cell-rounding and displayed-rollup rules below without persistence.
+The existing generation/save services still use the exact renderer. Export events,
+confirmations, reconciliation and recovery workflows are not implemented. Approval
+is not implementation or proof of Windows/NTFS compatibility or power-loss safety.
 
 ## One authoritative export snapshot
 
@@ -258,10 +261,12 @@ cases without changing their underlying Actual-time semantics.
 ## Implementation boundaries and remaining decisions
 
 Implement this contract through separately reviewed outcomes after independent
-acceptance. Decimal-hour replacement rendering is the first focused, testable
-outcome, before persistent export-snapshot integration. No events, renderer,
-reconciliation, GUI/recovery controls, journal recovery, migration or installation
-cutover are activated by architectural documentation.
+acceptance. Pure decimal-hour replacement rendering is implemented/staged as the
+first focused outcome; independent GO review remains required before persistent
+export-snapshot integration. The renderer creates no records or files. Export and
+confirmation events, reconciliation, GUI/recovery controls, journal recovery,
+migration and installation cutover remain unimplemented. Architectural
+documentation does not activate them.
 
 Do not reuse legacy submission markers/checkpoints as this POL-R model. Add no
 second database, shadow authoritative export file or independently maintained

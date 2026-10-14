@@ -46,7 +46,7 @@ existence; their detailed contracts remain in Design Notes rather than here.
 | Project/task identity | Separate UUIDs; projects own no direct time; tasks own independent records, optional membership and reassignment preserving work. | [models.py](../src/task_timer/models.py), [project/task service](../DESIGN_NOTES.md#projecttask-service-foundation) |
 | Date-only duration | Endpoint-free stable records; event-backed creation/correction/deletion replay; derived snapshots and existing backup compatibility. Production manual-duration UI still uses synthetic intervals. | [replay foundation](../DESIGN_NOTES.md#dated-duration-replay-foundation), [app.py](../src/task_timer/app.py), [backups.py](../src/task_timer/backups.py) |
 | Mixed accounting | Genuine intervals and dated amounts; local-day/DST splitting; independent task totals; derived project/Unassigned/application totals; historical actuals independent of counter resets. Week start is currently Sunday only. | [accounting.py](../src/task_timer/accounting.py), [mixed service](../DESIGN_NOTES.md#mixed-date-window-accounting-service-only) |
-| Timesheet presentation | Independent daily/weekly task rows, informational project subtotals, authoritative scope, duplicate-name references, multiline borders and reversible Unicode escaping protections. | [exporter.py](../src/task_timer/exporter.py), [renderer](../DESIGN_NOTES.md#independent-task-timesheet-renderer-staged) |
+| Timesheet presentation | Independent daily/weekly task rows, informational project subtotals, authoritative scope, duplicate-name references, multiline borders and reversible Unicode escaping protections. Exact and separate decimal renderers are staged; decimal task/day ROUND_HALF_UP cells conserve integer-hundredth rollups. | [exporter.py](../src/task_timer/exporter.py), [exact renderer](../DESIGN_NOTES.md#independent-task-timesheet-renderer-staged), [decimal renderer](../DESIGN_NOTES.md#decimal-hour-timesheet-renderer-staged) |
 | Service reporting | Date-range generation; exact UTF-8 output; same-directory complete staging and atomic no-overwrite hard-link publication, destination protection and staging-only cleanup under documented assumptions. Saves files without immutable export registration. | [service workflow](../DESIGN_NOTES.md#date-range-timesheet-service-staged) |
 | Governance baseline | Root instructions, canonical approved POL-R product contract, cumulative changelog and current/target authority separation. | [AGENTS.md](../AGENTS.md), [requirements](TIMESHEET_REQUIREMENTS.md), [CHANGELOG.md](../CHANGELOG.md) |
 
@@ -79,8 +79,9 @@ reviewable documentation outcomes separate:
 - **Export/evidence architecture — selected:**
   [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md) records snapshot-first
   journal registration, decimal-hour cells, verified recoverable file copies and
-  confirmation batch integrity. These formerly Open contracts are approved, not
-  implemented. Codex must follow them rather than choose alternative mechanisms.
+  confirmation batch integrity. Pure decimal rendering is implemented/staged;
+  persistent evidence and recovery remain approved but unimplemented. Codex must
+  follow these contracts rather than choose alternative mechanisms.
 
 **Completion gate:** required testing governance exists; material decisions and
 supersessions are traceable; persistent-evidence architecture is approved;
@@ -93,9 +94,10 @@ selected; independently accepted documentation and focused implementation are
 still required.
 
 **Dependencies:** follow the [approved contract](EXPORT_EVIDENCE_CONTRACT.md).
-First implement and validate decimal-hour replacement rendering as a separate
-semantic outcome, before persistent export-snapshot integration. This dependency
-does not reorder the six development phases or activate the production UI.
+Pure decimal-hour replacement rendering is implemented/staged as a separate
+semantic outcome. Independent GO review of that outcome is required before
+persistent export-snapshot integration. This dependency does not complete Phase 2,
+reorder the six development phases or activate the production UI.
 
 **Outcome:** implement the approved distinction between Actual, Exported and
 Confirmed POL-R. The [product contract](TIMESHEET_REQUIREMENTS.md) remains the

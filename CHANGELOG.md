@@ -18,7 +18,9 @@ receipts or commits. No release or production activation is implied below.
   additional work.
 - Provide read-only independent-task timesheet rendering and date-range generation
   with precise durations, explicit selection scope, Unicode-safe escaping and
-  wrapping, and bounded calendar-week layout.
+  wrapping, and bounded calendar-week layout. A separate pure decimal-hour renderer
+  rounds task/day cells with ROUND_HALF_UP and conserves their integer-hundredth
+  displayed rollups; existing exact rendering and service output remain unchanged.
 - Publish complete UTF-8 timesheet files through same-directory staging and atomic
   no-overwrite hard links on supporting filesystems. Cleanup is restricted to
   staging; saved files do not create submission or checkpoint records.
@@ -40,5 +42,5 @@ starts and weekly allocation management are not implemented.
 - Record the approved technical contract for journal-first immutable export
   evidence, verified recoverable file copies, two-decimal-hour presentation and
   atomic absolute POL-R confirmation batches. Reconcile decision history and
-  validation/development guidance; these replacement capabilities remain
-  unimplemented.
+  validation/development guidance. Persistent evidence, verification/recovery and
+  confirmation batches remain unimplemented; decimal rendering is staged above.
