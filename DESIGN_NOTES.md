@@ -287,6 +287,16 @@ physical rows. Project heading labels use the same escaping. Reconstructing a
 label means joining its wrapped content and decoding those escapes, rather than
 treating each continuation as another task.
 
+The same escape boundary renders directional formatting instructions as visible
+ASCII `\uXXXX` sequences before measuring or wrapping text: U+061C, U+200E/F,
+U+202A–U+202E and U+2066–U+206F (including deprecated controls). For example,
+actual U+202E displays as `\u202e`, whereas literal backslash-plus-`u202e`
+displays as `\\u202e`, preserving their distinction. This applies once to task
+cells and project headings; it never changes stored names or sorting. It does
+not escape the entire Unicode Format category: ZWJ (U+200D), ZWNJ (U+200C),
+combining sequences, accents, CJK and supported emoji remain intact. An escape
+may cross a hard wrapping boundary; joining the logical cell recovers it exactly.
+
 ASCII outer borders and row separators span every column. Continuations align
 under their original cells; status, local references and time values appear only
 on the first physical line. Informational subtotal labels remain explicit.

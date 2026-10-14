@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 import unicodedata
+import json
 
 import pytest
 
@@ -290,8 +291,10 @@ def table_blocks(text):
 
 
 def terminal_columns(text):
-    # Independent geometry oracle for the Latin/combining/CJK fixtures below.
-    return sum(0 if unicodedata.combining(char) else 2 if '\u4e00' <= char <= '\u9fff' else 1 for char in text)
+    # Independent geometry oracle for the Latin/combining/CJK/joiner fixtures
+    # and the woman/PC emoji below; complex emoji shaping is not asserted.
+    return sum(0 if unicodedata.combining(char) or char in ('\u200d', '\u200c')
+               else 2 if '\u4e00' <= char <= '\u9fff' or char in ('👩', '💻') else 1 for char in text)
 
 
 def boundaries(line, marker):
@@ -475,3 +478,142 @@ def test_layout_constant_wraps_names_but_never_caps_numeric_precision(setup, mon
         for line in block:
             assert boundaries(line, '+' if line.startswith('+') else '|') == edges
             assert terminal_columns(line) == terminal_columns(block[0])
+
+
+# Explicit review requirements, independent of the production control set.
+BIDI_CODEPOINTS = [0x061C, 0x200E, 0x200F, *range(0x202A, 0x202F), *range(0x2066, 0x2070)]
+
+
+@pytest.mark.parametrize('codepoint', BIDI_CODEPOINTS, ids=lambda value: f'U+{value:04X}')
+def test_bidi_controls_are_visible_reversible_and_aligned_in_tasks_and_projects(setup, codepoint):
+    s, a, _, p, _ = setup
+    control = chr(codepoint)
+    name = f'Managed{control}Task'
+    project_name = f'Project{control}Name'
+    s.update_task(a, name, '')
+    s.rename_project(p, project_name)
+    dated(s, a, MON, 3600.5)
+    report = calculate(s, task_ids=(a,))
+    root = s.storage.data_dir
+    before = deepcopy(report), deepcopy(s.state), deepcopy(s.events), {str(path): path.read_bytes() for path in root.rglob('*') if path.is_file()}
+    text = build_timesheet_text(report)
+    escape = f'\\u{codepoint:04x}'
+    encoded = f'Managed{escape}Task'
+    assert control not in text
+    assert escape in text
+    row = table_rows(text, encoded)[0]
+    assert json.loads('"' + row[0] + '"') == name
+    assert f'Project: Project{escape}Name\n' in text
+    assert row[4] == row[-1] == '01:00:00.5'
+    assert table_rows(text, 'Selected tasks subtotal — informational')[0][-1] == '01:00:00.5'
+    assert table_rows(text, 'Selected-scope total')[0][-1] == '01:00:00.5'
+    assert_table_geometry(text)
+    assert build_timesheet_text(report) == text
+    assert (report, s.state, s.events, {str(path): path.read_bytes() for path in root.rglob('*') if path.is_file()}) == before
+    assert s.state.tasks[a].name == name and s.state.projects[p].name == project_name
+
+
+def test_long_bidi_name_recovers_complete_content_without_repeated_time(setup):
+    s, a, _, _, _ = setup
+    name = '\u202eManagement task ' + 'Complete unbroken investigation details ' * 3 + '\u202dmiddle ' + 'ExtendedManagementToken' * 4 + '\u2066end'
+    s.update_task(a, name, '')
+    dated(s, a, MON, 12600)
+    text = build_timesheet_text(calculate(s, task_ids=(a,)))
+    expected = name.replace('\u202e', '\\u202e').replace('\u202d', '\\u202d').replace('\u2066', '\\u2066')
+    rows = [(row, parts) for row, parts in logical_rows(text) if row[0] == expected]
+    assert len(rows) == 1
+    row, physical = rows[0]
+    assert len(physical) > 1
+    assert json.loads('"' + row[0] + '"') == name
+    assert all(chr(value) not in text for value in BIDI_CODEPOINTS)
+    assert all(all(not cell.strip() for cell in part[1:]) for part in physical[1:])
+    assert sum(part[4].strip() == '03:30:00' for part in physical) == 1
+    assert sum(part[-1].strip() == '03:30:00' for part in physical) == 1
+    assert table_rows(text, 'Selected-scope total')[0][-1] == '03:30:00'
+    assert_table_geometry(text)
+
+
+def test_hard_wrapping_across_escape_boundary_is_reversible(setup):
+    s, a, _, _, _ = setup
+    name = 'X' * 42 + '\u202e' + 'Y' * 70
+    s.update_task(a, name, '')
+    text = build_timesheet_text(calculate(s, task_ids=(a,)))
+    encoded = 'X' * 42 + '\\u202e' + 'Y' * 70
+    row = table_rows(text, encoded)[0]
+    assert json.loads('"' + row[0] + '"') == name
+    assert '\u202e' not in text
+    assert_table_geometry(text)
+
+
+def test_actual_control_and_literal_escape_remain_distinct(setup):
+    s, a, b, _, _ = setup
+    actual = 'Task\u202eName'
+    literal = r'Task\u202eName'
+    s.update_task(a, actual, '')
+    s.update_task(b, literal, '')
+    dated(s, a, MON, 3600)
+    dated(s, b, MON, 7200)
+    text = build_timesheet_text(calculate(s, task_ids=(a, b)))
+    first = table_rows(text, r'Task\u202eName')[0]
+    second = table_rows(text, r'Task\\u202eName')[0]
+    assert first[0] != second[0]
+    assert json.loads('"' + first[0] + '"') == actual
+    assert json.loads('"' + second[0] + '"') == literal
+    assert first[-1] == '01:00:00' and second[-1] == '02:00:00'
+    assert '\u202e' not in text
+    assert_table_geometry(text)
+
+
+@pytest.mark.parametrize('name', ['Café re\u0301sume\u0301 管理项目 A\u200dB A\u200cB',
+                                  'Emoji 👩\u200d💻 joining sequence ' * 3 + 'end'])
+def test_useful_non_directional_unicode_remains_intact(setup, name):
+    s, a, _, _, _ = setup
+    s.update_task(a, name, '')
+    dated(s, a, MON, 1.25)
+    text = build_timesheet_text(calculate(s, task_ids=(a,)))
+    assert table_rows(text, name)[0][-1] == '00:00:01.25'
+    assert '\u200d' in text
+    assert r'\u200d' not in text and r'\u200c' not in text
+    if '\u200c' in name:
+        assert '\u200c' in text
+    assert_table_geometry(text)
+
+
+def test_bidi_duplicate_names_headings_unassigned_and_deleted_identity(setup):
+    s, a, b, p, q = setup
+    name = 'Management\u202e task description ' * 5 + 'end'
+    project_name = 'Project\u2067name'
+    s.update_task(a, name, '')
+    s.update_task(b, name, '')
+    s.rename_project(p, project_name)
+    s.rename_project(q, project_name)
+    s.unassign_task_from_project(b)
+    dated(s, a, MON, 3600)
+    dated(s, b, MON, 7200)
+    s.delete_task_only(b)
+    running = s.create_task('Running', '')
+    s.start_task(running)
+    report = calculate(s, all_tasks=True, include_deleted=True)
+    before = deepcopy(report), deepcopy(s.state), deepcopy(s.events)
+    root = s.storage.data_dir
+    stored = {str(path): path.read_bytes() for path in root.rglob('*') if path.is_file()}
+    text = build_timesheet_text(report)
+    encoded = name.replace('\u202e', r'\u202e')
+    rows = table_rows(text, encoded)
+    assert len(rows) == 2
+    assert {row[2] for row in rows} == {a, b}
+    assert {row[2]: row[-1] for row in rows} == {a: '01:00:00', b: '02:00:00'}
+    assert next(row for row in rows if row[2] == b)[1] == 'Inactive (deleted)'
+    for project in (p, q):
+        assert f'Project: Project\\u2067name [Chronicle local project reference: {project}]' in text
+    assert '\u202e' not in text and '\u2067' not in text
+    assert table_rows(text, 'Application total')[0][-1] == '03:00:00'
+    assert table_rows(text, 'Unassigned subtotal — informational')[0][-1] == '02:00:00'
+    assert_table_geometry(text)
+    reordered = deepcopy(report)
+    reordered['tasks'] = dict(reversed(list(reordered['tasks'].items())))
+    reordered['projects'] = dict(reversed(list(reordered['projects'].items())))
+    assert build_timesheet_text(report) == build_timesheet_text(reordered) == text
+    assert (report, s.state, s.events) == before
+    assert {str(path): path.read_bytes() for path in root.rglob('*') if path.is_file()} == stored
+    assert s.state.running_task_id == running

@@ -50,7 +50,9 @@ non-additive; selected project subsets are labeled accordingly. Seconds and
 fractional seconds are preserved. Scope and timezone labels come from the
 accounting result; optional caller assertions must match. Full task names wrap
 in bordered tables without truncation, and calendar-edge slots are explicitly
-marked when no date can be represented. This renderer is independently callable and
+marked when no date can be represented. Bidirectional formatting controls use
+reversible visible ASCII escapes; useful Unicode such as ZWJ/ZWNJ remains intact.
+This renderer is independently callable and
 **not wired into production export menus**. See the
 [renderer contract](DESIGN_NOTES.md#independent-task-timesheet-renderer-staged)
 for authoritative metadata, wrapping and partial-week behavior.

@@ -13,6 +13,11 @@ from .time_utils import format_duration, format_duration_hm_and_decimal, to_utc_
 
 
 TIMESHEET_TASK_COLUMN_WIDTH = 44
+# Directional instructions, including deprecated bidi controls. Other useful
+# format characters (notably ZWJ/ZWNJ) remain intact.
+_TIMESHEET_BIDI_CONTROLS = frozenset(chr(codepoint) for codepoint in (
+    0x061C, 0x200E, 0x200F, *range(0x202A, 0x202F), *range(0x2066, 0x2070),
+))
 
 
 def _render_table(headers: list[str], rows: list[list[str]]) -> list[str]:
@@ -39,7 +44,8 @@ def _timesheet_escape(text: str) -> str:
     """Reversible escapes keep label content from introducing table geometry."""
     escapes = {"\\": "\\\\", "|": "\\u007c", "\n": "\\n", "\r": "\\r", "\t": "\\t"}
     return "".join(escapes.get(char, f"\\u{ord(char):04x}")
-                   if char in escapes or unicodedata.category(char) in ("Cc", "Zl", "Zp")
+                   if char in escapes or char in _TIMESHEET_BIDI_CONTROLS
+                   or unicodedata.category(char) in ("Cc", "Zl", "Zp")
                    else char for char in text)
 
 
