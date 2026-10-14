@@ -56,9 +56,9 @@ qualification remain distinct.
 
 ## Current test evidence and limits
 
-The following inventory is based on inspected tests and source, **not a new
-execution or a claim of exhaustive coverage**. Use it to find affected tests and
-inspect their assertions before selecting a run.
+The following inventory describes existing test cases and their scope, not
+exhaustive coverage or passing results. Use it to find affected tests and inspect
+their assertions before selecting a run.
 
 | Area | Existing test sources and observed scope |
 | --- | --- |
@@ -71,10 +71,9 @@ inspect their assertions before selecting a run.
 | Legacy compatibility | [test_exporter.py](../tests/test_exporter.py), [test_timeline_corrections.py](../tests/test_timeline_corrections.py), and neighboring tags/subtask/template/selected-export tests protect current behavior during staging. Legacy submission/checkpoint tests are not proof of replacement POL-R semantics. |
 | UI and launch routing | [test_app_ui.py](../tests/test_app_ui.py), dialog/window tests and [test_root_launcher.py](../tests/test_root_launcher.py): callbacks, formatting and routing; some construct fake roots, SimpleNamespace widgets or instances without real GUI initialization. They do not establish real Windows desktop usability or packaged execution. |
 
-Fixtures inspected use pytest `tmp_path` and `monkeypatch`, including fixed clocks
+Existing fixtures use pytest `tmp_path` and `monkeypatch`, including fixed clocks
 and America/Chicago timezone examples. File/state snapshots make purity and
-invalid-operation assertions meaningful. No new fixtures or tests are created
-by this strategy.
+invalid-operation assertions meaningful.
 
 Currently, mixed accounting is staged and Sunday-only, production date-only
 writers are inactive, and saving publishes a file without immutable export-event
@@ -180,7 +179,7 @@ Assertions must follow approved failure semantics, not invent repair or rollback
 behavior. Existing happy-path restart/restore tests do not prove every
 interrupted-recovery scenario.
 
-Inspected [storage.py](../src/task_timer/storage.py) appends JSONL, flushes/fsyncs,
+[storage.py](../src/task_timer/storage.py) appends JSONL, flushes/fsyncs,
 orders archived/active reads and replaces derived JSON files. The service validates
 new project/dated lifecycle events before append and replay. These mechanisms
 do not establish universal transactional or power-loss guarantees.
@@ -267,7 +266,10 @@ import path and quiet output. Existing tests establish the paths below.
 Use the appropriate existing interpreter and dependencies. Commands are examples
 to select by applicability, not a universal per-task checklist.
 
-**Source-grounded, not executed in this documentation task:**
+**Source-grounded command examples:**
+
+These examples are supported by repository configuration and existing test paths;
+their presence does not imply that they have passed.
 
 ```bash
 .venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts=''
@@ -288,23 +290,28 @@ for filename in ("src/task_timer/accounting.py", "tests/test_mixed_accounting.py
 PY
 ```
 
-This compile example is **not executed here** and proves syntax only. Substitute
-the affected files; no new runner or fixture is required.
+This example checks syntax only; it does not execute application behavior.
+Use it when syntax validation is applicable and select paths according to the
+changed files; no new runner or fixture is required.
 
-**Executed for this documentation baseline:** Git branch/status/HEAD and remote
-inspection; read-only `rg` and file reads; `git diff --check`, diff/stat review;
-in-memory Python link checks and unchanged non-Markdown-content checks. These
-are documentation evidence, not test-suite execution. Their results belong in
-the execution receipt, not an accumulating validation ledger here.
+**Documentation validation:** applicable checks may include reviewing the actual
+Markdown diff, checking whitespace and formatting, verifying relative links and
+anchors, confirming changed-file scope and current-state consistency, and
+confirming executable content remains unchanged. Select checks proportionally;
+no fixed command checklist is required. Report actual results in the task receipt,
+not an accumulating validation ledger.
 
-**Windows-specific, unavailable here:** the source launch and PowerShell build
-commands documented in BUILDING were inspected, not executed on this Linux
-environment. Neither a source launch nor a successful build alone proves
-packaged installation or GUI workflow correctness.
+**Windows-specific applicability:** Windows launch and build procedures are
+documented in BUILDING. PowerShell packaging requires an appropriate Windows
+build environment. Assess availability for each actual execution; Linux results
+do not establish Windows compatibility. Source launch is not packaged executable
+validation, and a successful build alone does not prove installation or GUI
+workflow correctness.
 
-**Historical evidence only:** earlier passing results belong to their original
-receipts. They are not re-executions in this task. No CI command, numeric coverage
-threshold or Windows result is established by this strategy.
+**Historical test evidence:** an earlier passing result may be cited as historical
+or carried-forward evidence only with an appropriate applicability judgment.
+It must not be reported as a newly executed test. Do not invent CI commands,
+numeric coverage thresholds or Windows results.
 
 ## Reporting and maintenance
 
@@ -323,5 +330,5 @@ Reconcile this strategy and related owners when approved behavior or actual
 validation capability changes. Keep expectations separate from implemented
 coverage and results. Event contracts, cross-resource consistency, external
 format, allocation details and replacement cutover remain with user/ChatGPT
-adjudication; POL-R backend facts remain Unverified. The roadmap's testing
-governance can be established without closing Phase 1 or qualifying the release.
+adjudication; POL-R backend facts remain Unverified. Testing governance alone
+does not complete roadmap Phase 1 or qualify the release.

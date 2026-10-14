@@ -43,14 +43,12 @@ the changed guarantees and affected dependencies; known commands are not
 automatically mandatory for every change.
 
 Inspect existing scripts and package metadata before documenting or invoking
-commands. Distinguish execution from documentation and historical receipts.
-The governance baseline verified Git preflight, `git diff --check`,
-`git diff --stat`, `git status --short`, read-only `rg` searches, and in-memory
-Python checks of Markdown links and unchanged non-documentation files.
-It did not execute the application, installation, packaging or Python regression
-suite. A historical passing pytest receipt is not a new test execution.
+commands. Actual execution results, checks not run and environment limitations
+belong in the current task receipt. Earlier results may be cited as historical
+or carried-forward evidence with an applicability judgment; they must not be
+represented as tests executed during the present task.
 
-Source-grounded commands documented but not run for this documentation baseline:
+Source-grounded command examples (select according to applicability):
 
 - Linux regression: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts=''`.
 - Windows source launch: `python .\run_chronicle.py` or `./scripts/run.ps1`.
@@ -58,11 +56,12 @@ Source-grounded commands documented but not run for this documentation baseline:
 - Windows packaging: `./scripts/build.ps1`, optionally `-OneFile`; see BUILDING.
 
 `pyproject.toml` requires Python 3.11+ and configures pytest's `src` import path.
-Use the appropriate existing interpreter/virtual environment. Windows-specific
-launch, NTFS and packaging validation are unavailable on Linux; do not claim
-otherwise or invent CI/release checks. Runtime tests must use isolated temporary
-datasets and protect existing user data. Documentation-only changes need focused
-documentation checks; executable changes need applicable behavioral/regression
+Use the appropriate existing interpreter/virtual environment. Assess Windows
+validation availability for each execution. Linux results do not establish
+Windows GUI, NTFS, PowerShell or packaging correctness; do not invent CI/release
+checks. Runtime tests must use isolated temporary datasets and protect existing
+user data. Documentation-only changes ordinarily need focused documentation
+checks; executable changes need applicable behavioral/regression
 and syntax validation. Keep focused execution distinct from integrated validation.
 
 ## Documentation and changelog reconciliation
