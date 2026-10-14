@@ -25,6 +25,8 @@ See [repository instructions](AGENTS.md), [current technical design](DESIGN_NOTE
 and the [canonical changelog](CHANGELOG.md) for their respective authority scopes.
 The [development roadmap](docs/ROADMAP.md) owns sequencing, dependencies and phase
 completion gates.
+The [testing strategy](docs/TESTING_STRATEGY.md) defines validation applicability,
+evidence expectations and release-qualification boundaries.
 
 ## Overview
 

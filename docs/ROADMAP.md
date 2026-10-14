@@ -13,6 +13,8 @@ technical contracts and limitations; source establishes what executes. See
 [changelog](../CHANGELOG.md) for their respective scopes. This roadmap is neither
 a second implementation reference nor a requirements, decision-history,
 validation-ledger or task-history document.
+The [testing strategy](TESTING_STRATEGY.md) owns validation applicability,
+evidence requirements and release-qualification boundaries.
 
 ## Status and gate rules
 
@@ -59,10 +61,12 @@ implementation is **BLOCKED ON ADJUDICATION**.
 persistent POL-R evidence is implemented. Keep the following independently
 reviewable documentation outcomes separate:
 
-- **Testing strategy:** a later focused documentation task establishing validation
-  expectations for accounting, replay/correction, persistent-evidence integrity,
-  export/confirmation reconciliation, backup/restore, filesystem failures,
-  Windows integration, release and data safety.
+- **Testing strategy — established:** [TESTING_STRATEGY.md](TESTING_STRATEGY.md)
+  defines proportional validation and evidence expectations for accounting,
+  replay/correction, persistent integrity, reconciliation, backup/restore,
+  filesystem failures, Windows integration, release and data safety. Establishing
+  this governance does not complete Phase 1 or perform runtime qualification;
+  decision history and persistent-evidence adjudication remain outstanding.
 - **Architectural decision history:** a later focused documentation task preserving
   important approved decisions, rationale and supersessions without duplicating
   active requirements. This roadmap selects no additional document path.

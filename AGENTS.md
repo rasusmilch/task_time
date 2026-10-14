@@ -11,6 +11,8 @@ evidence, not product authority.
 [docs/ROADMAP.md](docs/ROADMAP.md) owns development phases, priorities,
 dependencies, phase completion criteria and deferred implementation work; it
 does not replace requirements or technical design authority.
+[docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) owns validation applicability,
+test evidence and release-qualification boundaries.
 
 The user and ChatGPT approve product behavior and architecture. Codex implements
 approved tasks and reports constraints; it must not independently decide
@@ -28,12 +30,17 @@ legacy behavior as permanent replacement-product policy.
 | [README.md](README.md) | Overview, actual status and navigation. |
 | [docs/TIMESHEET_REQUIREMENTS.md](docs/TIMESHEET_REQUIREMENTS.md) | Selected target behavior and Open/Unverified/Deferred boundaries. |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Current development phases, priorities, dependencies, completion gates and deferred work. |
+| [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) | Proportional validation scope, evidence requirements and release-qualification boundaries. |
 | [DESIGN_NOTES.md](DESIGN_NOTES.md) | Current service/event/storage contracts and verified limitations. |
 | [BUILDING.md](BUILDING.md) | Existing Windows launch, packaging and distribution instructions. |
 | [pyproject.toml](pyproject.toml) | Python requirement, package dependencies and pytest configuration. |
 | [CHANGELOG.md](CHANGELOG.md) | Sole canonical cumulative project-change history. |
 
 ## Validation and command evidence
+
+Apply the [testing strategy](docs/TESTING_STRATEGY.md) to select validation for
+the changed guarantees and affected dependencies; known commands are not
+automatically mandatory for every change.
 
 Inspect existing scripts and package metadata before documenting or invoking
 commands. Distinguish execution from documentation and historical receipts.
