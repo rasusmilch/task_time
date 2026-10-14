@@ -21,8 +21,8 @@ optionally belong to a project. Unassigned tasks and duplicate task names are
 valid. Assignment, reassignment, and project renaming never transfer or reset
 recorded time.
 
-This is a staged foundation: project navigation and the new daily timesheet
-exports are **not available yet**. The existing UI, hierarchical exports,
+This is a staged foundation: project navigation and production daily timesheet
+export controls are **not available yet**. The existing UI, hierarchical exports,
 submission markers, and launcher data path remain in use. Legacy task hierarchy
 is retained for that existing workflow; no historical conversion is performed.
 
@@ -56,6 +56,14 @@ This renderer is independently callable and
 **not wired into production export menus**. See the
 [renderer contract](DESIGN_NOTES.md#independent-task-timesheet-renderer-staged)
 for authoritative metadata, wrapping and partial-week behavior.
+
+The service now connects accounting and rendering through
+`generate_date_range_timesheet()`. `save_date_range_timesheet()` optionally writes
+the complete report to a caller-chosen **new** UTF-8 file, rejecting existing
+destinations. Both use explicit inclusive work dates and a fixed aware cutoff;
+neither submits time, creates checkpoints, resets counters, or changes timers.
+These APIs remain separate from the production UI and legacy export workflow.
+See the [service workflow](DESIGN_NOTES.md#date-range-timesheet-service-staged).
 
 ## Run from source (repo root)
 

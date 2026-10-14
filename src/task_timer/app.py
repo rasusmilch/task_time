@@ -31,7 +31,7 @@ from .dialogs import (
     SelectedTaskExportDialog,
     format_timeline_row,
 )
-from .exporter import build_export_text, build_selected_tasks_export_text, write_export_file
+from .exporter import build_export_text, build_selected_tasks_export_text, build_timesheet_text, write_export_file
 from .mini_mode import MiniModeWindow
 from .models import AppState, DatedDurationRecord, IntervalRecord, NOTES_MAX_LENGTH, ProjectState, TagMeta, TaskState, TimeSubmission, event_dict
 from .reminders import should_show_month_end_banner
@@ -88,6 +88,57 @@ class TaskTimerService:
             all_tasks=all_tasks, task_ids=task_ids, project_ids=project_ids,
             include_unassigned=include_unassigned, include_deleted=include_deleted,
         )
+
+    def generate_date_range_timesheet(
+        self, start_date: date, end_date: date, *, cutoff_utc: datetime,
+        all_tasks: bool = False, task_ids: tuple[str, ...] = (),
+        project_ids: tuple[str, ...] = (), include_unassigned: bool = False,
+        include_deleted: bool = False,
+    ) -> str:
+        """Calculate and render actual work without any timekeeping side effects."""
+        report = self.calculate_date_window(
+            start_date, end_date, cutoff_utc=cutoff_utc, all_tasks=all_tasks,
+            task_ids=task_ids, project_ids=project_ids,
+            include_unassigned=include_unassigned, include_deleted=include_deleted,
+        )
+        return build_timesheet_text(report)
+
+    def save_date_range_timesheet(
+        self, target: Path | str, start_date: date, end_date: date, *,
+        cutoff_utc: datetime, all_tasks: bool = False, task_ids: tuple[str, ...] = (),
+        project_ids: tuple[str, ...] = (), include_unassigned: bool = False,
+        include_deleted: bool = False,
+    ) -> str:
+        """Save a complete UTF-8 report to a new file; never mark time submitted."""
+        text = self.generate_date_range_timesheet(
+            start_date, end_date, cutoff_utc=cutoff_utc, all_tasks=all_tasks,
+            task_ids=task_ids, project_ids=project_ids,
+            include_unassigned=include_unassigned, include_deleted=include_deleted,
+        )
+        if not isinstance(target, (Path, str)) or (isinstance(target, str) and not target):
+            raise ValueError("A nonempty destination file path is required")
+        destination = Path(target)
+        # Exclusive creation also rejects existing directories and symlinks.
+        handle = destination.open("x", encoding="utf-8", newline="")
+        created = None
+        try:
+            with handle:
+                created = os.fstat(handle.fileno())
+                handle.write(text)
+                handle.flush()
+                os.fsync(handle.fileno())
+        except BaseException as error:
+            try:
+                current = destination.lstat()
+                # Do not unlink a replacement another writer put at this path.
+                if created is not None and (current.st_dev, current.st_ino) == (created.st_dev, created.st_ino):
+                    destination.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError as cleanup_error:
+                error.add_note(f"Could not remove incomplete timesheet {destination}: {cleanup_error}")
+            raise
+        return text
 
     def __init__(self, storage: EventStorage) -> None:
         self.storage = storage

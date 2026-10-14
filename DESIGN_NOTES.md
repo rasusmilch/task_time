@@ -316,6 +316,53 @@ unchanged. This renderer is not activated in the production export menu; new
 duration writers, submission/checkpoint policies and the separate fresh-start
 data-directory cutover remain separate implementation outcomes.
 
+## Date-range timesheet service (staged)
+
+`TaskTimerService.generate_date_range_timesheet(start_date, end_date, *,
+cutoff_utc, all_tasks=False, task_ids=(), project_ids=(),
+include_unassigned=False, include_deleted=False)` returns complete timesheet text.
+It calls the existing `calculate_date_window()` and `build_timesheet_text()`;
+it has no separate accounting, selection, formatting or parent-roll-up engine.
+Scope/timezone labels come exclusively from the accounting result. Defaults and
+explicit empty selections select nothing; `all_tasks=True` requests the complete
+eligible-task report. Project/task selections form a UUID union, optionally
+including Unassigned and deleted historical tasks under the existing semantics.
+
+Start/end are inclusive local `date` objects. One explicit aware cutoff is
+normalized to UTC by accounting and caps timed contributions across the report.
+Dated records remain wholly on their declared work dates. Partial Sunday-start
+weeks remain partial, reset boundaries do not erase historical actuals, and
+current membership determines project grouping. This uses current effective
+records; the cutoff is not historical as-of replay. All earlier legacy-data and
+extreme-date limitations of accounting remain unchanged.
+
+`save_date_range_timesheet(target, start_date, end_date, *, ...)` accepts the same
+reporting arguments plus an explicit nonempty string/`Path` destination. It
+returns the same text on successful saving. Calculation and rendering finish
+before the destination is opened. Exclusive file creation rejects existing
+files, directories and symlinks, including existing storage/backup files. No
+parent directories or implicit report paths are created. The exact text is
+written as UTF-8 without newline translation, then flushed, fsynced and closed.
+The renderer's final newline is preserved; legacy `write_export_file()` keeps
+its original behavior.
+
+Accounting/rendering errors propagate without creating output. Filesystem errors
+also propagate. After an ordinary write/flush/fsync/close failure, cleanup
+attempts to remove the newly created incomplete file, verifying its identity
+before unlinking so a concurrent replacement is preserved. Cleanup failure is
+attached to the original exception as a note. Cleanup is best effort: denied
+removal, process termination or power loss can leave incomplete output; this is
+not an atomic-publication or crash-recovery mechanism.
+
+Generating is read-only accounting; saving is file output only. A saved report
+is **not submission evidence**. Neither operation appends events, updates
+snapshots, creates backups, changes selection/membership, operates timers, resets
+counters, consults timestamp checkpoints or changes submission flags/coverage.
+Legacy `export_report()`/`export_selected_tasks_report()` and their UI routes
+remain unchanged. No new duration writer or production menu is activated, and
+the separate empty-directory cutover remains deferred. Tests use temporary
+datasets and caller-chosen output files, leaving existing user data untouched.
+
 ## Event schema
 
 Each event line is JSON with:
