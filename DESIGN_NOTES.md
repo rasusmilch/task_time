@@ -339,20 +339,48 @@ extreme-date limitations of accounting remain unchanged.
 `save_date_range_timesheet(target, start_date, end_date, *, ...)` accepts the same
 reporting arguments plus an explicit nonempty string/`Path` destination. It
 returns the same text on successful saving. Calculation and rendering finish
-before the destination is opened. Exclusive file creation rejects existing
-files, directories and symlinks, including existing storage/backup files. No
-parent directories or implicit report paths are created. The exact text is
-written as UTF-8 without newline translation, then flushed, fsynced and closed.
-The renderer's final newline is preserved; legacy `write_export_file()` keeps
-its original behavior.
+before filesystem staging. Destination arguments are validated, then
+`tempfile.mkstemp()` exclusively creates an unpredictable private staging file
+in the destination's parent directory (0600 access on supporting POSIX systems;
+Windows access follows the directory's ACL). No parent directories or implicit
+report destinations are created. The complete text is written as UTF-8 without
+newline translation, flushed, fsynced and successfully closed before publication.
+The renderer's final newline is preserved.
 
-Accounting/rendering errors propagate without creating output. Filesystem errors
-also propagate. After an ordinary write/flush/fsync/close failure, cleanup
-attempts to remove the newly created incomplete file, verifying its identity
-before unlinking so a concurrent replacement is preserved. Cleanup failure is
-attached to the original exception as a note. Cleanup is best effort: denied
-removal, process termination or power loss can leave incomplete output; this is
-not an atomic-publication or crash-recovery mechanism.
+`os.link(staging, destination)` atomically publishes the completed file without
+overwriting existing files, directories or symlinks, including dangling symlinks
+and existing storage/backup files. This operation, rather than an existence
+check, enforces exclusivity even when another process creates the destination
+immediately before publication. Staging and destination are on the same
+filesystem. The final destination is never opened for writing and is never
+deleted by this method. After publication only the staging pathname is removed;
+the final hard link remains. Legacy `write_export_file()` is unchanged.
+
+Accounting/rendering errors propagate before staging or publication. Staging
+write/flush/fsync/close errors and publication errors leave the final destination
+absent unless independently created. The original exception remains observable;
+staging cleanup failures are attached as notes identifying the artifact. Cleanup
+targets only this invocation's private staging pathname. Detected staging
+identity ambiguity retains the questionable artifact and reports the problem.
+These private-path checks do not eliminate all hostile-directory races; callers
+should use a trusted destination directory. The hard cleanup boundary is that
+the requested final destination is never deleted, including after publication.
+
+If publication succeeds but staging cleanup fails, an `OSError` explicitly states
+that the complete timesheet was published, identifies staging in `filename`, and
+chains the cleanup error as its cause. Publication is not undone; the complete
+destination remains. Cleanup is best effort. A crash before publication may
+leave orphan staging, and no startup scavenging is implemented. The file is
+fsynced before publication, but there is no directory fsync or guaranteed
+power-loss durability, crash recovery, journal or staging registry.
+
+Standard-library same-directory hard linking is compatible with ordinary
+hard-link-capable Windows NTFS installations and supported Python versions.
+Filesystems, network shares or restricted environments that reject hard links
+fail closed with the filesystem error and attempted staging cleanup. There is
+no direct-write, rename, replace or overwrite fallback. Linux publication,
+existing-target protection and injected failures are tested; Windows/NTFS
+execution is unavailable in this environment and is not claimed as validated.
 
 Generating is read-only accounting; saving is file output only. A saved report
 is **not submission evidence**. Neither operation appends events, updates

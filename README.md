@@ -59,8 +59,11 @@ for authoritative metadata, wrapping and partial-week behavior.
 
 The service now connects accounting and rendering through
 `generate_date_range_timesheet()`. `save_date_range_timesheet()` optionally writes
-the complete report to a caller-chosen **new** UTF-8 file, rejecting existing
-destinations. Both use explicit inclusive work dates and a fixed aware cutoff;
+the complete report to private same-directory staging, then atomically publishes
+a caller-chosen **new** UTF-8 file with a no-overwrite hard link. Existing
+destinations are protected, and cleanup never deletes the final path. Filesystems
+without hard-link support fail clearly without a direct-write fallback. Both use
+explicit inclusive work dates and a fixed aware cutoff;
 neither submits time, creates checkpoints, resets counters, or changes timers.
 These APIs remain separate from the production UI and legacy export workflow.
 See the [service workflow](DESIGN_NOTES.md#date-range-timesheet-service-staged).

@@ -6,6 +6,7 @@ import json
 import math
 import os
 import subprocess
+import tempfile
 import tkinter as tk
 import tkinter.font as tkfont
 from dataclasses import asdict, dataclass
@@ -118,26 +119,61 @@ class TaskTimerService:
         if not isinstance(target, (Path, str)) or (isinstance(target, str) and not target):
             raise ValueError("A nonempty destination file path is required")
         destination = Path(target)
-        # Exclusive creation also rejects existing directories and symlinks.
-        handle = destination.open("x", encoding="utf-8", newline="")
+        if "\x00" in str(destination):
+            raise ValueError("Destination file path must not contain null characters")
+        # Disjoint prefixes keep even a requested temporary-looking filename
+        # distinct from this invocation's staging pathname.
+        prefix = ".chronicle-timesheet-"
+        if destination.name.casefold().startswith(prefix):
+            prefix = ".chronicle-staging-"
+        descriptor, temporary = tempfile.mkstemp(dir=destination.parent, prefix=prefix, suffix=".tmp")
+        staging = Path(temporary)
         created = None
+
+        def require_owned_staging() -> None:
+            current = staging.lstat()
+            if created is None or (current.st_dev, current.st_ino) != (created.st_dev, created.st_ino):
+                raise OSError(f"Staging ownership is uncertain; retained {staging}")
+
+        def remove_staging() -> None:
+            try:
+                require_owned_staging()
+            except FileNotFoundError:
+                return
+            # This private-path check is not a hostile-directory race guarantee.
+            # No cleanup operation ever targets the requested destination.
+            staging.unlink()
+
         try:
+            created = os.fstat(descriptor)
+            handle = os.fdopen(descriptor, "w", encoding="utf-8", newline="")
+            descriptor = None  # the stream now owns the descriptor
             with handle:
-                created = os.fstat(handle.fileno())
                 handle.write(text)
                 handle.flush()
                 os.fsync(handle.fileno())
+            # Same-directory atomic no-clobber publication; no unsafe fallback.
+            require_owned_staging()
+            os.link(staging, destination)
         except BaseException as error:
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except OSError as close_error:
+                    error.add_note(f"Could not close staging descriptor: {close_error}")
             try:
-                current = destination.lstat()
-                # Do not unlink a replacement another writer put at this path.
-                if created is not None and (current.st_dev, current.st_ino) == (created.st_dev, created.st_ino):
-                    destination.unlink()
-            except FileNotFoundError:
-                pass
+                remove_staging()
             except OSError as cleanup_error:
-                error.add_note(f"Could not remove incomplete timesheet {destination}: {cleanup_error}")
+                error.add_note(f"Staging cleanup failed; artifact may remain at {staging}: {cleanup_error}")
             raise
+        try:
+            remove_staging()
+        except OSError as cleanup_error:
+            raise OSError(
+                cleanup_error.errno,
+                f"Complete timesheet published at {destination}; staging cleanup failed: {cleanup_error}",
+                str(staging),
+            ) from cleanup_error
         return text
 
     def __init__(self, storage: EventStorage) -> None:
