@@ -8,6 +8,9 @@ replacement/POL-R contract. Source establishes what currently executes;
 [DESIGN_NOTES.md](DESIGN_NOTES.md) describes inspected architecture and limitations.
 [README.md](README.md) provides overview/status. Tests and execution receipts are
 evidence, not product authority.
+[docs/ROADMAP.md](docs/ROADMAP.md) owns development phases, priorities,
+dependencies, phase completion criteria and deferred implementation work; it
+does not replace requirements or technical design authority.
 
 The user and ChatGPT approve product behavior and architecture. Codex implements
 approved tasks and reports constraints; it must not independently decide
@@ -24,6 +27,7 @@ legacy behavior as permanent replacement-product policy.
 | --- | --- |
 | [README.md](README.md) | Overview, actual status and navigation. |
 | [docs/TIMESHEET_REQUIREMENTS.md](docs/TIMESHEET_REQUIREMENTS.md) | Selected target behavior and Open/Unverified/Deferred boundaries. |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Current development phases, priorities, dependencies, completion gates and deferred work. |
 | [DESIGN_NOTES.md](DESIGN_NOTES.md) | Current service/event/storage contracts and verified limitations. |
 | [BUILDING.md](BUILDING.md) | Existing Windows launch, packaging and distribution instructions. |
 | [pyproject.toml](pyproject.toml) | Python requirement, package dependencies and pytest configuration. |

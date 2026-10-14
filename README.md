@@ -23,6 +23,8 @@ publication remains Open.
 
 See [repository instructions](AGENTS.md), [current technical design](DESIGN_NOTES.md)
 and the [canonical changelog](CHANGELOG.md) for their respective authority scopes.
+The [development roadmap](docs/ROADMAP.md) owns sequencing, dependencies and phase
+completion gates.
 
 ## Overview
 
