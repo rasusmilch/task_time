@@ -2,7 +2,31 @@
 
 A local-only Windows-friendly desktop task time tracker built with Python + tkinter.
 
+## Product authority and implementation status
+
+The [approved replacement/POL-R product contract](docs/TIMESHEET_REQUIREMENTS.md)
+owns selected target behavior and its Open, Deferred and Unverified boundaries.
+Selected functionality is not automatically implemented.
+
+| Status | What it means here |
+| --- | --- |
+| Approved target | Replacement workflow, configurable week starts and separate Actual/Exported/Confirmed POL-R reconciliation are selected; consult the contract for the complete behavior. |
+| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, text rendering/generation and safe file publication are implemented independently of the production UI. |
+| Production still pending | Replacement UI, new date-only writers, immutable saved-export registration, POL-R confirmations/reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
+
+Current production still uses legacy parent/subtask interfaces, synthetic manual
+duration intervals, timestamp checkpoints and legacy submission markers. This
+staging does not select a permanent parallel legacy interface. Saving through
+the new service creates a file only, without durable frozen export-event evidence
+or POL-R confirmation. The coordination of future export evidence with file
+publication remains Open.
+
+See [repository instructions](AGENTS.md), [current technical design](DESIGN_NOTES.md)
+and the [canonical changelog](CHANGELOG.md) for their respective authority scopes.
+
 ## Overview
+
+The following describes the current production application.
 
 - Persistent tasks with start/stop/reset/delete/edit-time controls.
 - Event-sourced storage with append-only JSONL logs.
@@ -150,6 +174,10 @@ Backup settings can be edited in-app via **File → Backup Settings**.
 - Full rebuild scans archives + active segment.
 
 ## Export format
+
+This describes the active legacy exporter. The selected replacement workflow is
+owned by the [product contract](docs/TIMESHEET_REQUIREMENTS.md); its export evidence
+and POL-R confirmations are not yet implemented.
 
 Export is plain text and includes:
 

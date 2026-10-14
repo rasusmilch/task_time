@@ -1,5 +1,11 @@
 # Design Notes
 
+This document describes inspected **current implementation** and technical
+limitations. The [approved replacement/POL-R contract](docs/TIMESHEET_REQUIREMENTS.md)
+owns selected future product behavior, including Open architectural decisions.
+Legacy behavior below remains current during staging; it is not permanent policy
+for the replacement application. See [AGENTS.md](AGENTS.md) for the ownership map.
+
 ## Architecture
 
 The app uses an event-sourced model:
@@ -74,6 +80,9 @@ navigation and timesheet exports are usable. Until then the launcher still uses
 operations on existing user data. A service initialized with an isolated empty
 directory does not import tasks, submissions, projects, or templates from any
 other directory. No external-system integration or task numbers are introduced.
+The [target contract](docs/TIMESHEET_REQUIREMENTS.md) requires installation/workflow
+replacement and a fresh dataset without migration. Exact release cutover and
+old-data handling remain Open; existing files are not authorized for deletion.
 
 ## Dated-duration replay foundation
 
@@ -130,12 +139,19 @@ synthetic records, real interval handling, resets, checkpoints, timeline UI,
 mini-mode, totals, tags, exports and submission behavior remain unchanged.
 Those production consumers do not include the new records yet. The separate
 mixed calculation below is available for service use; reader integration must
-be validated before the new workflow emits these events. Date-only
-reset/checkpoint eligibility remains a later reviewed policy,
-not an inferred clock position. No legacy migration or fresh-directory cutover
-is performed; `~/.task_timer_data` remains outside this development workflow.
+be validated before the new workflow emits these events. Production
+reset/checkpoint consumers remain legacy. The selected
+[date-scoped POL-R workflow](docs/TIMESHEET_REQUIREMENTS.md) does not use an
+implicit export checkpoint or timer reset to distinguish newly worked time.
+No new date-based checkpoint/reset extension is implemented. No legacy migration
+or fresh-directory cutover is performed; `~/.task_timer_data` remains outside
+this development workflow.
 
 ## Mixed date-window accounting (service only)
+
+Sunday-start weeks are current source behavior. The
+[selected configurable-week model](docs/TIMESHEET_REQUIREMENTS.md#selected--configurable-week-convention)
+permits any weekday with Sunday as the initial default, but is not implemented.
 
 `TaskTimerService.calculate_date_window(start_date, end_date, *, cutoff_utc,
 all_tasks=False, task_ids=(), project_ids=(), include_unassigned=False,
@@ -382,8 +398,12 @@ no direct-write, rename, replace or overwrite fallback. Linux publication,
 existing-target protection and injected failures are tested; Windows/NTFS
 execution is unavailable in this environment and is not claimed as validated.
 
-Generating is read-only accounting; saving is file output only. A saved report
-is **not submission evidence**. Neither operation appends events, updates
+Generating is read-only accounting; current saving is file output only and does
+not persist immutable export-snapshot evidence. The
+[selected saved-export/confirmation contract](docs/TIMESHEET_REQUIREMENTS.md)
+requires that future evidence and POL-R reconciliation, while reserving exact
+event schemas and file/event consistency recovery for user/ChatGPT adjudication.
+A saved report is **not submission evidence**. Neither operation appends events, updates
 snapshots, creates backups, changes selection/membership, operates timers, resets
 counters, consults timestamp checkpoints or changes submission flags/coverage.
 Legacy `export_report()`/`export_selected_tasks_report()` and their UI routes
@@ -411,6 +431,9 @@ Corrections are represented via explicit events:
 
 ## Reset semantics
 
+These are current legacy counter semantics, not a rule for erasing historical
+date-based actuals in the selected replacement workflow.
+
 `reset` creates a logical totals boundary (`last_reset_utc`) for each task:
 
 - Current elapsed/day/week totals ignore prior intervals.
@@ -418,10 +441,16 @@ Corrections are represented via explicit events:
 
 ## Export + reset flow
 
+This is the active legacy export flow. The
+[selected replacement workflow](docs/TIMESHEET_REQUIREMENTS.md) separates preview,
+saved export evidence and explicit POL-R confirmation without export-triggered
+timer stops, resets or implicit checkpoints.
+
 - Export file is generated first.
-- User is asked if timers should be reset.
-- If **No**: only `exported` event is recorded.
-- If **Yes**: `exported` plus `reset` events for all non-deleted tasks are recorded.
+- The service records an `export_checkpoint` after successful file writing.
+- If reset was not requested, this operation records no reset events.
+- If reset was requested, it then resets all non-deleted tasks; running tasks
+  are stopped through the existing reset path before their reset event.
 
 Default reset scope is all non-deleted tasks.
 
@@ -430,7 +459,8 @@ Default reset scope is all non-deleted tasks.
 - Internal event timestamps are UTC-aware datetimes.
 - Display/grouping uses local timezone from the running system.
 - Day/week totals split intervals at local boundaries.
-- Week start is Sunday.
+- Current week start is Sunday; configurable starts are selected future behavior
+  in the [product contract](docs/TIMESHEET_REQUIREMENTS.md), not implemented here.
 
 ## Durability
 
