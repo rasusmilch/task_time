@@ -7,7 +7,8 @@ Legacy behavior below remains current during staging; it is not permanent policy
 for the replacement application. See [AGENTS.md](AGENTS.md) for the ownership map.
 The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the selected
 snapshot-first, decimal-hour and confirmation architecture. Pure decimal rendering
-is staged; persistent export/confirmation evidence and recovery are unimplemented.
+and export-snapshot registration are staged; confirmation evidence and
+file/evidence materialization/recovery are unimplemented.
 The source descriptions below remain current implementation observations.
 
 ## Architecture
@@ -177,7 +178,8 @@ The detached report also carries `scope` (`complete` exactly when `all_tasks=Tru
 otherwise `selected`) and `local_timezone`, derived from the actual bucketing
 timezone's IANA key/zone or its string label. Deleted-task inclusion is independent
 of scope. Empty reports preserve their requested scope identity. These fields
-are derived presentation metadata only; they are not persisted.
+are derived presentation metadata in the calculation result. Separate export
+registration freezes these facts as evidence without changing accounting state.
 
 Each included task's daily seconds combine two distinct authoritative sources:
 
@@ -374,10 +376,84 @@ The report labels its two-place format and rounding rule. No intervals or dated
 records are recalculated, and no report/state/events/files are mutated.
 
 This renderer is independently callable only: existing generation/save services
-still use the exact renderer. Export-snapshot and confirmation persistence,
-materialization/recovery, production export/UI integration, configurable week
-starts and fresh-directory cutover remain unimplemented. The shared Unicode-width
-and extreme-date accounting limitations described above still apply.
+still use the exact renderer. Separate export-snapshot registration is staged
+below; confirmation persistence, materialization/recovery, production export/UI
+integration, configurable week starts and fresh-directory cutover remain
+unimplemented. The shared Unicode-width and extreme-date accounting limitations
+described above still apply.
+
+## Immutable export-snapshot registration (staged)
+
+`TaskTimerService.prepare_timesheet_export_snapshot(start_date, end_date, *,
+cutoff_utc, all_tasks=False, task_ids=(), project_ids=(), include_unassigned=False,
+include_deleted=False, preferred_destination=None, export_id=None)` freezes one
+detached calculation in memory. It uses the existing decimal converter/renderer,
+includes every requested date per included task (including zero cells), and
+retains the normalized original selection rather than only its expanded members.
+Task/project UUIDs, original labels and membership, deletion eligibility, scope,
+timezone, inclusive dates, Sunday convention (`week_start=6`), exact report text
+and its UTF-8 SHA-256 are frozen. The cutoff retains microseconds; the prepared
+audit timestamp uses the existing second-precision UTC convention. An optional
+canonical export UUID is preserved, otherwise one is generated. A preferred
+destination is a string/null metadata value: no filesystem inspection occurs.
+
+The candidate uses the existing schema version and envelope with
+`event_type=timesheet_export_snapshot_created`, `task_id="__app__"` and `event_id`
+as its sole export identity. Payload fields are `start_date`, `end_date`,
+`cutoff_utc`, `report_timezone`, `week_start`, `scope`, `selection`, `tasks`,
+`projects`, `report_text`, `report_sha256` and `preferred_destination`.
+Each task's `daily` array contains ordered `work_date`, full-precision
+`actual_seconds` and integer `decimal_hundredths`; projects list frozen member
+task UUIDs and full/selected scope. There are no persisted aggregate counters.
+The technical authority remains the [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md).
+
+`register_prepared_timesheet_export(prepared_event)` returns the export UUID only
+after finding exact valid authoritative evidence. It validates schema, canonical
+identities and timestamps, date coverage, selection/deletion semantics, membership,
+finite nonnegative numbers, converter agreement, UTF-8 text and digest. New
+uncommitted candidates must also reproduce their text from frozen layout inputs;
+this does not recalculate work or consult current names/membership. An existing
+identical committed candidate is reused without appending or rerendering. Different
+content or collision with another event type fails. JSON content comparison
+preserves numeric int/float distinctions while ignoring object-key insertion order.
+
+Registration reads the complete journal before append and again afterward. It
+uses `EventStorage.append_event()` directly to preserve the prepared identity and
+existing flush/fsync/rotation behavior. If append raises, a complete valid matching
+event found on strict inspection is reused. Demonstrable absence preserves the
+original error for same-candidate retry; unreadable or ambiguous evidence fails
+closed with inspection context. No truncation, automatic repair, new identity or
+new calculation occurs. Registration neither saves a derived state snapshot nor
+creates an automatic backup, since Actual state did not change.
+
+`EventStorage.iter_all_events(strict=True)` checks listed archive presence and
+counts, duplicate/unindexed archive paths, active-segment presence, complete JSONL
+lines, duplicate JSON fields and readable event envelopes. Service startup,
+restore and rebuild also use this fail-closed read mode. Valid legacy task replay
+retains its existing timestamp/read-order contract; export lookup/list order uses
+original journal read sequence independently of preparation audit timestamps.
+Malformed exports and conflicting duplicate identities fail before export state
+is installed. Identical preexisting duplicate events project to one effective
+export and are not rewritten. Export projections contain detached event copies
+derived solely from archived/active logs, not redundant evidence in
+`state_snapshot.json`. Existing backups carry those journal files unchanged.
+
+`get_timesheet_export_snapshot(export_id)` and `list_timesheet_export_snapshots()`
+return detached committed event documents, not current calculations or file
+status. Replay validates preserved schema, structured amounts and digest without
+today's renderer; later work, corrections, renames, reassignment and deletion
+cannot change old evidence. Original identities are checked against journal
+task/project creation evidence without requiring today's labels or membership.
+
+Preparation writes nothing. Registration changes only the journal and its normal
+rotation metadata plus the in-memory evidence index/event list. Neither changes
+timers, Actual, submissions, checkpoints, selection or legacy save behavior.
+No external report is published or classified READY. Materialization/verification,
+POL-R confirmation/reconciliation and production integration remain separate
+outcomes requiring independent review. Linux fault injection covers append,
+inspection and projection failures; it does not establish concurrent multi-process
+writers, arbitrary journal repair, universal crash atomicity, power-loss durability
+or Windows/NTFS execution.
 
 ## Date-range timesheet service (staged)
 
@@ -448,7 +524,7 @@ execution is unavailable in this environment and is not claimed as validated.
 Generating is read-only accounting; current saving is file output only and does
 not persist immutable export-snapshot evidence. The
 [selected saved-export/confirmation requirement](docs/TIMESHEET_REQUIREMENTS.md)
-requires future immutable evidence and POL-R reconciliation. The
+requires integration with immutable evidence and future POL-R reconciliation. The
 [approved technical contract](docs/EXPORT_EVIDENCE_CONTRACT.md) now selects
 snapshot-first registration, decimal output, verified materialization, pending
 recovery and confirmation batches; none is implemented in this service. The

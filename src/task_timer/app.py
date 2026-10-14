@@ -9,8 +9,10 @@ import subprocess
 import tempfile
 import tkinter as tk
 import tkinter.font as tkfont
+from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, time, timedelta, timezone
+from hashlib import sha256
 from pathlib import Path
 from tkinter import StringVar, Tk, Toplevel, filedialog, messagebox, simpledialog, ttk
 from typing import Any
@@ -32,7 +34,14 @@ from .dialogs import (
     SelectedTaskExportDialog,
     format_timeline_row,
 )
-from .exporter import build_export_text, build_selected_tasks_export_text, build_timesheet_text, write_export_file
+from .exporter import (
+    build_decimal_timesheet_text, build_export_text, build_selected_tasks_export_text,
+    build_timesheet_text, seconds_to_decimal_hundredths, write_export_file,
+)
+from .export_snapshots import (
+    EXPORT_EVENT_TYPE, collect_export_snapshots, same_export_event, validate_export_snapshot,
+    validate_uuid as validate_export_uuid, work_dates,
+)
 from .mini_mode import MiniModeWindow
 from .models import AppState, DatedDurationRecord, IntervalRecord, NOTES_MAX_LENGTH, ProjectState, TagMeta, TaskState, TimeSubmission, event_dict
 from .reminders import should_show_month_end_banner
@@ -76,6 +85,106 @@ class ApplySubtaskTemplatesResult:
 
 class TaskTimerService:
     """Business logic layer that emits events and derives state."""
+
+    def prepare_timesheet_export_snapshot(
+        self, start_date: date, end_date: date, *, cutoff_utc: datetime,
+        all_tasks: bool = False, task_ids: tuple[str, ...] = (), project_ids: tuple[str, ...] = (),
+        include_unassigned: bool = False, include_deleted: bool = False,
+        preferred_destination: str | None = None, export_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Freeze one calculation in memory; create neither journal nor report files."""
+        if export_id is None:
+            export_id = str(uuid4())
+        validate_export_uuid(export_id)
+        # Materialize iterable requests once, retaining the original normalized
+        # request rather than replacing it with expanded project membership.
+        if isinstance(task_ids, (str, bytes)) or isinstance(project_ids, (str, bytes)):
+            raise ValueError("Export selections must be collections of UUIDs")
+        try:
+            task_ids, project_ids = tuple(task_ids), tuple(project_ids)
+        except TypeError as exc:
+            raise ValueError("Invalid export selection") from exc
+        report = self.calculate_date_window(
+            start_date, end_date, cutoff_utc=cutoff_utc, all_tasks=all_tasks,
+            task_ids=task_ids, project_ids=project_ids,
+            include_unassigned=include_unassigned, include_deleted=include_deleted,
+        )
+        text = build_decimal_timesheet_text(report)
+        payload = {
+            "start_date": report["start_date"].isoformat(), "end_date": report["end_date"].isoformat(),
+            "cutoff_utc": report["cutoff_utc"].isoformat().replace("+00:00", "Z"),
+            "report_timezone": report["local_timezone"], "week_start": 6, "scope": report["scope"],
+            "selection": {"all_tasks": all_tasks, "task_ids": sorted(set(task_ids)),
+                          "project_ids": sorted(set(project_ids)), "include_unassigned": include_unassigned,
+                          "include_deleted": include_deleted},
+            "tasks": [{"task_id": key, "name": row["name"], "project_id": row["project_id"],
+                       "is_deleted": row["is_deleted"], "daily": [
+                           {"work_date": day.isoformat(), "actual_seconds": row["daily_seconds"].get(day, 0),
+                            "decimal_hundredths": seconds_to_decimal_hundredths(row["daily_seconds"].get(day, 0))}
+                           for day in work_dates(report["start_date"], report["end_date"])]}
+                      for key, row in sorted(report["tasks"].items())],
+            "projects": [{"project_id": key, "name": row["name"], "scope": row["scope"],
+                          "task_ids": sorted(row["task_ids"])} for key, row in sorted(report["projects"].items())],
+            "report_text": text, "report_sha256": sha256(text.encode("utf-8")).hexdigest(),
+            "preferred_destination": preferred_destination,
+        }
+        event = event_dict(timestamp_utc=to_utc_z(utc_now()), local_timezone=report["local_timezone"],
+                           task_id="__app__", event_type=EXPORT_EVENT_TYPE, payload=payload, event_id=export_id)
+        validate_export_snapshot(event, known_tasks=set(self.state.tasks), known_projects=set(self.state.projects),
+                                 verify_rendering=True)
+        return event
+
+    def register_prepared_timesheet_export(self, prepared_event: dict[str, Any]) -> str:
+        """Establish authoritative registration, inspecting even an ambiguous append."""
+        event = deepcopy(prepared_event)
+        validate_export_snapshot(event)
+        journal = self.storage.iter_all_events(strict=True)
+        exports = collect_export_snapshots(journal)
+        key = event["event_id"]
+        existing = [item for item in journal if item.get("event_id") == key]
+        if existing:
+            if key not in exports or not same_export_event(exports[key], event):
+                raise ValueError("Export identity already belongs to different journal content")
+            self._install_export_journal(journal, exports)
+            return key
+        known_tasks = {item["task_id"] for item in journal if item["event_type"] == "task_created"}
+        known_projects = {item["payload"]["project_id"] for item in journal if item["event_type"] == "project_created"}
+        validate_export_snapshot(event, known_tasks=known_tasks, known_projects=known_projects, verify_rendering=True)
+        try:
+            self.storage.append_event(event)
+        except Exception as append_error:
+            try:
+                journal = self.storage.iter_all_events(strict=True)
+                exports = collect_export_snapshots(journal)
+            except Exception as inspection_error:
+                append_error.add_note(f"Export registration is uncertain; journal inspection failed: {inspection_error}")
+                raise append_error from inspection_error
+            if key not in exports or not same_export_event(exports[key], event):
+                append_error.add_note("Export registration was not established; retain the prepared event for retry")
+                raise
+        else:
+            journal = self.storage.iter_all_events(strict=True)
+            exports = collect_export_snapshots(journal)
+        if key not in exports or not same_export_event(exports[key], event):
+            raise ValueError("Export append did not establish valid authoritative registration")
+        self._install_export_journal(journal, exports)
+        return key
+
+    def _install_export_journal(self, journal, exports) -> None:
+        # No actual-work projection changed: do not persist another state snapshot.
+        self.events = journal
+        self._timesheet_exports = exports
+
+    def get_timesheet_export_snapshot(self, export_id: str) -> dict[str, Any]:
+        """Read detached committed evidence, never current work or external status."""
+        validate_export_uuid(export_id)
+        if export_id not in self._timesheet_exports:
+            raise ValueError("Unknown timesheet export identity")
+        return deepcopy(self._timesheet_exports[export_id])
+
+    def list_timesheet_export_snapshots(self) -> list[dict[str, Any]]:
+        """Read detached evidence in original journal order, not audit-time order."""
+        return deepcopy(list(self._timesheet_exports.values()))
 
     def calculate_date_window(
         self, start_date: date, end_date: date, *, cutoff_utc: datetime,
@@ -184,7 +293,7 @@ class TaskTimerService:
         self.local_tz = detect_local_timezone()
         self.local_tz_name = getattr(self.local_tz, "key", None) or getattr(self.local_tz, "zone", None) or str(self.local_tz)
         self.state = AppState()
-        self.events = self.storage.iter_all_events()
+        self.events = self.storage.iter_all_events(strict=True)
         self._rebuild_state(self.events)
         self._save_snapshot()
         self._maybe_create_app_start_backup()
@@ -1549,13 +1658,13 @@ class TaskTimerService:
     def restore_from_backup(self, backup_path: Path) -> None:
         # Restore always forces a safety backup regardless of user setting.
         self.backups.restore_backup(backup_path)
-        self.events = self.storage.iter_all_events()
+        self.events = self.storage.iter_all_events(strict=True)
         self._rebuild_state(self.events)
         self._save_snapshot()
 
     def rebuild_snapshot_from_journal(self) -> None:
         self._create_risky_operation_backup("before rebuild snapshot from journal")
-        self.events = self.storage.iter_all_events()
+        self.events = self.storage.iter_all_events(strict=True)
         self._rebuild_state(self.events)
         self._save_snapshot()
 
@@ -1888,6 +1997,8 @@ class TaskTimerService:
                 raise ValueError("Dated duration is deleted")
 
     def _append(self, task_id: str, event_type: str, payload: dict[str, Any]) -> None:
+        if event_type == EXPORT_EVENT_TYPE:
+            raise ValueError("Use prepared export registration to preserve its event identity")
         self._validate_project_event(task_id, event_type, payload)
         event = event_dict(
             timestamp_utc=to_utc_z(utc_now()),
@@ -1948,7 +2059,9 @@ class TaskTimerService:
         return effective
 
     def _rebuild_state(self, events: list[dict[str, Any]]) -> None:
+        exports = collect_export_snapshots(events)
         self.state = AppState()
+        self._timesheet_exports = exports
         # Live appends have no read metadata; keep their original list position.
         ordered = sorted(
             enumerate(events),
@@ -1973,6 +2086,10 @@ class TaskTimerService:
         return normalized
 
     def _apply_event(self, event: dict[str, Any]) -> None:
+        if event.get("event_type") == EXPORT_EVENT_TYPE:
+            frozen = {key: value for key, value in event.items() if key != "_read_sequence"}
+            validate_export_snapshot(frozen)
+            return
         self._validate_dated_duration_event(event)
         task_id = event["task_id"]
         event_type = event["event_type"]

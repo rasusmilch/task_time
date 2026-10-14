@@ -42,8 +42,9 @@ class EventStorage:
             os.fsync(handle.fileno())
         self.rotate_if_needed()
 
-    def load_manifest(self) -> dict[str, Any]:
-        return json.loads(self.manifest_path.read_text(encoding="utf-8"))
+    def load_manifest(self, *, strict: bool = False) -> dict[str, Any]:
+        return json.loads(self.manifest_path.read_text(encoding="utf-8"),
+                          object_pairs_hook=self._unique_json_fields if strict else None)
 
     def load_snapshot(self) -> dict[str, Any] | None:
         if not self.snapshot_path.exists():
@@ -59,19 +60,37 @@ class EventStorage:
     def save_manifest(self, manifest: dict[str, Any]) -> None:
         self._atomic_write_json(self.manifest_path, manifest)
 
-    def iter_all_events(self) -> list[dict[str, Any]]:
+    def iter_all_events(self, *, strict: bool = False) -> list[dict[str, Any]]:
         """Load all events from archived segments plus active segment."""
-        manifest = self.load_manifest()
+        manifest = self.load_manifest(strict=strict)
+        if strict:
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("archives"), list):
+                raise ValueError("Unreadable journal manifest")
+            if type(manifest.get("next_sequence")) is not int or manifest["next_sequence"] < 1:
+                raise ValueError("Invalid journal archive sequence")
+            paths = []
+            for segment in manifest["archives"]:
+                path = segment.get("path") if isinstance(segment, dict) else None
+                if not isinstance(path, str) or Path(path).parent != Path("archives"):
+                    raise ValueError("Invalid journal archive reference")
+                paths.append(self.data_dir / path)
+            if len(set(paths)) != len(paths) or set(paths) != set(self.archives_dir.glob("*.jsonl")):
+                raise ValueError("Journal archives are missing, duplicated or unindexed")
+            if not self.active_path.is_file():
+                raise ValueError("Journal active segment is missing")
         events: list[dict[str, Any]] = []
         read_sequence = 0
         for segment in manifest.get("archives", []):
             seg_path = self.data_dir / segment["path"]
-            if seg_path.exists():
-                for event in self._read_jsonl(seg_path):
+            if strict or seg_path.exists():
+                segment_events = self._read_jsonl(seg_path, strict=strict)
+                if strict and segment.get("event_count") != len(segment_events):
+                    raise ValueError("Journal archive event count mismatch")
+                for event in segment_events:
                     event["_read_sequence"] = read_sequence
                     read_sequence += 1
                     events.append(event)
-        for event in self._read_jsonl(self.active_path):
+        for event in self._read_jsonl(self.active_path, strict=strict):
             event["_read_sequence"] = read_sequence
             read_sequence += 1
             events.append(event)
@@ -119,16 +138,34 @@ class EventStorage:
         self.save_manifest(manifest)
 
     @staticmethod
-    def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    def _unique_json_fields(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("Duplicate JSON field in journal metadata or event")
+            result[key] = value
+        return result
+
+    @staticmethod
+    def _read_jsonl(path: Path, *, strict: bool = False) -> list[dict[str, Any]]:
         output: list[dict[str, Any]] = []
         if not path.exists():
+            if strict:
+                raise ValueError("Journal segment is missing")
             return output
-        with path.open("r", encoding="utf-8") as handle:
+        with path.open("r", encoding="utf-8", newline="" if strict else None) as handle:
             for line in handle:
+                if strict and not line.endswith("\n"):
+                    raise ValueError("Journal has an incomplete JSONL record")
                 line = line.strip()
                 if not line:
                     continue
-                output.append(json.loads(line))
+                event = json.loads(line, object_pairs_hook=EventStorage._unique_json_fields) if strict else json.loads(line)
+                if strict and (not isinstance(event, dict) or "_read_sequence" in event
+                               or not {"event_id", "event_type", "task_id", "timestamp_utc", "payload"} <= event.keys()
+                               or not isinstance(event["timestamp_utc"], str)):
+                    raise ValueError("Invalid journal event envelope")
+                output.append(event)
         return output
 
     @staticmethod

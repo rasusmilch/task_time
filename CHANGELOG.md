@@ -24,12 +24,17 @@ receipts or commits. No release or production activation is implied below.
 - Publish complete UTF-8 timesheet files through same-directory staging and atomic
   no-overwrite hard links on supporting filesystems. Cleanup is restricted to
   staging; saved files do not create submission or checkpoint records.
+- Prepare and register immutable decimal timesheet evidence in the existing
+  journal, retaining task/day seconds and hundredths, original identity/labels,
+  reporting request, exact text and SHA-256. Validate journal integrity and stable
+  retry identities; rebuild detached evidence through replay, rotation and restore.
+  Registration publishes no report file and records no POL-R confirmation.
 
 These services are independently callable but not fully connected to the
 production application workflow. Legacy UI/export paths remain active during
 staging; new production date-only duration writers and release cutover are inactive.
-POL-R confirmations, immutable export-event registration, configurable week
-starts and weekly allocation management are not implemented.
+POL-R confirmations, file materialization/verification from registered evidence,
+configurable week starts and weekly allocation management are not implemented.
 
 ### Documentation and governance
 
@@ -42,5 +47,5 @@ starts and weekly allocation management are not implemented.
 - Record the approved technical contract for journal-first immutable export
   evidence, verified recoverable file copies, two-decimal-hour presentation and
   atomic absolute POL-R confirmation batches. Reconcile decision history and
-  validation/development guidance. Persistent evidence, verification/recovery and
-  confirmation batches remain unimplemented; decimal rendering is staged above.
+  validation/development guidance. Export evidence and decimal rendering are staged
+  above; file verification/recovery and confirmation batches remain unimplemented.

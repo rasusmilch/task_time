@@ -48,10 +48,11 @@ existence; their detailed contracts remain in Design Notes rather than here.
 | Mixed accounting | Genuine intervals and dated amounts; local-day/DST splitting; independent task totals; derived project/Unassigned/application totals; historical actuals independent of counter resets. Week start is currently Sunday only. | [accounting.py](../src/task_timer/accounting.py), [mixed service](../DESIGN_NOTES.md#mixed-date-window-accounting-service-only) |
 | Timesheet presentation | Independent daily/weekly task rows, informational project subtotals, authoritative scope, duplicate-name references, multiline borders and reversible Unicode escaping protections. Exact and separate decimal renderers are staged; decimal task/day ROUND_HALF_UP cells conserve integer-hundredth rollups. | [exporter.py](../src/task_timer/exporter.py), [exact renderer](../DESIGN_NOTES.md#independent-task-timesheet-renderer-staged), [decimal renderer](../DESIGN_NOTES.md#decimal-hour-timesheet-renderer-staged) |
 | Service reporting | Date-range generation; exact UTF-8 output; same-directory complete staging and atomic no-overwrite hard-link publication, destination protection and staging-only cleanup under documented assumptions. Saves files without immutable export registration. | [service workflow](../DESIGN_NOTES.md#date-range-timesheet-service-staged) |
+| Export evidence | Frozen decimal snapshot preparation, strict journal-backed idempotent registration, detached lookup/listing and replay across rotation/rebuild/restore. No external report materialization or POL-R confirmation. | [snapshot registration](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged) |
 | Governance baseline | Root instructions, canonical approved POL-R product contract, cumulative changelog and current/target authority separation. | [AGENTS.md](../AGENTS.md), [requirements](TIMESHEET_REQUIREMENTS.md), [CHANGELOG.md](../CHANGELOG.md) |
 
 These foundations do **not** constitute a completed production replacement.
-New production date-only writers, replacement UI, immutable export registration,
+New production date-only writers, replacement UI, file materialization from evidence,
 POL-R confirmation/reconciliation, configurable weeks, allocations and release
 cutover remain pending. Existing production legacy behavior is not permanent
 target policy. Platform/integrated validation remains **VALIDATION PENDING**.
@@ -80,7 +81,8 @@ reviewable documentation outcomes separate:
   [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md) records snapshot-first
   journal registration, decimal-hour cells, verified recoverable file copies and
   confirmation batch integrity. Pure decimal rendering is implemented/staged;
-  persistent evidence and recovery remain approved but unimplemented. Codex must
+  export-snapshot registration is also staged; confirmations and file/evidence
+  recovery remain approved but unimplemented. Codex must
   follow these contracts rather than choose alternative mechanisms.
 
 **Completion gate:** required testing governance exists; material decisions and
@@ -89,14 +91,15 @@ affected authorities agree; no necessary Open issue has been silently resolved.
 
 ## Phase 2 — POL-R evidence and reconciliation
 
-**Status:** **APPROVED / NOT IMPLEMENTED**. Relevant technical contracts are
-selected; independently accepted documentation and focused implementation are
-still required.
+**Status:** **IMPLEMENTED / STAGED** for decimal rendering and immutable export
+snapshot preparation/registration/replay only. Materialization/verification,
+confirmation and reconciliation remain **APPROVED / NOT IMPLEMENTED**. Phase 2
+is not Complete; independently reviewed focused outcomes remain required.
 
 **Dependencies:** follow the [approved contract](EXPORT_EVIDENCE_CONTRACT.md).
-Pure decimal-hour replacement rendering is implemented/staged as a separate
-semantic outcome. Independent GO review of that outcome is required before
-persistent export-snapshot integration. This dependency does not complete Phase 2,
+Pure decimal rendering and export-snapshot registration are implemented/staged as
+separate semantic outcomes. Independent GO review of registration is required
+before materialization or confirmations. This dependency does not complete Phase 2,
 reorder the six development phases or activate the production UI.
 
 **Outcome:** implement the approved distinction between Actual, Exported and

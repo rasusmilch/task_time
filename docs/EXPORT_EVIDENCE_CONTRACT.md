@@ -18,9 +18,13 @@ Current mixed accounting, exact HH:MM:SS rendering and safe file-only saving are
 staged services. Pure decimal replacement rendering is also implemented/staged:
 `build_decimal_timesheet_text()` and reusable `seconds_to_decimal_hundredths()`
 apply the cell-rounding and displayed-rollup rules below without persistence.
-The existing generation/save services still use the exact renderer. Export events,
-confirmations, reconciliation and recovery workflows are not implemented. Approval
-is not implementation or proof of Windows/NTFS compatibility or power-loss safety.
+The existing generation/save services still use the exact renderer. Separate
+export-snapshot preparation, durable registration, detached lookup and journal
+replay are implemented/staged; registration publishes no external report file.
+Materialization/verification from evidence, confirmations, reconciliation and file
+recovery workflows are not implemented. Approval is not proof of Windows/NTFS
+compatibility or power-loss safety. See the
+[current registration mechanism](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged).
 
 ## One authoritative export snapshot
 
@@ -261,12 +265,13 @@ cases without changing their underlying Actual-time semantics.
 ## Implementation boundaries and remaining decisions
 
 Implement this contract through separately reviewed outcomes after independent
-acceptance. Pure decimal-hour replacement rendering is implemented/staged as the
-first focused outcome; independent GO review remains required before persistent
-export-snapshot integration. The renderer creates no records or files. Export and
-confirmation events, reconciliation, GUI/recovery controls, journal recovery,
-migration and installation cutover remain unimplemented. Architectural
-documentation does not activate them.
+acceptance. Pure decimal-hour rendering and immutable export-snapshot registration
+are implemented/staged as separate outcomes. Preparation creates no records/files;
+registration appends only the frozen export event and verifies the journal.
+Independent GO review is required before file materialization or confirmations.
+Verified materialization, confirmation events, reconciliation, GUI/recovery
+controls, general journal repair, migration and installation cutover remain
+unimplemented. Architectural documentation does not activate them.
 
 Do not reuse legacy submission markers/checkpoints as this POL-R model. Add no
 second database, shadow authoritative export file or independently maintained

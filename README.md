@@ -11,8 +11,8 @@ Selected functionality is not automatically implemented.
 | Status | What it means here |
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact report generation and safe file publication are implemented independently of the production UI. |
-| Production still pending | Decimal export integration, replacement UI, new date-only writers, immutable export registration/recovery, POL-R confirmations/reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
+| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact report generation/file saving, and separate immutable export-snapshot preparation, registration and replay are implemented independently of the production UI. |
+| Production still pending | Decimal file/evidence integration and recovery, replacement UI, new date-only writers, POL-R confirmations/reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
 
 Current production still uses legacy parent/subtask interfaces, synthetic manual
 duration intervals, timestamp checkpoints and legacy submission markers. This
@@ -20,7 +20,8 @@ staging does not select a permanent parallel legacy interface. Saving through
 the new service creates a file only, without durable frozen export-event evidence
 or POL-R confirmation. The approved snapshot-first technical contract requires
 verified registration before file publication and recoverable pending exports;
-that future workflow is not implemented.
+that combined file/evidence workflow is not implemented. Separate snapshot
+registration is available without publishing any report file.
 
 See [repository instructions](AGENTS.md), [current technical design](DESIGN_NOTES.md)
 and the [canonical changelog](CHANGELOG.md) for their respective authority scopes.
@@ -111,6 +112,17 @@ neither submits time, creates checkpoints, resets counters, or changes timers.
 These APIs remain separate from the production UI and legacy export workflow.
 See the [service workflow](DESIGN_NOTES.md#date-range-timesheet-service-staged).
 
+The separate `prepare_timesheet_export_snapshot()` freezes one calculation as
+decimal text, task/day seconds and hundredths, original labels/request/metadata,
+and a SHA-256 digest. `register_prepared_timesheet_export()` durably registers
+that candidate in the existing journal with stable, idempotent export identity.
+`get_timesheet_export_snapshot()` and `list_timesheet_export_snapshots()` return
+detached committed evidence, retained across replay and later work changes.
+Preparation writes nothing; registration creates no external report, confirmation,
+checkpoint or reset. A preferred destination is metadata only. Registered evidence
+awaits future materialization and is not a successfully exported file. See
+[snapshot registration](DESIGN_NOTES.md#immutable-export-snapshot-registration-staged).
+
 ## Run from source (repo root)
 
 From the repository root, run:
@@ -195,8 +207,9 @@ Backup settings can be edited in-app via **File → Backup Settings**.
 ## Export format
 
 This describes the active legacy exporter. The selected replacement workflow is
-owned by the [product contract](docs/TIMESHEET_REQUIREMENTS.md); its export evidence
-and POL-R confirmations are not yet implemented.
+owned by the [product contract](docs/TIMESHEET_REQUIREMENTS.md). Separate export
+evidence registration is staged; file/evidence integration and POL-R confirmations
+are not yet implemented.
 
 Export is plain text and includes:
 

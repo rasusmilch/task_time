@@ -70,6 +70,7 @@ their assertions before selecting a run.
 | Accounting and time boundaries | [test_mixed_accounting.py](../tests/test_mixed_accounting.py), [test_time_utils.py](../tests/test_time_utils.py): conservation, selection, cutoffs, midnight/DST, corrections, resets, fractional amounts and fixed Sunday weeks. |
 | Rendering | [test_timesheet_renderer.py](../tests/test_timesheet_renderer.py): scope, partial/multiple weeks, calendar boundaries, exact durations, duplicate identity, wrapping/geometry and Unicode escaping. |
 | Decimal rendering | [test_decimal_timesheet_renderer.py](../tests/test_decimal_timesheet_renderer.py): ROUND_HALF_UP conversion/boundaries, invalid numbers, task/day rounding and displayed-rollup conservation, selection/identity, partial/multiple weeks, calendar edges, Unicode wrapping, purity and exact/legacy byte compatibility. This is a pure staged renderer, not export-evidence persistence. |
+| Export registration | [test_export_snapshot_registration.py](../tests/test_export_snapshot_registration.py): frozen request/cells/text/digest, strict validation, stable identity/retry, journal health, ambiguous append and projection failures, immutable replay order, restart/rotation/rebuild/backup restore and no file/confirmation effects. This does not validate materialization or POL-R confirmations. |
 | Reporting/file publication | [test_timesheet_service.py](../tests/test_timesheet_service.py): real service orchestration, UTF-8 bytes, no-clobber publication, concurrent targets, injected staging/publication/cleanup failures and state/file purity. |
 | Existing storage and backups | [test_storage.py](../tests/test_storage.py), [test_backups.py](../tests/test_backups.py), plus project/dated/accounting fixtures: restart, rotation, snapshots, backup contents, retention and restore behavior. |
 | Legacy compatibility | [test_exporter.py](../tests/test_exporter.py), [test_timeline_corrections.py](../tests/test_timeline_corrections.py), and neighboring tags/subtask/template/selected-export tests protect current behavior during staging. Legacy submission/checkpoint tests are not proof of replacement POL-R semantics. |
@@ -128,12 +129,13 @@ borders and no repeated chargeable values on continuation rows. Pure generation
 and rendering must not mutate inputs/state/files. Evidence registration changes
 its intended evidence only, never Actual records, timers or export checkpoints.
 
-## Decimal rendering and future export-evidence validation
+## Decimal rendering, export registration and future integration validation
 
-The pure decimal renderer and conversion helper are implemented/staged, with
-coverage in the test source above. Persistent export evidence, confirmations and
-recovery remain unimplemented. Apply the selected technical contract to current
-rendering changes and future evidence implementation:
+The pure decimal renderer/converter and immutable export-snapshot registration
+are implemented/staged, with coverage in the test sources above. Verified file
+materialization, confirmations and file/evidence recovery remain unimplemented.
+Apply the selected technical contract to current rendering/registration changes
+and future integration:
 
 - Exactly two decimal places, integer hundredths and deterministic ROUND_HALF_UP
   conversion without binary-float presentation artifacts. Check the supplied
@@ -160,11 +162,13 @@ rendering changes and future evidence implementation:
   undo valid evidence; restart, archive replay, rebuild and backup/restore retain
   pending exports. Duplicate identities cannot duplicate effective evidence.
 
-Decimal conversion and displayed-rollup assertions have existing focused coverage;
-evidence registration/materialization/recovery assertions are future expectations,
-not existing passing coverage or a mechanism selected by tests. Preserve current
-exact renderer and legacy regression assertions during staged development. The
-decimal renderer requires independent GO review before export-snapshot integration.
+Decimal conversion/displayed rollups and bounded journal registration/replay have
+existing focused coverage. File/evidence materialization/recovery assertions are
+future expectations, not existing passing coverage or a mechanism selected by
+tests. Preserve current exact renderer and legacy regression assertions during
+staging. Registration requires independent GO review before materialization or
+confirmation implementation. Linux fault injection is not power-loss or Windows
+qualification.
 
 ## Future POL-R reconciliation acceptance
 
@@ -236,10 +240,11 @@ interrupted-recovery scenario.
 
 [storage.py](../src/task_timer/storage.py) appends JSONL, flushes/fsyncs,
 orders archived/active reads and replaces derived JSON files. The service validates
-new project/dated lifecycle events before append and replay. These mechanisms
-do not establish universal transactional or power-loss guarantees.
+new project/dated lifecycle and export-snapshot events before append and replay.
+These mechanisms do not establish universal transactional or power-loss guarantees.
 
-Future export/confirmation events need replay and fault injection against the
+Export-snapshot events have bounded replay and fault-injection coverage above;
+future confirmation events also need those checks against the
 [selected technical contract](EXPORT_EVIDENCE_CONTRACT.md). Validate one-event
 confirmation batch integrity and authoritative journal precedence over derived
 snapshots. This strategy defines tests, not another event/schema/recovery owner.
@@ -261,9 +266,9 @@ Test original-error propagation and staging-only cleanup before publication;
 after publication, cleanup failure must not remove the complete final report or
 a concurrent replacement. Capture unrelated files and timekeeping state.
 
-Future immutable export evidence adds a cross-resource boundary governed by the
-approved snapshot-first contract. Inject failures before/during registration,
-after durable registration but before publication, during derived-snapshot writes,
+Materializing committed immutable export evidence adds a future cross-resource
+boundary governed by the approved snapshot-first contract. Inject failures
+before/during registration, after durable registration but before publication, during derived-snapshot writes,
 through staging/publication and during final verification. Validate no external
 publication without established registration, retained pending evidence, stable
 retry identity, no overwrite and no false success for byte disagreement. Recheck
