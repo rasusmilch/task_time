@@ -215,6 +215,57 @@ effective projections remain authoritative; snapshots remain rebuildable. New
 reader/writer integration and the separate empty-directory cutover are later
 tasks. Tests use isolated temporary datasets and leave existing user data alone.
 
+## Independent-task timesheet renderer (staged)
+
+`task_timer.exporter.build_timesheet_text(report, *, local_timezone, scope)`
+returns a complete Unicode plain-text string ending in a newline. `report` is
+the detached result of `calculate_date_window()`. The caller must supply the
+same calculation timezone label and `scope="complete"` for an all-eligible-task
+report, or `scope="selected"` for a selection. These labels are not included in
+the accounting result; the renderer does not infer completeness from names or
+the presence of project rows. Incorrect caller metadata can mislabel a report.
+Empty selections remain empty; the renderer never expands eligibility.
+
+Each Sunday-start week intersecting the requested inclusive date range has
+seven dated daily columns and a weekly-total column. Dates outside the range
+say `out of scope`, while missing buckets on included dates display `00:00:00`.
+Partial weeks retain only the calculated scope. Task, project, Unassigned and
+application cells come directly from their supplied daily/weekly seconds;
+the renderer never sums formatted values or recomputes work from endpoints.
+No additional chargeable multiweek task summary is rendered.
+
+Task rows contain only their own independent work, grouped by current project.
+Project rows labeled `Project total — informational` use the accounting result's
+`full_project` scope; `Selected tasks subtotal — informational` identifies a
+partial project. Explicitly included empty projects show no eligible tasks and
+their supplied zero subtotal. Unassigned tasks form a separate group when
+present. Each week ends with one `Application total` or `Selected-scope total`.
+Project/Unassigned subtotals are non-additive information, not task entries.
+Tags and submission evidence are not additional report sections or actuals.
+
+Names are displayed in full without truncation, normalization, or external
+management numbers. Membership and lookup use UUIDs exclusively. Projects and
+tasks sort by exact name, then UUID, independently of dictionary insertion order.
+Duplicate task names across the included report receive a full UUID in the
+`Chronicle local record reference` column, explicitly for local disambiguation.
+Duplicate project headings likewise receive local project references. Deleted
+historical tasks supplied by the accounting result are marked `Inactive (deleted)`;
+the renderer does not independently reconstruct deletion or selection state.
+
+Durations use `HH:MM:SS[.fraction]`, with unbounded hours and fractional seconds
+retained from the supplied numeric value's round-trip decimal representation.
+There is no decimal-hours rounding or truncation of nonzero subsecond work.
+The timed-work cutoff header preserves fractional timestamp precision too.
+Plain-text tables reuse the existing helper and can be wide for long names;
+no HTML, PDF, spreadsheet, persistence, or template framework is introduced.
+
+Rendering does not read storage, consult service state, write files/events,
+operate timers, or infer submission status. The legacy `build_export_text()`
+and `build_selected_tasks_export_text()` and their service/UI routes remain
+unchanged. This renderer is not activated in the production export menu; new
+duration writers, submission/checkpoint policies and the separate fresh-start
+data-directory cutover remain separate implementation outcomes.
+
 ## Event schema
 
 Each event line is JSON with:

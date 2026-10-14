@@ -43,6 +43,15 @@ migration, or data-directory cutover is included. See
 [mixed accounting](DESIGN_NOTES.md#mixed-date-window-accounting-service-only)
 for selection semantics and the explicit legacy synthetic-duration boundary.
 
+`build_timesheet_text()` separately renders those accounting results as a
+plain-text timesheet with independent task rows, dated daily columns and weekly
+totals grouped by current project. Project subtotals are informational and
+non-additive; selected project subsets are labeled accordingly. Seconds and
+fractional seconds are preserved. This renderer is independently callable and
+**not wired into production export menus**. See the
+[renderer contract](DESIGN_NOTES.md#independent-task-timesheet-renderer-staged)
+for required metadata and partial-week behavior.
+
 ## Run from source (repo root)
 
 From the repository root, run:

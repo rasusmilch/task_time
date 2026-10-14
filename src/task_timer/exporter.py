@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from collections import Counter
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +22,102 @@ def _render_table(headers: list[str], rows: list[list[str]]) -> list[str]:
     for row in rows:
         output.append(" | ".join(value.ljust(widths[idx]) for idx, value in enumerate(row)))
     return output
+
+
+def _format_timesheet_duration(seconds: float) -> str:
+    """Format supplied seconds without truncation or decimal-hours rounding."""
+    if isinstance(seconds, bool) or not isinstance(seconds, (int, float)):
+        raise ValueError("Timesheet seconds must be numeric")
+    amount = Decimal(str(seconds))
+    if not amount.is_finite() or amount < 0:
+        raise ValueError("Timesheet seconds must be finite and nonnegative")
+    whole, _, fraction = format(amount, "f").partition(".")
+    hours, remainder = divmod(int(whole), 3600)
+    minutes, remainder = divmod(remainder, 60)
+    fraction = fraction.rstrip("0")
+    return f"{hours:02d}:{minutes:02d}:{remainder:02d}" + (f".{fraction}" if fraction else "")
+
+
+def build_timesheet_text(
+    report: dict[str, Any], *, local_timezone: str, scope: str,
+) -> str:
+    """Render a detached calculate_date_window result; no accounting or writes.
+
+    Caller supplies its calculation timezone and scope ('complete' or 'selected')
+    because those labels are not present in the accounting result. All numeric
+    cells use supplied daily/weekly seconds, including informational subtotals.
+    """
+    if scope not in ("complete", "selected"):
+        raise ValueError("Timesheet scope must be 'complete' or 'selected'")
+    if not isinstance(local_timezone, str) or not local_timezone.strip():
+        raise ValueError("The calculation's local timezone label is required")
+    start, end = report["start_date"], report["end_date"]
+    tasks, projects = report["tasks"], report["projects"]
+    duplicate_names = Counter(row["name"] for row in tasks.values())
+    duplicate_projects = Counter(row["name"] for row in projects.values())
+    total_label = "Application total" if scope == "complete" else "Selected-scope total"
+    cutoff = report["cutoff_utc"].astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    lines = [
+        "Chronicle Timesheet — recorded actual work", "=" * 88,
+        f"Requested local dates (inclusive): {start.isoformat()} to {end.isoformat()}",
+        f"Local timezone: {local_timezone}", f"Timed-work calculation cutoff UTC: {cutoff}",
+        f"Scope: {'Complete eligible-task scope' if scope == 'complete' else 'Selected scope'}",
+        f"Deleted historical tasks included: {'Yes' if report['include_deleted'] else 'No'}",
+        "Duration format: HH:MM:SS[.fraction]; seconds are preserved, without rounding.",
+        "out of scope = outside requested dates; 00:00:00 = no recorded work on an included date.",
+        "Project subtotals are informational; they are not additional task entries.",
+        "Chronicle local record references disambiguate names only; they are not external task numbers.",
+        "",
+    ]
+    if not tasks:
+        lines.extend(["No tasks included in this scope.", ""])
+
+    week = start - timedelta(days=(start.weekday() + 1) % 7)
+    while week <= end:
+        days = [week + timedelta(days=offset) for offset in range(7)]
+        lines.extend([f"Week (Sunday start): {week.isoformat()} to {days[-1].isoformat()}", ""])
+        headers = ["Task", "Status", "Chronicle local record reference",
+                   *[f"{('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')[offset]} {day.isoformat()}"
+                     for offset, day in enumerate(days)], "Weekly total (in scope)"]
+
+        def cells(row: dict[str, Any]) -> list[str]:
+            return [
+                _format_timesheet_duration(row["daily_seconds"].get(day, 0))
+                if start <= day <= end else "out of scope" for day in days
+            ] + [_format_timesheet_duration(row["weekly_seconds"].get(week, 0))]
+
+        def task_rows(task_ids: list[str]) -> list[list[str]]:
+            rows = []
+            for task_id in sorted(task_ids, key=lambda key: (tasks[key]["name"], key)):
+                row = tasks[task_id]
+                rows.append([row["name"], "Inactive (deleted)" if row["is_deleted"] else "Active",
+                             task_id if duplicate_names[row["name"]] > 1 else "—", *cells(row)])
+            return rows
+
+        for project_id in sorted(projects, key=lambda key: (projects[key]["name"], key)):
+            project = projects[project_id]
+            reference = f" [Chronicle local project reference: {project_id}]" if duplicate_projects[project["name"]] > 1 else ""
+            lines.append(f"Project: {project['name']}{reference}")
+            rows = task_rows(project["task_ids"])
+            if not rows:
+                lines.append("No eligible tasks included in this project.")
+            subtotal_label = ("Project total — informational" if project["scope"] == "full_project"
+                              else "Selected tasks subtotal — informational")
+            rows.append([subtotal_label, "—", "—", *cells(project)])
+            lines.extend([*_render_table(headers, rows), ""])
+
+        unassigned = report["unassigned"]
+        if unassigned["task_ids"]:
+            lines.append("Unassigned")
+            rows = task_rows(unassigned["task_ids"])
+            rows.append(["Unassigned subtotal — informational", "—", "—", *cells(unassigned)])
+            lines.extend([*_render_table(headers, rows), ""])
+        lines.extend([*_render_table(headers, [[total_label, "—", "—", *cells(report["application"])]]), ""])
+        # Avoid advancing past the representable calendar on the final week.
+        if days[-1] >= end:
+            break
+        week += timedelta(days=7)
+    return "\n".join(lines) + "\n"
 
 
 def _truncate_task_name(name: str, max_len: int = 28) -> str:
