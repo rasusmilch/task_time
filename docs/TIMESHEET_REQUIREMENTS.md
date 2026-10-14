@@ -80,8 +80,8 @@ Changing this setting must not change recorded work dates, individual amounts,
 POL-R daily confirmations, original export snapshots or actual historical events.
 An export retains the convention used at its creation; old exports must not be
 silently rewritten. Current Sunday-only code is a staged limitation, not a
-permanent product requirement. Configurable-week implementation is not included
-in this governance task.
+permanent product requirement. Configurable-week support remains approved but
+is not yet implemented.
 
 ## SELECTED — Actual, Exported and Confirmed POL-R are distinct
 
@@ -309,7 +309,7 @@ administered/changed and automatically enforced across recurring weeks is not
 established by direct evidence. User-entered allocations and confirmations are
 not independent external verification. Do not turn these assumptions into policy.
 
-## DEFERRED — Approved work outside this governance execution
+## DEFERRED — Approved implementation work
 
 Future implementation includes configurable week starts, immutable saved-export
 evidence, explicit POL-R confirmations/reconciliation, the low-friction UI,

@@ -13,6 +13,10 @@ dependencies, phase completion criteria and deferred implementation work; it
 does not replace requirements or technical design authority.
 [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) owns validation applicability,
 test evidence and release-qualification boundaries.
+[docs/DECISIONS.md](docs/DECISIONS.md) preserves historical product/architecture
+decision evidence, rationale, provenance and supersessions. Current-state
+requirements take precedence for present selected behavior; decision history
+does not replace current authority or close Open matters.
 
 The user and ChatGPT approve product behavior and architecture. Codex implements
 approved tasks and reports constraints; it must not independently decide
@@ -31,6 +35,7 @@ legacy behavior as permanent replacement-product policy.
 | [docs/TIMESHEET_REQUIREMENTS.md](docs/TIMESHEET_REQUIREMENTS.md) | Selected target behavior and Open/Unverified/Deferred boundaries. |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Current development phases, priorities, dependencies, completion gates and deferred work. |
 | [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) | Proportional validation scope, evidence requirements and release-qualification boundaries. |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Historical product/architecture decision evidence, rationale, provenance and supersessions. |
 | [DESIGN_NOTES.md](DESIGN_NOTES.md) | Current service/event/storage contracts and verified limitations. |
 | [BUILDING.md](BUILDING.md) | Existing Windows launch, packaging and distribution instructions. |
 | [pyproject.toml](pyproject.toml) | Python requirement, package dependencies and pytest configuration. |

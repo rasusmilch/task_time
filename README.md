@@ -27,6 +27,8 @@ The [development roadmap](docs/ROADMAP.md) owns sequencing, dependencies and pha
 completion gates.
 The [testing strategy](docs/TESTING_STRATEGY.md) defines validation applicability,
 evidence expectations and release-qualification boundaries.
+The [decision history](docs/DECISIONS.md) preserves historical rationale,
+provenance and supersessions.
 
 ## Overview
 

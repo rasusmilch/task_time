@@ -15,6 +15,8 @@ a second implementation reference nor a requirements, decision-history,
 validation-ledger or task-history document.
 The [testing strategy](TESTING_STRATEGY.md) owns validation applicability,
 evidence requirements and release-qualification boundaries.
+Historical rationale, provenance and supersessions belong in
+[DECISIONS.md](DECISIONS.md), not in this current-state roadmap.
 
 ## Status and gate rules
 
@@ -66,10 +68,11 @@ reviewable documentation outcomes separate:
   replay/correction, persistent integrity, reconciliation, backup/restore,
   filesystem failures, Windows integration, release and data safety. Establishing
   this governance does not complete Phase 1 or perform runtime qualification;
-  decision history and persistent-evidence adjudication remain outstanding.
-- **Architectural decision history:** a later focused documentation task preserving
-  important approved decisions, rationale and supersessions without duplicating
-  active requirements. This roadmap selects no additional document path.
+  persistent-evidence adjudication remains outstanding.
+- **Architectural decision history — established:** [DECISIONS.md](DECISIONS.md)
+  preserves approved choices, established rationale, provenance and genuine
+  corrections/supersessions. Its existence does not approve the remaining
+  persistent-evidence contracts or complete Phase 1.
 - **Persistent-evidence adjudication:** the user and ChatGPT must approve export
   snapshot and POL-R confirmation event contracts, exact persistence/replay
   requirements, batch atomicity, and export-file/event consistency and failure
