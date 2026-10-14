@@ -414,3 +414,16 @@ def test_archive_rotation_and_fresh_start_isolation(tmp_path, monkeypatch):
     assert fresh.state.tasks == fresh.state.projects == {}
     assert fresh.events == []
     assert files(s) == original_files
+
+
+@pytest.mark.parametrize('all_tasks,include_deleted', [(False, False), (False, True), (True, False), (True, True)])
+def test_report_metadata_derives_from_request_and_calculation_timezone(setup, all_tasks, include_deleted):
+    s, a, _, p, _, _ = setup
+    dated(s, a, MON, 12600)
+    r = pure_report(s, task_ids=(a,), project_ids=(p,), all_tasks=all_tasks, include_deleted=include_deleted)
+    assert r['scope'] == ('complete' if all_tasks else 'selected')
+    assert r['include_deleted'] is include_deleted
+    assert r['local_timezone'] == 'America/Chicago'
+    assert r['tasks'][a]['window_seconds'] == 12600
+    s.local_tz = ZoneInfo('UTC')
+    assert pure_report(s, all_tasks=all_tasks)['local_timezone'] == 'UTC'

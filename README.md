@@ -47,10 +47,13 @@ for selection semantics and the explicit legacy synthetic-duration boundary.
 plain-text timesheet with independent task rows, dated daily columns and weekly
 totals grouped by current project. Project subtotals are informational and
 non-additive; selected project subsets are labeled accordingly. Seconds and
-fractional seconds are preserved. This renderer is independently callable and
+fractional seconds are preserved. Scope and timezone labels come from the
+accounting result; optional caller assertions must match. Full task names wrap
+in bordered tables without truncation, and calendar-edge slots are explicitly
+marked when no date can be represented. This renderer is independently callable and
 **not wired into production export menus**. See the
 [renderer contract](DESIGN_NOTES.md#independent-task-timesheet-renderer-staged)
-for required metadata and partial-week behavior.
+for authoritative metadata, wrapping and partial-week behavior.
 
 ## Run from source (repo root)
 

@@ -159,6 +159,8 @@ def calculate_date_window(
             tag_members.setdefault(tag, set()).add(key)
     return {
         "start_date": start_date, "end_date": end_date, "cutoff_utc": cutoff,
+        "scope": "complete" if all_tasks else "selected",
+        "local_timezone": getattr(local_tz, "key", None) or getattr(local_tz, "zone", None) or str(local_tz),
         "include_deleted": include_deleted, "tasks": rows, "projects": projects,
         "unassigned": _subtotal(rows, {key for key in selected if eligible[key].project_id is None}),
         "application": _subtotal(rows, selected),

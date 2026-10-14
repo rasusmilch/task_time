@@ -153,6 +153,11 @@ references are rejected before contribution calculation, even with `all_tasks`.
 Deleted tasks are excluded by default, including explicit task selections.
 `include_deleted=True` includes their valid historical work under the same
 selection rules. This policy is recorded in the returned report.
+The detached report also carries `scope` (`complete` exactly when `all_tasks=True`,
+otherwise `selected`) and `local_timezone`, derived from the actual bucketing
+timezone's IANA key/zone or its string label. Deleted-task inclusion is independent
+of scope. Empty reports preserve their requested scope identity. These fields
+are derived presentation metadata only; they are not persisted.
 
 Each included task's daily seconds combine two distinct authoritative sources:
 
@@ -217,14 +222,15 @@ tasks. Tests use isolated temporary datasets and leave existing user data alone.
 
 ## Independent-task timesheet renderer (staged)
 
-`task_timer.exporter.build_timesheet_text(report, *, local_timezone, scope)`
+`task_timer.exporter.build_timesheet_text(report, *, local_timezone=None, scope=None)`
 returns a complete Unicode plain-text string ending in a newline. `report` is
-the detached result of `calculate_date_window()`. The caller must supply the
-same calculation timezone label and `scope="complete"` for an all-eligible-task
-report, or `scope="selected"` for a selection. These labels are not included in
-the accounting result; the renderer does not infer completeness from names or
-the presence of project rows. Incorrect caller metadata can mislabel a report.
-Empty selections remain empty; the renderer never expands eligibility.
+the detached result of `calculate_date_window()`, including its authoritative
+`scope` and `local_timezone`. No duplicated caller labels are required. Optional
+arguments are compatibility assertions: they must match the result's exact
+labels or raise `ValueError` before rendering. Missing result metadata is also
+rejected. The renderer never infers completeness from names or the presence of
+project rows, and never expands eligibility. Empty selected/complete reports
+retain their identity, independently of deleted-task inclusion.
 
 Each Sunday-start week intersecting the requested inclusive date range has
 seven dated daily columns and a weekly-total column. Dates outside the range
@@ -233,6 +239,19 @@ Partial weeks retain only the calculated scope. Task, project, Unassigned and
 application cells come directly from their supplied daily/weekly seconds;
 the renderer never sums formatted values or recomputes work from endpoints.
 No additional chargeable multiweek task summary is rendered.
+
+Week layout uses bounded integer ordinals rather than unchecked date addition.
+Every intersecting week retains seven physical daily columns, even at the
+calendar edges. `unrepresentable` denotes a slot beyond `date.min`/`date.max`;
+it has no invented date or contribution and is distinct from a representable
+`out of scope` date. Final weeks stop cleanly. The latest accepted accounting
+end date, `9999-12-30`, renders its last Friday as out of scope and Saturday as
+unrepresentable, retaining supplied weekly totals. Zero-work reports starting
+at `0001-01-01` render an unrepresentable Sunday and valid Monday–Saturday dates.
+There is a separate, existing accounting limitation: nonzero work in the first
+six dates of year 1 overflows when accounting constructs the preceding Sunday
+week key. This repair does not alter that upstream calculation; nonzero work
+from the first representable Sunday, `0001-01-07`, is supported in the tests.
 
 Task rows contain only their own independent work, grouped by current project.
 Project rows labeled `Project total — informational` use the accounting result's
@@ -243,7 +262,7 @@ present. Each week ends with one `Application total` or `Selected-scope total`.
 Project/Unassigned subtotals are non-additive information, not task entries.
 Tags and submission evidence are not additional report sections or actuals.
 
-Names are displayed in full without truncation, normalization, or external
+Names are displayed in full without truncation, whitespace normalization, or external
 management numbers. Membership and lookup use UUIDs exclusively. Projects and
 tasks sort by exact name, then UUID, independently of dictionary insertion order.
 Duplicate task names across the included report receive a full UUID in the
@@ -256,8 +275,29 @@ Durations use `HH:MM:SS[.fraction]`, with unbounded hours and fractional seconds
 retained from the supplied numeric value's round-trip decimal representation.
 There is no decimal-hours rounding or truncation of nonzero subsecond work.
 The timed-work cutoff header preserves fractional timestamp precision too.
-Plain-text tables reuse the existing helper and can be wide for long names;
-no HTML, PDF, spreadsheet, persistence, or template framework is introduced.
+
+The dedicated `_render_timesheet_table()` leaves legacy `_render_table()`
+unchanged. `TIMESHEET_TASK_COLUMN_WIDTH=44` is an internal display-column limit,
+not a persisted setting. Task names wrap at word boundaries when possible and
+split long tokens as necessary. Wrapping carries whitespace without dropping it;
+the name's text and ordering remain intact. Pipes, backslashes and control
+characters use explicit reversible escapes (`\u007c`, `\\`, `\n`, `\t`, etc.)
+so embedded delimiters, line breaks and tabs cannot introduce false columns or
+physical rows. Project heading labels use the same escaping. Reconstructing a
+label means joining its wrapped content and decoding those escapes, rather than
+treating each continuation as another task.
+
+ASCII outer borders and row separators span every column. Continuations align
+under their original cells; status, local references and time values appear only
+on the first physical line. Informational subtotal labels remain explicit.
+Numeric columns expand to preserve full values, including long fractional seconds;
+they have no 44-column cap. A dependency-free Unicode width estimate treats
+combining marks as zero columns and East Asian wide/fullwidth characters as two,
+keeping ordinary accented/combining/CJK text aligned. Complex emoji sequences and
+terminal-specific ambiguous-width conventions are not fully shaped; no broad
+terminal framework or dependency is added. Seven daily columns and metadata
+still make the report wider than a narrow terminal. No HTML, PDF, spreadsheet,
+persistence, or template framework is introduced.
 
 Rendering does not read storage, consult service state, write files/events,
 operate timers, or infer submission status. The legacy `build_export_text()`

@@ -3,11 +3,12 @@ from copy import deepcopy
 from datetime import date, datetime, timedelta, timezone
 from uuid import uuid4
 from zoneinfo import ZoneInfo
+import unicodedata
 
 import pytest
 
 from task_timer.app import TaskTimerService
-from task_timer.exporter import build_timesheet_text
+from task_timer.exporter import build_timesheet_text, _render_table
 from task_timer.storage import EventStorage
 
 SUN = date(2026, 10, 11)
@@ -39,13 +40,26 @@ def calculate(s, start=SUN, end=SAT, **selection):
     return s.calculate_date_window(start, end, cutoff_utc=CUTOFF, **selection)
 
 
-def render(s, report, scope='selected'):
-    return build_timesheet_text(report, local_timezone=s.local_tz_name, scope=scope)
+def render(s, report, scope=None):
+    return build_timesheet_text(report, scope=scope)
+
+
+def logical_rows(text):
+    """Read complete bordered rows, preserving wrapped name whitespace."""
+    rows, physical = [], []
+    for line in text.splitlines():
+        if line.startswith('|'):
+            physical.append([cell[1:-1] for cell in line.split('|')[1:-1]])
+        elif physical:
+            rows.append((["".join(part[index].rstrip() for part in physical)
+                          for index in range(len(physical[0]))], physical))
+            physical = []
+    assert not physical  # every logical row ends with its border
+    return rows
 
 
 def table_rows(text, name):
-    return [[cell.strip() for cell in line.split(' | ')] for line in text.splitlines()
-            if ' | ' in line and line.split(' | ')[0].strip() == name]
+    return [row for row, _ in logical_rows(text) if row[0] == name]
 
 
 def example(s, a, b):
@@ -125,7 +139,7 @@ def test_duplicate_names_retain_local_identity_and_exact_unicode_names(setup):
     assert len(rows) == 3
     assert {row[2] for row in rows} == {a, b, c}
     assert {row[-1] for row in rows} == {'01:00:00', '02:00:00', '00:30:00'}
-    assert text.count(name) == 3
+    assert len([row for row, _ in logical_rows(text) if row[0] == name]) == 3
     assert 'they are not external task numbers' in text
     assert render(s, calculate(s, all_tasks=True), 'complete') == text
 
@@ -260,3 +274,204 @@ def test_authoritative_supplied_totals_are_not_recomputed(setup):
 def test_missing_or_invalid_caller_metadata_rejected(setup, options):
     with pytest.raises(ValueError):
         build_timesheet_text(calculate(setup[0]), **options)
+
+
+def table_blocks(text):
+    blocks, current = [], []
+    for line in text.splitlines():
+        if line.startswith(('+', '|')):
+            current.append(line)
+        elif current:
+            blocks.append(current)
+            current = []
+    if current:
+        blocks.append(current)
+    return blocks
+
+
+def terminal_columns(text):
+    # Independent geometry oracle for the Latin/combining/CJK fixtures below.
+    return sum(0 if unicodedata.combining(char) else 2 if '\u4e00' <= char <= '\u9fff' else 1 for char in text)
+
+
+def boundaries(line, marker):
+    return [terminal_columns(line[:index]) for index, char in enumerate(line) if char == marker]
+
+
+def assert_table_geometry(text):
+    blocks = table_blocks(text)
+    assert blocks
+    for block in blocks:
+        assert block[0].startswith('+') and block[-1] == block[0]
+        expected = boundaries(block[0], '+')
+        assert len(expected) == 12  # 3 metadata + 7 dates + weekly total
+        for line in block:
+            assert terminal_columns(line) == terminal_columns(block[0])
+            assert boundaries(line, '+' if line.startswith('+') else '|') == expected
+        assert expected[1] - expected[0] - 3 <= 44
+
+
+def test_upper_calendar_boundary_with_actual_accounting_result(setup):
+    s, a, _, _, _ = setup
+    s.local_tz = ZoneInfo('UTC')
+    end = date(9999, 12, 30)  # latest accepted accounting end date
+    dated(s, a, end, 12600)
+    r = calculate(s, end, end, task_ids=(a,))
+    text = build_timesheet_text(r)
+    week = date(9999, 12, 26)
+    assert text.count('Week (Sunday start):') == 1
+    assert '9999-12-26 to unrepresentable Saturday' in text
+    rows = table_rows(text, 'Task A')
+    assert rows[0][3:] == ['out of scope'] * 4 + ['03:30:00', 'out of scope', 'unrepresentable', '03:30:00']
+    assert r['tasks'][a]['weekly_seconds'] == {week: 12600}
+    assert 'Fri 9999-12-31' in text and 'Sat unrepresentable' in text
+    assert '10000-' not in text
+    assert_table_geometry(text)
+
+
+def test_lower_calendar_boundary_zero_work_and_first_representable_sunday(setup):
+    s, a, _, _, _ = setup
+    s.local_tz = ZoneInfo('UTC')
+    r = calculate(s, date.min, date(1, 1, 6), task_ids=(a,))
+    text = build_timesheet_text(r)
+    assert 'unrepresentable Sunday to 0001-01-06' in text
+    assert 'Sun unrepresentable' in text and 'Mon 0001-01-01' in text
+    assert table_rows(text, 'Task A')[0][3:] == ['unrepresentable'] + ['00:00:00'] * 7
+    assert_table_geometry(text)
+    # Nonzero work before 0001-01-07 has an existing upstream week-key
+    # limitation; the first representable Sunday supports actual contributions.
+    sunday = date(1, 1, 7)
+    dated(s, a, sunday, 3600)
+    r = calculate(s, sunday, date(1, 1, 8), task_ids=(a,))
+    text = build_timesheet_text(r)
+    assert table_rows(text, 'Task A')[0][3:] == ['01:00:00', '00:00:00'] + ['out of scope'] * 5 + ['01:00:00']
+    assert_table_geometry(text)
+
+
+def test_authoritative_scope_and_timezone_require_no_caller_duplication(setup):
+    s, a, _, _, _ = setup
+    assert 'Scope: Complete eligible-task scope' in build_timesheet_text(calculate(s, all_tasks=True))
+    assert 'Scope: Selected scope' in build_timesheet_text(calculate(s, task_ids=(a,)))
+    assert 'Local timezone: America/Chicago' in build_timesheet_text(calculate(s))
+    # The actual tz used for bucketing wins over a stale service display label.
+    s.local_tz = ZoneInfo('UTC')
+    r = calculate(s)
+    assert r['local_timezone'] == 'UTC'
+    assert 'Local timezone: UTC' in build_timesheet_text(r)
+    with pytest.raises(ValueError, match='Timezone assertion'):
+        build_timesheet_text(r, local_timezone='America/Chicago')
+    assert build_timesheet_text(r, local_timezone='UTC') == build_timesheet_text(r)
+
+
+@pytest.mark.parametrize('all_tasks,assertion', [(False, 'complete'), (True, 'selected')])
+def test_scope_mismatch_is_rejected_purely(setup, all_tasks, assertion):
+    s, a, _, _, _ = setup
+    s.start_task(a)
+    r = calculate(s, all_tasks=all_tasks)
+    root = s.storage.data_dir
+    before = deepcopy(r), deepcopy(s.state), deepcopy(s.events), {str(p): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+    with pytest.raises(ValueError, match='Scope assertion'):
+        build_timesheet_text(r, scope=assertion)
+    with pytest.raises(ValueError, match='Timezone assertion'):
+        build_timesheet_text(r, local_timezone='Contradictory timezone')
+    assert (r, s.state, s.events, {str(p): p.read_bytes() for p in root.rglob('*') if p.is_file()}) == before
+
+
+def test_empty_scope_identity_is_not_inferred_from_rows(setup, tmp_path):
+    s, _, _, _, q = setup
+    empty = TaskTimerService(EventStorage(tmp_path / 'empty'))
+    for all_tasks, phrase, total in [(False, 'Selected scope', 'Selected-scope total'),
+                                    (True, 'Complete eligible-task scope', 'Application total')]:
+        r = calculate(empty, all_tasks=all_tasks)
+        assert r['tasks'] == {}
+        text = build_timesheet_text(r)
+        assert f'Scope: {phrase}' in text
+        assert table_rows(text, total)[0][-1] == '00:00:00'
+    assert 'Scope: Selected scope' in build_timesheet_text(calculate(s, project_ids=(q,)))
+    assert 'Scope: Complete eligible-task scope' in build_timesheet_text(calculate(s, project_ids=(q,), all_tasks=True))
+
+
+@pytest.mark.parametrize('name', [
+    'Management assigned investigation and implementation of the extended reporting workflow with detailed testing and independent review obligations',
+    'UnbrokenManagementLabel' * 8,
+    ('Café re\u0301sume\u0301 管理时间项目 ' * 8).rstrip(),
+    'Label | delimiter  with   spacing\nand\ttabs\\backslash' * 3,
+])
+def test_wrapped_name_content_geometry_and_nonduplicated_values(setup, name):
+    s, a, _, _, _ = setup
+    # Isolated report fixture allows embedded newlines/tabs without exercising
+    # unrelated production name-entry policy.
+    dated(s, a, MON, 3600)
+    r = calculate(s, task_ids=(a,))
+    r['tasks'][a]['name'] = name
+    text = build_timesheet_text(r)
+    encoded = name.replace('\\', '\\\\').replace('|', '\\u007c').replace('\n', '\\n').replace('\t', '\\t')
+    matching = [(row, parts) for row, parts in logical_rows(text) if row[0] == encoded]
+    assert len(matching) == 1
+    row, physical = matching[0]
+    assert len(physical) > 1
+    assert row[4] == row[-1] == '01:00:00'
+    assert all(all(not cell.strip() for cell in part[1:]) for part in physical[1:])
+    assert sum(part[4].strip() == '01:00:00' for part in physical) == 1
+    assert sum(part[-1].strip() == '01:00:00' for part in physical) == 1
+    assert all(terminal_columns(part[0]) <= 44 for part in physical)
+    assert_table_geometry(text)
+    assert table_rows(text, 'Selected tasks subtotal — informational')[0][-1] == '01:00:00'
+    assert table_rows(text, 'Selected-scope total')[0][-1] == '01:00:00'
+    assert text == build_timesheet_text(r)
+
+
+def test_wrapping_across_all_group_variants_and_weeks(setup):
+    s, a, b, p, q = setup
+    name = 'Same long management assigned task name with all descriptive details preserved in both separate local records ' * 2
+    s.update_task(a, name, '')
+    s.update_task(b, name, '')
+    s.unassign_task_from_project(b)
+    dated(s, a, SAT, 1800)
+    dated(s, b, NEXT, 5400)
+    s.delete_task_only(b)
+    r = calculate(s, SAT, NEXT, project_ids=(p, q), task_ids=(b,), include_deleted=True)
+    text = build_timesheet_text(r)
+    same_named = table_rows(text, name.rstrip())
+    assert len(same_named) == 4  # two UUIDs per week, never merged
+    assert [row[2] for row in same_named].count(a) == [row[2] for row in same_named].count(b) == 2
+    assert all(row[1] == 'Inactive (deleted)' for row in same_named if row[2] == b)
+    assert [row[-1] for row in same_named if row[2] == a] == ['00:30:00', '00:00:00']
+    assert [row[-1] for row in same_named if row[2] == b] == ['00:00:00', '01:30:00']
+    assert [row[-1] for row in table_rows(text, 'Selected-scope total')] == ['00:30:00', '01:30:00']
+    assert table_rows(text, 'Project total — informational')
+    assert table_rows(text, 'Unassigned subtotal — informational')
+    assert 'No eligible tasks included in this project.' in text
+    assert_table_geometry(text)
+
+
+def test_legacy_shared_table_output_is_identical():
+    assert _render_table(['Task', 'Total'], [['A', '01:00'], ['B', '02:00']]) == [
+        'Task | Total', '-----+------', 'A    | 01:00', 'B    | 02:00']
+
+
+@pytest.mark.parametrize('field', ['scope', 'local_timezone'])
+def test_missing_authoritative_metadata_cannot_be_supplied_by_caller(setup, field):
+    r = calculate(setup[0])
+    del r[field]
+    with pytest.raises(ValueError, match='Accounting report must supply'):
+        build_timesheet_text(r, scope='selected', local_timezone='America/Chicago')
+
+
+def test_layout_constant_wraps_names_but_never_caps_numeric_precision(setup, monkeypatch):
+    monkeypatch.setattr('task_timer.exporter.TIMESHEET_TASK_COLUMN_WIDTH', 16)
+    s, a, _, _, _ = setup
+    name = 'Task with complete management description preserved'
+    s.update_task(a, name, '')
+    dated(s, a, MON, 1e-60)
+    text = build_timesheet_text(calculate(s, task_ids=(a,)))
+    row = table_rows(text, name)[0]
+    expected = '00:00:00.' + '0' * 59 + '1'
+    assert row[4] == row[-1] == expected
+    assert table_rows(text, 'Selected tasks subtotal — informational')[0][-1] == expected
+    for block in table_blocks(text):
+        edges = boundaries(block[0], '+')
+        assert edges[1] - edges[0] - 3 <= 16
+        for line in block:
+            assert boundaries(line, '+' if line.startswith('+') else '|') == edges
+            assert terminal_columns(line) == terminal_columns(block[0])
