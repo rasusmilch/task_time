@@ -30,7 +30,7 @@ evidence requirements and release-qualification boundaries.
 No phase below is marked Complete. Component tests or completed focused tasks do
 not establish a complete replacement application. Integrated Windows execution,
 packaging and replacement-installation validation are pending; release readiness
-is not established. This documentation task performs no new runtime validation.
+is not established.
 
 ## Implemented foundation — staged, not production replacement
 

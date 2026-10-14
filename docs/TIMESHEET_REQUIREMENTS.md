@@ -21,8 +21,9 @@ are in [AGENTS.md](../AGENTS.md), inspected technical behavior in
 - **DEFERRED**: approved functionality belonging to a later phase. Deferral does
   not withdraw approval or imply implementation.
 
-No serialized event contract, schema, recovery policy or new implementation is
-selected by this documentation task beyond the behavior expressly recorded here.
+The behavioral requirements below are Selected. Exact serialized event contracts
+and cross-resource recovery policies remain Open as identified below. Those
+implementation decisions require separate user/ChatGPT adjudication.
 
 ## SELECTED — Replacement, installation and data boundary
 
