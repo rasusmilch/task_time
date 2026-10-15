@@ -77,6 +77,7 @@ their assertions before selecting a run.
 | Confirmation writer | [test_polr_confirmation_writer.py](../tests/test_polr_confirmation_writer.py): pure explicit-cell preparation, strict pre-append validation, superseded priors, exact identity recovery after newer batches, append/flush/sync/close/inspection/installation faults, rotation/restart/restore and Actual/export purity. Serialized one-service fixtures do not qualify multi-process writers or production workflows. |
 | Export confirmation proposals | [test_polr_confirmation_proposals.py](../tests/test_polr_confirmation_proposals.py): frozen values/names/coverage, positive-only defaults and explicit zeros, canonical checked selection, first-occurrence stale truth table, exact acknowledgements, selected-prior changes, tampering, fresh evidence, purity and explicit registration/retry. Service preparation only; no dialogs or production interaction. |
 | Daily reconciliation | [test_polr_reconciliation.py](../tests/test_polr_reconciliation.py): Unknown/zero, mandatory frozen-export and correction examples, precise cell rounding, scope/identity, sparse zero-work dates, physical-order confirmation freshness, one strict read/one Actual call, detached results, evidence/accounting rejection and write-prohibited purity. Daily service calculation only; no weekly balance, UI or production workflow qualification. |
+| Connected POL-R services | [test_polr_service_workflow.py](../tests/test_polr_service_workflow.py): real export preparation/registration, exact-byte/digest materialization, frozen proposals, default/checked selection, separate explicit registration, daily reconciliation and replay/restore. Covers 3.00-to-5.00 absolute replacement, negative correction, explicit zero/Unknown, stale rejection and exact retries without duplicate append or rollback, with state/file purity and detached evidence. Disposable serialized service scenarios, not production, Windows, concurrent-writer or power-loss qualification. |
 | Reporting/file publication | [test_timesheet_service.py](../tests/test_timesheet_service.py): real service orchestration, UTF-8 bytes, no-clobber publication, concurrent targets, injected staging/publication/cleanup failures and state/file purity. |
 | Existing storage and backups | [test_storage.py](../tests/test_storage.py), [test_backups.py](../tests/test_backups.py), plus project/dated/accounting/export fixtures: fresh/empty initialization, missing-component constructor rejection without mutation, healthy restart, rotation, snapshots, backup contents, retention and restore behavior. |
 | Legacy compatibility | [test_exporter.py](../tests/test_exporter.py), [test_timeline_corrections.py](../tests/test_timeline_corrections.py), and neighboring tags/subtask/template/selected-export tests protect current behavior during staging. Legacy submission/checkpoint tests are not proof of replacement POL-R semantics. |
@@ -289,6 +290,23 @@ duplicate identities, fixed running cutoffs, physical confirmation order regardl
 of audit time, detached earlier results and errors for invalid evidence/requests.
 Capture all dataset bytes and service state; prohibit append, sync, backup,
 snapshot writes, rendering and state/cache installation during each calculation.
+
+The connected scenarios in
+[test_polr_service_workflow.py](../tests/test_polr_service_workflow.py) exercise
+these calculations after real frozen export registration/materialization,
+proposal/selection and separate explicit confirmation registration. Default
+positive selection leads to 5.00/3.00/+2.00/5.00, then a manual absolute 5.00
+confirmation and zero Delta; rotation/restart retains identities, and old-event
+retries cannot roll back that value. Checked selection includes explicit zero,
+leaves unchecked cells Unknown and yields 2.50/3.00/-0.50/2.50 after correction.
+Backup/restore, fresh startup and snapshot rebuild retain the corrected state,
+discard subsequent work/confirmation changes and permit rematerialization of
+the original frozen bytes. Equal proposed/confirmed 3.00 requires no stale
+acknowledgement even when current Actual is 2.50. Captured journal, dataset bytes,
+Actual/timer/legacy state and detached inputs/results establish nonpersistent
+proposal, preparation and calculation behavior. Existing fault suites remain
+responsible for failure injection; these two service scenarios do not qualify
+production interaction, Windows/NTFS, real concurrency or power-loss durability.
 
 The obligations below come from the product contract. Daily numeric semantics
 have staged service coverage; full operator workflows, weekly reconciliation and

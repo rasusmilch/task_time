@@ -56,6 +56,11 @@ receipts or commits. No release or production activation is implied below.
   and strictly replayed confirmations: cell-rounded Actual, known/Unknown Confirmed,
   signed Delta and absolute replacement Enter, with detached results and no writes
   or cache installation. Preserve explicit zero and selected zero-work dates.
+  Validate the connected service sequence from frozen registration and verified
+  materialization through default/checked selection, explicit confirmation,
+  reconciliation and replay/restore. Cover absolute replacement, negative
+  correction, explicit zero/Unknown, stale rejection and exact retries while
+  preserving original evidence, file bytes and unrelated timekeeping state.
 
 These services are independently callable but not fully connected to the
 production application workflow. Legacy UI/export paths remain active during
