@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import date, datetime
 import re
 from typing import Any
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .export_snapshots import EXPORT_EVENT_TYPE, collect_export_snapshots, same_export_event, validate_uuid
 from .models import SCHEMA_VERSION
@@ -34,12 +33,14 @@ def validate_polr_confirmation_batch(event: Any) -> None:
     except ValueError:
         raise ValueError("Invalid confirmation audit timestamp") from None
     zone = event["local_timezone"]
-    if not isinstance(zone, str) or not zone:
-        raise ValueError("Confirmation timezone identifier is required")
+    if type(zone) is not str or not zone or zone != zone.strip():
+        raise ValueError("Confirmation timezone metadata must be nonempty text without surrounding whitespace")
     try:
-        ZoneInfo(zone)
-    except (ValueError, ZoneInfoNotFoundError):
-        raise ValueError("Invalid confirmation timezone identifier") from None
+        zone.encode("utf-8")
+    except UnicodeEncodeError:
+        raise ValueError("Confirmation timezone metadata must be valid UTF-8") from None
+    if any(ord(char) < 0x20 or 0x7f <= ord(char) <= 0x9f for char in zone):
+        raise ValueError("Confirmation timezone metadata must not contain control characters")
     _fields(event["payload"], "cells")
     cells = event["payload"]["cells"]
     if not isinstance(cells, list) or not cells:

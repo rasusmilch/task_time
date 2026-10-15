@@ -1,11 +1,14 @@
 """Confirmation fixtures append isolated evidence; no production writer exists."""
 from copy import deepcopy
-from datetime import timedelta
+from datetime import timedelta, timezone
+import socket
 from uuid import uuid4
+import zoneinfo
 
 import pytest
 
 from task_timer import app as app_module
+from task_timer import polr_confirmations as confirmation_module
 from task_timer.app import TaskTimerService
 from task_timer.models import event_dict
 from task_timer.polr_confirmations import (
@@ -35,6 +38,69 @@ def journal(s, *extra):
 
 def projected(amount, event):
     return {'confirmed_hundredths': amount, 'batch_event_id': event['event_id']}
+
+
+def forbid_timezone_lookup_and_network(monkeypatch):
+    lookups = []
+    def unavailable(*args, **kwargs):
+        lookups.append(args)
+        raise zoneinfo.ZoneInfoNotFoundError('Simulated unavailable timezone data')
+    def forbidden(*args, **kwargs):
+        pytest.fail('Confirmation validation attempted network access')
+    monkeypatch.setattr(zoneinfo, 'ZoneInfo', unavailable)
+    # Also catch an accidentally retained or reintroduced imported alias.
+    monkeypatch.setattr(confirmation_module, 'ZoneInfo', unavailable, raising=False)
+    monkeypatch.setattr(socket, 'create_connection', forbidden)
+    monkeypatch.setattr(socket, 'getaddrinfo', forbidden)
+    monkeypatch.setattr(socket.socket, 'connect', forbidden)
+    monkeypatch.setattr(socket.socket, 'connect_ex', forbidden)
+    return lookups
+
+
+@pytest.mark.parametrize('label', ['America/Chicago', 'UTC', 'UTC-05:00', 'UTC+05:30', 'CDT',
+                                 'Unknown/Timezone', 'Central Daylight Time', 'é e\u0301 zone'])
+def test_timezone_labels_are_preserved_metadata_without_resolution(setup, monkeypatch, label):
+    s, a, _, _, _ = setup
+    event = batch(cell(a))
+    event['local_timezone'] = label
+    events = journal(s, event)
+    before, stored = deepcopy(events), files(s)
+    lookups = forbid_timezone_lookup_and_network(monkeypatch)
+    validate_polr_confirmation_batch(event)
+    assert collect_polr_confirmations(events)[a, MON.isoformat()] == projected(300, event)
+    assert events == before and event['local_timezone'] == label
+    assert files(s) == stored and lookups == []
+
+
+class _MetadataString(str):
+    pass
+
+
+@pytest.mark.parametrize('label', [None, True, False, 0, 5.5, b'UTC', '', ' ', '\u2003',
+                                 ' UTC', 'UTC ', '\tUTC', 'UTC\n', 'UTC\x00label',
+                                 'UTC\nlabel', 'UTC\tlabel', 'UTC\u0085label', '\ud800',
+                                 _MetadataString('UTC')])
+def test_malformed_timezone_metadata_rejects_whole_rebuild_without_mutation(setup, label):
+    s, a, b, _, _ = setup
+    first = batch(cell(a))
+    s._rebuild_state(journal(s, first))
+    invalid = batch(cell(b, 100), cell(a, 500, prior=first['event_id']))
+    invalid['local_timezone'] = label
+    before = deepcopy(s.state), s.get_effective_polr_confirmations(), files(s)
+    with pytest.raises(ValueError):
+        validate_polr_confirmation_batch(invalid)
+    with pytest.raises(ValueError):
+        s._rebuild_state(journal(s, first, invalid))
+    assert (s.state, s.get_effective_polr_confirmations(), files(s)) == before
+    assert (b, MON.isoformat()) not in s.get_effective_polr_confirmations()
+
+
+def test_all_c0_c1_and_delete_controls_are_rejected_as_metadata():
+    for codepoint in [*range(0x20), *range(0x7f, 0xa0)]:
+        event = batch(cell(str(uuid4())))
+        event['local_timezone'] = 'UTC' + chr(codepoint) + 'label'
+        with pytest.raises(ValueError, match='control characters'):
+            validate_polr_confirmation_batch(event)
 
 
 @pytest.fixture
@@ -77,7 +143,7 @@ def test_export_link_freezes_amount_without_current_actual_or_file(exported, mon
     ('task_id', 'not-app'), ('event_type', 'not-confirmation'),
     ('timestamp_utc', '2026-10-25T12:00:00'), ('timestamp_utc', '2026-10-25T12:00:00+00:00'),
     ('timestamp_utc', '2026-10-25T12:00:00.123Z'), ('timestamp_utc', '2026-02-30T12:00:00Z'),
-    ('local_timezone', ''), ('local_timezone', 'Unknown/Timezone'), ('local_timezone', False),
+    ('local_timezone', ''), ('local_timezone', False),
     ('payload', {}), ('payload', {'cells': []}), ('payload', {'cells': {}}),
     ('payload', {'cells': [], 'extra': True}),
 ])
@@ -272,7 +338,7 @@ def test_generic_service_append_is_not_a_confirmation_writer(setup):
 
 
 @pytest.mark.parametrize('fault', ['duplicate-cell', 'wrong-prior', 'bad-amount', 'extra-envelope',
-                                 'duplicate-identity', 'other-type-collision'])
+                                 'duplicate-identity', 'other-type-collision', 'bad-timezone'])
 def test_malformed_persisted_confirmation_prevents_startup_and_export_operations(exported, fault, tmp_path):
     s, a, _, _, _, export = exported
     invalid = batch(cell(a))
@@ -284,6 +350,8 @@ def test_malformed_persisted_confirmation_prevents_startup_and_export_operations
         invalid['payload']['cells'][0]['confirmed_hundredths'] = True
     elif fault == 'extra-envelope':
         invalid['extra'] = 1
+    elif fault == 'bad-timezone':
+        invalid['local_timezone'] = 'UTC\x00label'
     elif fault == 'duplicate-identity':
         s.storage.append_event(deepcopy(invalid))
         invalid['payload']['cells'][0]['confirmed_hundredths'] += 1
@@ -349,3 +417,43 @@ def test_confirmation_rebuild_changes_no_actual_timer_export_files_or_legacy_sta
              s.list_timesheet_export_snapshots(), s.list_time_submissions(), files(s), target.read_bytes())
     assert after == before and s.state.tasks[a].is_running
     assert s.get_effective_polr_confirmations()[a, MON.isoformat()] == projected(999999, event)
+
+
+@pytest.mark.parametrize('label', ['UTC-05:00', 'UTC+05:30'])
+def test_fixed_offset_metadata_survives_offline_restart_archives_and_restore(exported, monkeypatch, label):
+    s, a, b, _, _, export = exported
+    fixed_zone = timezone(timedelta(hours=-5))
+    s.local_tz, s.local_tz_name = fixed_zone, str(fixed_zone)
+    monkeypatch.setattr(app_module, 'detect_local_timezone', lambda: fixed_zone)
+    s.start_task(a)
+    state = deepcopy(s.state)
+    actual = s.calculate_date_window(SUN, SAT, cutoff_utc=CUTOFF, all_tasks=True)
+    first = batch(cell(a, 2, source=export['event_id']), cell(b, 0, day=TUE))
+    first['local_timezone'] = label
+    second = batch(cell(a, 500, prior=first['event_id']))
+    second['local_timezone'] = 'CDT'
+    s.storage.append_event(first)
+    s.storage.max_active_events = 1
+    s.storage.rotate_if_needed()
+    s.storage.append_event(second)
+    s.storage.append_event(deepcopy(first))
+    archives = {p.name: p.read_bytes() for p in s.storage.archives_dir.iterdir()}
+    assert archives
+    expected = {(a, MON.isoformat()): projected(500, second), (b, TUE.isoformat()): projected(0, first)}
+    lookups = forbid_timezone_lookup_and_network(monkeypatch)
+    s = TaskTimerService(EventStorage(s.storage.data_dir))
+    assert s.get_effective_polr_confirmations() == expected
+    s.rebuild_snapshot_from_journal()
+    backup = s.create_backup_now()
+    later = batch(cell(a, 0, prior=second['event_id']))
+    later['local_timezone'] = 'Opaque/System-Label'
+    s.storage.append_event(later)
+    s.restore_from_backup(backup)
+    s = TaskTimerService(EventStorage(s.storage.data_dir))
+    assert s.get_effective_polr_confirmations() == expected
+    assert s.state == state and s.state.tasks[a].is_running
+    assert s.calculate_date_window(SUN, SAT, cutoff_utc=CUTOFF, all_tasks=True) == actual
+    assert s.get_timesheet_export_snapshot(export['event_id']) == export
+    assert {p.name: p.read_bytes() for p in s.storage.archives_dir.iterdir()} == archives
+    assert [event for event in journal(s) if event['event_type'] == CONFIRMATION_EVENT_TYPE] == [first, second, first]
+    assert lookups == []

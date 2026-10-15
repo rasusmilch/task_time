@@ -260,8 +260,25 @@ envelope with `task_id = "__app__"`. One operation produces one event containing
 the whole validated batch; its envelope `event_id` identifies that batch.
 The persisted envelope has exactly `schema_version`, `event_id`, `timestamp_utc`,
 `local_timezone`, `task_id`, `event_type` and `payload`. Require the current schema
-version, a canonical event UUID, canonical UTC audit seconds with a `Z` suffix,
-and a valid nonempty timezone identifier. No extra envelope fields are permitted.
+version, a canonical event UUID and canonical UTC audit seconds with a `Z` suffix.
+No extra envelope fields are permitted.
+
+`local_timezone` is preserved audit metadata, not a timezone-rule lookup key.
+Require exactly `str`, nonempty and not whitespace-only, with no leading/trailing
+whitespace, valid UTF-8 encoding, and no NUL, C0/C1 control characters or DEL.
+Preserve the original value without normalization or replacement. Accept
+labels such as `America/Chicago`, `UTC`, `UTC-05:00`, `UTC+05:30`, `CDT` and
+otherwise well-formed opaque system labels, even if an installed database cannot
+resolve them. Validation/replay requires no `ZoneInfo` resolution, IANA database
+membership, network access or additional persisted identifier.
+
+The label does not verify geographic existence or timezone rules. Canonical
+`timestamp_utc` and the cell's recorded `work_date` remain the temporal evidence;
+replay does not use the label for conversion, day attribution, DST, Actual
+calculation, frozen export amounts or ordering. This metadata acceptance does not
+authorize unverified labels for calendar calculations or alter existing timezone
+arithmetic. Offline Windows timezone-data bundling remains a separate release
+qualification concern, not an additional dependency of confirmation validation.
 
 The payload has exactly `cells`, a nonempty array. Each cell has exactly:
 

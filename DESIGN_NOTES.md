@@ -566,9 +566,15 @@ effective `(task_id, ISO work_date)` mapping. Each value contains only
 remains an entry. The [technical owner](docs/EXPORT_EVIDENCE_CONTRACT.md#confirmation-event-structure)
 defines the persisted schema and relationship rules.
 
-Confirmation envelopes use the supported schema, canonical UUID, UTC audit
-seconds ending in `Z` and a valid `ZoneInfo` timezone identifier. Replay follows
-physical read-sequence order, not audit time. Task creation and source export
+Confirmation envelopes use the supported schema, canonical UUID and UTC audit
+seconds ending in `Z`. `local_timezone` is audit metadata: exactly a nonempty
+UTF-8 string without surrounding whitespace, NUL, C0/C1 controls or DEL.
+The validator preserves the label unchanged; IANA names, fixed offsets,
+abbreviations and well-formed unresolvable labels are accepted without timezone
+database lookup or network access. The label verifies no geographic zone or DST
+rules and is not used for calculations. UTC audit timestamps and recorded local
+work dates remain authoritative; existing timezone arithmetic is unchanged.
+Replay follows physical read-sequence order, not audit time. Task creation and source export
 must precede the batch. Export-linked amounts match frozen cells without current
 accounting, rendering or external-file inspection. All cells validate against
 the prior projection before any effective replacement. Per-cell prior batch IDs

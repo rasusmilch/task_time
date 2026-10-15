@@ -198,6 +198,13 @@ must prevail over equal or backdated audit timestamps. Exact duplicate identitie
 cannot reapply earlier values; changed duplicates and cross-type collisions fail
 closed. Rejected replay cannot install a partial projection.
 
+Timezone audit metadata tests accept IANA names, fixed offsets, abbreviations and
+opaque labels without resolution. Reject invalid types, empty/edge-whitespace
+text, NUL/C0/C1 controls and invalid UTF-8. Forbid timezone lookup and network calls;
+verify unchanged labels and amounts through replay, archive restart and supported
+backup restore. These checks do not qualify timezone arithmetic or offline Windows
+timezone-data packaging.
+
 Use isolated persisted fixtures to exercise real startup, archive rotation,
 snapshot rebuild and supported backup restoration, retaining immutable earlier
 evidence after rename, reassignment or task deletion. Assert detached readers,
