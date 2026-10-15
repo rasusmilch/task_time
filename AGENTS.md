@@ -88,18 +88,49 @@ authorize merging.
 
 ## Durability, review and publication
 
-Durably commit completed, validated tracked changes locally before ending an
-execution. ChatGPT independently reviews Codex receipts; passing tests alone
-never establish product correctness.
+**Local durability:** after completing and validating tracked changes, preserve
+the completed semantic unit in a local commit before ending execution. GitHub
+availability must never be a prerequisite for creating that commit.
 
-The user authorizes normal non-force publication only to
+**Expected publication:** GitHub publication is the standing Chronicle workflow.
+After a successful local commit, publish whenever the execution environment
+provides the necessary Git remote, network access and credentials. The user
+authorizes only normal non-force, fast-forward publication to
 `feature/chronicle-projects-timesheets` in `rasusmilch/task_time`, as a
-workstream-specific exception to the ordinary local-only Codex_guide boundary.
-Verify the starting state and remote branch; stop on unexpected advancement or
-divergence. Review, validate, commit, push normally and verify the remote commit.
-Retain a validated local commit and report any publication failure. This does
-not authorize hosted operations in other repositories/workstreams. Do not write
-main, force-push, merge, rebase, create a PR or modify unrelated hosted metadata.
+workstream-specific exception to the ordinary local-only Codex_guide boundary:
+
+```sh
+git push origin HEAD:refs/heads/feature/chronicle-projects-timesheets
+```
+
+When hosted Git operations are available, verify the intended repository and
+feature branch, inspect the remote for unexpected advancement or divergence,
+push the validated local commit normally, and verify the remote result when
+supported. Report the local commit and publication outcome accurately. Stop and
+report unexpected advancement or divergence; do not resolve it automatically.
+
+When hosted operations are unavailable, preserve the validated local commit and
+identify it for later publication. Report that publication was not completed and
+why; unavailable GitHub access is not a failure of the completed implementation.
+Do not repeatedly attempt unavailable operations. Never reset, clean or discard
+validated work because access is unavailable or a push fails.
+
+**Task consistency:** future tasks should inherit this publication rule rather
+than restate generic local-only instructions. A generated task must not
+accidentally suppress the standing workflow. Identify contradictory publication
+instructions rather than silently changing the project workflow. An explicit
+user-directed exception may authorize local-only delivery for a particular task.
+Generic Codex_guide local-only examples do not withdraw Chronicle's authorization.
+
+**Safety limits:** do not force-push, merge, rebase, push to main, create or modify
+PRs, modify unrelated GitHub metadata, or publish to another repository or branch.
+This authorization does not extend to other workstreams. Retain completed local
+work following any publication failure.
+
+**Independent review:** ChatGPT independently inspects published source and
+adjudicates GO/NO-GO. Codex reports the local commit and publication outcome;
+receipts, passing tests and a successful push do not establish correctness,
+integrated validation, merge readiness or permission to merge.
 
 ## Execution receipts
 
