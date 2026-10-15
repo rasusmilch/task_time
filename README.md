@@ -163,6 +163,13 @@ By default data is stored in `~/.task_timer_data`:
 - `backup_settings.json`: tunable GFS backup retention values.
 - `backups/sons|fathers|grandfathers`: managed zip backups.
 
+Journal initialization is allowed only for a nonexistent data path or a genuinely
+empty directory. A nonempty directory missing `active_events.jsonl` or
+`log_manifest.json` is refused without replacement files or changes to surviving
+data. Existing empty journals remain valid. Strict loading checks journal contents
+separately; startup does not recover missing files from snapshots or backups.
+Backup restoration is explicit. See [storage behavior](DESIGN_NOTES.md#architecture).
+
 Default backup settings:
 
 - `son_keep_count: 14`

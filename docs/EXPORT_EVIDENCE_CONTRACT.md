@@ -184,6 +184,13 @@ Clearly communicate a lack of verification for an earlier external copy.
 
 ## Journal interruption and export idempotency
 
+Current initialization creates journal files only for nonexistent or genuinely
+empty data directories. Nonempty datasets missing an authoritative root journal
+component are refused before replacement or other initialization writes. Surviving
+export evidence is preserved for explicit diagnosis/restoration; derived snapshots
+do not authorize reconstructing missing journals. This is distinct from strict
+content validation and is not automatic journal recovery.
+
 Keep the export operation identity stable across retries. Before retrying ambiguous
 registration, inspect the authoritative journal for that identity:
 

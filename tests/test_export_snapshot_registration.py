@@ -11,6 +11,7 @@ from task_timer.app import TaskTimerService
 from task_timer.export_snapshots import EXPORT_EVENT_TYPE
 from task_timer.exporter import build_decimal_timesheet_text
 from task_timer.storage import EventStorage
+from test_storage import _tree
 from test_timesheet_renderer import setup, dated, SUN, MON, TUE, SAT, CUTOFF, table_rows
 
 
@@ -190,6 +191,30 @@ def test_frozen_evidence_survives_changes_and_replay_without_renderer(setup, mon
     assert restarted.get_timesheet_export_snapshot(first['event_id']) == first
     assert restarted.register_prepared_timesheet_export(first) == first['event_id']
     assert len(committed(restarted)) == 2
+
+
+@pytest.mark.parametrize('component', ['active_events.jsonl', 'log_manifest.json'])
+@pytest.mark.parametrize('rotated', [False, True])
+def test_missing_journal_component_rejects_real_restart_with_frozen_evidence(setup, component, rotated):
+    s, a, _, _, _ = setup
+    dated(s, a, MON, 12600)
+    event = prepare(s, task_ids=(a,))
+    s.register_prepared_timesheet_export(event)
+    assert s.get_timesheet_export_snapshot(event['event_id']) == event
+    assert s.state.tasks[a].dated_durations
+    if rotated:
+        s.storage.max_active_events = 1
+        s.storage.rotate_if_needed()
+        assert s.storage.load_manifest()['archives']
+    s.create_backup_now()
+    root = s.storage.data_dir
+    (root / component).unlink()
+    before = _tree(root)
+    with pytest.raises(ValueError, match='initialization refused to protect existing history') as error:
+        TaskTimerService(EventStorage(root))
+    assert component in str(error.value)
+    assert not (root / component).exists()
+    assert _tree(root) == before
 
 
 def test_registration_uses_prepared_membership_and_labels_not_current_state(setup):

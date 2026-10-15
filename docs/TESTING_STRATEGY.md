@@ -72,7 +72,7 @@ their assertions before selecting a run.
 | Decimal rendering | [test_decimal_timesheet_renderer.py](../tests/test_decimal_timesheet_renderer.py): ROUND_HALF_UP conversion/boundaries, invalid numbers, task/day rounding and displayed-rollup conservation, selection/identity, partial/multiple weeks, calendar edges, Unicode wrapping, purity and exact/legacy byte compatibility. This is a pure staged renderer, not export-evidence persistence. |
 | Export registration | [test_export_snapshot_registration.py](../tests/test_export_snapshot_registration.py): frozen request/cells/text/digest, strict validation, stable identity/retry, journal health, ambiguous append and projection failures, immutable replay order, restart/rotation/rebuild/backup restore and no file/confirmation effects. This does not validate materialization or POL-R confirmations. |
 | Reporting/file publication | [test_timesheet_service.py](../tests/test_timesheet_service.py): real service orchestration, UTF-8 bytes, no-clobber publication, concurrent targets, injected staging/publication/cleanup failures and state/file purity. |
-| Existing storage and backups | [test_storage.py](../tests/test_storage.py), [test_backups.py](../tests/test_backups.py), plus project/dated/accounting fixtures: restart, rotation, snapshots, backup contents, retention and restore behavior. |
+| Existing storage and backups | [test_storage.py](../tests/test_storage.py), [test_backups.py](../tests/test_backups.py), plus project/dated/accounting/export fixtures: fresh/empty initialization, missing-component constructor rejection without mutation, healthy restart, rotation, snapshots, backup contents, retention and restore behavior. |
 | Legacy compatibility | [test_exporter.py](../tests/test_exporter.py), [test_timeline_corrections.py](../tests/test_timeline_corrections.py), and neighboring tags/subtask/template/selected-export tests protect current behavior during staging. Legacy submission/checkpoint tests are not proof of replacement POL-R semantics. |
 | UI and launch routing | [test_app_ui.py](../tests/test_app_ui.py), dialog/window tests and [test_root_launcher.py](../tests/test_root_launcher.py): callbacks, formatting and routing; some construct fake roots, SimpleNamespace widgets or instances without real GUI initialization. They do not establish real Windows desktop usability or packaged execution. |
 
@@ -230,6 +230,16 @@ and authoritative file bytes on rejection. Test stable UUIDs, append-only histor
 deterministic replay including equal-timestamp read order, effective corrections
 and deletions, restart, archive rotation, derived snapshots and reconstruction.
 Compare rebuilt projections with authoritative archived and active events.
+
+Exercise initialization through `TaskTimerService(EventStorage(data_dir))`, not
+only reads from an already-created storage instance. Test nonexistent/empty
+directories, healthy zero-event journals and existing datasets missing either
+root journal file, including archived work and registered exports. Capture the
+surviving directory entries (including empty directories) and file bytes before
+rejected construction; prove no replacements or other mutations occur. Derived
+snapshots and unrelated content cannot justify a fabricated fresh journal.
+Keep valid explicit backup/restore and subsequent restart coverage separate from
+these refusal tests; no automatic recovery or power-loss guarantee is implied.
 
 Validate backup creation and restoration with representative records and audit
 history, malformed event envelopes/payloads, partial event writes and meaningful

@@ -22,6 +22,23 @@ The app uses an event-sourced model:
 
 The complete event stream across archived + active segments is the source of truth.
 
+`EventStorage` classifies the directory before initialization writes. Only a
+nonexistent path or a genuinely empty directory (no files or subdirectories) may
+receive a new journal. A nonempty directory must already contain regular files
+`active_events.jsonl` and `log_manifest.json`; otherwise construction raises
+`ValueError`, naming the component and refusing initialization to protect history.
+Rejection leaves surviving files and directories untouched, before service setup
+can create settings, backups or a derived snapshot. An existing empty active
+segment is valid; absence is not equivalent to zero events.
+
+Healthy existing root files are preserved. Strict journal loading separately
+validates contents and indexed archives. Neither derived snapshots, archives nor
+backups authorize reconstructing a missing root journal file. Supported backup
+restoration remains an explicit operation, not initialization recovery. Interrupted
+fresh initialization can leave a partial directory that is refused on reopening;
+there is no automatic cleanup/repair, concurrent-process initialization guarantee
+or universal startup power-loss guarantee.
+
 ## Project/task service foundation
 
 `AppState.projects` and `AppState.tasks` are separate UUID-keyed collections.

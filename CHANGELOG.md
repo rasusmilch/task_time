@@ -28,6 +28,9 @@ receipts or commits. No release or production activation is implied below.
   journal, retaining task/day seconds and hundredths, original identity/labels,
   reporting request, exact text and SHA-256. Validate journal integrity and stable
   retry identities; rebuild detached evidence through replay, rotation and restore.
+  Initialize journals only in nonexistent or genuinely empty directories; refuse
+  missing authoritative root files in nonempty datasets without replacing them
+  or modifying surviving data.
   Registration publishes no report file and records no POL-R confirmation.
 
 These services are independently callable but not fully connected to the

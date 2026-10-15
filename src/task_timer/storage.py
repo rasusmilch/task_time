@@ -26,11 +26,20 @@ class EventStorage:
         self.max_active_size_bytes = max_active_size_bytes
         self.max_active_events = max_active_events
 
+        # Classify before mkdir or file creation can hide lost journal evidence.
+        # Even an empty subdirectory means this is not a fresh dataset.
+        fresh = not self.data_dir.exists() or not any(self.data_dir.iterdir())
+        if not fresh:
+            for component in (self.active_path, self.manifest_path):
+                if not component.is_file():
+                    raise ValueError(
+                        f"Authoritative journal component {component} is missing or not a regular file; "
+                        "initialization refused to protect existing history"
+                    )
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.archives_dir.mkdir(parents=True, exist_ok=True)
-        if not self.active_path.exists():
+        if fresh:
             self.active_path.write_text("", encoding="utf-8")
-        if not self.manifest_path.exists():
             self._atomic_write_json(self.manifest_path, {"archives": [], "next_sequence": 1})
 
     def append_event(self, event: dict[str, Any]) -> None:
