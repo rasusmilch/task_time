@@ -11,7 +11,7 @@ Selected functionality is not automatically implemented.
 | Status | What it means here |
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact file-only saving, immutable export-snapshot registration/replay and verified materialization of frozen evidence are independently callable. |
+| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact file-only saving, immutable export-snapshot registration/replay, verified materialization and read-only destination-relative file status are independently callable. |
 | Production still pending | Production export integration, file-status/recovery UI, replacement UI, new date-only writers, POL-R confirmations/reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
 
 Current production still uses legacy parent/subtask interfaces, synthetic manual
@@ -131,6 +131,12 @@ verification, with no new events, recalculation or timer changes. Retries reuse
 the same evidence; alternative paths never change it. Verification is current at
 the check, not permanent file status. No status/recovery UI or automatic missing-file
 recovery is implemented. See [materialization](DESIGN_NOTES.md#verified-export-materialization-staged).
+
+`evaluate_timesheet_export_file_status(export_id, destination=None)` strictly
+validates registered evidence and returns PENDING, READY, MISSING, CONFLICT or
+UNVERIFIABLE for the explicit destination or frozen preference. It performs no
+writes and retains no status or alternative path. Every check is current; absence
+proves no publication history. See [file-status evaluation](DESIGN_NOTES.md#export-file-status-evaluation-staged).
 
 ## Run from source (repo root)
 

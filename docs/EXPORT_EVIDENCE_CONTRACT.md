@@ -23,8 +23,9 @@ export-snapshot preparation, durable registration, detached lookup and journal
 replay are implemented/staged; registration publishes no external report file.
 Verified materialization from committed evidence is also staged: exact-byte/digest
 checking, matching-file reuse and exclusive no-overwrite publication are available
-through a separate service operation. Confirmations, reconciliation, automatic
-missing-file recovery and general file-status/recovery UI are not implemented.
+through a separate service operation. Standalone read-only destination-relative
+file-status evaluation is also implemented/staged. Confirmations, reconciliation,
+automatic missing-file recovery and general file-status/recovery UI are not implemented.
 Approval is not proof of Windows/NTFS
 compatibility or power-loss safety. See the
 [current registration mechanism](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged)
@@ -168,9 +169,10 @@ universal filesystem support or guaranteed power-loss durability is claimed.
 
 ## Derived pending and recovery outcomes
 
-These five Selected outcomes define current-observation status evaluation; the
-status interface is not yet implemented. One immutable journal-backed export may
-have zero or more independently verifiable external copies. Status is derived
+These five Selected outcomes define current-observation status evaluation. The
+standalone service evaluator is implemented/staged; general status/recovery UI
+is not implemented. One immutable journal-backed export may have zero or more
+independently verifiable external copies. Status is derived
 for the particular destination evaluated, not stored as a global lifecycle
 attribute of the export identity.
 
@@ -316,9 +318,10 @@ Implement this contract through separately reviewed outcomes after independent
 acceptance. Pure decimal-hour rendering and immutable export-snapshot registration
 are implemented/staged as separate outcomes. Preparation creates no records/files;
 registration appends only the frozen export event and verifies the journal.
-Separate verified file materialization is implemented/staged without new events,
-recalculation or persisted completion state. Independent GO review remains
-required before confirmation work. Confirmation events, reconciliation,
+Separate verified file materialization and read-only five-status evaluation are
+implemented/staged without new events, recalculation or persisted completion
+state. Independent GO review remains required before confirmation work.
+Confirmation events, reconciliation,
 production integration, general file-status/recovery UI, automatic missing-file
 recovery, general journal repair, migration and installation cutover remain
 unimplemented. Architectural documentation does not activate them.

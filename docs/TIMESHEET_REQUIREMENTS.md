@@ -23,9 +23,10 @@ are in [AGENTS.md](../AGENTS.md), inspected technical behavior in
 
 The behavioral requirements below are Selected. The approved export-evidence,
 decimal-hour, recovery and confirmation technical contracts are owned by
-[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md). Pure decimal rendering
-and immutable export-snapshot registration/verified materialization are
-implemented/staged; production export integration, general status/recovery UI,
+[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md). Pure decimal rendering,
+immutable export-snapshot registration/verified materialization and read-only
+destination-relative status evaluation are implemented/staged;
+production export integration, general status/recovery UI,
 automatic missing-file recovery and confirmation are not implemented. Unrelated Open matters
 remain reserved for user/ChatGPT adjudication.
 
@@ -198,8 +199,11 @@ The separate pure decimal renderer and immutable snapshot-registration APIs are
 implemented/staged but are not used by these generation/save APIs. Registration
 alone publishes no file. A separate materialization API verifies journal evidence
 and exact destination bytes, reuses matching files and refuses overwrite. It does
-not recalculate work or create another event. Production export integration,
-general status/recovery UI and confirmation remain Selected and not yet implemented.
+not recalculate work or create another event. Standalone status evaluation also
+strictly validates committed evidence and derives the five current file outcomes
+without writes, retained status or remembered alternative paths. Production export
+integration, general status/recovery UI and confirmation remain Selected and not
+yet implemented.
 
 ## SELECTED — Explicit POL-R confirmation workflow
 
@@ -320,15 +324,15 @@ Source describes what executes, not an alternative product contract. See
 | Timesheet rendering/generation | Staged independent-task exact and decimal renderers with authoritative scope/timezone metadata, safe calendar slots, reversible escaping and wrapped borders. Decimal output rounds task/day cells once and sums displayed hundredths; service generation still uses exact durations. |
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
 | Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; current duration UI still uses synthetic intervals. |
-| Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay and verified file materialization. Exact frozen UTF-8 copies, matching-file reuse and no-overwrite publication are staged; no new events or persistent file-status flags are created by materialization. |
+| Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay, verified materialization and read-only destination-relative five-status evaluation. Exact copies, matching-file reuse and no-overwrite publication are staged; materialization/evaluation create no new events or persistent file-status flags. |
 | POL-R target workflow | No new latest-absolute confirmation/reconciliation system. Legacy markers are not this replacement contract; registration is not confirmation or successful file export. |
 | Week configuration and allocations | No selectable week-start setting or selected weekly-allocation management. |
 | Data/installation | Launcher still uses the existing data path; fresh-directory release cutover is inactive. No historical migration implemented. |
 
 Current text `HH:MM:SS[.fraction]` reporting remains available and unchanged;
-two-decimal replacement rendering, separate persistent snapshot registration
-and verified materialization are independently callable and staged, without
-production export integration or a general file-status/recovery UI. Current source
+two-decimal replacement rendering, separate persistent snapshot registration,
+verified materialization and status evaluation are independently callable and
+staged, without production export integration or a general file-status/recovery UI. Current source
 Sunday-start handling is not a fixed future policy.
 Backend foundations do not make the redesigned production workflow operational.
 

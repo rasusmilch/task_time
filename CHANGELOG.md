@@ -35,6 +35,9 @@ receipts or commits. No release or production activation is implied below.
   Separately materialize exact frozen UTF-8 copies after journal verification,
   using exclusive staging/publication and complete destination-byte/SHA-256 checks.
   Reuse matching files and retry without new evidence; protect conflicting files.
+  Evaluate destination-relative PENDING/READY/MISSING/CONFLICT/UNVERIFIABLE outcomes
+  from freshly validated evidence and current file inspection, without writes,
+  retained status or publication-history state.
 
 These services are independently callable but not fully connected to the
 production application workflow. Legacy UI/export paths remain active during

@@ -84,6 +84,10 @@ class ApplySubtaskTemplatesResult:
     skipped_count: int = 0
 
 
+class _ExportFileConflict(FileExistsError):
+    """A conclusive destination content/type conflict, not an inspection error."""
+
+
 class TaskTimerService:
     """Business logic layer that emits events and derives state."""
 
@@ -187,6 +191,42 @@ class TaskTimerService:
         """Read detached evidence in original journal order, not audit-time order."""
         return deepcopy(list(self._timesheet_exports.values()))
 
+    def evaluate_timesheet_export_file_status(
+        self, export_id: str, destination: Path | str | None = None,
+    ) -> str:
+        """Read current destination status from validated evidence, without caching."""
+        validate_export_uuid(export_id)
+        exports = collect_export_snapshots(self.storage.iter_all_events(strict=True))
+        if export_id not in exports:
+            raise ValueError("Unknown committed timesheet export identity")
+        payload = exports[export_id]["payload"]
+        expected = payload["report_text"].encode("utf-8")
+        digest = payload["report_sha256"]
+        if sha256(expected).hexdigest() != digest:
+            raise ValueError("Frozen export text/digest mismatch")
+        target = payload["preferred_destination"] if destination is None else destination
+        if target is None:
+            return "PENDING"
+        if not isinstance(target, (Path, str)) or (isinstance(target, str) and not target):
+            raise ValueError("Destination must be a Path or nonempty string")
+        target = Path(target)
+        if "\x00" in str(target):
+            raise ValueError("Destination file path must not contain null characters")
+        try:
+            observed = target.lstat()
+        except FileNotFoundError:
+            return "MISSING"
+        except OSError:
+            return "UNVERIFIABLE"
+        try:
+            self._verify_timesheet_export_file(target, expected, digest, observed)
+        except _ExportFileConflict:
+            return "CONFLICT"
+        except OSError:
+            # Presence was observed: later disappearance is uncertainty, not MISSING.
+            return "UNVERIFIABLE"
+        return "READY"
+
     def materialize_timesheet_export(self, export_id: str, destination: Path | str | None = None) -> Path:
         """Publish frozen journal bytes, returning only a verified destination."""
         validate_export_uuid(export_id)
@@ -277,11 +317,14 @@ class TaskTimerService:
         return target
 
     @staticmethod
-    def _verify_timesheet_export_file(target: Path, expected: bytes, digest: str) -> None:
+    def _verify_timesheet_export_file(
+        target: Path, expected: bytes, digest: str, observed: os.stat_result | None = None,
+    ) -> None:
         """Check type, full bytes and digest; reject symlinks and path replacement."""
-        before = target.lstat()  # dangling symlinks are existing conflicts too
+        before = observed if observed is not None else target.lstat()
+        # lstat observations preserve dangling symlinks as existing conflicts too.
         if not stat.S_ISREG(before.st_mode):
-            raise FileExistsError(f"Export destination is not a regular file: {target}")
+            raise _ExportFileConflict(f"Export destination is not a regular file: {target}")
         flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
         descriptor = os.open(target, flags)
         try:
@@ -292,14 +335,19 @@ class TaskTimerService:
             descriptor = None
             with handle:
                 actual = handle.read()
+                finished = os.fstat(handle.fileno())
         finally:
             if descriptor is not None:
                 os.close(descriptor)
         after = target.lstat()
         if not stat.S_ISREG(after.st_mode) or (after.st_dev, after.st_ino) != (opened.st_dev, opened.st_ino):
             raise OSError(f"Export destination changed during verification: {target}")
+        observations = [(item.st_size, item.st_mtime_ns, item.st_ctime_ns)
+                        for item in (before, opened, finished, after)]
+        if len(actual) != opened.st_size or any(item != observations[0] for item in observations[1:]):
+            raise OSError(f"Export destination inspection incomplete or changed during verification: {target}")
         if actual != expected or sha256(actual).hexdigest() != digest:
-            raise FileExistsError(f"Export destination conflicts with frozen report bytes/digest: {target}")
+            raise _ExportFileConflict(f"Export destination conflicts with frozen report bytes/digest: {target}")
 
     def calculate_date_window(
         self, start_date: date, end_date: date, *, cutoff_utc: datetime,

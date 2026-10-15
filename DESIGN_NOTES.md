@@ -6,9 +6,10 @@ owns selected future product behavior, including Open architectural decisions.
 Legacy behavior below remains current during staging; it is not permanent policy
 for the replacement application. See [AGENTS.md](AGENTS.md) for the ownership map.
 The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the selected
-snapshot-first, decimal-hour and confirmation architecture. Pure decimal rendering
-and export-snapshot registration/verified materialization are staged; confirmation
-evidence and general file-status/recovery UI are unimplemented.
+snapshot-first, decimal-hour and confirmation architecture. Pure decimal rendering,
+export-snapshot registration/verified materialization and read-only file-status
+evaluation are staged; confirmation evidence and general file-status/recovery UI
+are unimplemented.
 The source descriptions below remain current implementation observations.
 
 ## Architecture
@@ -493,6 +494,12 @@ not matches. Verification checks `lstat`/opened-descriptor identity and regular-
 type, uses binary/no-follow/nonblocking open flags where available, then checks
 the destination identity again. This detects path replacement at those checks;
 it is not an arbitrary hostile-directory or concurrent-process guarantee.
+The shared verifier uses a private `FileExistsError` subclass for deliberate
+content/type conflicts, preserving existing messages and exception compatibility.
+It also checks read length against the opened descriptor's size and compares
+size/modification/change timestamps across path and descriptor observations.
+Incomplete reads or detected changes raise inspection errors before byte
+inequality can be treated as a conclusive conflict.
 
 For absent destinations, the existing safe-publication approach is reused in a
 separate method, leaving the exact-format file-only save method unchanged:
@@ -520,6 +527,33 @@ distinction between never-published and subsequently deleted paths. No automatic
 missing-file recovery, dashboard, confirmation, UI integration or cutover is added.
 Linux fault injection does not establish Windows/NTFS execution, power-loss
 durability, universal filesystem support or concurrent/hostile-directory safety.
+
+## Export file-status evaluation (staged)
+
+`TaskTimerService.evaluate_timesheet_export_file_status(export_id,
+destination=None) -> str` is a standalone read-only service. It validates the
+canonical UUID, strictly rereads the journal, validates the export projection
+and frozen UTF-8 text/digest, then resolves explicit destination before frozen
+preference. Invalid arguments, unknown exports and evidence/access failures in
+the journal raise errors, including when no destination is available.
+
+The service implements the [five selected outcomes](docs/EXPORT_EVIDENCE_CONTRACT.md#derived-pending-and-recovery-outcomes).
+Without a destination it returns PENDING without path inspection. Initial
+`lstat` absence, including a missing parent, returns MISSING. Otherwise the shared
+read-only verifier establishes READY, its deliberate conflict signal maps to
+CONFLICT, and inspection `OSError`s map to UNVERIFIABLE. An arbitrary
+`FileExistsError` is not a proven conflict. Disappearance after presence was
+observed, detected replacement and incomplete/unstable reads are uncertainty;
+a stable shorter file read completely is a conflict. Programming and
+process-control exceptions are not converted into status results.
+
+Each call rereads evidence and inspects current contents without writes,
+accounting, rendering, cached status or remembered alternative paths. Restart
+reuses only the caller's destination or immutable preference. MISSING proves
+no publication history; READY is only a current observation. This adds no
+recovery UI, automatic recovery, production integration or POL-R confirmation.
+Linux fixture/fault-injection evidence does not qualify Windows/NTFS, hostile
+directories, real concurrent writers or power-loss behavior.
 
 ## Date-range timesheet service (staged)
 

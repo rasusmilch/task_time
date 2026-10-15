@@ -72,6 +72,7 @@ their assertions before selecting a run.
 | Decimal rendering | [test_decimal_timesheet_renderer.py](../tests/test_decimal_timesheet_renderer.py): ROUND_HALF_UP conversion/boundaries, invalid numbers, task/day rounding and displayed-rollup conservation, selection/identity, partial/multiple weeks, calendar edges, Unicode wrapping, purity and exact/legacy byte compatibility. This is a pure staged renderer, not export-evidence persistence. |
 | Export registration | [test_export_snapshot_registration.py](../tests/test_export_snapshot_registration.py): frozen request/cells/text/digest, strict validation, stable identity/retry, journal health, ambiguous append and projection failures, immutable replay order, restart/rotation/rebuild/backup restore and no file/confirmation effects. This does not validate materialization or POL-R confirmations. |
 | Verified materialization | [test_export_materialization.py](../tests/test_export_materialization.py): authoritative journal gate, exact frozen UTF-8 bytes and SHA-256, existing-file reuse/conflicts, symlinks, staging/publication/verification/cleanup failures, concurrent replacement injection, retry, restored evidence and state/journal purity. No production UI or permanent file-status guarantee. |
+| File-status evaluation | [test_export_file_status.py](../tests/test_export_file_status.py): strict evidence gate even without a destination, precedence, five current outcomes, conclusive conflict versus inspection uncertainty, complete short files versus incomplete reads, disappearance/replacement, reevaluation/restart and write-prohibited purity. Service-only coverage, not recovery UI or platform qualification. |
 | Reporting/file publication | [test_timesheet_service.py](../tests/test_timesheet_service.py): real service orchestration, UTF-8 bytes, no-clobber publication, concurrent targets, injected staging/publication/cleanup failures and state/file purity. |
 | Existing storage and backups | [test_storage.py](../tests/test_storage.py), [test_backups.py](../tests/test_backups.py), plus project/dated/accounting/export fixtures: fresh/empty initialization, missing-component constructor rejection without mutation, healthy restart, rotation, snapshots, backup contents, retention and restore behavior. |
 | Legacy compatibility | [test_exporter.py](../tests/test_exporter.py), [test_timeline_corrections.py](../tests/test_timeline_corrections.py), and neighboring tags/subtask/template/selected-export tests protect current behavior during staging. Legacy submission/checkpoint tests are not proof of replacement POL-R semantics. |
@@ -133,8 +134,9 @@ its intended evidence only, never Actual records, timers or export checkpoints.
 ## Decimal rendering, export registration and future integration validation
 
 The pure decimal renderer/converter, immutable export-snapshot registration and
-verified materialization are implemented/staged, with coverage above. Confirmations,
-general file-status/recovery UI and production integration remain unimplemented.
+verified materialization and read-only file-status evaluation are implemented/staged,
+with coverage above. Confirmations, general file-status/recovery UI and production
+integration remain unimplemented.
 Apply the selected technical contract to current export services and future integration:
 
 - Exactly two decimal places, integer hundredths and deterministic ROUND_HALF_UP
@@ -152,7 +154,7 @@ Apply the selected technical contract to current export services and future inte
   external publication. A snapshot-linked copy contains frozen bytes, not a
   recalculation. Full-byte comparison and digest integrity agree; no success is
   reported for a mismatching file.
-- Future status-evaluation tests require valid committed journal evidence first;
+- Status-evaluation tests require valid committed journal evidence first;
   unhealthy or uncertain evidence must not become a file-status result. Distinguish
   PENDING (neither explicit nor preferred destination available) from MISSING
   (a destination is selected but no file exists). Neither establishes prior
@@ -174,8 +176,8 @@ Apply the selected technical contract to current export services and future inte
   registered exports. Duplicate identities cannot duplicate effective evidence.
 
 Decimal conversion/displayed rollups, journal registration/replay and bounded
-materialization/retry have focused coverage. The five-status evaluation interface,
-general file-status/recovery UI and confirmation assertions remain future
+materialization/retry and five-status service evaluation have focused coverage.
+General file-status/recovery UI and confirmation assertions remain future
 expectations, not passing coverage or a mechanism selected by tests. Preserve
 exact renderer and legacy assertions.
 Materialization requires independent GO review before confirmation implementation.

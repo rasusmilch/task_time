@@ -49,7 +49,7 @@ existence; their detailed contracts remain in Design Notes rather than here.
 | Mixed accounting | Genuine intervals and dated amounts; local-day/DST splitting; independent task totals; derived project/Unassigned/application totals; historical actuals independent of counter resets. Week start is currently Sunday only. | [accounting.py](../src/task_timer/accounting.py), [mixed service](../DESIGN_NOTES.md#mixed-date-window-accounting-service-only) |
 | Timesheet presentation | Independent daily/weekly task rows, informational project subtotals, authoritative scope, duplicate-name references, multiline borders and reversible Unicode escaping protections. Exact and separate decimal renderers are staged; decimal task/day ROUND_HALF_UP cells conserve integer-hundredth rollups. | [exporter.py](../src/task_timer/exporter.py), [exact renderer](../DESIGN_NOTES.md#independent-task-timesheet-renderer-staged), [decimal renderer](../DESIGN_NOTES.md#decimal-hour-timesheet-renderer-staged) |
 | Service reporting | Date-range generation; exact UTF-8 output; same-directory complete staging and atomic no-overwrite hard-link publication, destination protection and staging-only cleanup under documented assumptions. Saves files without immutable export registration. | [service workflow](../DESIGN_NOTES.md#date-range-timesheet-service-staged) |
-| Export evidence | Frozen decimal snapshot preparation, strict journal-backed registration/replay, detached readers and verified materialization/retry from immutable evidence. Matching files are reused; conflicting files are protected. No POL-R confirmation or status/recovery UI. | [snapshot registration](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged), [materialization](../DESIGN_NOTES.md#verified-export-materialization-staged) |
+| Export evidence | Frozen decimal snapshot preparation, strict journal-backed registration/replay, detached readers, verified materialization/retry and read-only destination-relative status evaluation. Matching files are reused; conflicting files are protected. No POL-R confirmation or status/recovery UI. | [snapshot registration](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged), [materialization](../DESIGN_NOTES.md#verified-export-materialization-staged), [file status](../DESIGN_NOTES.md#export-file-status-evaluation-staged) |
 | Governance baseline | Root instructions, canonical approved POL-R product contract, cumulative changelog and current/target authority separation. | [AGENTS.md](../AGENTS.md), [requirements](TIMESHEET_REQUIREMENTS.md), [CHANGELOG.md](../CHANGELOG.md) |
 
 These foundations do **not** constitute a completed production replacement.
@@ -95,7 +95,8 @@ affected authorities agree; no necessary Open issue has been silently resolved.
 ## Phase 2 — POL-R evidence and reconciliation
 
 **Status:** **IMPLEMENTED / STAGED** for decimal rendering and immutable export
-snapshot preparation/registration/replay and verified file materialization.
+snapshot preparation/registration/replay, verified file materialization and
+standalone read-only file-status evaluation.
 Confirmation, reconciliation and general status/recovery UI remain
 **APPROVED / NOT IMPLEMENTED**. Phase 2
 is not Complete; independently reviewed focused outcomes remain required.
