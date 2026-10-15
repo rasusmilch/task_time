@@ -4,6 +4,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from itertools import count
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import pytest
 
@@ -49,13 +50,55 @@ def observe(service, operation):
         assert capture(service) == before
 
 
+def nonjournal_files(captured):
+    """Retain captured nonjournal relative paths and their original bytes."""
+    return {path: data for path, data in captured.items()
+            if path.parts not in {("active_events.jsonl",), ("log_manifest.json",)}
+            and path.parts[:1] != ("archives",)}
+
+
+@pytest.mark.parametrize("path_type", [PurePosixPath, PureWindowsPath], ids=["posix", "windows"])
+def test_nonjournal_allows_journal_rotation_and_retains_other_files(path_type):
+    retained = {path_type(name): data for name, data in {
+        "state_snapshot.json": b"snapshot",
+        "backups/son/saved.zip": b"backup",
+        "archives-extra/segment.jsonl": b"unrelated archive-like directory",
+        "nested/active_events.jsonl": b"nested active",
+        "nested/log_manifest.json": b"nested manifest",
+        "nested/archives/segment.jsonl": b"nested archives",
+        "notes.txt": b"unrelated",
+    }.items()}
+    before = retained | {path_type("active_events.jsonl"): b"old events",
+                         path_type("log_manifest.json"): b"old manifest",
+                         path_type("archives/1.jsonl"): b"archived events"}
+    after = before | {path_type("active_events.jsonl"): b"new events",
+                      path_type("log_manifest.json"): b"new manifest",
+                      path_type("archives/2.jsonl"): b"new archived events"}
+    original_before, original_after = deepcopy(before), deepcopy(after)
+    assert nonjournal_files(before) == nonjournal_files(after)
+    assert nonjournal_files(before) == retained
+    assert before == original_before and after == original_after
+
+
+@pytest.mark.parametrize("path_type", [PurePosixPath, PureWindowsPath], ids=["posix", "windows"])
+@pytest.mark.parametrize("mutation", ["add", "remove", "change"])
+def test_nonjournal_detects_unrelated_file_mutations(path_type, mutation):
+    before = {path_type("notes.txt"): b"original"}
+    after = dict(before)
+    if mutation == "add":
+        after[path_type("another.txt")] = b"added"
+    elif mutation == "remove":
+        del after[path_type("notes.txt")]
+    else:
+        after[path_type("notes.txt")] = b"changed"
+    assert nonjournal_files(before) != nonjournal_files(after)
+
+
 def register(service, event):
     """Exercise the public writer; only a new identity may append one frozen event."""
     original, before, work = deepcopy(event), journal(service), work_state(service)
     def nonjournal():
-        return {name: data for name, data in files(service).items()
-                if name not in {"active_events.jsonl", "log_manifest.json"}
-                and not name.startswith("archives/")}
+        return nonjournal_files({Path(name): data for name, data in files(service).items()})
     surviving = nonjournal()
     if event["event_type"] == "timesheet_export_snapshot_created":
         identity = service.register_prepared_timesheet_export(event)

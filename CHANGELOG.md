@@ -61,6 +61,9 @@ receipts or commits. No release or production activation is implied below.
   reconciliation and replay/restore. Cover absolute replacement, negative
   correction, explicit zero/Unknown, stale rejection and exact retries while
   preserving original evidence, file bytes and unrelated timekeeping state.
+  Exercise journal-only rotation exclusions with POSIX/Windows path representations
+  while retaining unrelated-file mutation detection; native Windows qualification
+  remains pending.
 
 These services are independently callable but not fully connected to the
 production application workflow. Legacy UI/export paths remain active during
