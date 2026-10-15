@@ -41,11 +41,13 @@ receipts or commits. No release or production activation is implied below.
   Prepare, validate, register and replay immutable absolute POL-R confirmation
   batches into an in-memory task/day projection, preserving Unknown/zero, physical
   order, reviewed prior identities, stale acknowledgements and duplicate protection.
-  Dedicated serialized-use registration revalidates the journal and synchronizes
-  existing journal files through writable, non-truncating access suitable for
+  Both export and confirmation registration APIs revalidate the journal under
+  serialized ownership and synchronize existing journal files through writable,
+  non-truncating access suitable for
   portable flushing before same-identity recovery/reuse, without content writes;
-  it changes no Actual, snapshot or file copies. Inherited export retry flushing
-  is unchanged; simulated access checks do not establish Windows qualification.
+  successful recovery/reuse requires complete evidence revalidation and installation,
+  not merely visible bytes after failed flushing. Neither changes Actual, snapshots
+  or file copies. Simulated access checks do not establish Windows qualification.
   Propose frozen export cells with current reviewed priors and shared stale-conflict
   rules; prepare canonical positive-default or explicitly checked/zero batches with
   exact cell-specific acknowledgements and fresh selected-prior validation.

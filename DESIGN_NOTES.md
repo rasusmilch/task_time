@@ -440,15 +440,28 @@ preserves numeric int/float distinctions while ignoring object-key insertion ord
 
 Registration reads the complete journal before append and again afterward. It
 uses `EventStorage.append_event()` directly to preserve the prepared identity and
-existing flush/fsync/rotation behavior. If append raises, a complete valid matching
-event found on strict inspection is reused. Demonstrable absence preserves the
-original error for same-candidate retry; unreadable or ambiguous evidence fails
-closed with inspection context. This inherited export path does not resynchronize
-the journal before reusing visible complete evidence after an append exception;
-the stronger confirmation recovery synchronization below does not repair or
-qualify export-registration flushing. No truncation, automatic repair, new identity
-or new calculation occurs. Registration neither saves a derived state snapshot nor
-creates an automatic backup, since Actual state did not change.
+existing flush/fsync/rotation behavior. Ordinary first-time append success keeps
+its flush and strict post-append verification without an extra synchronization.
+Exact identity reuse and recovery of a complete valid event after an append
+exception require `EventStorage.synchronize_journal()`: the existing writable,
+non-creating/non-truncating helper synchronizes indexed archives, active segment
+and manifest and strictly rereads. Revalidate complete export and confirmation
+projections and the exact export identity/content before installing evidence or
+returning success. Already-registered evidence is never checked with today's
+renderer. Visible complete bytes alone do not establish flushing.
+
+Demonstrable absence after append failure preserves the original error and
+unchanged-candidate retry context. Partial/malformed/conflicting/unreadable evidence
+fails closed before synchronization; it is never synchronized as repair. Open,
+fsync, close or revalidation failures report uncertain registration without
+installation or another append, retaining the original append failure as diagnostic
+context where applicable. Repeated failed synchronization cannot succeed from
+visible bytes. Installation failure retains registered evidence for unchanged-event
+retry; successful reuse installs the latest complete projections, including later
+confirmations. No truncation, repair, new identity, calculation, Actual/timer rebuild,
+derived-snapshot save or automatic backup occurs. This shares confirmation
+registration's bounded recovery rule under serialized dataset ownership, not a
+multi-process or universal power-loss guarantee.
 
 `EventStorage.iter_all_events(strict=True)` checks listed archive presence and
 counts, duplicate/unindexed archive paths, active-segment presence, complete JSONL

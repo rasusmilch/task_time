@@ -3,6 +3,8 @@ from copy import deepcopy
 from datetime import datetime
 from hashlib import sha256
 import json
+import os
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -421,6 +423,32 @@ def test_corrupt_archived_export_fails_closed_without_rewrites(setup, corruption
     assert files(s) == before
 
 
+def test_persistent_export_fsync_failure_never_establishes_recovered_registration(setup, monkeypatch):
+    s, a, _, _, _ = setup
+    s.start_task(a)
+    event = prepare(s, task_ids=(a,))
+    original, before = deepcopy(event), capture(s)
+    confirmations = s.get_effective_polr_confirmations()
+    def fail_flush(fd):
+        raise OSError('persistent export fsync failure')
+    with monkeypatch.context() as patch:
+        patch.setattr(os, 'fsync', fail_flush)
+        for _ in range(3):
+            with pytest.raises(OSError, match='persistent export fsync failure'):
+                s.register_prepared_timesheet_export(event)
+            assert len(committed(s)) == 1 and s.list_timesheet_export_snapshots() == []
+            assert s.state == before[0] and s.events == before[1]
+            assert s.get_effective_polr_confirmations() == confirmations
+            assert event == original
+    surviving = files(s)
+    assert s.register_prepared_timesheet_export(event) == event['event_id']
+    assert files(s) == surviving and len(committed(s)) == 1
+    assert s.list_timesheet_export_snapshots() == [original]
+    assert s.state == before[0] and s.list_time_submissions() == before[3]
+    assert {name: data for name, data in files(s).items() if name != 'active_events.jsonl'} == {
+        name: data for name, data in before[2].items() if name != 'active_events.jsonl'}
+
+
 @pytest.mark.parametrize('failure', ['before', 'partial', 'complete-then-error', 'silent-no-append', 'fsync'])
 def test_append_outcome_inspection_and_same_operation_retry(setup, monkeypatch, failure):
     s, a, _, _, _ = setup
@@ -445,7 +473,7 @@ def test_append_outcome_inspection_and_same_operation_retry(setup, monkeypatch, 
             patch.setattr('task_timer.storage.os.fsync', lambda *_: (_ for _ in ()).throw(error))
         else:
             patch.setattr(s.storage, 'append_event', append)
-        if failure in ('complete-then-error', 'fsync'):
+        if failure == 'complete-then-error':
             assert s.register_prepared_timesheet_export(event) == event['event_id']
         else:
             with pytest.raises((OSError, ValueError)) as raised:
@@ -471,10 +499,19 @@ def test_failure_after_append_before_memory_update_is_recoverable(setup, monkeyp
     event = prepare(s, task_ids=(a,))
     with monkeypatch.context() as patch:
         patch.setattr(s, '_install_export_journal', lambda *_: (_ for _ in ()).throw(RuntimeError('memory update failed')))
-        with pytest.raises(RuntimeError, match='memory update'):
+        with pytest.raises(RuntimeError, match='memory update') as failure:
             s.register_prepared_timesheet_export(event)
+        assert 'unchanged prepared event' in failure.value.__notes__[0]
     assert len(committed(s)) == 1 and s.list_timesheet_export_snapshots() == []
-    assert s.register_prepared_timesheet_export(event) == event['event_id']
+    synchronize, synchronized = s.storage.synchronize_journal, []
+    def sync():
+        synchronized.append(1)
+        return synchronize()
+    with monkeypatch.context() as patch:
+        patch.setattr(s.storage, 'append_event', lambda *a: pytest.fail('installation retry appended'))
+        patch.setattr(s.storage, 'synchronize_journal', sync)
+        assert s.register_prepared_timesheet_export(event) == event['event_id']
+    assert synchronized == [1]
     assert len(committed(s)) == 1
 
 
@@ -592,3 +629,216 @@ def test_invalid_dates_cutoff_and_legacy_work_fail_preparation(setup):
     with pytest.raises(ValueError, match='Legacy synthetic'):
         prepare(s, all_tasks=True)
     assert capture(s) == before
+
+
+def evidence_state(s):
+    return capture(s), s.list_timesheet_export_snapshots(), s.get_effective_polr_confirmations()
+
+
+def test_transient_export_append_fsync_failure_recovers_only_after_real_sync(setup, monkeypatch):
+    s, a, _, _, _ = setup
+    s.start_task(a)
+    event = prepare(s, task_ids=(a,))
+    original, before = deepcopy(event), evidence_state(s)
+    fsync, calls = os.fsync, []
+    def transient(fd):
+        calls.append(1)
+        if len(calls) == 1:
+            raise OSError('transient append fsync failure')
+        return fsync(fd)
+    monkeypatch.setattr(os, 'fsync', transient)
+    assert s.register_prepared_timesheet_export(event) == event['event_id']
+    assert len(calls) == 3  # failed append, then successful active + manifest fsync
+    assert len(committed(s)) == 1 and s.list_timesheet_export_snapshots() == [original]
+    assert event == original and s.state == before[0][0]
+    assert s.list_time_submissions() == before[0][3]
+    assert s.get_effective_polr_confirmations() == before[2]
+    assert {name: data for name, data in files(s).items() if name != 'active_events.jsonl'} == {
+        name: data for name, data in before[0][2].items() if name != 'active_events.jsonl'}
+
+
+def test_first_export_append_success_does_not_add_recovery_synchronization(setup, monkeypatch):
+    s, a, _, _, _ = setup
+    event = prepare(s, task_ids=(a,))
+    monkeypatch.setattr(s.storage, 'synchronize_journal', lambda: pytest.fail('ordinary append resynchronized'))
+    assert s.register_prepared_timesheet_export(event) == event['event_id']
+    assert len(committed(s)) == 1
+
+
+def test_complete_export_append_error_requires_actual_sync_and_revalidation(setup, monkeypatch):
+    from test_polr_confirmation_writer import require_writable_flush_handles
+    s, a, _, _, _ = setup
+    event = prepare(s, task_ids=(a,))
+    original, before, append = deepcopy(event), capture(s), s.storage.append_event
+    error, appended = OSError('complete append reported failure'), []
+    def complete_then_error(candidate):
+        appended.append(deepcopy(candidate))
+        append(candidate)
+        raise error
+    flushed = require_writable_flush_handles(monkeypatch)
+    monkeypatch.setattr(s.storage, 'append_event', complete_then_error)
+    assert s.register_prepared_timesheet_export(event) == event['event_id']
+    assert flushed == [s.storage.active_path, s.storage.active_path, s.storage.manifest_path]
+    assert appended == [original] and event == original and len(committed(s)) == 1
+    assert s.list_timesheet_export_snapshots() == [original] and s.state == before[0]
+
+
+def test_export_reuse_syncs_archives_without_renderer_or_confirmation_rollback(setup, monkeypatch, tmp_path):
+    from test_polr_confirmation_replay import cell as confirmation_cell
+    from test_polr_confirmation_writer import register, require_writable_flush_handles
+    s, a, _, _, _ = setup
+    dated(s, a, MON, 10800)
+    s.start_task(a)
+    event = prepare(s, task_ids=(a,))
+    s.register_prepared_timesheet_export(event)
+    target = tmp_path / 'existing-frozen-copy.txt'
+    s.materialize_timesheet_export(event['event_id'], target)
+    first = register(s, confirmation_cell(a, 300))
+    s.storage.max_active_events = 1
+    s.storage.rotate_if_needed()
+    latest = register(s, confirmation_cell(a, 500, prior=first['event_id']))
+    latest_projection = s.get_effective_polr_confirmations()
+    s._polr_confirmations = {(a, str(MON)): {'confirmed_hundredths': 300, 'batch_event_id': first['event_id']}}
+    expected = [s.storage.data_dir / entry['path'] for entry in s.storage.load_manifest()['archives']]
+    expected += [s.storage.active_path, s.storage.manifest_path]
+    original, before, external = deepcopy(event), evidence_state(s), target.read_bytes()
+    flushed = require_writable_flush_handles(monkeypatch)
+    def forbidden(*args, **kwargs): pytest.fail('reuse calculated, rendered, appended or wrote unrelated state')
+    for name in ('append_event', 'save_snapshot'):
+        monkeypatch.setattr(s.storage, name, forbidden)
+    for name in ('calculate_date_window', '_rebuild_state', 'create_backup_now', 'materialize_timesheet_export'):
+        monkeypatch.setattr(s, name, forbidden)
+    monkeypatch.setattr('task_timer.export_snapshots.build_decimal_timesheet_text', forbidden)
+    monkeypatch.setattr('task_timer.app.build_decimal_timesheet_text', forbidden)
+    assert s.register_prepared_timesheet_export(event) == event['event_id']
+    assert flushed == expected and evidence_state(s)[:2] == before[:2]
+    assert s.get_effective_polr_confirmations() == latest_projection
+    assert target.read_bytes() == external and event == original and len(committed(s)) == 1
+    assert s.get_effective_polr_confirmations()[a, str(MON)]['batch_event_id'] == latest['event_id']
+
+
+@pytest.mark.parametrize('recovery', [False, True], ids=['existing-identity', 'append-error'])
+@pytest.mark.parametrize('fault', ['open', 'fsync', 'close', 'inspection', 'export-validation',
+                                 'confirmation-validation', 'identity-content', 'identity-absent'])
+def test_export_reuse_faults_fail_without_installation_and_keep_append_context(setup, monkeypatch, tmp_path, recovery, fault):
+    from test_polr_confirmation_replay import batch, cell as confirmation_cell
+    s, a, _, _, _ = setup
+    s.start_task(a)
+    target = tmp_path / 'unpublished.txt'
+    event = prepare(s, task_ids=(a,), preferred_destination=str(target))
+    append, synchronize = s.storage.append_event, s.storage.synchronize_journal
+    append_error = OSError('original complete append failure')
+    appended, installed, reached = [], [], []
+    if not recovery:
+        s.register_prepared_timesheet_export(event)
+        s._timesheet_exports = {}  # stale/missing projection cannot establish recovery
+    def complete_then_error(candidate):
+        appended.append(deepcopy(candidate))
+        append(candidate)
+        raise append_error
+    def forbidden_append(*args): pytest.fail('existing identity appended again')
+    monkeypatch.setattr(s.storage, 'append_event', complete_then_error if recovery else forbidden_append)
+    original, before = deepcopy(event), evidence_state(s)
+    install = s._install_export_journal
+    def track_install(*args):
+        installed.append(1)
+        return install(*args)
+    monkeypatch.setattr(s, '_install_export_journal', track_install)
+    real_open, read = Path.open, s.storage.iter_all_events
+    def fail_sync():
+        with monkeypatch.context() as patch:
+            if fault == 'open':
+                def denied(path, *args, **kwargs):
+                    if path == s.storage.active_path and args == ('r+b',):
+                        reached.append('open')
+                        raise PermissionError('sync open denied')
+                    return real_open(path, *args, **kwargs)
+                patch.setattr(Path, 'open', denied)
+            elif fault == 'fsync':
+                def denied_flush(fd):
+                    reached.append('fsync')
+                    raise OSError('sync fsync failure')
+                patch.setattr(os, 'fsync', denied_flush)
+            elif fault == 'close':
+                class CloseFailure:
+                    def __enter__(self):
+                        self.handle = real_open(s.storage.active_path, 'r+b')
+                        assert self.handle.writable()
+                        reached.append('opened')
+                        return self.handle
+                    def __exit__(self, *args):
+                        self.handle.close()
+                        reached.append('closed')
+                        raise OSError('sync close failure')
+                def open_file(path, *args, **kwargs):
+                    return CloseFailure() if path == s.storage.active_path and args == ('r+b',) else real_open(path, *args, **kwargs)
+                patch.setattr(Path, 'open', open_file)
+            elif fault == 'inspection':
+                calls = []
+                def denied_read(*args, **kwargs):
+                    calls.append(1)
+                    if len(calls) == 2: raise OSError('post-sync inspection failed')
+                    return read(*args, **kwargs)
+                patch.setattr(s.storage, 'iter_all_events', denied_read)
+            loaded = synchronize()
+            if fault in ('export-validation', 'identity-content'):
+                frozen = next(e for e in loaded if e['event_id'] == event['event_id'])
+                if fault == 'export-validation': frozen['payload']['report_sha256'] = '0' * 64
+                else: frozen['payload']['preferred_destination'] = 'different.txt'
+            elif fault == 'confirmation-validation':
+                invalid = batch(confirmation_cell(a, True))
+                invalid['_read_sequence'] = max(e['_read_sequence'] for e in loaded) + 1
+                loaded.append(invalid)
+            elif fault == 'identity-absent':
+                loaded = [e for e in loaded if e['event_id'] != event['event_id']]
+            return loaded
+    with monkeypatch.context() as patch:
+        patch.setattr(s.storage, 'synchronize_journal', fail_sync)
+        with pytest.raises((OSError, ValueError)) as caught:
+            s.register_prepared_timesheet_export(event)
+    assert any('uncertain' in note for note in caught.value.__notes__)
+    if recovery:
+        assert caught.value.__cause__ is append_error
+    assert installed == [] and not target.exists() and event == original
+    assert s.state == before[0][0] and s.events == before[0][1]
+    assert s.list_time_submissions() == before[0][3]
+    assert s.list_timesheet_export_snapshots() == before[1] and s.get_effective_polr_confirmations() == before[2]
+    assert len(committed(s)) == 1 and appended == ([original] if recovery else [])
+    if fault == 'close': assert reached == ['opened', 'closed']
+    elif fault in ('open', 'fsync'): assert reached == [fault]
+    surviving = files(s)
+    assert {name: data for name, data in surviving.items() if name != 'active_events.jsonl'} == {
+        name: data for name, data in before[0][2].items() if name != 'active_events.jsonl'}
+    assert s.register_prepared_timesheet_export(event) == event['event_id']
+    assert installed == [1] and files(s) == surviving and len(committed(s)) == 1
+    assert appended == ([original] if recovery else []) and not target.exists()
+
+
+@pytest.mark.parametrize('corruption', ['partial', 'conflicting-export', 'invalid-confirmation'])
+def test_unhealthy_posterror_evidence_is_not_synchronized_as_repair(setup, monkeypatch, corruption):
+    from test_polr_confirmation_replay import batch, cell as confirmation_cell
+    s, a, _, _, _ = setup
+    event = prepare(s, task_ids=(a,))
+    original, before, append = deepcopy(event), evidence_state(s), s.storage.append_event
+    error = OSError('append outcome uncertain')
+    def corrupt_after_append(candidate):
+        append(candidate)
+        if corruption == 'partial':
+            with s.storage.active_path.open('ab') as handle: handle.write(b'{partial')
+        elif corruption == 'conflicting-export':
+            changed = deepcopy(candidate)
+            changed['payload']['preferred_destination'] = 'different.txt'
+            append(changed)
+        else:
+            append(batch(confirmation_cell(a, True)))
+        raise error
+    monkeypatch.setattr(s.storage, 'append_event', corrupt_after_append)
+    monkeypatch.setattr(s.storage, 'synchronize_journal', lambda: pytest.fail('unhealthy evidence synchronized as repair'))
+    with pytest.raises(OSError) as failure: s.register_prepared_timesheet_export(event)
+    assert failure.value is error and failure.value.__cause__ is not None
+    assert any('uncertain' in note for note in failure.value.__notes__)
+    surviving = files(s)
+    assert s.state == before[0][0] and s.events == before[0][1]
+    assert s.list_timesheet_export_snapshots() == before[1] and s.get_effective_polr_confirmations() == before[2]
+    with pytest.raises(ValueError): s.register_prepared_timesheet_export(event)
+    assert files(s) == surviving and event == original

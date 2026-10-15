@@ -70,7 +70,7 @@ their assertions before selecting a run.
 | Accounting and time boundaries | [test_mixed_accounting.py](../tests/test_mixed_accounting.py), [test_time_utils.py](../tests/test_time_utils.py): conservation, selection, cutoffs, midnight/DST, corrections, resets, fractional amounts and fixed Sunday weeks. |
 | Rendering | [test_timesheet_renderer.py](../tests/test_timesheet_renderer.py): scope, partial/multiple weeks, calendar boundaries, exact durations, duplicate identity, wrapping/geometry and Unicode escaping. |
 | Decimal rendering | [test_decimal_timesheet_renderer.py](../tests/test_decimal_timesheet_renderer.py): ROUND_HALF_UP conversion/boundaries, invalid numbers, task/day rounding and displayed-rollup conservation, selection/identity, partial/multiple weeks, calendar edges, Unicode wrapping, purity and exact/legacy byte compatibility. This is a pure staged renderer, not export-evidence persistence. |
-| Export registration | [test_export_snapshot_registration.py](../tests/test_export_snapshot_registration.py): frozen request/cells/text/digest, strict validation, stable identity/retry, journal health, ambiguous append and projection failures, immutable replay order, restart/rotation/rebuild/backup restore and no file/confirmation effects. This does not validate materialization or POL-R confirmations. |
+| Export registration | [test_export_snapshot_registration.py](../tests/test_export_snapshot_registration.py): frozen request/cells/text/digest, strict validation, stable identity/retry, journal health, synchronized recovery/reuse, ambiguous append and projection failures, immutable replay order, restart/rotation/rebuild/backup restore and no file/confirmation effects. This does not validate materialization or POL-R confirmations. |
 | Verified materialization | [test_export_materialization.py](../tests/test_export_materialization.py): authoritative journal gate, exact frozen UTF-8 bytes and SHA-256, existing-file reuse/conflicts, symlinks, staging/publication/verification/cleanup failures, concurrent replacement injection, retry, restored evidence and state/journal purity. No production UI or permanent file-status guarantee. |
 | File-status evaluation | [test_export_file_status.py](../tests/test_export_file_status.py): strict evidence gate even without a destination, precedence, five current outcomes, conclusive conflict versus inspection uncertainty, complete short files versus incomplete reads, disappearance/replacement, reevaluation/restart and write-prohibited purity. Service-only coverage, not recovery UI or platform qualification. |
 | Confirmation replay | [test_polr_confirmation_replay.py](../tests/test_polr_confirmation_replay.py): exact event/cell validation, manual/export-linked values, Unknown/zero, prior/stale truth conditions, atomic rejection, physical ordering, duplicates/collisions, startup failure, history/rotation/rebuild/restore and Actual/timer/export purity. Isolated replay fixtures; writer coverage is separate below. |
@@ -375,12 +375,22 @@ These mechanisms do not establish universal transactional or power-loss guarante
 Export snapshots and confirmation batches have bounded replay/fault coverage
 above, including dedicated confirmation append/interruption, proposal/commit and
 recovery synchronization coverage against the
-[selected technical contract](EXPORT_EVIDENCE_CONTRACT.md). The inherited export
-registration path can still reuse complete visible evidence after append errors
-without confirmation-style resynchronization; these tests do not qualify that
-export flush outcome. Preserve one-event
-confirmation batch integrity and authoritative journal precedence over derived
-snapshots. This strategy defines tests, not another event/schema/recovery owner.
+[selected technical contract](EXPORT_EVIDENCE_CONTRACT.md). Export registration
+uses the same synchronization requirement for existing-identity reuse and recovery
+after append exceptions. Test transient failed append fsync followed by successful
+synchronization, persistent failures across unchanged retries, and complete appends
+followed by errors. Successful ordinary new appends must not add unconditional sync.
+Use actual writable handles and real synchronization where available; assert indexed
+archives, active segment and manifest are synchronized without byte changes.
+Inject open/fsync/close/inspection and export/confirmation-validation failures;
+require no success or installation and preserve original append diagnostics.
+Malformed evidence must fail before synchronization-as-repair. Exact reuse must
+remain renderer-independent and install the latest complete confirmation projection.
+Test installation-failure recovery without another append; compare prepared inputs,
+event counts, dataset bytes, Actual/timers, snapshots and external copies. Operational
+failure may retain complete/partial evidence; logical integrity is not filesystem
+rollback. Preserve one-event confirmation batch integrity and authoritative journal
+precedence over derived snapshots. This strategy defines tests, not another event/schema/recovery owner.
 
 ## File publication and cross-resource failures
 

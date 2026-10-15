@@ -241,11 +241,36 @@ content validation and is not automatic journal recovery.
 Keep the export operation identity stable across retries. Before retrying ambiguous
 registration, inspect the authoritative journal for that identity:
 
-- A complete valid event exists: reuse it.
+- A complete valid event exists: reuse it only after successful synchronization,
+  strict revalidation and complete evidence installation.
 - It is demonstrably absent and the journal is healthy: registration may be
   retried with the original identity.
 - The journal is malformed/partially written or registration cannot be established:
   fail closed; do not publish an external report.
+
+Exact existing-identity reuse and recovery after an append exception call the
+existing `EventStorage.synchronize_journal()` operation described in the
+[shared synchronization contract](#staged-confirmation-preparation-and-registration).
+Revalidate the returned complete journal, both export and confirmation projections,
+and the exact frozen export identity/content before installation and return.
+Do not append on either reuse path or rerender previously registered evidence.
+New absent identities retain candidate consistency validation before one append;
+ordinary first-time append success retains its flush and strict verification
+without unconditional additional synchronization.
+
+Healthy demonstrated absence after append failure preserves the original error
+with unchanged-candidate retry context. Partial, malformed, conflicting or
+unreadable evidence fails closed before synchronization, without repair or another
+append. Synchronization-open/fsync/close/revalidation failure reports registration
+unestablished or uncertain and installs no evidence. Preserve the original append
+failure as diagnostic context when later inspection or synchronization fails.
+Repeated failures cannot establish success merely from readable complete bytes.
+Installation failure retains committed evidence for unchanged-event retry; prepare
+complete projections before installation and preserve later effective confirmations
+when reusing an older export. No Actual/timer rebuild, snapshot save, automatic
+backup or external publication is part of registration. Serialized ownership and
+existing filesystem assumptions remain binding; this is no general durability or
+multi-process transaction guarantee.
 
 Do not silently truncate/rewrite earlier valid records or create a second export
 event merely because storage or derived-snapshot persistence returned an error.
@@ -411,10 +436,10 @@ copies. A later workflow relying on a report file must still verify that file
 currently under the [materialization boundary](#materialization-and-byte-verification).
 Historical replay and recovery remain file-independent.
 
-The inherited export-registration retry path is unchanged: it can accept visible
-complete matching evidence after an append exception without this additional
-synchronization. This task's confirmation recovery guarantee does not qualify or
-repair that separate export durability limitation.
+Export registration shares this synchronization-before-success requirement for
+exact identity reuse and append-exception recovery. Ordinary successful new appends
+retain their existing flush and verification sequence without extra synchronization;
+see [export idempotency](#journal-interruption-and-export-idempotency).
 
 ### Staged export proposals and selected preparation
 

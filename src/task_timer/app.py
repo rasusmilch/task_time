@@ -148,40 +148,78 @@ class TaskTimerService:
         return event
 
     def register_prepared_timesheet_export(self, prepared_event: dict[str, Any]) -> str:
-        """Establish authoritative registration, inspecting even an ambiguous append."""
+        """Establish registration; synchronize recovered/reused evidence before success."""
         event = deepcopy(prepared_event)
         validate_export_snapshot(event)
-        journal = self.storage.iter_all_events(strict=True)
-        exports = collect_export_snapshots(journal)
-        collect_polr_confirmations(journal)
         key = event["event_id"]
-        existing = [item for item in journal if item.get("event_id") == key]
-        if existing:
-            if key not in exports or not same_export_event(exports[key], event):
-                raise ValueError("Export identity already belongs to different journal content")
-            self._install_export_journal(journal, exports)
-            return key
-        known_tasks = {item["task_id"] for item in journal if item["event_type"] == "task_created"}
-        known_projects = {item["payload"]["project_id"] for item in journal if item["event_type"] == "project_created"}
-        validate_export_snapshot(event, known_tasks=known_tasks, known_projects=known_projects, verify_rendering=True)
-        try:
-            self.storage.append_event(event)
-        except Exception as append_error:
-            try:
-                journal = self.storage.iter_all_events(strict=True)
-                exports = collect_export_snapshots(journal)
-            except Exception as inspection_error:
-                append_error.add_note(f"Export registration is uncertain; journal inspection failed: {inspection_error}")
-                raise append_error from inspection_error
-            if key not in exports or not same_export_event(exports[key], event):
-                append_error.add_note("Export registration was not established; retain the prepared event for retry")
-                raise
-        else:
-            journal = self.storage.iter_all_events(strict=True)
+
+        def inspect(journal):
             exports = collect_export_snapshots(journal)
-        if key not in exports or not same_export_event(exports[key], event):
-            raise ValueError("Export append did not establish valid authoritative registration")
-        self._install_export_journal(journal, exports)
+            collect_polr_confirmations(journal)
+            exists = any(item.get("event_id") == key for item in journal)
+            if exists and (key not in exports or not same_export_event(exports[key], event)):
+                raise ValueError("Export identity already belongs to different journal content")
+            return exports, exists
+
+        journal = self.storage.iter_all_events(strict=True)
+        exports, reuse = inspect(journal)
+        append_failure = None
+        if not reuse:
+            known_tasks = {item["task_id"] for item in journal if item["event_type"] == "task_created"}
+            known_projects = {item["payload"]["project_id"] for item in journal if item["event_type"] == "project_created"}
+            validate_export_snapshot(event, known_tasks=known_tasks, known_projects=known_projects, verify_rendering=True)
+            try:
+                self.storage.append_event(event)
+            except Exception as append_error:
+                append_failure = append_error
+                try:
+                    journal = self.storage.iter_all_events(strict=True)
+                    exports, reuse = inspect(journal)
+                except Exception as inspection_error:
+                    append_error.add_note(
+                        f"Export registration is uncertain; journal inspection failed: {inspection_error}; "
+                        "retain the unchanged prepared event; no repair or additional append"
+                    )
+                    raise append_error from inspection_error
+                if not reuse:
+                    append_error.add_note(
+                        "Export identity is absent from the healthy journal; registration was not established; "
+                        "retain the unchanged prepared event for retry"
+                    )
+                    raise
+            else:
+                try:
+                    journal = self.storage.iter_all_events(strict=True)
+                    exports, present = inspect(journal)
+                    if not present:
+                        raise ValueError("Export append did not establish valid authoritative registration")
+                except Exception as inspection_error:
+                    inspection_error.add_note(
+                        "Export registration is uncertain after append; retain the unchanged prepared event"
+                    )
+                    raise
+        if reuse:
+            try:
+                journal = self.storage.synchronize_journal()
+                exports, present = inspect(journal)
+                if not present:
+                    raise ValueError("Export identity absent after journal synchronization")
+            except Exception as synchronization_error:
+                synchronization_error.add_note(
+                    "Export registration remains uncertain: synchronization/close/revalidation did not succeed; "
+                    "retain the unchanged prepared event; no additional append"
+                )
+                if append_failure is not None and synchronization_error is not append_failure:
+                    raise synchronization_error from append_failure
+                raise
+        try:
+            self._install_export_journal(journal, exports)
+        except Exception as installation_error:
+            installation_error.add_note(
+                "Export evidence was registered but installation failed; "
+                "retry the unchanged prepared event without another append"
+            )
+            raise
         return key
 
     def _install_export_journal(self, journal, exports) -> None:

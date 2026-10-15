@@ -56,7 +56,7 @@ class EventStorage:
                           object_pairs_hook=self._unique_json_fields if strict else None)
 
     def synchronize_journal(self) -> list[dict[str, Any]]:
-        """Flush existing authoritative bytes for confirmation recovery, then reread.
+        """Flush existing authoritative bytes for evidence-registration reuse/recovery.
 
         Serialized dataset ownership is required. This neither repairs the journal
         nor establishes directory-entry or universal power-loss durability.

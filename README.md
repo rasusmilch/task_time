@@ -115,6 +115,9 @@ The separate `prepare_timesheet_export_snapshot()` freezes one calculation as
 decimal text, task/day seconds and hundredths, original labels/request/metadata,
 and a SHA-256 digest. `register_prepared_timesheet_export()` durably registers
 that candidate in the existing journal with stable, idempotent export identity.
+Recovery and exact-identity reuse require successful journal synchronization,
+complete evidence revalidation and installation before return; readable bytes alone
+are insufficient after failed flushing.
 `get_timesheet_export_snapshot()` and `list_timesheet_export_snapshots()` return
 detached committed evidence, retained across replay and later work changes.
 Preparation writes nothing; registration creates no external report, confirmation,
