@@ -65,7 +65,7 @@ class EventStorage:
         manifest = self.load_manifest(strict=True)
         paths = [self.data_dir / segment["path"] for segment in manifest["archives"]]
         for path in [*paths, self.active_path, self.manifest_path]:
-            with path.open("rb") as handle:
+            with path.open("r+b") as handle:
                 os.fsync(handle.fileno())
         return self.iter_all_events(strict=True)
 

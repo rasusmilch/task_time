@@ -228,8 +228,14 @@ post-append inspection and installation failures. Exact identity retry after new
 batches must neither append nor roll back the latest projection. Successful reuse
 requires successful fsync/close of all indexed journal segments, active segment
 and manifest followed by strict revalidation. Repeated failed synchronization
-cannot report success. Compare surviving bytes, event counts, unchanged prepared
-inputs and effective state, including no partial installation. Logical batch
+cannot report success. Model Windows flush access by rejecting actual non-writable
+file objects while retaining real opens and fsync; this is portable fault injection,
+not native Windows qualification. Verify existing-file writable, non-truncating
+access preserves bytes, missing files are not recreated, writable-open denial
+propagates, and the close-failure injection is reached before installation.
+An unchanged candidate remains retryable once transient failures clear.
+Compare surviving bytes, event counts, unchanged prepared inputs and effective
+state, including no partial installation. Logical batch
 integrity is not filesystem rollback after operational failure.
 
 Exercise writer-created evidence through restart, rotation, rebuild and supported

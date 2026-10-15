@@ -382,8 +382,11 @@ or unreadable evidence fails closed, without another append or repair.
 
 Existing-identity reuse and recovery after append exceptions use the bounded
 `EventStorage.synchronize_journal()` operation: strictly validate manifest and
-journal, open each manifest-indexed segment, active segment and manifest without
-creation/truncation, fsync each and close successfully, then strictly reread.
+journal, open each manifest-indexed segment, active segment and manifest with
+existing-file writable binary access (`r+b`), without creation, truncation or
+append. Write no content through those handles; fsync each and close successfully,
+then strictly reread. Denied writable access fails closed without changing file
+permissions or falling back to read-only access.
 Revalidate complete export/confirmation projections after synchronization. A failed
 fsync, close or inspection cannot establish durable success merely because bytes
 are visible. No unrelated files are synchronized. No new state, repair authority,

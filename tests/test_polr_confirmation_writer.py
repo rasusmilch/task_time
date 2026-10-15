@@ -34,6 +34,65 @@ def fail(*args, **kwargs):
     raise OSError('injected failure')
 
 
+def require_writable_flush_handles(monkeypatch):
+    """Model Windows flush access using real file objects, not platform flags."""
+    real_open, real_fsync = Path.open, os.fsync
+    handles, flushed = {}, []
+    def open_file(path, *args, **kwargs):
+        handle = real_open(path, *args, **kwargs)
+        handles[handle.fileno()] = path, handle
+        return handle
+    def fsync(fd):
+        path, handle = handles[fd]
+        if not handle.writable():
+            raise PermissionError('Simulated Windows flushing requires writable access')
+        real_fsync(fd)
+        flushed.append(path)
+    monkeypatch.setattr(Path, 'open', open_file)
+    monkeypatch.setattr(os, 'fsync', fsync)
+    return flushed
+
+
+def test_reuse_flushes_writable_handles_without_changing_journal_or_latest_projection(setup, monkeypatch):
+    s, a, _, _, _ = setup
+    candidate = register(s, cell(a))
+    s.storage.max_active_events = 1
+    s.storage.rotate_if_needed()
+    latest = register(s, cell(a, 500, prior=candidate['event_id']))
+    expected = [s.storage.data_dir / entry['path'] for entry in s.storage.load_manifest()['archives']]
+    expected += [s.storage.active_path, s.storage.manifest_path]
+    before, original = capture(s), deepcopy(candidate)
+    flushed = require_writable_flush_handles(monkeypatch)
+    monkeypatch.setattr(s.storage, 'append_event', lambda *a: pytest.fail('retry appended'))
+    assert s.register_prepared_polr_confirmation_batch(candidate) == candidate['event_id']
+    assert flushed == expected
+    assert capture(s) == before and candidate == original
+    assert occurrences(s) == [candidate, latest]
+    assert s.get_effective_polr_confirmations()[a, MON.isoformat()] == projected(500, latest)
+
+
+def test_complete_append_error_recovers_with_writable_sync_handles(setup, monkeypatch):
+    s, a, _, _, _ = setup
+    candidate = s.prepare_polr_confirmation_batch([cell(a)])
+    original, before, append = deepcopy(candidate), capture(s), s.storage.append_event
+    calls = []
+    def complete_then_error(event):
+        calls.append(1)
+        append(event)
+        raise OSError('complete append followed by error')
+    flushed = require_writable_flush_handles(monkeypatch)
+    monkeypatch.setattr(s.storage, 'append_event', complete_then_error)
+    assert s.register_prepared_polr_confirmation_batch(candidate) == candidate['event_id']
+    assert flushed == [s.storage.active_path, s.storage.active_path, s.storage.manifest_path]
+    assert calls == [1] and occurrences(s) == [candidate] and candidate == original
+    assert s.state == before[0] and s.list_timesheet_export_snapshots() == before[4]
+    assert {k: v for k, v in files(s).items() if k != 'active_events.jsonl'} == {
+        k: v for k, v in before[3].items() if k != 'active_events.jsonl'}
+    committed = capture(s)
+    s.register_prepared_polr_confirmation_batch(candidate)
+    assert calls == [1] and capture(s) == committed
+
+
 def test_preparation_is_detached_pure_frozen_and_offline(setup, monkeypatch):
     s, a, b, _, _ = setup
     inputs = [cell(b, 0, day=TUE), cell(a)]
@@ -288,35 +347,92 @@ def test_reuse_synchronizes_all_indexed_journal_files_without_byte_changes(setup
     assert observed == expected and capture(s) == before
 
 
-@pytest.mark.parametrize('fault', ['sync', 'close', 'post-sync-inspection'])
+@pytest.mark.parametrize('fault', ['sync', 'open', 'fsync', 'close', 'post-sync-inspection'])
 def test_reuse_sync_or_close_failure_never_succeeds_or_appends(setup, monkeypatch, fault):
     s, a, _, _, _ = setup
     candidate = register(s, cell(a))
     before = capture(s)
-    real_open, read = Path.open, s.storage.iter_all_events
+    real_open, read, install = Path.open, s.storage.iter_all_events, s._install_export_journal
+    reached, installed = [], []
     monkeypatch.setattr(s.storage, 'append_event', lambda *a: pytest.fail('retry appended'))
-    if fault == 'sync': monkeypatch.setattr(s.storage, 'synchronize_journal', fail)
-    elif fault == 'close':
-        class CloseFailure:
-            def __enter__(self):
-                self.handle = real_open(s.storage.active_path, 'rb')
-                return self.handle
-            def __exit__(self, *args):
-                self.handle.close()
-                raise OSError('close failed')
-        def open_file(path, *args, **kwargs):
-            return CloseFailure() if path == s.storage.active_path and args == ('rb',) else real_open(path, *args, **kwargs)
-        monkeypatch.setattr(Path, 'open', open_file)
-    else:
-        calls = []
-        def inspect(*args, **kwargs):
-            calls.append(1)
-            if len(calls) == 3: raise OSError('post-sync inspection failed')
-            return read(*args, **kwargs)
-        monkeypatch.setattr(s.storage, 'iter_all_events', inspect)
-    with pytest.raises(OSError) as caught: s.register_prepared_polr_confirmation_batch(candidate)
-    assert any('uncertain' in n for n in caught.value.__notes__)
-    assert capture(s) == before
+    def track_install(*args):
+        installed.append(1)
+        return install(*args)
+    monkeypatch.setattr(s, '_install_export_journal', track_install)
+    with monkeypatch.context() as m:
+        if fault == 'sync': m.setattr(s.storage, 'synchronize_journal', fail)
+        elif fault == 'open':
+            def denied(path, *args, **kwargs):
+                if path == s.storage.active_path and args == ('r+b',):
+                    reached.append('open')
+                    raise PermissionError('writable access denied')
+                return real_open(path, *args, **kwargs)
+            m.setattr(Path, 'open', denied)
+        elif fault == 'fsync':
+            def failed_flush(fd):
+                reached.append('fsync')
+                raise OSError('fsync failed')
+            m.setattr(os, 'fsync', failed_flush)
+        elif fault == 'close':
+            class CloseFailure:
+                def __enter__(self):
+                    self.handle = real_open(s.storage.active_path, 'r+b')
+                    assert self.handle.writable()
+                    reached.append('opened')
+                    return self.handle
+                def __exit__(self, *args):
+                    self.handle.close()
+                    reached.append('closed')
+                    raise OSError('close failed')
+            def open_file(path, *args, **kwargs):
+                return CloseFailure() if path == s.storage.active_path and args == ('r+b',) else real_open(path, *args, **kwargs)
+            m.setattr(Path, 'open', open_file)
+        else:
+            calls = []
+            def inspect(*args, **kwargs):
+                calls.append(1)
+                if len(calls) == 3: raise OSError('post-sync inspection failed')
+                return read(*args, **kwargs)
+            m.setattr(s.storage, 'iter_all_events', inspect)
+        with pytest.raises(OSError) as caught: s.register_prepared_polr_confirmation_batch(candidate)
+        assert any('uncertain' in n for n in caught.value.__notes__)
+        assert installed == [] and capture(s) == before
+    if fault == 'close': assert reached == ['opened', 'closed']
+    elif fault in ('open', 'fsync'): assert reached == [fault]
+    assert s.register_prepared_polr_confirmation_batch(candidate) == candidate['event_id']
+    assert installed == [1] and capture(s) == before and occurrences(s) == [candidate]
+
+
+@pytest.mark.parametrize('component', ['archive', 'active', 'manifest'])
+def test_sync_missing_existing_file_is_not_recreated(setup, monkeypatch, component):
+    s, a, _, _, _ = setup
+    candidate = register(s, cell(a))
+    s.storage.max_active_events = 1
+    s.storage.rotate_if_needed()
+    archive = s.storage.data_dir / s.storage.load_manifest()['archives'][0]['path']
+    target = {'archive': archive, 'active': s.storage.active_path, 'manifest': s.storage.manifest_path}[component]
+    before, original, real_open = capture(s), deepcopy(candidate), Path.open
+    reached = []
+    def disappear_before_open(path, *args, **kwargs):
+        if path == target and args == ('r+b',):
+            reached.append(1)
+            path.unlink()  # isolated fixture race after successful strict preflight
+        return real_open(path, *args, **kwargs)
+    with monkeypatch.context() as m:
+        m.setattr(Path, 'open', disappear_before_open)
+        m.setattr(s.storage, 'append_event', lambda *a: pytest.fail('retry appended'))
+        with pytest.raises(FileNotFoundError) as caught:
+            s.register_prepared_polr_confirmation_batch(candidate)
+        assert any('uncertain' in note for note in caught.value.__notes__)
+    assert reached == [1] and not target.exists() and candidate == original
+    expected_files = before[3] | {}
+    del expected_files[str(target.relative_to(s.storage.data_dir))]
+    assert files(s) == expected_files
+    assert (s.state, s.events, s.get_effective_polr_confirmations(), s.list_timesheet_export_snapshots()) == (
+        before[0], before[1], before[2], before[4])
+    with pytest.raises((ValueError, OSError)):
+        s.register_prepared_polr_confirmation_batch(candidate)
+    assert not target.exists() and files(s) == expected_files
 
 
 def test_rotation_manifest_failure_fails_closed_without_duplicate_or_repair(setup, monkeypatch):

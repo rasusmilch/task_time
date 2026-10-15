@@ -42,8 +42,10 @@ receipts or commits. No release or production activation is implied below.
   batches into an in-memory task/day projection, preserving Unknown/zero, physical
   order, reviewed prior identities, stale acknowledgements and duplicate protection.
   Dedicated serialized-use registration revalidates the journal and synchronizes
-  existing journal files before same-identity recovery/reuse; it changes no Actual,
-  snapshot or file copies. Inherited export retry flushing is unchanged.
+  existing journal files through writable, non-truncating access suitable for
+  portable flushing before same-identity recovery/reuse, without content writes;
+  it changes no Actual, snapshot or file copies. Inherited export retry flushing
+  is unchanged; simulated access checks do not establish Windows qualification.
 
 These services are independently callable but not fully connected to the
 production application workflow. Legacy UI/export paths remain active during

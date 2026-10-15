@@ -614,9 +614,10 @@ event; silent no-ops fail. An append exception with demonstrable absence retains
 the original error; partial/malformed/conflicting/unreadable evidence fails closed.
 Exact existing-identity reuse, including recovery of complete bytes after an append
 exception, calls `EventStorage.synchronize_journal()`. It validates the manifest
-and journal, opens indexed archives, active segment and manifest in existing-file
-binary read mode, fsyncs and closes each, then rereads strictly. Service replay
-revalidates all evidence after that synchronization. Failed flush, close or
+and journal, opens indexed archives, active segment and manifest with existing-file
+writable binary access (`r+b`), without creation, truncation or append. It writes
+no content through those handles, fsyncs and closes each, then rereads strictly.
+Service replay revalidates all evidence after that synchronization. Failed flush, close or
 inspection cannot be treated as success just because complete bytes are visible.
 No files are created, truncated, repaired or restored by synchronization.
 
