@@ -179,10 +179,15 @@ or task renaming. Repeated exports never add their hours to actual work.
 One immutable journal-backed snapshot is authoritative; external files are
 reproducible copies. Register and verify that snapshot before file publication,
 then verify complete file bytes before reporting successful export. A failed
-materialization leaves recoverable pending evidence. Retry the same snapshot
+materialization leaves recoverable registered evidence. Retry the same snapshot
 without recalculating work or overwriting existing files; a conflicting destination
 requires another user-selected path. Matching existing bytes may be recognized.
-File status is derived and must be reverified, not assumed permanently correct.
+File availability is derived from valid committed evidence and the selected
+destination: an explicit path, otherwise the original preferred path if present.
+No available destination differs from a selected destination with no file. An
+absent selected file establishes no publication history, including whether it
+ever existed. Reverify current status rather than assuming it remains correct;
+do not persist publication-history or completion state.
 The [technical contract](EXPORT_EVIDENCE_CONTRACT.md) owns identity, contents,
 registration uncertainty, materialization and recovery rules.
 

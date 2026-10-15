@@ -152,20 +152,32 @@ Apply the selected technical contract to current export services and future inte
   external publication. A snapshot-linked copy contains frozen bytes, not a
   recalculation. Full-byte comparison and digest integrity agree; no success is
   reported for a mismatching file.
-- PENDING/READY/MISSING/CONFLICT/UNVERIFIABLE derive from the snapshot and path;
-  changed/missing copies are rechecked. Matching existing files may be recognized,
-  conflicting files are never overwritten, and retry at a different path retains
-  the original snapshot/identity without another export event.
+- Future status-evaluation tests require valid committed journal evidence first;
+  unhealthy or uncertain evidence must not become a file-status result. Distinguish
+  PENDING (neither explicit nor preferred destination available) from MISSING
+  (a destination is selected but no file exists). Neither establishes prior
+  publication or an attempted write. READY requires current full-byte/digest
+  verification of a suitable regular file; incompatible bytes, digest or object
+  type produce CONFLICT, while unsafe or inconclusive inspection produces
+  UNVERIFIABLE. An unreadable file cannot retain an earlier READY result.
+- Evaluate status per selected destination, preferring an explicit path over the
+  frozen preference. After restart, reevaluate without remembering prior
+  alternative paths or inferring whether an absent file ever existed. Test these
+  semantics without adding persisted completion, publication-history or status
+  state. Recoverable registered evidence is broader than PENDING. Matching files
+  may be reused, conflicts are never overwritten, and retry at another path
+  retains the original snapshot/identity without another export event.
 - Ambiguous registration reuses a valid journal event, retries a demonstrably
   absent event only with a healthy journal and the same identity, and fails closed
   on malformed/partial/unknown registration. Derived-snapshot failure does not
   undo valid evidence; restart, archive replay, rebuild and backup/restore retain
-  pending exports. Duplicate identities cannot duplicate effective evidence.
+  registered exports. Duplicate identities cannot duplicate effective evidence.
 
 Decimal conversion/displayed rollups, journal registration/replay and bounded
-materialization/retry have focused coverage. General file-status/history/recovery
-UI and confirmation assertions remain future expectations, not passing coverage
-or a mechanism selected by tests. Preserve exact renderer and legacy assertions.
+materialization/retry have focused coverage. The five-status evaluation interface,
+general file-status/recovery UI and confirmation assertions remain future
+expectations, not passing coverage or a mechanism selected by tests. Preserve
+exact renderer and legacy assertions.
 Materialization requires independent GO review before confirmation implementation.
 Linux fault injection is not power-loss, concurrent-process or Windows qualification.
 

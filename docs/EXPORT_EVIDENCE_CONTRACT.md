@@ -41,9 +41,10 @@ representation, not independent timekeeping truth.
 Regeneration uses the frozen snapshot without recalculating work. Later work,
 corrections, renames, project moves or week-setting changes never modify it.
 Frozen values are evidence, not another authoritative Actual counter. A valid
-snapshot without a verified file is recoverable pending evidence, not a completed
-export. This export snapshot is distinct from the existing rebuildable application
-state snapshot.
+snapshot without a currently verified file remains recoverable registered
+evidence. That broad concept is distinct from the specific PENDING status below.
+This export snapshot is distinct from the existing rebuildable application state
+snapshot.
 
 ## Export event identity and contents
 
@@ -167,24 +168,59 @@ universal filesystem support or guaranteed power-loss durability is claimed.
 
 ## Derived pending and recovery outcomes
 
-The snapshot is immutable; materialization status is derived by checking it and
-the relevant selected output path. Do not persist an independent authoritative
-“export completed” flag.
+These five Selected outcomes define current-observation status evaluation; the
+status interface is not yet implemented. One immutable journal-backed export may
+have zero or more independently verifiable external copies. Status is derived
+for the particular destination evaluated, not stored as a global lifecycle
+attribute of the export identity.
+
+First establish a valid committed snapshot through authoritative journal
+validation. Missing, malformed, conflicting or otherwise unverifiable journal
+evidence must fail closed, not become PENDING, MISSING or another file-status
+result. Existing journal integrity requirements remain binding.
+
+Evaluate an explicit destination when supplied; otherwise use the snapshot's
+immutable `preferred_destination`, if present. An alternative destination does
+not modify the snapshot. If neither destination is available, derive PENDING.
 
 | Outcome | Meaning |
 | --- | --- |
-| PENDING | A valid committed snapshot exists, but no verified matching file has been established at the selected path. |
-| READY | A valid snapshot exists and the selected external file has been verified to match its frozen contents. |
-| MISSING | A previously selected external path no longer contains the expected file. |
-| CONFLICT | The path exists but its bytes or file type do not match the snapshot. |
-| UNVERIFIABLE | File status cannot safely be determined. |
+| PENDING | A valid committed snapshot exists, but neither an explicit destination nor an original preferred destination is available for evaluation. This does not assert that file creation was attempted. |
+| READY | A valid committed snapshot exists and the selected destination currently contains a suitable regular file whose complete bytes match the frozen UTF-8 report and whose SHA-256 agrees with the frozen digest. Verification succeeded for this destination at the time of the check. |
+| MISSING | A valid committed snapshot exists and a destination is selected, but no file currently exists there. This establishes no publication history. |
+| CONFLICT | The selected destination exists but its bytes differ, its digest disagrees, or its object type is unsuitable. Directories, symlinks (including dangling links) and other unsuitable objects are not matching report files. |
+| UNVERIFIABLE | A destination is selected, but current contents or file status cannot safely be established, for example because of access failure, interrupted verification or other inspection uncertainty. |
 
-Only READY is a successfully materialized export. Failed materialization leaves
-the snapshot recoverable. Retry reuses its export identity and frozen contents;
-it neither recalculates work nor creates another snapshot for the same operation.
-Changing the retry output path does not modify the snapshot or its original
-preferred path. A deliberate later new export is a new identity and frozen cutoff.
-Clearly communicate a lack of verification for an earlier external copy.
+Only READY establishes a currently verified copy at the evaluated destination.
+It is not permanent proof that the file remains unchanged; an unreadable file
+cannot be READY merely because an earlier check succeeded. Every current-status
+check reevaluates the selected destination.
+
+After restart, reconstruct the export from the journal and reevaluate the
+destination selected under the same rules. Registration alone proves no earlier
+publication. A previously used alternative destination is not automatically
+remembered merely because it was verified in an earlier session.
+
+An absent selected file may never have been created, may reflect failed
+publication, or may have been published and subsequently deleted. These histories
+are intentionally indistinguishable from the same current observable state.
+MISSING does not prove previous publication or deletion.
+
+Recoverable registered evidence is broader than uppercase PENDING. MISSING,
+CONFLICT and UNVERIFIABLE can still retain valid immutable evidence for safe
+retry or materialization elsewhere. Retry reuses the export identity and frozen
+contents without recalculation, overwrite or another snapshot for the same
+operation. Matching-file reuse and complete byte/digest verification remain
+required. Changing the output path never changes the snapshot or its original
+preferred path, and no file outcome implies POL-R confirmation. A deliberate
+later new export is a new identity and frozen cutoff.
+
+The journal and current filesystem inspection suffice for this observable-state
+model. Do not add a persisted completion flag, publication-history event,
+external-file registry, second authoritative database, durable READY/MISSING
+state machine, stored file-status cache, separate recovery ledger or automatic
+file-recovery subsystem. Historical publication tracking would require a
+separately approved product requirement; it is not authorized by these outcomes.
 
 ## Journal interruption and export idempotency
 
@@ -207,7 +243,8 @@ registration, inspect the authoritative journal for that identity:
 Do not silently truncate/rewrite earlier valid records or create a second export
 event merely because storage or derived-snapshot persistence returned an error.
 If registration succeeded but the derived state snapshot failed, authoritative
-journal replay takes precedence. Restart reconstructs valid pending evidence.
+journal replay takes precedence. Restart reconstructs valid registered evidence;
+file status still requires destination evaluation under the rules above.
 Exactly-once effective export identity is required: duplicate event identities
 must not duplicate export evidence. This contract does not itself implement or
 authorize unrelated general journal-recovery changes.
