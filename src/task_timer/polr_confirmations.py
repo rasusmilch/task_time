@@ -12,6 +12,16 @@ from .models import SCHEMA_VERSION
 CONFIRMATION_EVENT_TYPE = "polr_confirmation_batch_recorded"
 
 
+def requires_stale_export_acknowledgement(
+    export_position: int | None, confirmation_position: int | None,
+    confirmed_hundredths: int | None, proposed_hundredths: int,
+) -> bool:
+    """One cell's conflict, using first physical occurrences of validated evidence."""
+    return (export_position is not None and confirmation_position is not None
+            and confirmation_position > export_position
+            and confirmed_hundredths != proposed_hundredths)
+
+
 def _fields(value: Any, names: str) -> None:
     if not isinstance(value, dict) or set(value) != set(names.split()):
         raise ValueError(f"Invalid confirmation fields: expected {names}")
@@ -112,14 +122,16 @@ def collect_polr_confirmations(events: list[dict[str, Any]]) -> dict[tuple[str, 
             if cell["expected_prior_confirmation_id"] != expected_prior:
                 raise ValueError("Confirmation expected prior identity does not match latest task/day batch")
             source = cell["source_export_id"]
-            stale = False
             if source is not None:
                 if source not in source_cells or key not in source_cells[source]:
                     raise ValueError("Confirmation requires a preceding registered export task/day cell")
                 if cell["confirmed_hundredths"] != source_cells[source][key]:
                     raise ValueError("Confirmation amount differs from the frozen export cell")
-                stale = (prior is not None and confirmation_positions[key] > export_positions[source]
-                         and prior["confirmed_hundredths"] != cell["confirmed_hundredths"])
+            stale = requires_stale_export_acknowledgement(
+                export_positions.get(source), confirmation_positions.get(key),
+                prior["confirmed_hundredths"] if prior is not None else None,
+                cell["confirmed_hundredths"],
+            )
             if cell["stale_export_acknowledged"] != stale:
                 raise ValueError("Stale-export acknowledgement must match this cell's applicable conflict")
             pending[key] = {"confirmed_hundredths": cell["confirmed_hundredths"], "batch_event_id": identity}

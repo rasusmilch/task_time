@@ -9,7 +9,8 @@ The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the select
 snapshot-first, decimal-hour and confirmation architecture. Pure decimal rendering,
 export-snapshot registration/verified materialization and read-only file-status
 evaluation are staged. Confirmation validation/replay and dedicated batch
-preparation/registration and read-only daily reconciliation calculation are staged;
+preparation/registration, frozen-export proposal/selection preparation and read-only
+daily reconciliation calculation are staged;
 confirmation/reconciliation UI, weekly reconciliation summaries and general
 file-status/recovery UI are unimplemented.
 The source descriptions below remain current implementation observations.
@@ -636,10 +637,47 @@ sync, general recovery or universal power-loss durability.
 Export-linked registration checks frozen provenance without external file
 inspection or POL-R verification. Workflows relying on a report copy still need
 current verification. Existing export registration, materialization and file-status
-gates reject malformed confirmation evidence. Acknowledgement proposals/UI,
-automatic full-export selection, reconciliation presentation/weekly summaries and
+gates reject malformed confirmation evidence. Acknowledgement presentation/UI,
+reconciliation presentation/weekly summaries and
 production integration remain future outcomes. Isolated Linux fixtures establish
 neither a complete operator workflow nor Windows/NTFS or external POL-R behavior.
+
+## Export confirmation proposals and selected preparation (staged)
+
+`propose_export_polr_confirmation(export_id)` reads strict journal evidence and
+uses [polr_confirmation_proposals.py](src/task_timer/polr_confirmation_proposals.py)
+to produce detached, canonically ordered rows for all frozen export task/days.
+Rows retain original names/amounts and current evidence-derived prior amount/ID
+and stale flag. Unknown pairs are `None`; known zero keeps its identity. Replay
+and proposals share `requires_stale_export_acknowledgement()`; transient positions
+use first physical occurrences, so backdated/equal audit times and identical
+export/batch duplicates cannot change classification. Nothing is persisted or
+installed, and no cached reader, Actual, renderer, file check, clock or UUID is used.
+
+`prepare_export_polr_confirmation_batch(proposal, *, selected_cells=None,
+acknowledged_cells=(), batch_id=None)` deep-copies reviewed input, validates its
+exact shape/canonical rows, and freshly derives evidence. All frozen source rows,
+names and amounts must match complete export coverage. Defaults select positive
+proposals, including already-equal values; zero is explicit only. List/tuple
+collections of two-tuple keys select exact cells; duplicates/unknown/malformed keys
+and empty selection fail. Explicit input order does not alter canonical batch order.
+Acknowledgement keys must exactly identify selected stale conflicts. Selected prior
+ID, amount and classification must remain unchanged; unselected confirmation
+changes need not invalidate the operation. Invalid review never refreshes priors
+or retains a subset.
+
+The pure selector returns only the existing six persisted fields and the service
+delegates to `prepare_polr_confirmation_batch()` for fresh replay validation and
+stable identity/audit/timezone capture. No append occurs. Callers explicitly
+register the returned event separately; ambiguous registration retries that exact
+event, not a rebuilt proposal. These APIs introduce no proposal identity, stored
+draft, cache or recovery mechanism. They preserve serialized ownership and the
+registration prior check after preparation. Source provenance remains independent
+of report-copy readiness; file-dependent workflows still require current checks.
+Deferral has no write; reopening requires renewed review. Acknowledgement dialogs,
+manual-confirmation UI and production integration are not implemented.
+The [technical owner](docs/EXPORT_EVIDENCE_CONTRACT.md#staged-export-proposals-and-selected-preparation)
+defines the transient fields, selection and acknowledgement contract.
 
 ## Daily POL-R reconciliation calculation (staged)
 

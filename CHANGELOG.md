@@ -46,6 +46,10 @@ receipts or commits. No release or production activation is implied below.
   portable flushing before same-identity recovery/reuse, without content writes;
   it changes no Actual, snapshot or file copies. Inherited export retry flushing
   is unchanged; simulated access checks do not establish Windows qualification.
+  Propose frozen export cells with current reviewed priors and shared stale-conflict
+  rules; prepare canonical positive-default or explicitly checked/zero batches with
+  exact cell-specific acknowledgements and fresh selected-prior validation.
+  Proposal/selection preparation persists nothing; registration remains explicit.
   Derive read-only daily POL-R reconciliation from current full-precision Actual
   and strictly replayed confirmations: cell-rounded Actual, known/Unknown Confirmed,
   signed Delta and absolute replacement Enter, with detached results and no writes

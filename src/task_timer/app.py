@@ -48,6 +48,10 @@ from .polr_confirmations import (
     CONFIRMATION_EVENT_TYPE, collect_polr_confirmations, validate_polr_confirmation_batch,
 )
 from .polr_reconciliation import build_polr_reconciliation
+from .polr_confirmation_proposals import (
+    build_export_confirmation_proposal, select_export_confirmation_cells,
+    validate_export_confirmation_proposal,
+)
 from .models import AppState, DatedDurationRecord, IntervalRecord, NOTES_MAX_LENGTH, ProjectState, TagMeta, TaskState, TimeSubmission, event_dict
 from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
@@ -298,6 +302,23 @@ class TaskTimerService:
             )
             raise
         return key
+
+    def propose_export_polr_confirmation(self, export_id: str) -> dict[str, Any]:
+        """Read frozen export cells and latest priors; no clock, file check or state change."""
+        validate_export_uuid(export_id)
+        return build_export_confirmation_proposal(self.storage.iter_all_events(strict=True), export_id)
+
+    def prepare_export_polr_confirmation_batch(
+        self, proposal, *, selected_cells=None, acknowledged_cells=(), batch_id=None,
+    ) -> dict[str, Any]:
+        """Revalidate reviewed selected cells and delegate preparation, never registration."""
+        reviewed = deepcopy(proposal)
+        validate_export_confirmation_proposal(reviewed)
+        current = self.propose_export_polr_confirmation(reviewed["source_export_id"])
+        cells = select_export_confirmation_cells(
+            reviewed, current, selected_cells=selected_cells, acknowledged_cells=acknowledged_cells,
+        )
+        return self.prepare_polr_confirmation_batch(cells, batch_id=batch_id)
 
     def evaluate_timesheet_export_file_status(
         self, export_id: str, destination: Path | str | None = None,

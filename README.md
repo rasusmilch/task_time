@@ -11,7 +11,7 @@ Selected functionality is not automatically implemented.
 | Status | What it means here |
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay and daily POL-R reconciliation calculation are staged. |
+| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
 | Production still pending | Production export integration, file-status/recovery UI, replacement UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
 
 Current production still uses legacy parent/subtask interfaces, synthetic manual
@@ -147,6 +147,15 @@ validates current priors and durably registers the immutable batch. Exact retry
 synchronizes journal files before reuse without reapplying old amounts. These
 service APIs require serialized dataset ownership and never increase Actual.
 Confirmation dialogs and production integration remain absent. See [confirmation replay](DESIGN_NOTES.md#immutable-pol-r-confirmation-replay-staged).
+
+`propose_export_polr_confirmation(export_id)` returns frozen export cells with
+reviewed prior identities and stale-conflict flags. The separate
+`prepare_export_polr_confirmation_batch()` validates explicit selection and
+cell-specific acknowledgements, defaulting to positive proposals without selecting
+zero automatically. It prepares an event without registration; callers explicitly
+register and retry that exact event. These APIs review journal evidence, not report
+file readiness. Acknowledgement dialogs and production integration remain pending.
+See [proposal preparation](DESIGN_NOTES.md#export-confirmation-proposals-and-selected-preparation-staged).
 
 `calculate_polr_reconciliation()` takes the same dates, fixed cutoff and selection
 arguments as `calculate_date_window()`. It returns detached raw `actual` and daily

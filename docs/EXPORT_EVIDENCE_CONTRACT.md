@@ -27,7 +27,8 @@ through a separate service operation. Standalone read-only destination-relative
 file-status evaluation is also implemented/staged. Strict immutable confirmation
 batch validation/replay, detached preparation and dedicated durable registration
 with an in-memory effective projection are staged. Read-only daily POL-R
-reconciliation calculation is also staged. Confirmation/reconciliation UI, weekly
+reconciliation calculation and frozen-export proposal/selection preparation are
+also staged. Confirmation/reconciliation UI, weekly
 reconciliation summaries, automatic missing-file recovery and general
 file-status/recovery UI are not implemented.
 Approval is not proof of Windows/NTFS
@@ -415,6 +416,66 @@ complete matching evidence after an append exception without this additional
 synchronization. This task's confirmation recovery guarantee does not qualify or
 repair that separate export durability limitation.
 
+### Staged export proposals and selected preparation
+
+`TaskTimerService.propose_export_polr_confirmation(export_id)` strictly reads and
+validates archived/active journal evidence, resolving the committed source and
+latest confirmations without cached readers, Actual calculation, rendering,
+external-file verification, a clock or UUID capture. Return a detached dictionary
+with exactly `source_export_id` and `cells`. Include every frozen task/day cell,
+including zero, in task UUID then ISO date order; empty task coverage yields `[]`.
+Each row has exactly `task_id`, `work_date`, `task_name`, `proposed_hundredths`,
+`prior_confirmed_hundredths`, `expected_prior_confirmation_id` and
+`requires_stale_acknowledgement`. Names and proposed amounts are frozen export
+values. Prior amount/identity are both `None` for Unknown; known zero retains its
+identity. The shared replay/proposal stale predicate uses first physical export
+and effective-batch occurrences: latest confirmation after export and differing
+amount requires acknowledgement. Audit times and identical duplicate occurrences
+do not move those positions. No occurrence index is persisted.
+
+`prepare_export_polr_confirmation_batch(proposal, *, selected_cells=None,
+acknowledged_cells=(), batch_id=None)` treats the proposal as a reviewed detached
+value. Validate exact fields/types, canonical UUIDs/dates, nonnegative integer
+amounts excluding booleans/floats, consistently known/Unknown prior pairs, boolean
+stale flags and duplicate-free canonical row order. Freshly read and validate the
+journal again. Require complete source coverage and exact frozen keys, names and
+amounts for every row, including unchecked rows.
+
+Default selection (`None`) is every proposed amount greater than zero, including
+positive cells already equal to known confirmation. Never automatically select
+0.00, even when underlying seconds were positive. Explicit selection means exactly
+those keys, including zero if requested. Selection and acknowledgements accept
+only list/tuple collections of `(task UUID, canonical ISO work-date string)`
+two-tuples. Reject malformed collections, duplicates and absent keys. Empty
+effective selection raises before event preparation. Output canonical proposal
+order regardless of selection-input order; unchecked cells are omitted, not reset.
+
+Acknowledgement keys must exactly equal the selected rows requiring it. Reject
+missing, extra, duplicate, unselected or nonconflicting acknowledgements and any
+blanket boolean. Do not infer acknowledgement from the proposal flag. For selected
+rows, reviewed prior identity, amount and stale classification must still match
+fresh evidence; even an equal-value identity change rejects the entire operation.
+Unselected confirmation changes need not invalidate selection; their reviewed
+fields must still have valid shape and their source data must remain exact.
+Acknowledgement binds the selected key, frozen amount and unchanged reviewed prior.
+
+Construct only the existing six persisted cell fields and delegate to
+`prepare_polr_confirmation_batch(cells, batch_id=batch_id)`, retaining its fresh
+validation and UUID/audit/timezone preparation. Return its detached event without
+append. Registration remains a separate explicit call. Retain and retry that exact
+prepared event for ambiguous registration; creating another proposal/event is not
+recovery. A later selected prior change remains subject to registration rejection.
+
+Both operations are nonpersistent under existing synchronous serialized ownership:
+no append, synchronization, projection/cache installation, backup, materialization,
+Actual/timer or submission/checkpoint changes. No proposal UUID, timestamp, version,
+token, draft registry, schema, snapshot data or locking is introduced. Deferral
+writes nothing; reopening creates a new proposal requiring renewed review.
+Source identity proves frozen provenance, not file readiness or independent POL-R
+verification; a later workflow relying on a report copy still requires current
+file verification. Acknowledgement presentation, dialogs, manual-confirmation UI,
+production integration, weekly summaries and cutover remain separate outcomes.
+
 ## Displayed reconciliation
 
 For each task UUID and work date, render integer hundredths with two places:
@@ -486,7 +547,8 @@ implemented/staged without new events, recalculation or persisted completion
 state. Confirmation validation, immutable batch replay, effective projection
 and dedicated confirmation preparation/registration are also implemented/staged.
 Generic service append rejects confirmation events in favor of the dedicated API.
-Read-only daily reconciliation calculation is also staged. Independent review is
+Read-only daily reconciliation and frozen-export proposal/selection preparation
+are also staged. Independent review is
 required before further integration. Confirmation/reconciliation presentation,
 weekly reconciliation summaries, production integration, general file-status/recovery
 UI, automatic missing-file recovery, general journal repair, migration and installation cutover remain

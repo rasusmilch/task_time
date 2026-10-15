@@ -75,6 +75,7 @@ their assertions before selecting a run.
 | File-status evaluation | [test_export_file_status.py](../tests/test_export_file_status.py): strict evidence gate even without a destination, precedence, five current outcomes, conclusive conflict versus inspection uncertainty, complete short files versus incomplete reads, disappearance/replacement, reevaluation/restart and write-prohibited purity. Service-only coverage, not recovery UI or platform qualification. |
 | Confirmation replay | [test_polr_confirmation_replay.py](../tests/test_polr_confirmation_replay.py): exact event/cell validation, manual/export-linked values, Unknown/zero, prior/stale truth conditions, atomic rejection, physical ordering, duplicates/collisions, startup failure, history/rotation/rebuild/restore and Actual/timer/export purity. Isolated replay fixtures; writer coverage is separate below. |
 | Confirmation writer | [test_polr_confirmation_writer.py](../tests/test_polr_confirmation_writer.py): pure explicit-cell preparation, strict pre-append validation, superseded priors, exact identity recovery after newer batches, append/flush/sync/close/inspection/installation faults, rotation/restart/restore and Actual/export purity. Serialized one-service fixtures do not qualify multi-process writers or production workflows. |
+| Export confirmation proposals | [test_polr_confirmation_proposals.py](../tests/test_polr_confirmation_proposals.py): frozen values/names/coverage, positive-only defaults and explicit zeros, canonical checked selection, first-occurrence stale truth table, exact acknowledgements, selected-prior changes, tampering, fresh evidence, purity and explicit registration/retry. Service preparation only; no dialogs or production interaction. |
 | Daily reconciliation | [test_polr_reconciliation.py](../tests/test_polr_reconciliation.py): Unknown/zero, mandatory frozen-export and correction examples, precise cell rounding, scope/identity, sparse zero-work dates, physical-order confirmation freshness, one strict read/one Actual call, detached results, evidence/accounting rejection and write-prohibited purity. Daily service calculation only; no weekly balance, UI or production workflow qualification. |
 | Reporting/file publication | [test_timesheet_service.py](../tests/test_timesheet_service.py): real service orchestration, UTF-8 bytes, no-clobber publication, concurrent targets, injected staging/publication/cleanup failures and state/file purity. |
 | Existing storage and backups | [test_storage.py](../tests/test_storage.py), [test_backups.py](../tests/test_backups.py), plus project/dated/accounting/export fixtures: fresh/empty initialization, missing-component constructor rejection without mutation, healthy restart, rotation, snapshots, backup contents, retention and restore behavior. |
@@ -246,6 +247,34 @@ no automatic backups and no confirmation state in derived snapshots. Source expo
 IDs prove frozen provenance, not file readiness; later file-dependent workflows
 retain current verification obligations. These fixtures support serialized
 single-service use only, not a thread/multi-process transaction claim.
+
+## Export confirmation proposal and selection evidence
+
+Test proposals against real registered exports and fresh strict journal evidence,
+including Unknown/zero, frozen duplicate-name identities after later work and
+lifecycle changes, complete coverage and canonical row order. Share the replay
+stale predicate; exercise first physical occurrences, backdated/equal audit times
+and repeated identical export/batch events. Proposal creation must use no clock,
+UUID, accounting, rendering, cached readers or external-file inspection.
+
+Test positive-only defaults including already-equal cells; never auto-select zero
+or nonzero work rounded to zero. Explicit keys may select zero. Reject malformed,
+duplicate/absent selection keys, empty effective selection, invalid proposal shape,
+tampered source/name/amount/coverage and selected prior identity/amount/stale changes.
+Unselected confirmation changes must remain permissible. Acknowledgements must
+exactly match selected stale conflicts; reject missing/extra/duplicate/unselected
+or nonconflicting keys and blanket booleans. No inferred acknowledgement or silently
+retained subset is valid.
+
+Capture unchanged inputs, service projections and complete dataset bytes for both
+APIs on success/rejection. Prohibit writes, sync, backups, projection installation
+and file materialization; only final delegation may capture event identity/audit
+metadata. Exercise propose/select/acknowledge/prepare followed by separate explicit
+registration, checked-only effects, exact six-field cells and unchanged-event retry
+after newer confirmations without duplicate append or rollback. Registration must
+still reject an intervening selected prior change after preparation. Existing writer
+recovery tests retain their scope. These service fixtures do not qualify UI,
+production integration, real concurrent writers or Windows interaction.
 
 ## POL-R reconciliation evidence and future workflow acceptance
 

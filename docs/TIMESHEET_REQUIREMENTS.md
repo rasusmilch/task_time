@@ -237,6 +237,14 @@ or setting the actual external cell to zero.
 Manual confirmation may differ from current Actual or the previous export.
 Retain that distinction and show the resulting reconciliation Delta.
 
+**CURRENT IMPLEMENTATION:** staged service APIs propose frozen export cells,
+apply positive-only default or explicit checked/zero selection, validate
+cell-specific acknowledgements against unchanged reviewed priors, and prepare an
+existing-format batch without registration. Registration is a separate explicit
+call. Deferral writes nothing; reopening requires renewed review. Acknowledgement
+presentation, dialogs, manual-confirmation UI and production integration remain
+unimplemented; these services do not verify external POL-R or report-file readiness.
+
 ## SELECTED — Confirmation evidence and batch integrity
 
 The approved design uses two new event-backed concepts: **immutable saved export
@@ -259,8 +267,9 @@ acknowledgement. Strict immutable batch validation/replay, dedicated batch
 preparation/registration and a derived in-memory effective-confirmation mapping
 are implemented/staged. The low-level writer accepts explicitly reviewed cells;
 it does not present proposals, infer acknowledgements or verify report copies.
-User acknowledgement workflows and confirmation UI remain unimplemented; staged
-service APIs do not make the production POL-R workflow operational.
+Separate frozen-export proposal and selected preparation services are staged;
+user acknowledgement presentation and confirmation UI remain unimplemented.
+Staged service APIs do not make the production POL-R workflow operational.
 
 ## SELECTED — Corrections and stale exports
 
@@ -340,7 +349,7 @@ Source describes what executes, not an alternative product contract. See
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
 | Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; current duration UI still uses synthetic intervals. |
 | Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay, verified materialization and read-only destination-relative five-status evaluation. Exact copies, matching-file reuse and no-overwrite publication are staged; materialization/evaluation create no new events or persistent file-status flags. |
-| POL-R target workflow | Immutable confirmation-batch preparation/registration/replay and latest absolute task/day projection are staged. Read-only daily Actual/Confirmed/Delta/Enter calculation is staged; confirmation/reconciliation UI, weekly summaries and production integration remain unimplemented. Legacy markers are not this contract; export registration is not confirmation or successful file export. |
+| POL-R target workflow | Immutable confirmation-batch preparation/registration/replay, frozen-export proposals/selected preparation and latest absolute task/day projection are staged. Read-only daily Actual/Confirmed/Delta/Enter calculation is staged; confirmation/reconciliation UI, weekly summaries and production integration remain unimplemented. Legacy markers are not this contract; export registration is not confirmation or successful file export. |
 | Week configuration and allocations | No selectable week-start setting or selected weekly-allocation management. |
 | Data/installation | Launcher still uses the existing data path; fresh-directory release cutover is inactive. No historical migration implemented. |
 
