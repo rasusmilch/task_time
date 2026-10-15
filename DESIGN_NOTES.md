@@ -549,8 +549,9 @@ process-control exceptions are not converted into status results.
 
 Each call rereads evidence and inspects current contents without writes,
 accounting, rendering, cached status or remembered alternative paths. Restart
-reuses only the caller's destination or immutable preference. MISSING proves
-no publication history; READY is only a current observation. This adds no
+reuses only the caller's destination or immutable preference. MISSING does not
+establish whether the file was previously published; READY is only a current
+observation. This adds no
 recovery UI, automatic recovery, production integration or POL-R confirmation.
 Linux fixture/fault-injection evidence does not qualify Windows/NTFS, hostile
 directories, real concurrent writers or power-loss behavior.

@@ -136,7 +136,7 @@ recovery is implemented. See [materialization](DESIGN_NOTES.md#verified-export-m
 validates registered evidence and returns PENDING, READY, MISSING, CONFLICT or
 UNVERIFIABLE for the explicit destination or frozen preference. It performs no
 writes and retains no status or alternative path. Every check is current; absence
-proves no publication history. See [file-status evaluation](DESIGN_NOTES.md#export-file-status-evaluation-staged).
+does not establish whether publication previously occurred. See [file-status evaluation](DESIGN_NOTES.md#export-file-status-evaluation-staged).
 
 ## Run from source (repo root)
 
