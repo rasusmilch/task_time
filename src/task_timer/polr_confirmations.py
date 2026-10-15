@@ -1,4 +1,4 @@
-"""Immutable confirmation validation/replay, with no creation or persistence API."""
+"""Pure immutable confirmation validation/replay; service owns batch registration."""
 
 from __future__ import annotations
 

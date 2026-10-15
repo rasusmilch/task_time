@@ -1,4 +1,4 @@
-"""Confirmation fixtures append isolated evidence; no production writer exists."""
+"""Replay fixtures append isolated evidence independently of the dedicated writer."""
 from copy import deepcopy
 from datetime import timedelta, timezone
 import socket

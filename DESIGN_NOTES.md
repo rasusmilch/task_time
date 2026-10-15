@@ -8,8 +8,9 @@ for the replacement application. See [AGENTS.md](AGENTS.md) for the ownership ma
 The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the selected
 snapshot-first, decimal-hour and confirmation architecture. Pure decimal rendering,
 export-snapshot registration/verified materialization and read-only file-status
-evaluation are staged. Confirmation validation/replay is also staged; confirmation
-writers, reconciliation and general file-status/recovery UI are unimplemented.
+evaluation are staged. Confirmation validation/replay and dedicated batch
+preparation/registration are staged; confirmation UI, reconciliation and general
+file-status/recovery UI are unimplemented.
 The source descriptions below remain current implementation observations.
 
 ## Architecture
@@ -395,7 +396,7 @@ records are recalculated, and no report/state/events/files are mutated.
 
 This renderer is independently callable only: existing generation/save services
 still use the exact renderer. Separate export-snapshot registration is staged
-below; confirmation creation/UI, file-status/recovery UI, production export/UI
+below; confirmation UI, file-status/recovery UI, production export/UI
 integration, configurable week starts and fresh-directory cutover remain
 unimplemented. The shared Unicode-width and extreme-date accounting limitations
 described above still apply.
@@ -440,8 +441,11 @@ uses `EventStorage.append_event()` directly to preserve the prepared identity an
 existing flush/fsync/rotation behavior. If append raises, a complete valid matching
 event found on strict inspection is reused. Demonstrable absence preserves the
 original error for same-candidate retry; unreadable or ambiguous evidence fails
-closed with inspection context. No truncation, automatic repair, new identity or
-new calculation occurs. Registration neither saves a derived state snapshot nor
+closed with inspection context. This inherited export path does not resynchronize
+the journal before reusing visible complete evidence after an append exception;
+the stronger confirmation recovery synchronization below does not repair or
+qualify export-registration flushing. No truncation, automatic repair, new identity
+or new calculation occurs. Registration neither saves a derived state snapshot nor
 creates an automatic backup, since Actual state did not change.
 
 `EventStorage.iter_all_events(strict=True)` checks listed archive presence and
@@ -467,7 +471,7 @@ Preparation writes nothing. Registration changes only the journal and its normal
 rotation metadata plus the in-memory evidence index/event list. Neither changes
 timers, Actual, submissions, checkpoints, selection or legacy save behavior.
 Registration publishes no external report or READY classification. The separate
-materialization operation below verifies frozen copies; POL-R confirmation creation,
+materialization operation below verifies frozen copies; POL-R confirmation UI,
 reconciliation and production integration remain future outcomes requiring
 independent review. Linux fault injection covers append,
 inspection and projection failures; it does not establish concurrent multi-process
@@ -590,14 +594,50 @@ of the in-memory projection. Nothing is added to `AppState` or
 derive values again from the journal. Historical rename, reassignment and task
 deletion do not erase earlier confirmation evidence.
 
-The generic service `_append()` rejects this event type: no production
-confirmation writer exists. Existing export registration, materialization and
-file-status gates also reject malformed confirmation evidence before accepting
-the journal. These checks create no new confirmations, Actual work, submissions,
-checkpoints or file copies. Confirmation creation, acknowledgement proposals/UI,
-reconciliation calculations/presentation and production integration remain future
-outcomes. Isolated Linux fixtures validate replay, not a complete confirmation
-workflow, external POL-R behavior, multi-process transactions or power-loss safety.
+`prepare_polr_confirmation_batch(cells, *, batch_id=None)` freezes a detached
+nonempty list of explicitly reviewed six-field cells in caller order. It captures
+one UTC audit timestamp and the offline service timezone label, preserves or
+generates the batch UUID, and validates strict journal evidence plus the candidate
+as the next physical occurrence. Preparation changes no projections or files and
+performs no accounting, rendering, selection expansion or automatic zero selection.
+
+`register_prepared_polr_confirmation_batch(prepared_event)` deep-copies the frozen
+event and strictly rereads authoritative evidence. Exact valid existing identity
+is checked before new-proposal prior validation, so retries after newer batches
+cannot roll them back. Changed content and cross-type collisions fail. An absent
+identity must pass whole-batch replay against current priors before append,
+including equal-value prior changes and exact stale acknowledgements. No priors
+or acknowledgements are refreshed; generic `_append()` directs callers here.
+
+A successful append must be followed by strict inspection finding the exact valid
+event; silent no-ops fail. An append exception with demonstrable absence retains
+the original error; partial/malformed/conflicting/unreadable evidence fails closed.
+Exact existing-identity reuse, including recovery of complete bytes after an append
+exception, calls `EventStorage.synchronize_journal()`. It validates the manifest
+and journal, opens indexed archives, active segment and manifest in existing-file
+binary read mode, fsyncs and closes each, then rereads strictly. Service replay
+revalidates all evidence after that synchronization. Failed flush, close or
+inspection cannot be treated as success just because complete bytes are visible.
+No files are created, truncated, repaired or restored by synchronization.
+
+The existing evidence-installation path computes complete export and confirmation
+projections before replacing in-memory evidence. Installation failure retains the
+registered batch for exact retry. It never rebuilds Actual/timers, writes the
+application snapshot, creates backups or touches submissions/checkpoints/files.
+Pre-append rejection leaves files and projections unchanged; operational failures
+may leave partial or complete journal evidence without rollback. The API supports
+synchronous serialized use through one service owning the dataset; it provides no
+thread/multi-process compare-and-append guarantee. Production writer ownership
+must be enforced separately. This is bounded file synchronization, not directory
+sync, general recovery or universal power-loss durability.
+
+Export-linked registration checks frozen provenance without external file
+inspection or POL-R verification. Workflows relying on a report copy still need
+current verification. Existing export registration, materialization and file-status
+gates reject malformed confirmation evidence. Acknowledgement proposals/UI,
+automatic full-export selection, reconciliation calculations/presentation and
+production integration remain future outcomes. Isolated Linux fixtures establish
+neither a complete operator workflow nor Windows/NTFS or external POL-R behavior.
 
 ## Date-range timesheet service (staged)
 

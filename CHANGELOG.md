@@ -38,14 +38,17 @@ receipts or commits. No release or production activation is implied below.
   Evaluate destination-relative PENDING/READY/MISSING/CONFLICT/UNVERIFIABLE outcomes
   from freshly validated evidence and current file inspection, without writes,
   retained status or publication-history state.
-  Validate/replay immutable absolute POL-R confirmation batches into an in-memory
-  task/day projection, preserving Unknown/zero, physical order, prior identities,
-  stale acknowledgements and duplicate protection. No confirmation writer is active.
+  Prepare, validate, register and replay immutable absolute POL-R confirmation
+  batches into an in-memory task/day projection, preserving Unknown/zero, physical
+  order, reviewed prior identities, stale acknowledgements and duplicate protection.
+  Dedicated serialized-use registration revalidates the journal and synchronizes
+  existing journal files before same-identity recovery/reuse; it changes no Actual,
+  snapshot or file copies. Inherited export retry flushing is unchanged.
 
 These services are independently callable but not fully connected to the
 production application workflow. Legacy UI/export paths remain active during
 staging; new production date-only duration writers and release cutover are inactive.
-POL-R confirmation creation/UI and reconciliation, general file-status/recovery UI,
+POL-R confirmation UI and reconciliation, general file-status/recovery UI,
 automatic missing-file recovery, configurable week starts and weekly allocation
 management are not implemented.
 
@@ -61,5 +64,6 @@ management are not implemented.
   evidence, verified recoverable file copies, two-decimal-hour presentation and
   atomic absolute POL-R confirmation batches. Reconcile decision history and
   validation/development guidance. Export evidence and decimal rendering are staged
-  above, including verified materialization and confirmation validation/replay;
-  general recovery UI and confirmation writers remain unimplemented.
+  above, including verified materialization and dedicated confirmation
+  preparation/registration/replay; general recovery UI and confirmation UI remain
+  unimplemented.

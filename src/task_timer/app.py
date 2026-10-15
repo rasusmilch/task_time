@@ -44,7 +44,9 @@ from .export_snapshots import (
     validate_uuid as validate_export_uuid, work_dates,
 )
 from .mini_mode import MiniModeWindow
-from .polr_confirmations import CONFIRMATION_EVENT_TYPE, collect_polr_confirmations
+from .polr_confirmations import (
+    CONFIRMATION_EVENT_TYPE, collect_polr_confirmations, validate_polr_confirmation_batch,
+)
 from .models import AppState, DatedDurationRecord, IntervalRecord, NOTES_MAX_LENGTH, ProjectState, TagMeta, TaskState, TimeSubmission, event_dict
 from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
@@ -198,6 +200,103 @@ class TaskTimerService:
     def get_effective_polr_confirmations(self) -> dict[tuple[str, str], dict[str, Any]]:
         """Detached replay-derived absolute confirmations; absence means Unknown."""
         return deepcopy(self._polr_confirmations)
+
+    @staticmethod
+    def _confirmation_candidate_journal(journal, event):
+        # Storage returns audit-time-sorted events with physical read sequences.
+        # A new occurrence must follow all existing evidence even if backdated.
+        candidate = deepcopy(event)
+        candidate["_read_sequence"] = max(
+            (item["_read_sequence"] for item in journal), default=-1,
+        ) + 1
+        return [*journal, candidate]
+
+    def prepare_polr_confirmation_batch(self, cells, *, batch_id=None) -> dict[str, Any]:
+        """Freeze explicitly reviewed cells without writes or projection changes."""
+        event = event_dict(
+            event_id=str(uuid4()) if batch_id is None else batch_id,
+            timestamp_utc=to_utc_z(utc_now()), local_timezone=self.local_tz_name,
+            task_id="__app__", event_type=CONFIRMATION_EVENT_TYPE,
+            payload={"cells": deepcopy(cells)},
+        )
+        validate_polr_confirmation_batch(event)
+        journal = self.storage.iter_all_events(strict=True)
+        collect_polr_confirmations(journal)
+        collect_polr_confirmations(self._confirmation_candidate_journal(journal, event))
+        return event
+
+    def register_prepared_polr_confirmation_batch(self, prepared_event) -> str:
+        """Register frozen evidence in serialized single-service use; never refresh priors."""
+        event = deepcopy(prepared_event)
+        validate_polr_confirmation_batch(event)
+        key = event["event_id"]
+
+        def inspect(journal):
+            exports = collect_export_snapshots(journal)
+            collect_polr_confirmations(journal)
+            existing = [item for item in journal if item.get("event_id") == key]
+            if existing and any(not same_export_event(
+                {name: value for name, value in item.items() if name != "_read_sequence"}, event,
+            ) for item in existing):
+                raise ValueError("Confirmation identity already belongs to different journal content")
+            return exports, bool(existing)
+
+        journal = self.storage.iter_all_events(strict=True)
+        exports, exists = inspect(journal)
+        if not exists:
+            collect_polr_confirmations(self._confirmation_candidate_journal(journal, event))
+            try:
+                self.storage.append_event(event)
+            except Exception as append_error:
+                try:
+                    journal = self.storage.iter_all_events(strict=True)
+                    exports, exists = inspect(journal)
+                except Exception as inspection_error:
+                    append_error.add_note(
+                        "Confirmation registration is uncertain; journal inspection failed; "
+                        "retain the unchanged prepared event; no repair or retry append was performed"
+                    )
+                    raise append_error from inspection_error
+                if not exists:
+                    append_error.add_note(
+                        "Confirmation identity is absent from the healthy journal; "
+                        "retain the unchanged prepared event for retry"
+                    )
+                    raise
+                # Complete visible bytes after an exception do not establish flushing.
+            else:
+                try:
+                    journal = self.storage.iter_all_events(strict=True)
+                    exports, present = inspect(journal)
+                    if not present:
+                        raise ValueError("Confirmation append did not establish authoritative registration")
+                except Exception as inspection_error:
+                    inspection_error.add_note(
+                        "Confirmation registration could not be established after append; "
+                        "retain the unchanged prepared event for inspection or retry"
+                    )
+                    raise
+        if exists:
+            try:
+                journal = self.storage.synchronize_journal()
+                exports, present = inspect(journal)
+                if not present:
+                    raise ValueError("Confirmation identity absent after journal synchronization")
+            except Exception as synchronization_error:
+                synchronization_error.add_note(
+                    "Confirmation registration remains uncertain: synchronization/close/revalidation "
+                    "did not succeed; retain the unchanged prepared event; no additional append"
+                )
+                raise
+        try:
+            self._install_export_journal(journal, exports)
+        except Exception as installation_error:
+            installation_error.add_note(
+                "Confirmation evidence was registered but installation failed; "
+                "retry the unchanged prepared event without another append"
+            )
+            raise
+        return key
 
     def evaluate_timesheet_export_file_status(
         self, export_id: str, destination: Path | str | None = None,
@@ -2175,7 +2274,7 @@ class TaskTimerService:
         if event_type == EXPORT_EVENT_TYPE:
             raise ValueError("Use prepared export registration to preserve its event identity")
         if event_type == CONFIRMATION_EVENT_TYPE:
-            raise ValueError("Confirmation event creation is not implemented; generic append is prohibited")
+            raise ValueError("Use register_prepared_polr_confirmation_batch; generic append is prohibited")
         self._validate_project_event(task_id, event_type, payload)
         event = event_dict(
             timestamp_utc=to_utc_z(utc_now()),

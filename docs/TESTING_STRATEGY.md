@@ -73,7 +73,8 @@ their assertions before selecting a run.
 | Export registration | [test_export_snapshot_registration.py](../tests/test_export_snapshot_registration.py): frozen request/cells/text/digest, strict validation, stable identity/retry, journal health, ambiguous append and projection failures, immutable replay order, restart/rotation/rebuild/backup restore and no file/confirmation effects. This does not validate materialization or POL-R confirmations. |
 | Verified materialization | [test_export_materialization.py](../tests/test_export_materialization.py): authoritative journal gate, exact frozen UTF-8 bytes and SHA-256, existing-file reuse/conflicts, symlinks, staging/publication/verification/cleanup failures, concurrent replacement injection, retry, restored evidence and state/journal purity. No production UI or permanent file-status guarantee. |
 | File-status evaluation | [test_export_file_status.py](../tests/test_export_file_status.py): strict evidence gate even without a destination, precedence, five current outcomes, conclusive conflict versus inspection uncertainty, complete short files versus incomplete reads, disappearance/replacement, reevaluation/restart and write-prohibited purity. Service-only coverage, not recovery UI or platform qualification. |
-| Confirmation replay | [test_polr_confirmation_replay.py](../tests/test_polr_confirmation_replay.py): exact event/cell validation, manual/export-linked values, Unknown/zero, prior/stale truth conditions, atomic rejection, physical ordering, duplicates/collisions, startup failure, history/rotation/rebuild/restore and Actual/timer/export purity. Isolated evidence fixtures; no production confirmation writer. |
+| Confirmation replay | [test_polr_confirmation_replay.py](../tests/test_polr_confirmation_replay.py): exact event/cell validation, manual/export-linked values, Unknown/zero, prior/stale truth conditions, atomic rejection, physical ordering, duplicates/collisions, startup failure, history/rotation/rebuild/restore and Actual/timer/export purity. Isolated replay fixtures; writer coverage is separate below. |
+| Confirmation writer | [test_polr_confirmation_writer.py](../tests/test_polr_confirmation_writer.py): pure explicit-cell preparation, strict pre-append validation, superseded priors, exact identity recovery after newer batches, append/flush/sync/close/inspection/installation faults, rotation/restart/restore and Actual/export purity. Serialized one-service fixtures do not qualify multi-process writers or production workflows. |
 | Reporting/file publication | [test_timesheet_service.py](../tests/test_timesheet_service.py): real service orchestration, UTF-8 bytes, no-clobber publication, concurrent targets, injected staging/publication/cleanup failures and state/file purity. |
 | Existing storage and backups | [test_storage.py](../tests/test_storage.py), [test_backups.py](../tests/test_backups.py), plus project/dated/accounting/export fixtures: fresh/empty initialization, missing-component constructor rejection without mutation, healthy restart, rotation, snapshots, backup contents, retention and restore behavior. |
 | Legacy compatibility | [test_exporter.py](../tests/test_exporter.py), [test_timeline_corrections.py](../tests/test_timeline_corrections.py), and neighboring tags/subtask/template/selected-export tests protect current behavior during staging. Legacy submission/checkpoint tests are not proof of replacement POL-R semantics. |
@@ -85,8 +86,8 @@ invalid-operation assertions meaningful.
 
 Currently, mixed accounting is staged and Sunday-only, production date-only
 writers are inactive, and saving publishes a file without immutable export-event
-registration. Confirmation validation/replay is staged; configurable weeks,
-POL-R confirmation creation/UI and reconciliation, and
+registration. Confirmation preparation/registration/replay is staged; configurable
+weeks, POL-R confirmation UI and reconciliation, and
 replacement installation are not implemented or validated by existing foundation
 tests. Future acceptance obligations below are explicitly conditional on approved
 implementation; test names or prior receipts do not change that status.
@@ -137,8 +138,8 @@ its intended evidence only, never Actual records, timers or export checkpoints.
 
 The pure decimal renderer/converter, immutable export-snapshot registration and
 verified materialization and read-only file-status evaluation are implemented/staged,
-with coverage above. Confirmation validation/replay is also staged, while
-confirmation creation/UI, general file-status/recovery UI and production
+with coverage above. Confirmation preparation/registration/replay is also staged,
+while confirmation UI, general file-status/recovery UI and production
 integration remain unimplemented.
 Apply the selected technical contract to current export services and future integration:
 
@@ -180,10 +181,10 @@ Apply the selected technical contract to current export services and future inte
 
 Decimal conversion/displayed rollups, journal registration/replay and bounded
 materialization/retry and five-status service evaluation have focused coverage.
-General file-status/recovery UI, confirmation writer/UI and reconciliation assertions remain future
-expectations, not passing coverage or a mechanism selected by tests. Preserve
-exact renderer and legacy assertions.
-Each foundation requires independent review before subsequent confirmation writer work.
+General file-status/recovery UI, confirmation UI and reconciliation assertions
+remain future expectations, not passing coverage or a mechanism selected by tests.
+Preserve exact renderer and legacy assertions. Each foundation requires independent
+review before subsequent workflow integration.
 Linux fault injection is not power-loss, concurrent-process or Windows qualification.
 
 ## Immutable confirmation validation/replay evidence
@@ -210,8 +211,33 @@ snapshot rebuild and supported backup restoration, retaining immutable earlier
 evidence after rename, reassignment or task deletion. Assert detached readers,
 Unknown versus zero, unchanged Actual/timers/submissions/exports/file copies and
 absence of confirmation data in derived state snapshots. Generic service append
-must reject confirmation creation. These tests establish no writer, dialog,
-proposal/commit concurrency workflow or reconciliation presentation.
+must reject confirmation creation in favor of dedicated registration. Replay tests
+alone establish no writer, dialog, concurrency guarantee or reconciliation UI.
+
+The dedicated writer tests cover detached, write-free explicit-cell preparation;
+stable UUID/audit/timezone metadata; manual/export-linked absolute amounts and
+explicit zero without selection expansion. Check the authoritative journal, not
+cached state, on preparation and registration. Reject the entire new proposal for
+invalid cells or changed prior identity, including equal amounts. Unrelated-cell
+changes may leave a proposal valid. Test exact acknowledgement truth conditions
+and deliberate manual amounts without claiming export provenance.
+
+Inject before-write, silent no-op, partial JSONL, complete-write-then-error,
+transient/persistent fsync, synchronization/close, rotation-manifest,
+post-append inspection and installation failures. Exact identity retry after newer
+batches must neither append nor roll back the latest projection. Successful reuse
+requires successful fsync/close of all indexed journal segments, active segment
+and manifest followed by strict revalidation. Repeated failed synchronization
+cannot report success. Compare surviving bytes, event counts, unchanged prepared
+inputs and effective state, including no partial installation. Logical batch
+integrity is not filesystem rollback after operational failure.
+
+Exercise writer-created evidence through restart, rotation, rebuild and supported
+restore; assert unchanged Actual/timers/export evidence/files/submissions/checkpoints,
+no automatic backups and no confirmation state in derived snapshots. Source export
+IDs prove frozen provenance, not file readiness; later file-dependent workflows
+retain current verification obligations. These fixtures support serialized
+single-service use only, not a thread/multi-process transaction claim.
 
 ## Future POL-R reconciliation acceptance
 
@@ -297,9 +323,12 @@ new project/dated lifecycle and export-snapshot events before append and replay.
 These mechanisms do not establish universal transactional or power-loss guarantees.
 
 Export snapshots and confirmation batches have bounded replay/fault coverage
-above. A future confirmation writer still needs append/interruption and
-proposal/commit validation against the
-[selected technical contract](EXPORT_EVIDENCE_CONTRACT.md). Preserve one-event
+above, including dedicated confirmation append/interruption, proposal/commit and
+recovery synchronization coverage against the
+[selected technical contract](EXPORT_EVIDENCE_CONTRACT.md). The inherited export
+registration path can still reuse complete visible evidence after append errors
+without confirmation-style resynchronization; these tests do not qualify that
+export flush outcome. Preserve one-event
 confirmation batch integrity and authoritative journal precedence over derived
 snapshots. This strategy defines tests, not another event/schema/recovery owner.
 

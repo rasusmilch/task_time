@@ -55,6 +55,20 @@ class EventStorage:
         return json.loads(self.manifest_path.read_text(encoding="utf-8"),
                           object_pairs_hook=self._unique_json_fields if strict else None)
 
+    def synchronize_journal(self) -> list[dict[str, Any]]:
+        """Flush existing authoritative bytes for confirmation recovery, then reread.
+
+        Serialized dataset ownership is required. This neither repairs the journal
+        nor establishes directory-entry or universal power-loss durability.
+        """
+        self.iter_all_events(strict=True)
+        manifest = self.load_manifest(strict=True)
+        paths = [self.data_dir / segment["path"] for segment in manifest["archives"]]
+        for path in [*paths, self.active_path, self.manifest_path]:
+            with path.open("rb") as handle:
+                os.fsync(handle.fileno())
+        return self.iter_all_events(strict=True)
+
     def load_snapshot(self) -> dict[str, Any] | None:
         if not self.snapshot_path.exists():
             return None

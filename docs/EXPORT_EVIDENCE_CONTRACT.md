@@ -25,8 +25,8 @@ Verified materialization from committed evidence is also staged: exact-byte/dige
 checking, matching-file reuse and exclusive no-overwrite publication are available
 through a separate service operation. Standalone read-only destination-relative
 file-status evaluation is also implemented/staged. Strict immutable confirmation
-batch validation/replay and an in-memory effective projection are staged; no
-confirmation writer is active. Confirmation creation/UI, reconciliation,
+batch validation/replay, detached preparation and dedicated durable registration
+with an in-memory effective projection are staged. Confirmation UI, reconciliation,
 automatic missing-file recovery and general file-status/recovery UI are not implemented.
 Approval is not proof of Windows/NTFS
 compatibility or power-loss safety. See the
@@ -348,6 +348,68 @@ zero retains an entry. It lives only in memory, is rebuilt from archived/active
 journal evidence, and mutable reader results are detached. Do not put it in the
 derived application snapshot or another persisted store.
 
+### Staged confirmation preparation and registration
+
+`TaskTimerService.prepare_polr_confirmation_batch(cells, *, batch_id=None)`
+accepts a nonempty list of explicit six-field cell dictionaries, preserves their
+order and deep-copies them. It generates a canonical batch UUID if omitted,
+captures UTC audit seconds once and preserves the service timezone metadata.
+It strictly validates authoritative evidence and the candidate as the next
+physical occurrence, without writes, projection changes, accounting, rendering,
+selection expansion or automatic zero-cell selection. Reviewed prior identities
+and acknowledgements come from the caller; preparation never refreshes them.
+
+`register_prepared_polr_confirmation_batch(prepared_event)` deep-copies and
+validates the frozen event, then strictly rereads the journal. Check identity
+before prospective new-event validation: reuse exact valid committed evidence at
+its original occurrence, reject changed content/cross-type collisions, or validate
+all cells against the current pre-batch projection before appending one event.
+A new candidate follows all physical read sequences regardless of audit time.
+Even an equal-value intervening confirmation changes the required prior identity;
+reject the entire superseded proposal without mutation. Unrelated cells need not
+invalidate it. Preserve ID, timestamp, cell order, priors and acknowledgements on
+retry; never manufacture acknowledgement or retain just a valid subset.
+
+The supported boundary is synchronous serialized use through one service owning
+the dataset. Fresh reads are not a thread-safe or multi-process compare-and-append
+guarantee. Production integration must enforce writer ownership separately.
+
+After append require the exact valid event in a strict journal read; a silent
+no-op cannot succeed. After an append exception, healthy demonstrated absence
+preserves the original error with retry context. Exact valid visible evidence
+requires successful synchronization before reuse. Conflicting, partial, malformed
+or unreadable evidence fails closed, without another append or repair.
+
+Existing-identity reuse and recovery after append exceptions use the bounded
+`EventStorage.synchronize_journal()` operation: strictly validate manifest and
+journal, open each manifest-indexed segment, active segment and manifest without
+creation/truncation, fsync each and close successfully, then strictly reread.
+Revalidate complete export/confirmation projections after synchronization. A failed
+fsync, close or inspection cannot establish durable success merely because bytes
+are visible. No unrelated files are synchronized. No new state, repair authority,
+directory-sync or universal power-loss guarantee is implied.
+
+Compute complete replacement evidence projections before installation; return the
+batch UUID only after valid authoritative registration and successful installation.
+An installation failure retains committed evidence for unchanged-candidate retry.
+Reuse after newer batches installs the latest complete projection and cannot
+reapply the old batch over them. Do not rebuild Actual/timer state, save a derived
+snapshot, create automatic backups, change submissions/checkpoints or publish files.
+Pre-append rejection changes no files or projections; failure after writing may
+leave complete or partial evidence. Whole-batch integrity is logical event/replay
+integrity, not guaranteed filesystem rollback.
+
+A source export establishes frozen-cell provenance, not current file readiness or
+independent POL-R verification. This low-level writer does not inspect report
+copies. A later workflow relying on a report file must still verify that file
+currently under the [materialization boundary](#materialization-and-byte-verification).
+Historical replay and recovery remain file-independent.
+
+The inherited export-registration retry path is unchanged: it can accept visible
+complete matching evidence after an append exception without this additional
+synchronization. This task's confirmation recovery guarantee does not qualify or
+repair that separate export durability limitation.
+
 ## Displayed reconciliation
 
 For each task UUID and work date, render integer hundredths with two places:
@@ -376,11 +438,11 @@ are implemented/staged as separate outcomes. Preparation creates no records/file
 registration appends only the frozen export event and verifies the journal.
 Separate verified file materialization and read-only five-status evaluation are
 implemented/staged without new events, recalculation or persisted completion
-state. Confirmation validation, immutable batch replay and effective projection
-are also implemented/staged. Generic service append rejects confirmation events;
-no production confirmation writer exists. Independent review is required before
-writer implementation. Confirmation creation/UI, reconciliation,
-production integration, general file-status/recovery UI, automatic missing-file
+state. Confirmation validation, immutable batch replay, effective projection
+and dedicated confirmation preparation/registration are also implemented/staged.
+Generic service append rejects confirmation events in favor of the dedicated API.
+Independent review is required before further integration. Confirmation UI,
+reconciliation, production integration, general file-status/recovery UI, automatic missing-file
 recovery, general journal repair, migration and installation cutover remain
 unimplemented. Architectural documentation does not activate them.
 

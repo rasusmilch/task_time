@@ -19,8 +19,8 @@ Historical rationale, provenance and supersessions belong in
 [DECISIONS.md](DECISIONS.md), not in this current-state roadmap.
 The selected technical export/confirmation architecture is owned by
 [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); bounded export services
-are staged, including confirmation validation/replay; confirmation creation,
-reconciliation and production integration remain pending.
+are staged, including confirmation preparation/registration/replay; confirmation
+UI, reconciliation and production integration remain pending.
 
 ## Status and gate rules
 
@@ -50,14 +50,14 @@ existence; their detailed contracts remain in Design Notes rather than here.
 | Mixed accounting | Genuine intervals and dated amounts; local-day/DST splitting; independent task totals; derived project/Unassigned/application totals; historical actuals independent of counter resets. Week start is currently Sunday only. | [accounting.py](../src/task_timer/accounting.py), [mixed service](../DESIGN_NOTES.md#mixed-date-window-accounting-service-only) |
 | Timesheet presentation | Independent daily/weekly task rows, informational project subtotals, authoritative scope, duplicate-name references, multiline borders and reversible Unicode escaping protections. Exact and separate decimal renderers are staged; decimal task/day ROUND_HALF_UP cells conserve integer-hundredth rollups. | [exporter.py](../src/task_timer/exporter.py), [exact renderer](../DESIGN_NOTES.md#independent-task-timesheet-renderer-staged), [decimal renderer](../DESIGN_NOTES.md#decimal-hour-timesheet-renderer-staged) |
 | Service reporting | Date-range generation; exact UTF-8 output; same-directory complete staging and atomic no-overwrite hard-link publication, destination protection and staging-only cleanup under documented assumptions. Saves files without immutable export registration. | [service workflow](../DESIGN_NOTES.md#date-range-timesheet-service-staged) |
-| Export evidence | Frozen decimal snapshot preparation, strict journal-backed registration/replay, detached readers, verified materialization/retry and read-only destination-relative status evaluation. Matching files are reused; conflicting files are protected. No confirmation creation or status/recovery UI. | [snapshot registration](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged), [materialization](../DESIGN_NOTES.md#verified-export-materialization-staged), [file status](../DESIGN_NOTES.md#export-file-status-evaluation-staged) |
+| Export evidence | Frozen decimal snapshot preparation, strict journal-backed registration/replay, detached readers, verified materialization/retry and read-only destination-relative status evaluation. Matching files are reused; conflicting files are protected. Export APIs do not confirm POL-R; no status/recovery UI. | [snapshot registration](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged), [materialization](../DESIGN_NOTES.md#verified-export-materialization-staged), [file status](../DESIGN_NOTES.md#export-file-status-evaluation-staged) |
 | Governance baseline | Root instructions, canonical approved POL-R product contract, cumulative changelog and current/target authority separation. | [AGENTS.md](../AGENTS.md), [requirements](TIMESHEET_REQUIREMENTS.md), [CHANGELOG.md](../CHANGELOG.md) |
-| Confirmation evidence | Strict immutable batch validation/replay, prior/stale/duplicate rules and an in-memory effective task/day projection. No confirmation writer/UI or reconciliation calculation. | [confirmation replay](../DESIGN_NOTES.md#immutable-pol-r-confirmation-replay-staged) |
+| Confirmation evidence | Dedicated immutable batch preparation/registration/replay, prior/stale/duplicate rules, recovery synchronization and an in-memory effective task/day projection. No confirmation UI or reconciliation calculation. | [confirmation replay](../DESIGN_NOTES.md#immutable-pol-r-confirmation-replay-staged) |
 
 These foundations do **not** constitute a completed production replacement.
 New production date-only writers, replacement UI, production export integration,
 general file-status/recovery UI,
-POL-R confirmation creation/UI and reconciliation, configurable weeks, allocations and release
+POL-R confirmation UI and reconciliation, configurable weeks, allocations and release
 cutover remain pending. Existing production legacy behavior is not permanent
 target policy. Platform/integrated validation remains **VALIDATION PENDING**.
 
@@ -85,9 +85,9 @@ reviewable documentation outcomes separate:
   [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md) records snapshot-first
   journal registration, decimal-hour cells, verified recoverable file copies and
   confirmation batch integrity. Pure decimal rendering is implemented/staged;
-  export-snapshot registration and confirmation validation/replay are also staged;
-  confirmation creation and file/evidence
-  status/recovery UI remain approved but unimplemented. Verified file
+  export-snapshot registration and confirmation preparation/registration/replay are
+  also staged; confirmation and file/evidence status/recovery UI remain approved
+  but unimplemented. Verified file
   materialization is staged. Codex must
   follow these contracts rather than choose alternative mechanisms.
 
@@ -100,16 +100,17 @@ affected authorities agree; no necessary Open issue has been silently resolved.
 **Status:** **IMPLEMENTED / STAGED** for decimal rendering and immutable export
 snapshot preparation/registration/replay, verified file materialization and
 standalone read-only file-status evaluation, plus immutable confirmation-batch
-validation/replay and effective projection.
-Confirmation creation/UI, reconciliation and general status/recovery UI remain
+preparation/registration/replay and effective projection.
+Confirmation UI, reconciliation and general status/recovery UI remain
 **APPROVED / NOT IMPLEMENTED**. Phase 2
 is not Complete; independently reviewed focused outcomes remain required.
 
 **Dependencies:** follow the [approved contract](EXPORT_EVIDENCE_CONTRACT.md).
 Pure decimal rendering, snapshot registration and verified materialization are
 implemented/staged as separate semantic outcomes. Confirmation validation/replay
-is staged as a separate foundation; independent GO review is required before
-confirmation writer work. This does not complete Phase 2,
+and dedicated preparation/registration are staged foundations; independent GO
+review is required before further confirmation workflow integration. This does not
+complete Phase 2,
 reorder the six development phases or activate the production UI.
 
 **Outcome:** implement the approved distinction between Actual, Exported and
