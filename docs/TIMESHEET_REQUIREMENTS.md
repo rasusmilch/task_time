@@ -28,8 +28,9 @@ immutable export-snapshot registration/verified materialization and read-only
 destination-relative status evaluation are implemented/staged. Confirmation-batch
 validation/replay, dedicated preparation/registration and effective projection are
 staged service capabilities; production export integration, general status/recovery
-UI, automatic missing-file recovery, confirmation UI and reconciliation are
-not implemented. Unrelated Open matters
+UI, automatic missing-file recovery, confirmation/reconciliation UI and weekly
+reconciliation summaries are not implemented. Read-only daily reconciliation
+calculation is staged. Unrelated Open matters
 remain reserved for user/ChatGPT adjudication.
 
 ## SELECTED — Replacement, installation and data boundary
@@ -144,6 +145,13 @@ Enter uses current displayed Actual. Underlying Actual retains exact seconds.
 The mandatory HH:MM examples below preserve work semantics; their selected
 decimal representations are specified in the
 [reconciliation contract](EXPORT_EVIDENCE_CONTRACT.md#displayed-reconciliation).
+
+**CURRENT IMPLEMENTATION:** a staged read-only service returns detached raw Actual
+and task/day hundredths for Actual/Confirmed/Delta/Enter, with `None` for
+Unknown/Unverified and batch identity for known confirmation. It validates current
+journal evidence and uses existing current-state accounting without writes or
+cache installation. Reconciliation presentation, weekly summaries and production
+integration remain unimplemented.
 
 ## SELECTED — Mandatory 3:00 → 5:00 contractual behavior test
 
@@ -332,7 +340,7 @@ Source describes what executes, not an alternative product contract. See
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
 | Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; current duration UI still uses synthetic intervals. |
 | Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay, verified materialization and read-only destination-relative five-status evaluation. Exact copies, matching-file reuse and no-overwrite publication are staged; materialization/evaluation create no new events or persistent file-status flags. |
-| POL-R target workflow | Immutable confirmation-batch preparation/registration/replay and latest absolute task/day projection are staged. No production confirmation UI/integration or general reconciliation calculation/presentation exists. Legacy markers are not this contract; export registration is not confirmation or successful file export. |
+| POL-R target workflow | Immutable confirmation-batch preparation/registration/replay and latest absolute task/day projection are staged. Read-only daily Actual/Confirmed/Delta/Enter calculation is staged; confirmation/reconciliation UI, weekly summaries and production integration remain unimplemented. Legacy markers are not this contract; export registration is not confirmation or successful file export. |
 | Week configuration and allocations | No selectable week-start setting or selected weekly-allocation management. |
 | Data/installation | Launcher still uses the existing data path; fresh-directory release cutover is inactive. No historical migration implemented. |
 
@@ -363,7 +371,7 @@ not independent external verification. Do not turn these assumptions into policy
 ## DEFERRED — Approved implementation work
 
 Future implementation includes configurable week starts, production export
-integration and general file-status/recovery UI, explicit POL-R confirmation UI and reconciliation,
+integration and general file-status/recovery UI, explicit POL-R confirmation/reconciliation UI and weekly summaries,
 the low-friction UI, weekly allocation tracking and replacement installation/cutover. Their Selected
 behavior remains binding. Export/confirmation development follows the approved
 technical contract through separately reviewed outcomes; unrelated Open allocation

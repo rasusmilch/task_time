@@ -20,7 +20,8 @@ Historical rationale, provenance and supersessions belong in
 The selected technical export/confirmation architecture is owned by
 [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); bounded export services
 are staged, including confirmation preparation/registration/replay; confirmation
-UI, reconciliation and production integration remain pending.
+UI, reconciliation presentation/weekly summaries and production integration remain
+pending; read-only daily reconciliation calculation is staged.
 
 ## Status and gate rules
 
@@ -52,12 +53,12 @@ existence; their detailed contracts remain in Design Notes rather than here.
 | Service reporting | Date-range generation; exact UTF-8 output; same-directory complete staging and atomic no-overwrite hard-link publication, destination protection and staging-only cleanup under documented assumptions. Saves files without immutable export registration. | [service workflow](../DESIGN_NOTES.md#date-range-timesheet-service-staged) |
 | Export evidence | Frozen decimal snapshot preparation, strict journal-backed registration/replay, detached readers, verified materialization/retry and read-only destination-relative status evaluation. Matching files are reused; conflicting files are protected. Export APIs do not confirm POL-R; no status/recovery UI. | [snapshot registration](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged), [materialization](../DESIGN_NOTES.md#verified-export-materialization-staged), [file status](../DESIGN_NOTES.md#export-file-status-evaluation-staged) |
 | Governance baseline | Root instructions, canonical approved POL-R product contract, cumulative changelog and current/target authority separation. | [AGENTS.md](../AGENTS.md), [requirements](TIMESHEET_REQUIREMENTS.md), [CHANGELOG.md](../CHANGELOG.md) |
-| Confirmation evidence | Dedicated immutable batch preparation/registration/replay, prior/stale/duplicate rules, recovery synchronization and an in-memory effective task/day projection. No confirmation UI or reconciliation calculation. | [confirmation replay](../DESIGN_NOTES.md#immutable-pol-r-confirmation-replay-staged) |
+| Confirmation evidence | Dedicated immutable batch preparation/registration/replay, prior/stale/duplicate rules, recovery synchronization and an in-memory effective task/day projection. Read-only daily reconciliation is staged; no confirmation/reconciliation UI or weekly summaries. | [confirmation replay](../DESIGN_NOTES.md#immutable-pol-r-confirmation-replay-staged) |
 
 These foundations do **not** constitute a completed production replacement.
 New production date-only writers, replacement UI, production export integration,
 general file-status/recovery UI,
-POL-R confirmation UI and reconciliation, configurable weeks, allocations and release
+POL-R confirmation/reconciliation UI and weekly summaries, configurable weeks, allocations and release
 cutover remain pending. Existing production legacy behavior is not permanent
 target policy. Platform/integrated validation remains **VALIDATION PENDING**.
 
@@ -100,18 +101,19 @@ affected authorities agree; no necessary Open issue has been silently resolved.
 **Status:** **IMPLEMENTED / STAGED** for decimal rendering and immutable export
 snapshot preparation/registration/replay, verified file materialization and
 standalone read-only file-status evaluation, plus immutable confirmation-batch
-preparation/registration/replay and effective projection.
-Confirmation UI, reconciliation and general status/recovery UI remain
+preparation/registration/replay, effective projection and read-only daily
+Actual/Confirmed/Delta/Enter calculation. Confirmation/reconciliation presentation,
+weekly summaries and general status/recovery UI remain
 **APPROVED / NOT IMPLEMENTED**. Phase 2
 is not Complete; independently reviewed focused outcomes remain required.
 
 **Dependencies:** follow the [approved contract](EXPORT_EVIDENCE_CONTRACT.md).
 Pure decimal rendering, snapshot registration and verified materialization are
 implemented/staged as separate semantic outcomes. Confirmation validation/replay
-and dedicated preparation/registration are staged foundations; independent GO
-review is required before further confirmation workflow integration. This does not
-complete Phase 2,
-reorder the six development phases or activate the production UI.
+and dedicated preparation/registration, plus daily reconciliation calculation,
+are staged foundations; independent GO review is required before further workflow
+integration. This does not complete Phase 2, reorder the six development phases or
+activate the production UI.
 
 **Outcome:** implement the approved distinction between Actual, Exported and
 Confirmed POL-R. The [product contract](TIMESHEET_REQUIREMENTS.md) remains the

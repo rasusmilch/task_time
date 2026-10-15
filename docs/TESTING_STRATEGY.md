@@ -75,6 +75,7 @@ their assertions before selecting a run.
 | File-status evaluation | [test_export_file_status.py](../tests/test_export_file_status.py): strict evidence gate even without a destination, precedence, five current outcomes, conclusive conflict versus inspection uncertainty, complete short files versus incomplete reads, disappearance/replacement, reevaluation/restart and write-prohibited purity. Service-only coverage, not recovery UI or platform qualification. |
 | Confirmation replay | [test_polr_confirmation_replay.py](../tests/test_polr_confirmation_replay.py): exact event/cell validation, manual/export-linked values, Unknown/zero, prior/stale truth conditions, atomic rejection, physical ordering, duplicates/collisions, startup failure, history/rotation/rebuild/restore and Actual/timer/export purity. Isolated replay fixtures; writer coverage is separate below. |
 | Confirmation writer | [test_polr_confirmation_writer.py](../tests/test_polr_confirmation_writer.py): pure explicit-cell preparation, strict pre-append validation, superseded priors, exact identity recovery after newer batches, append/flush/sync/close/inspection/installation faults, rotation/restart/restore and Actual/export purity. Serialized one-service fixtures do not qualify multi-process writers or production workflows. |
+| Daily reconciliation | [test_polr_reconciliation.py](../tests/test_polr_reconciliation.py): Unknown/zero, mandatory frozen-export and correction examples, precise cell rounding, scope/identity, sparse zero-work dates, physical-order confirmation freshness, one strict read/one Actual call, detached results, evidence/accounting rejection and write-prohibited purity. Daily service calculation only; no weekly balance, UI or production workflow qualification. |
 | Reporting/file publication | [test_timesheet_service.py](../tests/test_timesheet_service.py): real service orchestration, UTF-8 bytes, no-clobber publication, concurrent targets, injected staging/publication/cleanup failures and state/file purity. |
 | Existing storage and backups | [test_storage.py](../tests/test_storage.py), [test_backups.py](../tests/test_backups.py), plus project/dated/accounting/export fixtures: fresh/empty initialization, missing-component constructor rejection without mutation, healthy restart, rotation, snapshots, backup contents, retention and restore behavior. |
 | Legacy compatibility | [test_exporter.py](../tests/test_exporter.py), [test_timeline_corrections.py](../tests/test_timeline_corrections.py), and neighboring tags/subtask/template/selected-export tests protect current behavior during staging. Legacy submission/checkpoint tests are not proof of replacement POL-R semantics. |
@@ -86,8 +87,9 @@ invalid-operation assertions meaningful.
 
 Currently, mixed accounting is staged and Sunday-only, production date-only
 writers are inactive, and saving publishes a file without immutable export-event
-registration. Confirmation preparation/registration/replay is staged; configurable
-weeks, POL-R confirmation UI and reconciliation, and
+registration. Confirmation preparation/registration/replay and daily reconciliation
+calculation are staged; configurable weeks, POL-R confirmation/reconciliation UI,
+weekly reconciliation summaries and
 replacement installation are not implemented or validated by existing foundation
 tests. Future acceptance obligations below are explicitly conditional on approved
 implementation; test names or prior receipts do not change that status.
@@ -181,8 +183,8 @@ Apply the selected technical contract to current export services and future inte
 
 Decimal conversion/displayed rollups, journal registration/replay and bounded
 materialization/retry and five-status service evaluation have focused coverage.
-General file-status/recovery UI, confirmation UI and reconciliation assertions
-remain future expectations, not passing coverage or a mechanism selected by tests.
+General file-status/recovery UI, confirmation/reconciliation UI and weekly-summary
+assertions remain future expectations, not passing coverage or a mechanism selected by tests.
 Preserve exact renderer and legacy assertions. Each foundation requires independent
 review before subsequent workflow integration.
 Linux fault injection is not power-loss, concurrent-process or Windows qualification.
@@ -245,11 +247,24 @@ IDs prove frozen provenance, not file readiness; later file-dependent workflows
 retain current verification obligations. These fixtures support serialized
 single-service use only, not a thread/multi-process transaction claim.
 
-## Future POL-R reconciliation acceptance
+## POL-R reconciliation evidence and future workflow acceptance
 
-These obligations come from the product contract, **not an implemented workflow**.
-Use the approved technical contract to validate Actual, immutable Exported and
-latest Confirmed POL-R independently when implemented:
+Read-only daily calculation is implemented/staged in
+[test_polr_reconciliation.py](../tests/test_polr_reconciliation.py). Validate one
+strict journal read and one unchanged accounting request per call, current
+confirmation evidence rather than cache, and `None` versus confirmed zero.
+Keep every included task/date, including sparse zero-Actual cells with negative
+Delta, without widening selection to other confirmations or counting project rows.
+Check HALF_UP boundaries and unchanged fractional seconds, selected/deleted and
+duplicate identities, fixed running cutoffs, physical confirmation order regardless
+of audit time, detached earlier results and errors for invalid evidence/requests.
+Capture all dataset bytes and service state; prohibit append, sync, backup,
+snapshot writes, rendering and state/cache installation during each calculation.
+
+The obligations below come from the product contract. Daily numeric semantics
+have staged service coverage; full operator workflows, weekly reconciliation and
+presentation remain future acceptance, **not an implemented production workflow**.
+Validate Actual, immutable Exported and latest Confirmed POL-R independently:
 
 - Preview has no persistence effect; saving does not confirm external entry.
   Export or confirmation amounts never increase Actual.

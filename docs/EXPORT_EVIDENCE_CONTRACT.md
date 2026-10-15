@@ -26,8 +26,10 @@ checking, matching-file reuse and exclusive no-overwrite publication are availab
 through a separate service operation. Standalone read-only destination-relative
 file-status evaluation is also implemented/staged. Strict immutable confirmation
 batch validation/replay, detached preparation and dedicated durable registration
-with an in-memory effective projection are staged. Confirmation UI, reconciliation,
-automatic missing-file recovery and general file-status/recovery UI are not implemented.
+with an in-memory effective projection are staged. Read-only daily POL-R
+reconciliation calculation is also staged. Confirmation/reconciliation UI, weekly
+reconciliation summaries, automatic missing-file recovery and general
+file-status/recovery UI are not implemented.
 Approval is not proof of Windows/NTFS
 compatibility or power-loss safety. See the
 [current registration mechanism](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged)
@@ -433,6 +435,46 @@ Delta is 0.00. Negative correction: Actual 2.50; Confirmed 3.00; Delta -0.50;
 Enter 2.50. These represent the already-approved 3:00 → 5:00 and 2:30 correction
 cases without changing their underlying Actual-time semantics.
 
+### Staged daily calculation
+
+`TaskTimerService.calculate_polr_reconciliation()` accepts exactly the arguments
+and defaults of `calculate_date_window()`: inclusive start/end dates, one required
+keyword-only `cutoff_utc`, and the existing task/project/Unassigned/deleted selection.
+Read the archived/active journal strictly once and use `collect_polr_confirmations()`
+for validated latest evidence; cached confirmations cannot authorize results.
+Invalid or unreadable evidence fails closed even for an empty selection. Calculate
+Actual once through the existing service operation, forwarding the request unchanged.
+
+Return a detached dictionary with exactly `actual` and `cells`. `actual` preserves
+the calculated date-window report unchanged, including full-precision seconds,
+labels, current membership and raw aggregates. `cells` is keyed by
+`(task UUID, canonical ISO work-date string)` and contains exactly one cell per
+included task per date in the inclusive report window. Absent sparse Actual daily
+buckets mean zero; do not expand scope to other confirmed tasks or dates.
+
+Each cell contains exactly `actual_hundredths`, `confirmed_hundredths`,
+`delta_hundredths`, `enter_hundredths` and `batch_event_id`. Convert full-precision
+task/day seconds with the existing HALF_UP converter once. Confirmed and batch ID
+come from latest valid evidence or are both `None` when Unknown. Delta is Actual
+hundredths minus Confirmed when known, otherwise `None` (Unverified). Enter always
+equals Actual hundredths, never Delta. Explicit confirmed zero retains integer
+zero and its batch identity. A positive confirmation on a selected zero-work date
+therefore yields negative Delta and zero Enter. Nonzero work that rounds to zero
+remains unchanged in `actual`. Project metadata is informational, not extra cells.
+
+Use current service Actual state under synchronous serialized dataset ownership;
+this is neither foreign-writer synchronization nor an atomic multi-process snapshot.
+The cutoff caps timed work under existing accounting; it is not historical as-of
+replay and does not filter confirmations by audit timestamp. Latest confirmation
+still follows physical journal order. Reevaluate on every call without installing
+projections, refreshing caches, syncing files, writing events/snapshots, backing up,
+rendering or materializing files, consulting another clock, or changing timers,
+Actual, submissions/checkpoints or settings. Earlier results remain detached.
+
+Only daily numeric cells are implemented: no Confirmed/Delta aggregates,
+partial-known balances, weekly reconciliation, display formatting or production
+integration. Future displayed rollups must follow the selected cell-summing rules.
+
 ## Implementation boundaries and remaining decisions
 
 Implement this contract through separately reviewed outcomes after independent
@@ -444,9 +486,10 @@ implemented/staged without new events, recalculation or persisted completion
 state. Confirmation validation, immutable batch replay, effective projection
 and dedicated confirmation preparation/registration are also implemented/staged.
 Generic service append rejects confirmation events in favor of the dedicated API.
-Independent review is required before further integration. Confirmation UI,
-reconciliation, production integration, general file-status/recovery UI, automatic missing-file
-recovery, general journal repair, migration and installation cutover remain
+Read-only daily reconciliation calculation is also staged. Independent review is
+required before further integration. Confirmation/reconciliation presentation,
+weekly reconciliation summaries, production integration, general file-status/recovery
+UI, automatic missing-file recovery, general journal repair, migration and installation cutover remain
 unimplemented. Architectural documentation does not activate them.
 
 Do not reuse legacy submission markers/checkpoints as this POL-R model. Add no

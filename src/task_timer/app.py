@@ -47,6 +47,7 @@ from .mini_mode import MiniModeWindow
 from .polr_confirmations import (
     CONFIRMATION_EVENT_TYPE, collect_polr_confirmations, validate_polr_confirmation_batch,
 )
+from .polr_reconciliation import build_polr_reconciliation
 from .models import AppState, DatedDurationRecord, IntervalRecord, NOTES_MAX_LENGTH, ProjectState, TagMeta, TaskState, TimeSubmission, event_dict
 from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
@@ -472,6 +473,26 @@ class TaskTimerService:
             all_tasks=all_tasks, task_ids=task_ids, project_ids=project_ids,
             include_unassigned=include_unassigned, include_deleted=include_deleted,
         )
+
+    def calculate_polr_reconciliation(
+        self, start_date: date, end_date: date, *, cutoff_utc: datetime,
+        all_tasks: bool = False, task_ids: tuple[str, ...] = (),
+        project_ids: tuple[str, ...] = (), include_unassigned: bool = False,
+        include_deleted: bool = False,
+    ) -> dict[str, Any]:
+        """Read current task/day Actual and journal confirmations without installing state.
+
+        Serialized dataset ownership is required; cutoff caps timed Actual only,
+        not confirmation evidence or a historical as-of replay.
+        """
+        journal = self.storage.iter_all_events(strict=True)
+        confirmations = collect_polr_confirmations(journal)
+        report = self.calculate_date_window(
+            start_date, end_date, cutoff_utc=cutoff_utc, all_tasks=all_tasks,
+            task_ids=task_ids, project_ids=project_ids,
+            include_unassigned=include_unassigned, include_deleted=include_deleted,
+        )
+        return build_polr_reconciliation(report, confirmations)
 
     def generate_date_range_timesheet(
         self, start_date: date, end_date: date, *, cutoff_utc: datetime,

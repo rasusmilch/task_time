@@ -46,11 +46,15 @@ receipts or commits. No release or production activation is implied below.
   portable flushing before same-identity recovery/reuse, without content writes;
   it changes no Actual, snapshot or file copies. Inherited export retry flushing
   is unchanged; simulated access checks do not establish Windows qualification.
+  Derive read-only daily POL-R reconciliation from current full-precision Actual
+  and strictly replayed confirmations: cell-rounded Actual, known/Unknown Confirmed,
+  signed Delta and absolute replacement Enter, with detached results and no writes
+  or cache installation. Preserve explicit zero and selected zero-work dates.
 
 These services are independently callable but not fully connected to the
 production application workflow. Legacy UI/export paths remain active during
 staging; new production date-only duration writers and release cutover are inactive.
-POL-R confirmation UI and reconciliation, general file-status/recovery UI,
+POL-R confirmation/reconciliation UI and weekly summaries, general file-status/recovery UI,
 automatic missing-file recovery, configurable week starts and weekly allocation
 management are not implemented.
 

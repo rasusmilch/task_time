@@ -11,8 +11,8 @@ Selected functionality is not automatically implemented.
 | Status | What it means here |
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status and confirmation-batch preparation/registration/replay are staged. |
-| Production still pending | Production export integration, file-status/recovery UI, replacement UI, new date-only writers, POL-R confirmation UI and reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
+| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay and daily POL-R reconciliation calculation are staged. |
+| Production still pending | Production export integration, file-status/recovery UI, replacement UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
 
 Current production still uses legacy parent/subtask interfaces, synthetic manual
 duration intervals, timestamp checkpoints and legacy submission markers. This
@@ -146,7 +146,15 @@ cells without writes; `register_prepared_polr_confirmation_batch(prepared_event)
 validates current priors and durably registers the immutable batch. Exact retry
 synchronizes journal files before reuse without reapplying old amounts. These
 service APIs require serialized dataset ownership and never increase Actual.
-Confirmation dialogs, reconciliation and production integration remain absent. See [confirmation replay](DESIGN_NOTES.md#immutable-pol-r-confirmation-replay-staged).
+Confirmation dialogs and production integration remain absent. See [confirmation replay](DESIGN_NOTES.md#immutable-pol-r-confirmation-replay-staged).
+
+`calculate_polr_reconciliation()` takes the same dates, fixed cutoff and selection
+arguments as `calculate_date_window()`. It returns detached raw `actual` and daily
+`cells` containing Actual/Confirmed/Delta/Enter hundredths and batch identity.
+Unknown Confirmed/Delta are `None`; confirmed zero stays distinct. Enter is the
+absolute Actual replacement amount. Each call strictly validates journal evidence
+without writes or cache refresh. Reconciliation UI, weekly summaries and production
+integration remain pending. See [daily calculation](DESIGN_NOTES.md#daily-pol-r-reconciliation-calculation-staged).
 
 ## Run from source (repo root)
 

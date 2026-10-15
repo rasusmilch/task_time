@@ -9,7 +9,8 @@ The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the select
 snapshot-first, decimal-hour and confirmation architecture. Pure decimal rendering,
 export-snapshot registration/verified materialization and read-only file-status
 evaluation are staged. Confirmation validation/replay and dedicated batch
-preparation/registration are staged; confirmation UI, reconciliation and general
+preparation/registration and read-only daily reconciliation calculation are staged;
+confirmation/reconciliation UI, weekly reconciliation summaries and general
 file-status/recovery UI are unimplemented.
 The source descriptions below remain current implementation observations.
 
@@ -471,8 +472,8 @@ Preparation writes nothing. Registration changes only the journal and its normal
 rotation metadata plus the in-memory evidence index/event list. Neither changes
 timers, Actual, submissions, checkpoints, selection or legacy save behavior.
 Registration publishes no external report or READY classification. The separate
-materialization operation below verifies frozen copies; POL-R confirmation UI,
-reconciliation and production integration remain future outcomes requiring
+materialization operation below verifies frozen copies; POL-R confirmation and
+reconciliation UI and production integration remain future outcomes requiring
 independent review. Linux fault injection covers append,
 inspection and projection failures; it does not establish concurrent multi-process
 writers, arbitrary journal repair, universal crash atomicity, power-loss durability
@@ -636,9 +637,47 @@ Export-linked registration checks frozen provenance without external file
 inspection or POL-R verification. Workflows relying on a report copy still need
 current verification. Existing export registration, materialization and file-status
 gates reject malformed confirmation evidence. Acknowledgement proposals/UI,
-automatic full-export selection, reconciliation calculations/presentation and
+automatic full-export selection, reconciliation presentation/weekly summaries and
 production integration remain future outcomes. Isolated Linux fixtures establish
 neither a complete operator workflow nor Windows/NTFS or external POL-R behavior.
+
+## Daily POL-R reconciliation calculation (staged)
+
+`TaskTimerService.calculate_polr_reconciliation(start_date, end_date, *, cutoff_utc,
+all_tasks=False, task_ids=(), project_ids=(), include_unassigned=False,
+include_deleted=False)` strictly reads archived/active evidence once and derives
+latest confirmations with `collect_polr_confirmations()`, without using or
+refreshing `_polr_confirmations`. Invalid evidence raises even for an empty scope.
+It then calls `calculate_date_window()` exactly once with the unchanged request.
+
+[polr_reconciliation.py](src/task_timer/polr_reconciliation.py) provides the pure
+`build_polr_reconciliation(report, confirmations)` projection. Its detached result
+has exactly `actual` (the unchanged full-precision calculated report) and `cells`,
+keyed by `(task_id, ISO work_date)`. Every included task gets a cell for every
+inclusive report date, with absent sparse daily seconds treated as zero.
+Each cell has `actual_hundredths`, `confirmed_hundredths`, `delta_hundredths`,
+`enter_hundredths` and `batch_event_id`. The shared HALF_UP converter rounds each
+task/day once. Unknown Confirmed/Delta/batch ID are `None`; confirmed zero retains
+integer zero and its identity. Signed Delta subtracts confirmed hundredths from
+Actual hundredths; Enter is complete Actual hundredths. Removing all work retains
+a selected confirmed date with negative Delta and zero Enter. Raw seconds,
+including positive amounts rounding to zero, remain unchanged in `actual`.
+
+Selection, current labels/membership, deleted eligibility, accounting errors,
+cutoff and Sunday-week metadata remain the existing accounting contract. Projects
+are informational Actual metadata, never additional confirmation cells. The
+service uses current Actual state under serialized dataset ownership; the cutoff
+caps timed work, not confirmations or historical as-of state. Journal physical
+order governs confirmations regardless of audit time. This does not synchronize
+foreign Actual writers or establish an atomic multi-process snapshot.
+
+Each call is read-only: no event append, synchronization, snapshot/backup write,
+projection installation, cache refresh, implicit clock, rendering, file
+materialization or timer/submission/checkpoint changes. Returned results do not
+change after later work or confirmations. No Confirmed/Delta aggregate balances,
+weekly reconciliation, formatting, presentation/UI or production integration is
+implemented. The [technical contract](docs/EXPORT_EVIDENCE_CONTRACT.md#staged-daily-calculation)
+owns the transient response and freshness boundary.
 
 ## Date-range timesheet service (staged)
 
@@ -709,7 +748,7 @@ execution is unavailable in this environment and is not claimed as validated.
 Generating is read-only accounting; current saving is file output only and does
 not persist immutable export-snapshot evidence. The
 [selected saved-export/confirmation requirement](docs/TIMESHEET_REQUIREMENTS.md)
-requires integration with immutable evidence and future POL-R reconciliation. The
+requires integration with immutable evidence and future POL-R reconciliation UI. The
 [approved technical contract](docs/EXPORT_EVIDENCE_CONTRACT.md) now selects
 snapshot-first registration, decimal output, verified materialization, pending
 recovery and confirmation batches; none is used by these file-only generation/save APIs. The
