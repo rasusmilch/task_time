@@ -44,6 +44,7 @@ from .export_snapshots import (
     validate_uuid as validate_export_uuid, work_dates,
 )
 from .mini_mode import MiniModeWindow
+from .polr_confirmations import CONFIRMATION_EVENT_TYPE, collect_polr_confirmations
 from .models import AppState, DatedDurationRecord, IntervalRecord, NOTES_MAX_LENGTH, ProjectState, TagMeta, TaskState, TimeSubmission, event_dict
 from .reminders import should_show_month_end_banner
 from .settings import BackupSettings, UISettings, UISettingsStore
@@ -145,6 +146,7 @@ class TaskTimerService:
         validate_export_snapshot(event)
         journal = self.storage.iter_all_events(strict=True)
         exports = collect_export_snapshots(journal)
+        collect_polr_confirmations(journal)
         key = event["event_id"]
         existing = [item for item in journal if item.get("event_id") == key]
         if existing:
@@ -177,8 +179,10 @@ class TaskTimerService:
 
     def _install_export_journal(self, journal, exports) -> None:
         # No actual-work projection changed: do not persist another state snapshot.
+        confirmations = collect_polr_confirmations(journal)
         self.events = journal
         self._timesheet_exports = exports
+        self._polr_confirmations = confirmations
 
     def get_timesheet_export_snapshot(self, export_id: str) -> dict[str, Any]:
         """Read detached committed evidence, never current work or external status."""
@@ -191,12 +195,18 @@ class TaskTimerService:
         """Read detached evidence in original journal order, not audit-time order."""
         return deepcopy(list(self._timesheet_exports.values()))
 
+    def get_effective_polr_confirmations(self) -> dict[tuple[str, str], dict[str, Any]]:
+        """Detached replay-derived absolute confirmations; absence means Unknown."""
+        return deepcopy(self._polr_confirmations)
+
     def evaluate_timesheet_export_file_status(
         self, export_id: str, destination: Path | str | None = None,
     ) -> str:
         """Read current destination status from validated evidence, without caching."""
         validate_export_uuid(export_id)
-        exports = collect_export_snapshots(self.storage.iter_all_events(strict=True))
+        journal = self.storage.iter_all_events(strict=True)
+        exports = collect_export_snapshots(journal)
+        collect_polr_confirmations(journal)
         if export_id not in exports:
             raise ValueError("Unknown committed timesheet export identity")
         payload = exports[export_id]["payload"]
@@ -230,7 +240,9 @@ class TaskTimerService:
     def materialize_timesheet_export(self, export_id: str, destination: Path | str | None = None) -> Path:
         """Publish frozen journal bytes, returning only a verified destination."""
         validate_export_uuid(export_id)
-        exports = collect_export_snapshots(self.storage.iter_all_events(strict=True))
+        journal = self.storage.iter_all_events(strict=True)
+        exports = collect_export_snapshots(journal)
+        collect_polr_confirmations(journal)
         if export_id not in exports:
             raise ValueError("Unknown committed timesheet export identity")
         payload = exports[export_id]["payload"]
@@ -2162,6 +2174,8 @@ class TaskTimerService:
     def _append(self, task_id: str, event_type: str, payload: dict[str, Any]) -> None:
         if event_type == EXPORT_EVENT_TYPE:
             raise ValueError("Use prepared export registration to preserve its event identity")
+        if event_type == CONFIRMATION_EVENT_TYPE:
+            raise ValueError("Confirmation event creation is not implemented; generic append is prohibited")
         self._validate_project_event(task_id, event_type, payload)
         event = event_dict(
             timestamp_utc=to_utc_z(utc_now()),
@@ -2223,8 +2237,10 @@ class TaskTimerService:
 
     def _rebuild_state(self, events: list[dict[str, Any]]) -> None:
         exports = collect_export_snapshots(events)
+        confirmations = collect_polr_confirmations(events)
         self.state = AppState()
         self._timesheet_exports = exports
+        self._polr_confirmations = confirmations
         # Live appends have no read metadata; keep their original list position.
         ordered = sorted(
             enumerate(events),
@@ -2249,6 +2265,9 @@ class TaskTimerService:
         return normalized
 
     def _apply_event(self, event: dict[str, Any]) -> None:
+        if event.get("event_type") == CONFIRMATION_EVENT_TYPE:
+            # Fully validated/projected before actual-work reconstruction begins.
+            return
         if event.get("event_type") == EXPORT_EVENT_TYPE:
             frozen = {key: value for key, value in event.items() if key != "_read_sequence"}
             validate_export_snapshot(frozen)

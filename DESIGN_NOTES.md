@@ -8,8 +8,8 @@ for the replacement application. See [AGENTS.md](AGENTS.md) for the ownership ma
 The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the selected
 snapshot-first, decimal-hour and confirmation architecture. Pure decimal rendering,
 export-snapshot registration/verified materialization and read-only file-status
-evaluation are staged; confirmation evidence and general file-status/recovery UI
-are unimplemented.
+evaluation are staged. Confirmation validation/replay is also staged; confirmation
+writers, reconciliation and general file-status/recovery UI are unimplemented.
 The source descriptions below remain current implementation observations.
 
 ## Architecture
@@ -395,7 +395,7 @@ records are recalculated, and no report/state/events/files are mutated.
 
 This renderer is independently callable only: existing generation/save services
 still use the exact renderer. Separate export-snapshot registration is staged
-below; confirmation persistence, file-status/recovery UI, production export/UI
+below; confirmation creation/UI, file-status/recovery UI, production export/UI
 integration, configurable week starts and fresh-directory cutover remain
 unimplemented. The shared Unicode-width and extreme-date accounting limitations
 described above still apply.
@@ -467,7 +467,7 @@ Preparation writes nothing. Registration changes only the journal and its normal
 rotation metadata plus the in-memory evidence index/event list. Neither changes
 timers, Actual, submissions, checkpoints, selection or legacy save behavior.
 Registration publishes no external report or READY classification. The separate
-materialization operation below verifies frozen copies; POL-R confirmation,
+materialization operation below verifies frozen copies; POL-R confirmation creation,
 reconciliation and production integration remain future outcomes requiring
 independent review. Linux fault injection covers append,
 inspection and projection failures; it does not establish concurrent multi-process
@@ -555,6 +555,43 @@ observation. This adds no
 recovery UI, automatic recovery, production integration or POL-R confirmation.
 Linux fixture/fault-injection evidence does not qualify Windows/NTFS, hostile
 directories, real concurrent writers or power-loss behavior.
+
+## Immutable POL-R confirmation replay (staged)
+
+[polr_confirmations.py](src/task_timer/polr_confirmations.py) implements
+`validate_polr_confirmation_batch(event)` for exact envelope/cell types and
+`collect_polr_confirmations(events)` for pure whole-journal validation and the
+effective `(task_id, ISO work_date)` mapping. Each value contains only
+`confirmed_hundredths` and `batch_event_id`; missing keys mean Unknown while zero
+remains an entry. The [technical owner](docs/EXPORT_EVIDENCE_CONTRACT.md#confirmation-event-structure)
+defines the persisted schema and relationship rules.
+
+Confirmation envelopes use the supported schema, canonical UUID, UTC audit
+seconds ending in `Z` and a valid `ZoneInfo` timezone identifier. Replay follows
+physical read-sequence order, not audit time. Task creation and source export
+must precede the batch. Export-linked amounts match frozen cells without current
+accounting, rendering or external-file inspection. All cells validate against
+the prior projection before any effective replacement. Per-cell prior batch IDs
+and exact stale-acknowledgement truth conditions are enforced. Identical repeated
+events are skipped without rolling back newer cells; changed duplicates and
+cross-type identity collisions fail closed in either order.
+
+`_rebuild_state()` validates both export and confirmation projections before
+installing replacement state. Actual-work replay then skips already projected
+confirmation events. `get_effective_polr_confirmations()` returns detached copies
+of the in-memory projection. Nothing is added to `AppState` or
+`state_snapshot.json`; restart, rotation, rebuild and supported backup restore
+derive values again from the journal. Historical rename, reassignment and task
+deletion do not erase earlier confirmation evidence.
+
+The generic service `_append()` rejects this event type: no production
+confirmation writer exists. Existing export registration, materialization and
+file-status gates also reject malformed confirmation evidence before accepting
+the journal. These checks create no new confirmations, Actual work, submissions,
+checkpoints or file copies. Confirmation creation, acknowledgement proposals/UI,
+reconciliation calculations/presentation and production integration remain future
+outcomes. Isolated Linux fixtures validate replay, not a complete confirmation
+workflow, external POL-R behavior, multi-process transactions or power-loss safety.
 
 ## Date-range timesheet service (staged)
 

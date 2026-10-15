@@ -11,8 +11,8 @@ Selected functionality is not automatically implemented.
 | Status | What it means here |
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact file-only saving, immutable export-snapshot registration/replay, verified materialization and read-only destination-relative file status are independently callable. |
-| Production still pending | Production export integration, file-status/recovery UI, replacement UI, new date-only writers, POL-R confirmations/reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
+| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status and confirmation-batch validation/replay are staged. |
+| Production still pending | Production export integration, file-status/recovery UI, replacement UI, new date-only writers, POL-R confirmation writer/UI and reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
 
 Current production still uses legacy parent/subtask interfaces, synthetic manual
 duration intervals, timestamp checkpoints and legacy submission markers. This
@@ -138,6 +138,12 @@ UNVERIFIABLE for the explicit destination or frozen preference. It performs no
 writes and retains no status or alternative path. Every check is current; absence
 does not establish whether publication previously occurred. See [file-status evaluation](DESIGN_NOTES.md#export-file-status-evaluation-staged).
 
+Strict immutable POL-R batch validation/replay now derives latest absolute
+task/day confirmations in memory. `get_effective_polr_confirmations()` returns
+detached evidence-derived values; Unknown differs from confirmed zero. No
+confirmation writer, dialog or reconciliation calculation is implemented, and
+these amounts never increase Actual. See [confirmation replay](DESIGN_NOTES.md#immutable-pol-r-confirmation-replay-staged).
+
 ## Run from source (repo root)
 
 From the repository root, run:
@@ -231,7 +237,7 @@ Backup settings can be edited in-app via **File → Backup Settings**.
 This describes the active legacy exporter. The selected replacement workflow is
 owned by the [product contract](docs/TIMESHEET_REQUIREMENTS.md). Separate export
 evidence registration and verified materialization are staged; production export
-integration and POL-R confirmations are not yet implemented.
+integration and POL-R confirmation creation/UI are not yet implemented.
 
 Export is plain text and includes:
 

@@ -24,7 +24,9 @@ replay are implemented/staged; registration publishes no external report file.
 Verified materialization from committed evidence is also staged: exact-byte/digest
 checking, matching-file reuse and exclusive no-overwrite publication are available
 through a separate service operation. Standalone read-only destination-relative
-file-status evaluation is also implemented/staged. Confirmations, reconciliation,
+file-status evaluation is also implemented/staged. Strict immutable confirmation
+batch validation/replay and an in-memory effective projection are staged; no
+confirmation writer is active. Confirmation creation/UI, reconciliation,
 automatic missing-file recovery and general file-status/recovery UI are not implemented.
 Approval is not proof of Windows/NTFS
 compatibility or power-loss safety. See the
@@ -256,19 +258,33 @@ authorize unrelated general journal-recovery changes.
 Select `polr_confirmation_batch_recorded` in the existing application-scoped
 envelope with `task_id = "__app__"`. One operation produces one event containing
 the whole validated batch; its envelope `event_id` identifies that batch.
-Each cell records:
+The persisted envelope has exactly `schema_version`, `event_id`, `timestamp_utc`,
+`local_timezone`, `task_id`, `event_type` and `payload`. Require the current schema
+version, a canonical event UUID, canonical UTC audit seconds with a `Z` suffix,
+and a valid nonempty timezone identifier. No extra envelope fields are permitted.
 
-- Task UUID and ISO work date.
-- Absolute nonnegative confirmed value in integer hundredths.
-- Optional source export event identity.
-- Expected prior confirmation event identity, or explicit absence when Unknown.
-- Whether applicable stale-export replacement was expressly acknowledged.
+The payload has exactly `cells`, a nonempty array. Each cell has exactly:
+
+| Field | Contract |
+| --- | --- |
+| `task_id` | Canonical UUID with task-creation evidence preceding this batch. Later rename, reassignment or deletion does not invalidate historical identity. |
+| `work_date` | Canonical ISO `YYYY-MM-DD` calendar date. |
+| `confirmed_hundredths` | Nonnegative integer absolute external task/day total; booleans and floats are invalid. |
+| `source_export_id` | Canonical export-event UUID or null for manual confirmation. |
+| `expected_prior_confirmation_id` | Canonical latest effective confirmation-batch UUID for this task/day, or null when Unknown. |
+| `stale_export_acknowledged` | Boolean, true exactly when the applicable cell-specific stale-export conflict exists. |
+
+Cell array order is unrestricted, but duplicate task/day keys are invalid. Add
+no status flags, counters, per-cell timestamps, source classifications or versions.
 
 The event timestamp is confirmation audit time. Unknown means absence of
 confirmation evidence, never a numeric zero sentinel; explicit zero is valid.
 Manual confirmation needs no export. Export-linked confirmation refers to a valid
-frozen cell and proposes that cell's value, not current recalculated Actual.
-Manual override is a separately explicit action.
+committed export preceding the batch in physical journal order. Its task/day must
+exist in that export and its confirmed amount must equal the frozen
+`decimal_hundredths`, never current recalculated Actual. Replay neither regenerates
+the report nor inspects an external file. An intentionally different amount is
+manual confirmation with a null source, without claiming frozen export provenance.
 
 ## Whole-batch validation, concurrency and stale exports
 
@@ -284,13 +300,36 @@ total; it adds no work. Optimistically check prior confirmation identity: if it
 changes between UI proposal and commitment, reject the outdated proposal and
 require refreshed review.
 
+Replay uses original physical order from read-sequence metadata, with input list
+position for events without that metadata, never UUID or audit-timestamp order.
+For each incoming cell the expected prior is null only when no effective entry
+exists; otherwise it must equal the batch identity last confirming that cell.
+Validate every cell against the pre-batch projection before replacing any entry.
+
 Compare source export creation with the latest effective confirmation for that
-cell. If a newer confirmation differs from the proposed frozen value, require
-explicit acknowledgement bound to the observed prior confirmation identity.
+cell. A stale conflict exists exactly when the source is non-null, the latest
+effective confirmation occurs after that export's first registered occurrence,
+and the latest confirmed amount differs from the proposed frozen amount. Require
+acknowledgement true for that conflict and false in every other case, including
+manual confirmations and equal-value proposals. It remains bound to the correct
+observed prior confirmation identity.
 Acknowledging one conflict does not authorize unrelated replacements. Full-export
 and checked-cell confirmation use the same rules. Do not auto-confirm displayed
 0.00 cells; explicit zero remains possible. No batch changes timers, Actual
 records or exported snapshots.
+
+An identical repeated batch identity is one effective occurrence and cannot
+reapply old values after intervening confirmations. Compare event content
+structurally and strictly, retaining numeric-type and array-order distinctions.
+Different content under the same identity, or an identity shared with another
+event type in either journal position, fails closed. Malformed evidence is never
+skipped, repaired or rewritten.
+
+The derived mapping is keyed by `(task_id, work_date)`, with values containing
+only `confirmed_hundredths` and `batch_event_id`. Absence means Unknown; explicit
+zero retains an entry. It lives only in memory, is rebuilt from archived/active
+journal evidence, and mutable reader results are detached. Do not put it in the
+derived application snapshot or another persisted store.
 
 ## Displayed reconciliation
 
@@ -320,8 +359,10 @@ are implemented/staged as separate outcomes. Preparation creates no records/file
 registration appends only the frozen export event and verifies the journal.
 Separate verified file materialization and read-only five-status evaluation are
 implemented/staged without new events, recalculation or persisted completion
-state. Independent GO review remains required before confirmation work.
-Confirmation events, reconciliation,
+state. Confirmation validation, immutable batch replay and effective projection
+are also implemented/staged. Generic service append rejects confirmation events;
+no production confirmation writer exists. Independent review is required before
+writer implementation. Confirmation creation/UI, reconciliation,
 production integration, general file-status/recovery UI, automatic missing-file
 recovery, general journal repair, migration and installation cutover remain
 unimplemented. Architectural documentation does not activate them.

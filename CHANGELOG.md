@@ -38,12 +38,16 @@ receipts or commits. No release or production activation is implied below.
   Evaluate destination-relative PENDING/READY/MISSING/CONFLICT/UNVERIFIABLE outcomes
   from freshly validated evidence and current file inspection, without writes,
   retained status or publication-history state.
+  Validate/replay immutable absolute POL-R confirmation batches into an in-memory
+  task/day projection, preserving Unknown/zero, physical order, prior identities,
+  stale acknowledgements and duplicate protection. No confirmation writer is active.
 
 These services are independently callable but not fully connected to the
 production application workflow. Legacy UI/export paths remain active during
 staging; new production date-only duration writers and release cutover are inactive.
-POL-R confirmations, general file-status/recovery UI, automatic missing-file
-recovery, configurable week starts and weekly allocation management are not implemented.
+POL-R confirmation creation/UI and reconciliation, general file-status/recovery UI,
+automatic missing-file recovery, configurable week starts and weekly allocation
+management are not implemented.
 
 ### Documentation and governance
 
@@ -57,5 +61,5 @@ recovery, configurable week starts and weekly allocation management are not impl
   evidence, verified recoverable file copies, two-decimal-hour presentation and
   atomic absolute POL-R confirmation batches. Reconcile decision history and
   validation/development guidance. Export evidence and decimal rendering are staged
-  above, including verified materialization; general recovery UI and confirmation
-  batches remain unimplemented.
+  above, including verified materialization and confirmation validation/replay;
+  general recovery UI and confirmation writers remain unimplemented.

@@ -25,9 +25,11 @@ The behavioral requirements below are Selected. The approved export-evidence,
 decimal-hour, recovery and confirmation technical contracts are owned by
 [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md). Pure decimal rendering,
 immutable export-snapshot registration/verified materialization and read-only
-destination-relative status evaluation are implemented/staged;
+destination-relative status evaluation are implemented/staged. Confirmation-batch
+validation/replay and effective projection are staged without a production writer;
 production export integration, general status/recovery UI,
-automatic missing-file recovery and confirmation are not implemented. Unrelated Open matters
+automatic missing-file recovery, confirmation creation/UI and reconciliation are
+not implemented. Unrelated Open matters
 remain reserved for user/ChatGPT adjudication.
 
 ## SELECTED — Replacement, installation and data boundary
@@ -202,8 +204,8 @@ and exact destination bytes, reuses matching files and refuses overwrite. It doe
 not recalculate work or create another event. Standalone status evaluation also
 strictly validates committed evidence and derives the five current file outcomes
 without writes, retained status or remembered alternative paths. Production export
-integration, general status/recovery UI and confirmation remain Selected and not
-yet implemented.
+integration, general status/recovery UI and confirmation creation remain Selected
+and not yet implemented.
 
 ## SELECTED — Explicit POL-R confirmation workflow
 
@@ -245,7 +247,10 @@ Confirmations may reference an export. Manual confirmation must also work withou
 a saved export. The approved
 [confirmation technical contract](EXPORT_EVIDENCE_CONTRACT.md#confirmation-event-structure)
 defines one validated batch event, expected prior identities and conflict-specific
-acknowledgement; persistent implementation remains pending.
+acknowledgement. Strict immutable batch validation/replay and a derived in-memory
+effective-confirmation mapping are implemented/staged. Event creation, user
+acknowledgement workflows and confirmation UI remain unimplemented; replay alone
+does not make the production POL-R workflow operational.
 
 ## SELECTED — Corrections and stale exports
 
@@ -325,7 +330,7 @@ Source describes what executes, not an alternative product contract. See
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
 | Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; current duration UI still uses synthetic intervals. |
 | Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay, verified materialization and read-only destination-relative five-status evaluation. Exact copies, matching-file reuse and no-overwrite publication are staged; materialization/evaluation create no new events or persistent file-status flags. |
-| POL-R target workflow | No new latest-absolute confirmation/reconciliation system. Legacy markers are not this replacement contract; registration is not confirmation or successful file export. |
+| POL-R target workflow | Immutable confirmation-batch validation/replay and latest absolute task/day projection are staged. No production confirmation writer/UI or general reconciliation calculation/presentation exists. Legacy markers are not this contract; export registration is not confirmation or successful file export. |
 | Week configuration and allocations | No selectable week-start setting or selected weekly-allocation management. |
 | Data/installation | Launcher still uses the existing data path; fresh-directory release cutover is inactive. No historical migration implemented. |
 
@@ -356,7 +361,7 @@ not independent external verification. Do not turn these assumptions into policy
 ## DEFERRED — Approved implementation work
 
 Future implementation includes configurable week starts, production export
-integration and general file-status/recovery UI, explicit POL-R confirmations/reconciliation,
+integration and general file-status/recovery UI, explicit POL-R confirmation creation/UI and reconciliation,
 the low-friction UI, weekly allocation tracking and replacement installation/cutover. Their Selected
 behavior remains binding. Export/confirmation development follows the approved
 technical contract through separately reviewed outcomes; unrelated Open allocation
