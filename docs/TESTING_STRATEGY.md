@@ -71,6 +71,7 @@ their assertions before selecting a run.
 | Rendering | [test_timesheet_renderer.py](../tests/test_timesheet_renderer.py): scope, partial/multiple weeks, calendar boundaries, exact durations, duplicate identity, wrapping/geometry and Unicode escaping. |
 | Decimal rendering | [test_decimal_timesheet_renderer.py](../tests/test_decimal_timesheet_renderer.py): ROUND_HALF_UP conversion/boundaries, invalid numbers, task/day rounding and displayed-rollup conservation, selection/identity, partial/multiple weeks, calendar edges, Unicode wrapping, purity and exact/legacy byte compatibility. This is a pure staged renderer, not export-evidence persistence. |
 | Export registration | [test_export_snapshot_registration.py](../tests/test_export_snapshot_registration.py): frozen request/cells/text/digest, strict validation, stable identity/retry, journal health, ambiguous append and projection failures, immutable replay order, restart/rotation/rebuild/backup restore and no file/confirmation effects. This does not validate materialization or POL-R confirmations. |
+| Verified materialization | [test_export_materialization.py](../tests/test_export_materialization.py): authoritative journal gate, exact frozen UTF-8 bytes and SHA-256, existing-file reuse/conflicts, symlinks, staging/publication/verification/cleanup failures, concurrent replacement injection, retry, restored evidence and state/journal purity. No production UI or permanent file-status guarantee. |
 | Reporting/file publication | [test_timesheet_service.py](../tests/test_timesheet_service.py): real service orchestration, UTF-8 bytes, no-clobber publication, concurrent targets, injected staging/publication/cleanup failures and state/file purity. |
 | Existing storage and backups | [test_storage.py](../tests/test_storage.py), [test_backups.py](../tests/test_backups.py), plus project/dated/accounting/export fixtures: fresh/empty initialization, missing-component constructor rejection without mutation, healthy restart, rotation, snapshots, backup contents, retention and restore behavior. |
 | Legacy compatibility | [test_exporter.py](../tests/test_exporter.py), [test_timeline_corrections.py](../tests/test_timeline_corrections.py), and neighboring tags/subtask/template/selected-export tests protect current behavior during staging. Legacy submission/checkpoint tests are not proof of replacement POL-R semantics. |
@@ -131,11 +132,10 @@ its intended evidence only, never Actual records, timers or export checkpoints.
 
 ## Decimal rendering, export registration and future integration validation
 
-The pure decimal renderer/converter and immutable export-snapshot registration
-are implemented/staged, with coverage in the test sources above. Verified file
-materialization, confirmations and file/evidence recovery remain unimplemented.
-Apply the selected technical contract to current rendering/registration changes
-and future integration:
+The pure decimal renderer/converter, immutable export-snapshot registration and
+verified materialization are implemented/staged, with coverage above. Confirmations,
+general file-status/recovery UI and production integration remain unimplemented.
+Apply the selected technical contract to current export services and future integration:
 
 - Exactly two decimal places, integer hundredths and deterministic ROUND_HALF_UP
   conversion without binary-float presentation artifacts. Check the supplied
@@ -162,13 +162,12 @@ and future integration:
   undo valid evidence; restart, archive replay, rebuild and backup/restore retain
   pending exports. Duplicate identities cannot duplicate effective evidence.
 
-Decimal conversion/displayed rollups and bounded journal registration/replay have
-existing focused coverage. File/evidence materialization/recovery assertions are
-future expectations, not existing passing coverage or a mechanism selected by
-tests. Preserve current exact renderer and legacy regression assertions during
-staging. Registration requires independent GO review before materialization or
-confirmation implementation. Linux fault injection is not power-loss or Windows
-qualification.
+Decimal conversion/displayed rollups, journal registration/replay and bounded
+materialization/retry have focused coverage. General file-status/history/recovery
+UI and confirmation assertions remain future expectations, not passing coverage
+or a mechanism selected by tests. Preserve exact renderer and legacy assertions.
+Materialization requires independent GO review before confirmation implementation.
+Linux fault injection is not power-loss, concurrent-process or Windows qualification.
 
 ## Future POL-R reconciliation acceptance
 
@@ -276,11 +275,11 @@ Test original-error propagation and staging-only cleanup before publication;
 after publication, cleanup failure must not remove the complete final report or
 a concurrent replacement. Capture unrelated files and timekeeping state.
 
-Materializing committed immutable export evidence adds a future cross-resource
-boundary governed by the approved snapshot-first contract. Inject failures
+Materializing committed immutable export evidence now exercises the bounded
+cross-resource boundary governed by the approved snapshot-first contract. Inject failures
 before/during registration, after durable registration but before publication, during derived-snapshot writes,
 through staging/publication and during final verification. Validate no external
-publication without established registration, retained pending evidence, stable
+publication without established registration, retained immutable evidence, stable
 retry identity, no overwrite and no false success for byte disagreement. Recheck
 externally changed files before status/confirmation use. Backup/restore
 interruptions require corresponding recovery evidence where applicable.

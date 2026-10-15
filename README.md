@@ -11,17 +11,16 @@ Selected functionality is not automatically implemented.
 | Status | What it means here |
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact report generation/file saving, and separate immutable export-snapshot preparation, registration and replay are implemented independently of the production UI. |
-| Production still pending | Decimal file/evidence integration and recovery, replacement UI, new date-only writers, POL-R confirmations/reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
+| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact file-only saving, immutable export-snapshot registration/replay and verified materialization of frozen evidence are independently callable. |
+| Production still pending | Production export integration, file-status/recovery UI, replacement UI, new date-only writers, POL-R confirmations/reconciliation, configurable weeks, weekly allocations and installation cutover are not active. |
 
 Current production still uses legacy parent/subtask interfaces, synthetic manual
 duration intervals, timestamp checkpoints and legacy submission markers. This
-staging does not select a permanent parallel legacy interface. Saving through
-the new service creates a file only, without durable frozen export-event evidence
-or POL-R confirmation. The approved snapshot-first technical contract requires
-verified registration before file publication and recoverable pending exports;
-that combined file/evidence workflow is not implemented. Separate snapshot
-registration is available without publishing any report file.
+staging does not select a permanent parallel legacy interface.
+`save_date_range_timesheet()` still creates an exact-format file only, without
+export-event evidence or POL-R confirmation. Separate snapshot-first operations
+now register frozen decimal evidence and materialize verified copies. They are
+not combined or connected to the production UI; saving never confirms POL-R entry.
 
 See [repository instructions](AGENTS.md), [current technical design](DESIGN_NOTES.md)
 and the [canonical changelog](CHANGELOG.md) for their respective authority scopes.
@@ -119,9 +118,19 @@ that candidate in the existing journal with stable, idempotent export identity.
 `get_timesheet_export_snapshot()` and `list_timesheet_export_snapshots()` return
 detached committed evidence, retained across replay and later work changes.
 Preparation writes nothing; registration creates no external report, confirmation,
-checkpoint or reset. A preferred destination is metadata only. Registered evidence
-awaits future materialization and is not a successfully exported file. See
+checkpoint or reset. A preferred destination is frozen metadata, not file status.
+Registration alone does not establish a successfully exported file. See
 [snapshot registration](DESIGN_NOTES.md#immutable-export-snapshot-registration-staged).
+
+`materialize_timesheet_export(export_id, destination=None)` verifies the journal,
+then writes only the frozen report bytes to an explicit path or the snapshot's
+preferred path. New files use complete staging and exclusive hard-link publication;
+existing regular files are accepted only if every byte and SHA-256 match.
+Conflicts and symlinks are refused. Success follows complete destination
+verification, with no new events, recalculation or timer changes. Retries reuse
+the same evidence; alternative paths never change it. Verification is current at
+the check, not permanent file status. No status/recovery UI or automatic missing-file
+recovery is implemented. See [materialization](DESIGN_NOTES.md#verified-export-materialization-staged).
 
 ## Run from source (repo root)
 
@@ -215,8 +224,8 @@ Backup settings can be edited in-app via **File → Backup Settings**.
 
 This describes the active legacy exporter. The selected replacement workflow is
 owned by the [product contract](docs/TIMESHEET_REQUIREMENTS.md). Separate export
-evidence registration is staged; file/evidence integration and POL-R confirmations
-are not yet implemented.
+evidence registration and verified materialization are staged; production export
+integration and POL-R confirmations are not yet implemented.
 
 Export is plain text and includes:
 

@@ -21,10 +21,14 @@ apply the cell-rounding and displayed-rollup rules below without persistence.
 The existing generation/save services still use the exact renderer. Separate
 export-snapshot preparation, durable registration, detached lookup and journal
 replay are implemented/staged; registration publishes no external report file.
-Materialization/verification from evidence, confirmations, reconciliation and file
-recovery workflows are not implemented. Approval is not proof of Windows/NTFS
+Verified materialization from committed evidence is also staged: exact-byte/digest
+checking, matching-file reuse and exclusive no-overwrite publication are available
+through a separate service operation. Confirmations, reconciliation, automatic
+missing-file recovery and general file-status/recovery UI are not implemented.
+Approval is not proof of Windows/NTFS
 compatibility or power-loss safety. See the
-[current registration mechanism](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged).
+[current registration mechanism](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged)
+and [materialization](../DESIGN_NOTES.md#verified-export-materialization-staged).
 
 ## One authoritative export snapshot
 
@@ -275,9 +279,11 @@ Implement this contract through separately reviewed outcomes after independent
 acceptance. Pure decimal-hour rendering and immutable export-snapshot registration
 are implemented/staged as separate outcomes. Preparation creates no records/files;
 registration appends only the frozen export event and verifies the journal.
-Independent GO review is required before file materialization or confirmations.
-Verified materialization, confirmation events, reconciliation, GUI/recovery
-controls, general journal repair, migration and installation cutover remain
+Separate verified file materialization is implemented/staged without new events,
+recalculation or persisted completion state. Independent GO review remains
+required before confirmation work. Confirmation events, reconciliation,
+production integration, general file-status/recovery UI, automatic missing-file
+recovery, general journal repair, migration and installation cutover remain
 unimplemented. Architectural documentation does not activate them.
 
 Do not reuse legacy submission markers/checkpoints as this POL-R model. Add no

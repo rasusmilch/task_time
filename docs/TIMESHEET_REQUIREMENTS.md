@@ -24,8 +24,9 @@ are in [AGENTS.md](../AGENTS.md), inspected technical behavior in
 The behavioral requirements below are Selected. The approved export-evidence,
 decimal-hour, recovery and confirmation technical contracts are owned by
 [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md). Pure decimal rendering
-and immutable export-snapshot registration are implemented/staged; file/evidence
-integration, recovery and confirmation are not implemented. Unrelated Open matters
+and immutable export-snapshot registration/verified materialization are
+implemented/staged; production export integration, general status/recovery UI,
+automatic missing-file recovery and confirmation are not implemented. Unrelated Open matters
 remain reserved for user/ChatGPT adjudication.
 
 ## SELECTED — Replacement, installation and data boundary
@@ -190,8 +191,10 @@ report file but does not register an immutable export-snapshot event. It still
 uses exact HH:MM:SS output and lacks snapshot-linked byte verification/recovery.
 The separate pure decimal renderer and immutable snapshot-registration APIs are
 implemented/staged but are not used by these generation/save APIs. Registration
-alone publishes no file. Decimal file/evidence integration, verified materialization
-and confirmation remain Selected and not yet implemented.
+alone publishes no file. A separate materialization API verifies journal evidence
+and exact destination bytes, reuses matching files and refuses overwrite. It does
+not recalculate work or create another event. Production export integration,
+general status/recovery UI and confirmation remain Selected and not yet implemented.
 
 ## SELECTED — Explicit POL-R confirmation workflow
 
@@ -312,15 +315,15 @@ Source describes what executes, not an alternative product contract. See
 | Timesheet rendering/generation | Staged independent-task exact and decimal renderers with authoritative scope/timezone metadata, safe calendar slots, reversible escaping and wrapped borders. Decimal output rounds task/day cells once and sums displayed hundredths; service generation still uses exact durations. |
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
 | Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; current duration UI still uses synthetic intervals. |
-| Export evidence | Separate frozen decimal snapshot preparation, validated idempotent journal registration, detached lookup and replay. No external file publication from evidence. |
+| Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay and verified file materialization. Exact frozen UTF-8 copies, matching-file reuse and no-overwrite publication are staged; no new events or persistent file-status flags are created by materialization. |
 | POL-R target workflow | No new latest-absolute confirmation/reconciliation system. Legacy markers are not this replacement contract; registration is not confirmation or successful file export. |
 | Week configuration and allocations | No selectable week-start setting or selected weekly-allocation management. |
 | Data/installation | Launcher still uses the existing data path; fresh-directory release cutover is inactive. No historical migration implemented. |
 
 Current text `HH:MM:SS[.fraction]` reporting remains available and unchanged;
-two-decimal replacement rendering and separate persistent snapshot registration
-are independently callable and staged, without file/evidence or production export
-integration. Current source
+two-decimal replacement rendering, separate persistent snapshot registration
+and verified materialization are independently callable and staged, without
+production export integration or a general file-status/recovery UI. Current source
 Sunday-start handling is not a fixed future policy.
 Backend foundations do not make the redesigned production workflow operational.
 
@@ -343,8 +346,8 @@ not independent external verification. Do not turn these assumptions into policy
 
 ## DEFERRED — Approved implementation work
 
-Future implementation includes configurable week starts, file materialization
-from registered immutable export evidence, explicit POL-R confirmations/reconciliation,
+Future implementation includes configurable week starts, production export
+integration and general file-status/recovery UI, explicit POL-R confirmations/reconciliation,
 the low-friction UI, weekly allocation tracking and replacement installation/cutover. Their Selected
 behavior remains binding. Export/confirmation development follows the approved
 technical contract through separately reviewed outcomes; unrelated Open allocation

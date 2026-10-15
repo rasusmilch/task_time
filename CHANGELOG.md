@@ -32,12 +32,15 @@ receipts or commits. No release or production activation is implied below.
   missing authoritative root files in nonempty datasets without replacing them
   or modifying surviving data.
   Registration publishes no report file and records no POL-R confirmation.
+  Separately materialize exact frozen UTF-8 copies after journal verification,
+  using exclusive staging/publication and complete destination-byte/SHA-256 checks.
+  Reuse matching files and retry without new evidence; protect conflicting files.
 
 These services are independently callable but not fully connected to the
 production application workflow. Legacy UI/export paths remain active during
 staging; new production date-only duration writers and release cutover are inactive.
-POL-R confirmations, file materialization/verification from registered evidence,
-configurable week starts and weekly allocation management are not implemented.
+POL-R confirmations, general file-status/recovery UI, automatic missing-file
+recovery, configurable week starts and weekly allocation management are not implemented.
 
 ### Documentation and governance
 
@@ -51,4 +54,5 @@ configurable week starts and weekly allocation management are not implemented.
   evidence, verified recoverable file copies, two-decimal-hour presentation and
   atomic absolute POL-R confirmation batches. Reconcile decision history and
   validation/development guidance. Export evidence and decimal rendering are staged
-  above; file verification/recovery and confirmation batches remain unimplemented.
+  above, including verified materialization; general recovery UI and confirmation
+  batches remain unimplemented.

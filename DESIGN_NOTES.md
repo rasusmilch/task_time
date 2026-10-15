@@ -7,8 +7,8 @@ Legacy behavior below remains current during staging; it is not permanent policy
 for the replacement application. See [AGENTS.md](AGENTS.md) for the ownership map.
 The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the selected
 snapshot-first, decimal-hour and confirmation architecture. Pure decimal rendering
-and export-snapshot registration are staged; confirmation evidence and
-file/evidence materialization/recovery are unimplemented.
+and export-snapshot registration/verified materialization are staged; confirmation
+evidence and general file-status/recovery UI are unimplemented.
 The source descriptions below remain current implementation observations.
 
 ## Architecture
@@ -394,7 +394,7 @@ records are recalculated, and no report/state/events/files are mutated.
 
 This renderer is independently callable only: existing generation/save services
 still use the exact renderer. Separate export-snapshot registration is staged
-below; confirmation persistence, materialization/recovery, production export/UI
+below; confirmation persistence, file-status/recovery UI, production export/UI
 integration, configurable week starts and fresh-directory cutover remain
 unimplemented. The shared Unicode-width and extreme-date accounting limitations
 described above still apply.
@@ -465,12 +465,61 @@ task/project creation evidence without requiring today's labels or membership.
 Preparation writes nothing. Registration changes only the journal and its normal
 rotation metadata plus the in-memory evidence index/event list. Neither changes
 timers, Actual, submissions, checkpoints, selection or legacy save behavior.
-No external report is published or classified READY. Materialization/verification,
-POL-R confirmation/reconciliation and production integration remain separate
-outcomes requiring independent review. Linux fault injection covers append,
+Registration publishes no external report or READY classification. The separate
+materialization operation below verifies frozen copies; POL-R confirmation,
+reconciliation and production integration remain future outcomes requiring
+independent review. Linux fault injection covers append,
 inspection and projection failures; it does not establish concurrent multi-process
 writers, arbitrary journal repair, universal crash atomicity, power-loss durability
 or Windows/NTFS execution.
+
+## Verified export materialization (staged)
+
+`TaskTimerService.materialize_timesheet_export(export_id, destination=None) -> Path`
+validates the canonical UUID and rereads the authoritative journal with strict
+validation and the existing export projection validator. Missing, malformed,
+conflicting or uncertain evidence fails before staging. Cached lookup results
+alone cannot authorize publication. Frozen UTF-8 `report_text` and `report_sha256`
+are the only content inputs; no current accounting, clock, renderer, labels or
+membership are consulted. The operation does not register another event.
+
+An explicit string/`Path` overrides the frozen `preferred_destination` without
+changing that evidence. A destination is required; empty/null-containing paths
+are rejected and missing parent directories are not created. Existing regular
+files are read completely and accepted only on full-byte and SHA-256 agreement.
+No rewrite occurs for a match. Conflicting files, directories, symlinks (including
+dangling links) and other unsuitable objects are rejected; unreadable files are
+not matches. Verification checks `lstat`/opened-descriptor identity and regular-file
+type, uses binary/no-follow/nonblocking open flags where available, then checks
+the destination identity again. This detects path replacement at those checks;
+it is not an arbitrary hostile-directory or concurrent-process guarantee.
+
+For absent destinations, the existing safe-publication approach is reused in a
+separate method, leaving the exact-format file-only save method unchanged:
+private same-directory `mkstemp`, binary write of all bytes, flush/fsync, successful
+close, owned-staging check, then exclusive `os.link`. There is no overwrite or
+direct-write fallback. After linking, complete final bytes and SHA-256 are checked
+before return. Size or digest alone never establishes success. Cleanup targets
+only an owned staging pathname; it never deletes the final destination.
+
+Original failures propagate with cleanup context. An attempted/ambiguous link
+is identified as unverified; a failure after known publication identifies the
+published path and failed verification. Verification failure never undoes
+publication. Cleanup failure after successful verification raises an error stating
+that publication and verification succeeded, identifying the remaining staging
+artifact. Uncertain staging ownership retains the questionable artifact. These
+best-effort private-path checks retain the existing trusted-directory assumption.
+
+Retry with the same UUID revalidates the journal and a matching existing copy
+without rewriting or appending evidence. A conflicting copy requires another
+explicit path. Restart, rotation and supported backup/restore retain the snapshot
+needed to materialize the original bytes after later work or renderer changes.
+Every call verifies anew: later external changes/deletion invalidate earlier
+observations. There is no persisted completion flag, file-status history or
+distinction between never-published and subsequently deleted paths. No automatic
+missing-file recovery, dashboard, confirmation, UI integration or cutover is added.
+Linux fault injection does not establish Windows/NTFS execution, power-loss
+durability, universal filesystem support or concurrent/hostile-directory safety.
 
 ## Date-range timesheet service (staged)
 
@@ -544,7 +593,7 @@ not persist immutable export-snapshot evidence. The
 requires integration with immutable evidence and future POL-R reconciliation. The
 [approved technical contract](docs/EXPORT_EVIDENCE_CONTRACT.md) now selects
 snapshot-first registration, decimal output, verified materialization, pending
-recovery and confirmation batches; none is implemented in this service. The
+recovery and confirmation batches; none is used by these file-only generation/save APIs. The
 current method regenerates text on each call, rejects existing destinations even
 if matching, and does not perform snapshot-linked postpublication byte verification.
 A saved report is **not submission evidence**. Neither operation appends events, updates

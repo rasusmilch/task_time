@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import stat
 import subprocess
 import tempfile
 import tkinter as tk
@@ -185,6 +186,120 @@ class TaskTimerService:
     def list_timesheet_export_snapshots(self) -> list[dict[str, Any]]:
         """Read detached evidence in original journal order, not audit-time order."""
         return deepcopy(list(self._timesheet_exports.values()))
+
+    def materialize_timesheet_export(self, export_id: str, destination: Path | str | None = None) -> Path:
+        """Publish frozen journal bytes, returning only a verified destination."""
+        validate_export_uuid(export_id)
+        exports = collect_export_snapshots(self.storage.iter_all_events(strict=True))
+        if export_id not in exports:
+            raise ValueError("Unknown committed timesheet export identity")
+        payload = exports[export_id]["payload"]
+        expected = payload["report_text"].encode("utf-8")
+        digest = payload["report_sha256"]
+        if sha256(expected).hexdigest() != digest:
+            raise ValueError("Frozen export text/digest mismatch")
+        target = payload["preferred_destination"] if destination is None else destination
+        if not isinstance(target, (Path, str)) or (isinstance(target, str) and not target):
+            raise ValueError("A destination or snapshot preferred destination is required")
+        target = Path(target)
+        if "\x00" in str(target):
+            raise ValueError("Destination file path must not contain null characters")
+        try:
+            target.lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            self._verify_timesheet_export_file(target, expected, digest)
+            return target  # an existing complete copy; never rewrite it
+
+        # Use the existing same-directory no-clobber staging approach without
+        # changing the file-only save API or introducing persistent file status.
+        prefix = ".chronicle-timesheet-"
+        if target.name.casefold().startswith(prefix):
+            prefix = ".chronicle-staging-"
+        descriptor, temporary = tempfile.mkstemp(dir=target.parent, prefix=prefix, suffix=".tmp")
+        staging = Path(temporary)
+        created = None
+        attempted, published = False, False
+
+        def require_owned_staging() -> None:
+            current = staging.lstat()
+            if (created is None or not stat.S_ISREG(current.st_mode)
+                    or (current.st_dev, current.st_ino) != (created.st_dev, created.st_ino)):
+                raise OSError(f"Staging ownership is uncertain; retained {staging}")
+
+        def remove_staging() -> None:
+            try:
+                require_owned_staging()
+            except FileNotFoundError:
+                return
+            # Trusted-directory assumption, as in the existing save workflow.
+            # This cleanup never targets the requested final destination.
+            staging.unlink()
+
+        try:
+            created = os.fstat(descriptor)
+            handle = os.fdopen(descriptor, "wb")
+            descriptor = None
+            with handle:
+                if handle.write(expected) != len(expected):
+                    raise OSError("Incomplete export staging write")
+                handle.flush()
+                os.fsync(handle.fileno())
+            require_owned_staging()
+            attempted = True
+            os.link(staging, target)
+            published = True
+            self._verify_timesheet_export_file(target, expected, digest)
+        except BaseException as error:
+            if published:
+                error.add_note(f"Timesheet published at {target}; complete destination verification did not succeed")
+            elif attempted:
+                error.add_note(f"Publication attempted at {target}; destination contents have not been verified")
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except OSError as close_error:
+                    error.add_note(f"Could not close staging descriptor: {close_error}")
+            try:
+                remove_staging()
+            except OSError as cleanup_error:
+                error.add_note(f"Staging cleanup failed; artifact may remain at {staging}: {cleanup_error}")
+            raise
+        try:
+            remove_staging()
+        except OSError as cleanup_error:
+            raise OSError(
+                cleanup_error.errno,
+                f"Timesheet published and verified at {target}; staging cleanup failed: {cleanup_error}",
+                str(staging),
+            ) from cleanup_error
+        return target
+
+    @staticmethod
+    def _verify_timesheet_export_file(target: Path, expected: bytes, digest: str) -> None:
+        """Check type, full bytes and digest; reject symlinks and path replacement."""
+        before = target.lstat()  # dangling symlinks are existing conflicts too
+        if not stat.S_ISREG(before.st_mode):
+            raise FileExistsError(f"Export destination is not a regular file: {target}")
+        flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        descriptor = os.open(target, flags)
+        try:
+            opened = os.fstat(descriptor)
+            if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+                raise OSError(f"Export destination changed before verification: {target}")
+            handle = os.fdopen(descriptor, "rb")
+            descriptor = None
+            with handle:
+                actual = handle.read()
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
+        after = target.lstat()
+        if not stat.S_ISREG(after.st_mode) or (after.st_dev, after.st_ino) != (opened.st_dev, opened.st_ino):
+            raise OSError(f"Export destination changed during verification: {target}")
+        if actual != expected or sha256(actual).hexdigest() != digest:
+            raise FileExistsError(f"Export destination conflicts with frozen report bytes/digest: {target}")
 
     def calculate_date_window(
         self, start_date: date, end_date: date, *, cutoff_utc: datetime,
