@@ -74,8 +74,34 @@ Actual work derives from two distinct types:
 
 A 14-hour dated duration on Saturday remains entirely on Saturday. Corrections
 and deletions change current actual totals without erasing authoritative earlier
-events. Logical timer-counter resets do not erase historical date-based actuals.
+events. Replacement Reset actions and resettable counters are removed from the
+Selected workflow; normal history and calendar Actual are independent of legacy
+reset boundaries. This target does not remove currently active legacy controls.
 Real work must remain recordable when allocations are exhausted or unknown.
+
+## SELECTED — Mixed work history
+
+Normal task history contains genuine timed intervals and date-only entries
+together, showing their latest effective versions independently of resets.
+Earlier revisions and deletions remain available through audit/details. Editing
+preserves entry type; a dated amount must not acquire fabricated endpoints.
+
+The default UI period is the current week, with custom inclusive dates and All
+history available. The date-column header switches oldest/newest date order;
+one user-wide preference persists across restarts, initially newest first.
+Within each date, timed portions stay chronological and date-only entries follow
+them without invented clock positions.
+
+Intervals crossing local midnight appear as linked daily segments of one
+underlying interval. Editing or deleting a segment acts on that complete
+interval; deletion warns about affected dates. Precise link-marker styling
+remains undecided; no routine extra text is selected. POL-R reconciliation stays
+per task/day, without per-entry confirmation or Delta state.
+
+Only the detached [work-history service](../DESIGN_NOTES.md#mixed-work-history-service-staged)
+is staged. UI periods/sorting controls, preference persistence, audit presentation,
+segment editing/deletion handlers, dated writer activation and production Reset
+removal remain subsequent work.
 
 ## SELECTED — Configurable week convention
 
@@ -345,6 +371,7 @@ Source describes what executes, not an alternative product contract. See
 | Project/task foundation | Separate UUID-based service records, optional current project membership and independent task-owned time. |
 | Date-only duration foundation | Separate endpoint-free records with append-only creation/correction/deletion replay and snapshots; new production duration writers are inactive. |
 | Mixed accounting | Read-only explicit local-date windows, real intervals plus effective dated records, derived project/Unassigned/application totals, and fixed Sunday-start weeks. |
+| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable; production timeline, editing and reset controls are unchanged. |
 | Timesheet rendering/generation | Staged independent-task exact and decimal renderers with authoritative scope/timezone metadata, safe calendar slots, reversible escaping and wrapped borders. Decimal output rounds task/day cells once and sums displayed hundredths; service generation still uses exact durations. |
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
 | Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; current duration UI still uses synthetic intervals. |

@@ -21,6 +21,7 @@ from uuid import UUID, uuid4
 
 from .backups import BackupManager
 from .accounting import calculate_date_window
+from .work_history import build_task_work_history
 from .dialogs import (
     AddTaskDialog,
     EditTaskDialog,
@@ -519,6 +520,18 @@ class TaskTimerService:
             raise OSError(f"Export destination inspection incomplete or changed during verification: {target}")
         if actual != expected or sha256(actual).hexdigest() != digest:
             raise _ExportFileConflict(f"Export destination conflicts with frozen report bytes/digest: {target}")
+
+    def get_task_work_history(
+        self, task_id: str, *, cutoff_utc: datetime,
+        start_date: date | None = None, end_date: date | None = None,
+        newest_first: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Detached mixed history; existing production readers remain unchanged."""
+        task = self._require_task(task_id)
+        return build_task_work_history(
+            task, self.local_tz, cutoff_utc=cutoff_utc,
+            start_date=start_date, end_date=end_date, newest_first=newest_first,
+        )
 
     def calculate_date_window(
         self, start_date: date, end_date: date, *, cutoff_utc: datetime,

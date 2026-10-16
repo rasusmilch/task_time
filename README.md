@@ -11,7 +11,7 @@ Selected functionality is not automatically implemented.
 | Status | What it means here |
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
+| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, mixed work-history projection, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
 | Production still pending | Production export integration, file-status/recovery UI, replacement UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
 
 [Phase 2's bounded evidence and daily-reconciliation service gate](docs/ROADMAP.md#phase-2--pol-r-evidence-and-reconciliation)
@@ -79,6 +79,16 @@ to production readers or exports. No public dated-duration writer, historical
 migration, or data-directory cutover is included. See
 [mixed accounting](DESIGN_NOTES.md#mixed-date-window-accounting-service-only)
 for selection semantics and the explicit legacy synthetic-duration boundary.
+
+`get_task_work_history()` separately returns detached mixed history for one task:
+linked local-day interval segments and whole date-only amounts, with explicit
+cutoff, inclusive dates or All history, and deterministic date/within-day ordering.
+It ignores legacy resets and preserves underlying entry identity without writes.
+See the [staged service contract](DESIGN_NOTES.md#mixed-work-history-service-staged).
+The [Selected replacement history](docs/TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history)
+includes current-week/custom/All UI periods, persistent date sorting and segment
+editing/audit interactions; those integrations and removal of production Reset
+controls remain pending. Existing production timeline and counters are unchanged.
 
 `build_timesheet_text()` separately renders those accounting results as a
 plain-text timesheet with independent task rows, dated daily columns and weekly

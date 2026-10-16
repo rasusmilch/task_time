@@ -164,8 +164,9 @@ public duration writer**. `add_manual_duration`, `edit_duration_interval`, legac
 synthetic records, real interval handling, resets, checkpoints, timeline UI,
 mini-mode, totals, tags, exports and submission behavior remain unchanged.
 Those production consumers do not include the new records yet. The separate
-mixed calculation below is available for service use; reader integration must
-be validated before the new workflow emits these events. Production
+mixed calculation and work-history projection below are available for service use;
+active-reader integration must be validated before the new workflow emits these
+events. Production
 reset/checkpoint consumers remain legacy. The selected
 [date-scoped POL-R workflow](docs/TIMESHEET_REQUIREMENTS.md) does not use an
 implicit export checkpoint or timer reset to distinguish newly worked time.
@@ -220,8 +221,9 @@ Each included task's daily seconds combine two distinct authoritative sources:
 Historical actuals ignore `last_reset_utc`; resets do not erase earlier calendar
 work. This API uses current effective revisions, deletion status, tags, and
 membership. The cutoff caps timed work, including closed endpoints after it;
-it does **not** reconstruct application state as of an earlier instant. It does
-not decide eligibility for timestamp checkpoints or reset-based dated counters.
+it does **not** reconstruct application state as of an earlier instant. Legacy
+timestamp checkpoint consumers are unchanged; the Selected replacement removes
+Reset actions and resettable counters rather than extending them to dated work.
 
 The returned detached dictionaries contain `tasks` and `projects` keyed by UUID,
 plus `unassigned`, `application`, and `tags`. Each total row has sparse
@@ -262,6 +264,67 @@ checkpoint, reset-counter, or mini-mode consumer. The event logs and their
 effective projections remain authoritative; snapshots remain rebuildable. New
 reader/writer integration and the separate empty-directory cutover are later
 tasks. Tests use isolated temporary datasets and leave existing user data alone.
+
+## Mixed work-history service (staged)
+
+`TaskTimerService.get_task_work_history(task_id, *, cutoff_utc,
+start_date=None, end_date=None, newest_first=True)` resolves the task through
+`_require_task`, including known deleted tasks, and delegates to the pure
+`work_history.build_task_work_history` projection of current effective records
+and the service's local timezone. It does not reread the journal, reconstruct
+historical as-of state, consult resets/confirmations, install caches or capture
+the clock/UUIDs. Existing interval-only readers and production callers are unchanged.
+
+An aware cutoff is required and normalized to UTC. Both dates omitted means All
+history; otherwise both must be exact `date` objects, inclusive and ordered, with
+`end_date != date.max`. `newest_first` must be an actual bool. Invalid requests
+raise `ValueError` without mutation. The cutoff caps timed work only; dated
+amounts retain their declared dates, including dates later than the cutoff.
+
+Each detached dictionary has exactly these fields:
+
+`task_id`, `entry_kind`, `entry_id`, `work_date`, `segment_start_utc`,
+`segment_stop_utc`, `duration_seconds`, `original_start_utc`, `original_stop_utc`,
+`is_running`, `continues_before`, `continues_after`, `source`, `reason`.
+
+`work_date` is a `date`; non-null endpoints are aware UTC datetimes. Seconds keep
+raw precision without formatting or decimal rounding. Nondeleted effective
+genuine intervals yield `entry_kind="interval"` rows split at local midnights,
+using UTC elapsed differences and omitting nonpositive portions. Window/cutoff
+clipping changes segment endpoints, not the complete original closed endpoints.
+All portions share the original interval ID; that identity plus work date
+distinguishes visible rows without new segment UUIDs. Continuation flags describe
+other daily portions of the cutoff-limited interval even when filtered out.
+An endpoint exactly at midnight creates no following zero row. Interval source
+is preserved; reason is `edit_reason` or an empty string.
+
+Running rows use `entry_id="__open__"`, `source="open"`, empty reason and
+`is_running=True`; original start is the genuine running start and original stop
+is `None`. Segment stops are projection boundaries through the supplied cutoff,
+not recorded timer stops. A cutoff at/before the start contributes nothing.
+
+Each nondeleted effective dated record appears once, wholly on its work date,
+with its existing ID, full amount, current reason, `entry_kind="dated_duration"`
+and `source="dated_duration"`. All four endpoints are `None`; running and
+continuation flags are False. Audit timestamps supply neither work times nor
+within-day sort positions.
+
+Dates sort descending by default or ascending on request. Within each date,
+timed segments always sort by UTC start, UTC stop and entry ID; dated rows follow
+by entry ID. Changing date direction does not reverse within-day chronology.
+The projection ignores deleted/replaced records and matches mixed accounting's
+rejection of unsupported interval modes, naive endpoints and negative spans.
+Effective synthetic `entry_mode="duration"` records raise
+`UnsupportedLegacyDurationError` when their declared date or raw synthetic span
+intersects the requested window; All history includes them. An invalid declared
+date fails explicitly. Out-of-scope/deleted synthetic records are not converted.
+
+The [Selected history contract](docs/TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history)
+also covers current-week/custom/All UI periods, persistent user-wide date sorting,
+linked segment interaction, type-preserving editing and audit/details. Those UI,
+preference, edit/delete and audit capabilities, production dated writers and
+production Reset removal are not implemented by this reader. POL-R remains a
+separate task/day service. No schema, identity or persistent state is added.
 
 ## Independent-task timesheet renderer (staged)
 
@@ -833,8 +896,9 @@ Corrections are represented via explicit events:
 
 ## Reset semantics
 
-These are current legacy counter semantics, not a rule for erasing historical
-date-based actuals in the selected replacement workflow.
+These are current legacy counter semantics. The Selected replacement removes
+Reset actions and resettable counters; production controls are still unchanged.
+Calendar Actual and mixed work history ignore these legacy boundaries.
 
 `reset` creates a logical totals boundary (`last_reset_utc`) for each task:
 

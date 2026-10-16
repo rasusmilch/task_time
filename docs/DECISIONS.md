@@ -77,6 +77,30 @@ Historical date-based Actual survives logical counter resets. Manual amounts
 are not evidence of clock positions: a 14-hour Saturday entry stays Saturday.
 The rejected representation remains a legacy source artifact, described below.
 
+### Mixed history and removal of replacement reset counters
+
+**Status:** current. **Provenance:** explicit user-approved replacement behavior
+supplied with the mixed work-history reader instructions; current owners:
+[Actual records](TIMESHEET_REQUIREMENTS.md#selected--actual-time-records) and
+[mixed history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
+
+Normal history combines current effective intervals and date-only entries,
+independent of resets. Timed work crossing midnight appears as linked daily
+segments of its underlying interval; segment editing/deletion acts on that full
+interval, with affected-date deletion warnings. Editing preserves entry type;
+earlier versions/deletions remain accessible through audit/details. Current week
+is the UI default, with custom dates and All history. Date direction is a single
+user-wide persisted preference, initially newest first, switched through the
+date-column header. Exact link-marker styling remains undecided.
+
+The explicit direction removes replacement Reset actions and resettable counters.
+It narrows the earlier reset-independence wording so it cannot imply a requirement
+for replacement counters; the earlier guarantee that historical Actual survives
+legacy resets remains true. No earlier approved replacement-counter decision is
+established by that wording or by legacy source. POL-R stays per task/day.
+The staged projection is implementation evidence, not approval or delivery of
+the future UI, preference, editing, audit or production reset-removal work.
+
 ### Local dates and configurable reporting weeks
 
 **Status:** current. **Provenance:** explicit user confirmation; current owner:

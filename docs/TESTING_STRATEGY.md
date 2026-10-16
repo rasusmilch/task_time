@@ -68,6 +68,7 @@ their assertions before selecting a run.
 | Project/task identity | [test_projects.py](../tests/test_projects.py): independent identities, membership/reassignment, invalid targets, replay and data isolation. |
 | Date-only replay | [test_dated_durations.py](../tests/test_dated_durations.py): endpoint-free records, correction/deletion, ownership/payload rejection, equal-second replay, archives, rebuild and backup/restore. Uses isolated private event fixtures; it does not activate production writers. |
 | Accounting and time boundaries | [test_mixed_accounting.py](../tests/test_mixed_accounting.py), [test_time_utils.py](../tests/test_time_utils.py): conservation, selection, cutoffs, midnight/DST, corrections, resets, fractional amounts and fixed Sunday weeks. |
+| Mixed work history | [test_work_history.py](../tests/test_work_history.py): real isolated service/model projection, exact detached row shape, mixed entries, known deleted-task lookup, inclusive/All dates, date direction with stable within-day chronology, linked daily identity/continuations, midnight/DST/fixed offsets, running cutoffs, whole dated amounts, correction/redating/deletion/restart, reset/confirmation independence, synthetic refusal and per-day accounting agreement. State/event/snapshot/file comparisons and prohibited journal/write/clock/UUID calls cover purity on success and rejection. No production timeline, edit/delete handler, sort-preference or audit UI qualification. |
 | Rendering | [test_timesheet_renderer.py](../tests/test_timesheet_renderer.py): scope, partial/multiple weeks, calendar boundaries, exact durations, duplicate identity, wrapping/geometry and Unicode escaping. |
 | Decimal rendering | [test_decimal_timesheet_renderer.py](../tests/test_decimal_timesheet_renderer.py): ROUND_HALF_UP conversion/boundaries, invalid numbers, task/day rounding and displayed-rollup conservation, selection/identity, partial/multiple weeks, calendar edges, Unicode wrapping, purity and exact/legacy byte compatibility. This is a pure staged renderer, not export-evidence persistence. |
 | Export registration | [test_export_snapshot_registration.py](../tests/test_export_snapshot_registration.py): frozen request/cells/text/digest, strict validation, stable identity/retry, journal health, synchronized recovery/reuse, ambiguous append and projection failures, immutable replay order, restart/rotation/rebuild/backup restore and no report publication or confirmation creation by registration. Includes reuse checks for preservation of existing materialized bytes and installation of the latest valid confirmation projection. Dedicated materialization and confirmation suites provide broader feature coverage. |
@@ -87,7 +88,8 @@ Existing fixtures use pytest `tmp_path` and `monkeypatch`, including fixed clock
 and America/Chicago timezone examples. File/state snapshots make purity and
 invalid-operation assertions meaningful.
 
-Currently, mixed accounting is staged and Sunday-only, production date-only
+Currently, mixed accounting is staged and Sunday-only, mixed work-history
+projection is service-only, production date-only
 writers are inactive, and saving publishes a file without immutable export-event
 registration. Confirmation preparation/registration/replay and daily reconciliation
 calculation are staged; configurable weeks, POL-R confirmation/reconciliation UI,
@@ -95,6 +97,15 @@ weekly reconciliation summaries and
 replacement installation are not implemented or validated by existing foundation
 tests. Future acceptance obligations below are explicitly conditional on approved
 implementation; test names or prior receipts do not change that status.
+
+Future history integration must validate the
+[Selected UI behavior](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history):
+current-week/custom/All periods, persisted user-wide date direction, linked
+segment edit/delete acting on the complete interval with affected-date warnings,
+entry-type preservation, effective-only normal history and audit/details access.
+Production Reset removal is separate from proving that staged history ignores
+legacy reset boundaries. Service projection tests do not establish those UI or
+preference capabilities, native Windows interaction or production qualification.
 
 ## Accounting guarantees to validate when changed
 

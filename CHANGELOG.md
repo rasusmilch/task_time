@@ -15,7 +15,14 @@ receipts or commits. No release or production activation is implied below.
 - Derive mixed historical task/day/week actuals from intervals and dated durations,
   including local-day/DST splitting and informational project/Unassigned totals.
   Current weekly calculations use Sunday starts; project subtotals are not
-  additional work.
+  additional work. Project detached mixed task history as linked local-day
+  interval segments and whole dated entries, retaining underlying identity,
+  precise seconds, explicit cutoff/date filtering and deterministic ordering
+  without journal or state writes. Record the approved replacement history
+  direction: current-week/custom/All periods, persisted user-wide date sorting,
+  full-interval segment editing/deletion, effective history with audit access,
+  and removal of replacement Reset actions/counters. Those UI/preference/editing,
+  audit and production reset-removal integrations remain pending.
 - Provide read-only independent-task timesheet rendering and date-range generation
   with precise durations, explicit selection scope, Unicode-safe escaping and
   wrapping, and bounded calendar-week layout. A separate pure decimal-hour renderer

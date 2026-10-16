@@ -50,6 +50,7 @@ existence; their detailed contracts remain in Design Notes rather than here.
 | Project/task identity | Separate UUIDs; projects own no direct time; tasks own independent records, optional membership and reassignment preserving work. | [models.py](../src/task_timer/models.py), [project/task service](../DESIGN_NOTES.md#projecttask-service-foundation) |
 | Date-only duration | Endpoint-free stable records; event-backed creation/correction/deletion replay; derived snapshots and existing backup compatibility. Production manual-duration UI still uses synthetic intervals. | [replay foundation](../DESIGN_NOTES.md#dated-duration-replay-foundation), [app.py](../src/task_timer/app.py), [backups.py](../src/task_timer/backups.py) |
 | Mixed accounting | Genuine intervals and dated amounts; local-day/DST splitting; independent task totals; derived project/Unassigned/application totals; historical actuals independent of counter resets. Week start is currently Sunday only. | [accounting.py](../src/task_timer/accounting.py), [mixed service](../DESIGN_NOTES.md#mixed-date-window-accounting-service-only) |
+| Mixed work history | Read-only current effective task records; linked local-day interval segments and whole dated amounts; explicit cutoff/date filtering and deterministic ordering. No production timeline, preferences or edit/delete integration. | [work_history.py](../src/task_timer/work_history.py), [history service](../DESIGN_NOTES.md#mixed-work-history-service-staged) |
 | Timesheet presentation | Independent daily/weekly task rows, informational project subtotals, authoritative scope, duplicate-name references, multiline borders and reversible Unicode escaping protections. Exact and separate decimal renderers are staged; decimal task/day ROUND_HALF_UP cells conserve integer-hundredth rollups. | [exporter.py](../src/task_timer/exporter.py), [exact renderer](../DESIGN_NOTES.md#independent-task-timesheet-renderer-staged), [decimal renderer](../DESIGN_NOTES.md#decimal-hour-timesheet-renderer-staged) |
 | Service reporting | Date-range generation; exact UTF-8 output; same-directory complete staging and atomic no-overwrite hard-link publication, destination protection and staging-only cleanup under documented assumptions. Saves files without immutable export registration. | [service workflow](../DESIGN_NOTES.md#date-range-timesheet-service-staged) |
 | Export evidence | Frozen decimal snapshot preparation, strict journal-backed registration/replay, detached readers, verified materialization/retry and read-only destination-relative status evaluation. Matching files are reused; conflicting files are protected. Export APIs do not confirm POL-R; no status/recovery UI. | [snapshot registration](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged), [materialization](../DESIGN_NOTES.md#verified-export-materialization-staged), [file status](../DESIGN_NOTES.md#export-file-status-evaluation-staged) |
@@ -166,13 +167,19 @@ Return any newly necessary material decision for user/ChatGPT adjudication.
 ## Phase 3 — Time entry and project workflow
 
 **Status:** **APPROVED / NOT IMPLEMENTED** in production; backend foundations
-are staged.
+are staged, including the detached mixed work-history reader. This reader does
+not activate dated writers or satisfy the active-reader/UI gate below.
 
 **Outcome:** activate genuine date-only creation and correction/deletion, an
 appropriate mixed timeline editor, project/task navigation, project creation and
 reassignment, independent task displays and useful daily/weekly totals. Preserve
 normal start/stop timers; eliminate fabricated endpoints from new manual entries.
 Actual-work entry remains independent of POL-R confirmation and allocations.
+The [Selected history behavior](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history)
+requires current-week/custom/All periods, user-wide persisted date sorting,
+linked daily portions that edit/delete the full interval, type-preserving editing
+and audit/details. Replacement Reset actions/counters are removed from the target;
+their production removal and these UI integrations remain pending.
 
 **Dependency:** do not activate a production dated-duration writer while any
 required active reader omits that work. Integrate mixed accounting/readers with
