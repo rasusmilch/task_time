@@ -64,6 +64,9 @@ receipts or commits. No release or production activation is implied below.
   Exercise journal-only rotation exclusions with POSIX/Windows path representations
   while retaining unrelated-file mutation detection; native Windows qualification
   remains pending.
+  Record independent acceptance of Phase 2's existing bounded POL-R evidence and
+  daily-reconciliation service gate under serialized dataset ownership. Services
+  remain staged; production, platform and release qualification remain pending.
 
 These services are independently callable but not fully connected to the
 production application workflow. Legacy UI/export paths remain active during

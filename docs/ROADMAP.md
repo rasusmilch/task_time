@@ -34,10 +34,11 @@ pending; read-only daily reconciliation calculation is staged.
 | VALIDATION PENDING | Implemented capability still lacks required integrated or platform verification. |
 | COMPLETE | A bounded phase whose entire defined completion gate has actually been satisfied. |
 
-No phase below is marked Complete. Component tests or completed focused tasks do
-not establish a complete replacement application. Integrated Windows execution,
-packaging and replacement-installation validation are pending; release readiness
-is not established.
+[Phase 2](#phase-2--pol-r-evidence-and-reconciliation) is Complete for its
+independently accepted bounded service gate. Its capabilities remain staged;
+component tests or completed focused tasks do not establish a complete replacement
+application. Integrated Windows execution, packaging and replacement-installation
+validation are pending; release readiness is not established.
 
 ## Implemented foundation — staged, not production replacement
 
@@ -98,24 +99,32 @@ affected authorities agree; no necessary Open issue has been silently resolved.
 
 ## Phase 2 — POL-R evidence and reconciliation
 
-**Status:** **IMPLEMENTED / STAGED** for decimal rendering and immutable export
+**Status:** **COMPLETE** for the existing bounded POL-R evidence and daily
+reconciliation service gate under serialized dataset ownership. Capabilities remain
+**IMPLEMENTED / STAGED**: decimal rendering and immutable export
 snapshot preparation/registration/replay, verified file materialization and
 standalone read-only file-status evaluation, plus immutable confirmation-batch
 preparation/registration/replay, effective projection and read-only daily
 Actual/Confirmed/Delta/Enter calculation, plus frozen-export proposals and selected
 acknowledged batch preparation. Confirmation/reconciliation presentation,
 weekly summaries and general status/recovery UI remain
-**APPROVED / NOT IMPLEMENTED**. Phase 2
-is not Complete; independently reviewed focused outcomes remain required.
+**APPROVED / NOT IMPLEMENTED** under their existing later-phase responsibilities.
+
+**Accepted basis:** ChatGPT independently accepted the existing completion gate
+using connected service acceptance and bounded replay/failure evidence under the
+[technical contract](EXPORT_EVIDENCE_CONTRACT.md) and
+[validation strategy](TESTING_STRATEGY.md#pol-r-reconciliation-evidence-and-future-workflow-acceptance).
+Acceptance does not qualify native Windows/NTFS, real concurrent writers,
+power-loss durability or external POL-R behavior.
 
 **Dependencies:** follow the [approved contract](EXPORT_EVIDENCE_CONTRACT.md).
 Pure decimal rendering, snapshot registration and verified materialization are
 implemented/staged as separate semantic outcomes. Confirmation validation/replay
 and dedicated preparation/registration, frozen-export proposal/selection
-preparation and daily reconciliation calculation are staged foundations;
-independent GO review is required before further workflow integration. This does
-not complete Phase 2, reorder the six development phases or
-activate the production UI.
+preparation and daily reconciliation calculation remain staged foundations whose
+bounded gate is independently accepted. Further workflow integration requires
+separately approved focused tasks and independent GO review. Phase closure does
+not reorder the six development phases or activate the production UI.
 
 **Outcome:** implement the approved distinction between Actual, Exported and
 Confirmed POL-R. The [product contract](TIMESHEET_REQUIREMENTS.md) remains the

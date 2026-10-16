@@ -14,6 +14,10 @@ Selected functionality is not automatically implemented.
 | Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
 | Production still pending | Production export integration, file-status/recovery UI, replacement UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
 
+[Phase 2's bounded evidence and daily-reconciliation service gate](docs/ROADMAP.md#phase-2--pol-r-evidence-and-reconciliation)
+is independently accepted as Complete under serialized dataset ownership;
+capabilities remain staged and production/release qualification remains pending.
+
 Current production still uses legacy parent/subtask interfaces, synthetic manual
 duration intervals, timestamp checkpoints and legacy submission markers. This
 staging does not select a permanent parallel legacy interface.
