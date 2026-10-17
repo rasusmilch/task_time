@@ -203,9 +203,90 @@ def guarded(name, globals=None, locals=None, fromlist=(), level=0):
     assert not (name == 'task_timer' and {'app', 'storage'} & set(fromlist or ()))
     return original(name, globals, locals, fromlist, level)
 builtins.__import__ = guarded
-from task_timer.work_entry_inputs import resolve_timed_interval_input
+from task_timer.work_entry_inputs import resolve_timed_interval_input, resolve_timed_interval_edit_input
 assert resolve_timed_interval_input(date(2026, 1, 1), '8', date(2026, 1, 1), '9', timezone.utc)['duration_seconds'] == 3600
+from datetime import datetime
+first = datetime(2026, 1, 1, 8, 0, 12, tzinfo=timezone.utc)
+last = first.replace(second=15)
+assert resolve_timed_interval_edit_input(first, last, first.date(), '8', last.date(), '8', timezone.utc)['duration_seconds'] == 3
 '''
     env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src")}
     result = subprocess.run([sys.executable, "-B", "-c", code], env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize('clock', ['9', '09:00', '9am', ' 9 : 00 AM '])
+def test_edit_same_minute_preserves_precise_positive_original(clock):
+    start = datetime(2026, 1, 12, 9, 0, 12, 345678, tzinfo=UTC)
+    stop = start.replace(second=15, microsecond=456789)
+    result = inputs.resolve_timed_interval_edit_input(start, stop, ORDINARY, clock, ORDINARY, clock, UTC)
+    assert result == {'start_utc': start, 'stop_utc': stop, 'duration_seconds': 3.111111}
+    result['duration_seconds'] = 0
+    assert inputs.resolve_timed_interval_edit_input(start, stop, ORDINARY, clock, ORDINARY, clock, UTC)['duration_seconds'] == 3.111111
+
+
+def test_edit_changes_one_endpoint_and_returning_to_original_meaning_restores_precision():
+    start = datetime(2026, 1, 12, 9, 0, 12, 345678, tzinfo=UTC)
+    stop = start.replace(hour=10, second=15, microsecond=456789)
+    changed = inputs.resolve_timed_interval_edit_input(start, stop, ORDINARY, '8', ORDINARY, '10am', UTC)
+    assert changed['start_utc'] == start.replace(hour=8, second=0, microsecond=0)
+    assert changed['stop_utc'] == stop
+    restored = inputs.resolve_timed_interval_edit_input(start, stop, ORDINARY, '9am', ORDINARY, '10', UTC)
+    assert restored['start_utc'] == start and restored['stop_utc'] == stop
+
+
+@pytest.mark.parametrize('zone,day,first,last', [
+    (CHICAGO, REPEAT, datetime(2026, 11, 1, 6, 30, 12, tzinfo=UTC), datetime(2026, 11, 1, 7, 30, 15, tzinfo=UTC)),
+    (ZoneInfo('Australia/Lord_Howe'), date(2026, 4, 5), datetime(2026, 4, 4, 14, 45, 12, tzinfo=UTC), datetime(2026, 4, 4, 15, 45, 15, tzinfo=UTC)),
+])
+def test_edit_proven_occurrence_preserves_seconds_and_changed_occurrence_does_not(zone, day, first, last):
+    a, b = first.astimezone(zone), last.astimezone(zone)
+    kwargs = dict(start_occurrence='first', end_occurrence='second' if b.hour == 1 else None)
+    result = inputs.resolve_timed_interval_edit_input(first, last, day, a.strftime('%H:%M'), day, b.strftime('%H:%M'), zone, **kwargs)
+    assert result['start_utc'] == first and result['stop_utc'] == last
+    with pytest.raises(ValueError, match='explicit'):
+        inputs.resolve_timed_interval_edit_input(first, last, day, a.strftime('%H:%M'), day, b.strftime('%H:%M'), zone)
+    changed = inputs.resolve_timed_interval_edit_input(first, last, day, a.strftime('%H:%M'), day, '3', zone, start_occurrence='second')
+    assert changed['start_utc'] != first and changed['start_utc'].second == 0
+
+
+@pytest.mark.parametrize('zone', [UTC, timezone(timedelta(hours=5, minutes=30)), timezone(timedelta(seconds=30))])
+def test_edit_overnight_and_nonminute_utc_offsets_preserve_local_minute_semantics(zone):
+    first = datetime(2026, 1, 12, 20, 0, 12, tzinfo=zone)
+    last = datetime(2026, 1, 13, 8, 0, 15, tzinfo=zone)
+    result = inputs.resolve_timed_interval_edit_input(first, last, ORDINARY, '20', ORDINARY + timedelta(days=1), '8', zone)
+    assert result['start_utc'] == first.astimezone(UTC) and result['stop_utc'] == last.astimezone(UTC)
+
+
+@pytest.mark.parametrize('fault', ['naive', 'type', 'span', 'timezone', 'overflow', 'gap', 'seconds', 'reversed'])
+def test_edit_invalid_originals_and_drafts_raise_value_error(fault):
+    first = datetime(2026, 1, 12, 9, tzinfo=UTC)
+    last = first + timedelta(hours=1)
+    args = [first, last, ORDINARY, '9', ORDINARY, '10', UTC]
+    if fault == 'naive': args[0] = first.replace(tzinfo=None)
+    elif fault == 'type': args[0] = None
+    elif fault == 'span': args[1] = first
+    elif fault == 'timezone': args[-1] = None
+    elif fault == 'overflow': args[0], args[-1] = datetime.min.replace(tzinfo=UTC), timezone(timedelta(hours=-1))
+    elif fault == 'gap': args[2:7] = [GAP, '2:30', GAP, '4', CHICAGO]
+    elif fault == 'seconds': args[3] = '9:00:00'
+    elif fault == 'reversed': args[3] = '11'
+    with pytest.raises(ValueError): inputs.resolve_timed_interval_edit_input(*args)
+
+
+def test_edit_resolution_is_pure_without_clock_network_or_io(monkeypatch, tmp_path):
+    def forbidden(*args, **kwargs): pytest.fail('Edit resolver attempted an external operation')
+    class NoClock(datetime):
+        now = utcnow = today = staticmethod(forbidden)
+    first = NoClock(2026, 1, 12, 9, 0, 12, tzinfo=UTC)
+    last = first.replace(second=15)
+    args = [first, last, ORDINARY, '9', ORDINARY, '9', UTC]
+    before = deepcopy(args)
+    with monkeypatch.context() as m:
+        m.setattr(inputs, 'datetime', NoClock)
+        m.setattr(time_utils, 'detect_local_timezone', forbidden)
+        m.setattr(builtins, 'open', forbidden)
+        m.setattr(os, 'open', forbidden)
+        m.setattr(socket.socket, 'connect', forbidden)
+        assert inputs.resolve_timed_interval_edit_input(*args)['duration_seconds'] == 3
+    assert args == before and list(tmp_path.iterdir()) == []

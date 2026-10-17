@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import date, tzinfo
 from tkinter import StringVar, ttk
 
-from .work_entry_inputs import local_minute_candidates, resolve_timed_interval_input
+from .work_entry_inputs import (
+    local_minute_candidates, resolve_timed_interval_input, resolve_timed_interval_edit_input,
+)
 
 
 class TimedIntervalInputFrame(ttk.Frame):
@@ -25,6 +27,7 @@ class TimedIntervalInputFrame(ttk.Frame):
         self.local_timezone = local_timezone
         self.error_var = StringVar(master=self, value="")
         self._choices = {"start": {}, "end": {}}
+        self._inputs_locked = False
         zone_label = getattr(local_timezone, "key", None) or str(local_timezone)
         self.timezone_label = ttk.Label(self, text=f"Timezone: {zone_label}")
         self.timezone_label.grid(row=0, column=0, columnspan=5, sticky="w", pady=(0, 4))
@@ -97,7 +100,7 @@ class TimedIntervalInputFrame(ttk.Frame):
             error.set(f"{endpoint.title()}: Select first or second occurrence"
                       if choices and selected.get() not in choices else "")
         self._choices[endpoint] = choices
-        selector.configure(values=tuple(choices), state="readonly" if choices else "disabled")
+        selector.configure(values=tuple(choices), state="readonly" if choices and not self._inputs_locked else "disabled")
         if selected.get() not in choices:
             selected.set("")
         if choices:
@@ -116,10 +119,39 @@ class TimedIntervalInputFrame(ttk.Frame):
 
     def resolve_input(self):
         """Revalidate the current draft; retain invalid values for correction."""
+        return self._resolve_current(resolve_timed_interval_input)
+
+    def resolve_edit_input(self, original_start_utc, original_stop_utc):
+        """Resolve current fields without discarding unchanged recorded precision."""
+        return self._resolve_current(resolve_timed_interval_edit_input, original_start_utc, original_stop_utc)
+
+    def set_occurrence(self, endpoint, occurrence):
+        """Set a validated occurrence without exposing the private label mapping."""
+        if endpoint not in ("start", "end") or occurrence not in (None, "first", "second"):
+            raise ValueError("Expected start/end and None/first/second occurrence")
+        label = ""
+        if occurrence is not None:
+            candidates = local_minute_candidates(
+                self._read_date(endpoint), getattr(self, f"{endpoint}_time_var").get(), self.local_timezone)
+            if len(candidates) != 2:
+                raise ValueError("Occurrence selection requires a valid repeated-time draft")
+            index = 0 if occurrence == "first" else 1
+            label = self._choice_label(candidates[index], "First" if index == 0 else "Second")
+        getattr(self, f"{endpoint}_occurrence_var").set(label)
+        self._selection_changed(endpoint)
+
+    def _lock_inputs(self):
+        self._inputs_locked = True
+        for endpoint in ("start", "end"):
+            for field in ("date_entry", "time_entry", "occurrence_selector"):
+                getattr(self, f"{endpoint}_{field}").configure(state="disabled")
+
+    def _resolve_current(self, resolver, *original):
         self._refresh_endpoint("start")
         self._refresh_endpoint("end")
         try:
-            result = resolve_timed_interval_input(
+            result = resolver(
+                *original,
                 self._read_date("start"), self.start_time_var.get(),
                 self._read_date("end"), self.end_time_var.get(), self.local_timezone,
                 start_occurrence=self._choices["start"].get(self.start_occurrence_var.get()),

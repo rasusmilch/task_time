@@ -577,3 +577,41 @@ def test_midnight_dst_history_accounting_restart_rebuild_restore(setup, monkeypa
     final = TaskTimerService(EventStorage(s.storage.data_dir))
     assert final.state == expected and final.get_task_work_history(a, cutoff_utc=CUTOFF) == rows
     assert_registered(final, event, final.register_prepared_timed_interval_correction(event))
+
+
+def test_authoritative_reader_is_detached_pure_and_includes_known_deleted_tasks(setup, monkeypatch):
+    s, a, _, _, _, _ = setup
+    seed(s, a, fractional=True)
+    stale = deepcopy(s.state)
+    other = TaskTimerService(EventStorage(s.storage.data_dir))
+    other.update_task(a, 'Authoritative name', '')
+    other.delete_task(a)
+    before = capture(s)
+    monkeypatch.setattr(TaskTimerService, '__init__', forbidden)
+    monkeypatch.setattr(app_module, 'utc_now', forbidden)
+    for name in ('append_event', 'save_snapshot', 'synchronize_journal'):
+        monkeypatch.setattr(s.storage, name, forbidden)
+    monkeypatch.setattr(s, '_create_risky_operation_backup', forbidden)
+    task = s.read_task_for_timed_interval_correction(a)
+    assert task.is_deleted and task.name == 'Authoritative name' and s.state == stale
+    task.name = 'Caller mutation'
+    task.intervals.clear()
+    fresh = s.read_task_for_timed_interval_correction(a)
+    assert fresh.name == 'Authoritative name' and fresh.intervals
+    assert capture(s) == before
+
+
+@pytest.mark.parametrize('fault', ['project', 'unknown', 'type', 'active', 'manifest', 'incomplete'])
+def test_authoritative_reader_rejects_missing_owners_or_uncertain_journal_without_mutation(setup, fault):
+    s, a, _, p, _, _ = setup
+    owner = a
+    if fault == 'project': owner = p
+    elif fault == 'unknown': owner = str(uuid4())
+    elif fault == 'type': owner = None
+    elif fault == 'active': s.storage.active_path.unlink()
+    elif fault == 'manifest': s.storage.manifest_path.unlink()
+    else:
+        with s.storage.active_path.open('a', encoding='utf-8') as handle: handle.write('{')
+    before = capture(s)
+    with pytest.raises((ValueError, OSError)): s.read_task_for_timed_interval_correction(owner)
+    assert capture(s) == before

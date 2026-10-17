@@ -315,3 +315,63 @@ def test_real_tk_construction_callbacks_selection_and_resolution(real_root, zone
     frame.start_occurrence_selector.event_generate("<<ComboboxSelected>>")
     assert frame.resolve_input()["duration_seconds"] == seconds
     assert frame.error_var.get() == frame.start_error_var.get() == ""
+
+
+def test_edit_resolution_restores_precision_and_keeps_ordinary_resolution_contract(make_form):
+    from datetime import datetime
+    first = datetime(2026, 1, 12, 8, 0, 12, 345678, tzinfo=CHICAGO)
+    last = first.replace(second=15, microsecond=456789)
+    frame = make_form(end_time='8')
+    with pytest.raises(ValueError, match='after start'):
+        frame.resolve_input()
+    assert frame.resolve_edit_input(first, last)['duration_seconds'] == 3.111111
+    frame.start_time_var.set('7')
+    assert frame.resolve_edit_input(first, last)['start_utc'].hour == 13
+    frame.start_time_var.set('8am')
+    assert frame.resolve_edit_input(first, last)['start_utc'] == first.astimezone(timezone.utc)
+    frame.end_time_var.set('bad')
+    with pytest.raises(ValueError): frame.resolve_edit_input(first, last)
+    assert frame.end_time_var.get() == 'bad' and frame.error_var.get()
+
+
+@pytest.mark.parametrize('endpoint,choice', [('bad', None), ('start', 'third'), ('start', 1), ('end', True), (None, 'first')])
+def test_occurrence_setter_rejects_invalid_requests_without_changing_drafts(make_form, endpoint, choice):
+    frame = repeated(make_form)
+    frame.set_occurrence('end', 'second')
+    before = [getattr(frame, name).get() for name in ('start_date_var', 'start_time_var', 'start_occurrence_var', 'end_date_var', 'end_time_var', 'end_occurrence_var')]
+    with pytest.raises(ValueError): frame.set_occurrence(endpoint, choice)
+    assert [getattr(frame, name).get() for name in ('start_date_var', 'start_time_var', 'start_occurrence_var', 'end_date_var', 'end_time_var', 'end_occurrence_var')] == before
+
+
+def test_occurrence_setter_accepts_only_repeated_drafts_and_clears_independently(make_form):
+    frame = repeated(make_form)
+    frame.set_occurrence('start', 'first')
+    frame.set_occurrence('end', 'second')
+    assert frame.resolve_input()['duration_seconds'] == 3600
+    frame.set_occurrence('start', None)
+    assert frame.start_occurrence_var.get() == '' and frame.end_occurrence_var.get() == SECOND
+    frame.start_time_var.set('3')
+    with pytest.raises(ValueError): frame.set_occurrence('start', 'first')
+    frame.start_time_var.set('bad')
+    with pytest.raises(ValueError): frame.set_occurrence('start', 'second')
+    assert frame.start_time_var.get() == 'bad' and frame.end_occurrence_var.get() == SECOND
+
+
+def test_edit_resolution_freshly_delegates_and_returns_detached_results(make_form, monkeypatch):
+    from datetime import datetime
+    frame = make_form()
+    first = datetime(2026, 1, 12, 8, 0, 12, tzinfo=CHICAGO)
+    last = first.replace(hour=9)
+    resolver, calls = forms.resolve_timed_interval_edit_input, []
+    def resolve(*args, **kwargs):
+        calls.append(args)
+        return resolver(*args, **kwargs)
+    monkeypatch.setattr(forms, 'resolve_timed_interval_edit_input', resolve)
+    old = frame.resolve_edit_input(first, last)
+    saved = deepcopy(old)
+    frame.end_time_var.set('10')
+    current = frame.resolve_edit_input(first, last)
+    assert old == saved and current['stop_utc'].hour == 16 and current['start_utc'] == old['start_utc']
+    current['duration_seconds'] = -1
+    assert frame.resolve_edit_input(first, last)['duration_seconds'] > 0
+    assert len(calls) == 3 and calls[-1][:2] == (first, last) and calls[-1][5] == '10'

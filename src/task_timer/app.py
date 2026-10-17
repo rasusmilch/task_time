@@ -111,6 +111,12 @@ class TaskTimerService:
         detached._rebuild_state(detached.events)
         return detached
 
+    def read_task_for_timed_interval_correction(self, task_id) -> TaskState:
+        """Read detached current authority, including deleted tasks, without installation."""
+        journal = self.storage.iter_all_events(strict=True)
+        baseline = self._derive_timed_correction_journal(journal)
+        return deepcopy(baseline._require_task(task_id))
+
     @staticmethod
     def _reviewed_closed_interval(baseline, task_id, interval_id):
         canonical_uuid(task_id)

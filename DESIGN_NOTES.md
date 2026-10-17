@@ -328,7 +328,7 @@ separate task/day service. No schema, identity or persistent state is added.
 
 ## Replacement timed-input validation (staged)
 
-`task_timer.work_entry_inputs` adds two pure APIs, without a service facade:
+`task_timer.work_entry_inputs` provides three pure APIs, without a service facade:
 
 - `local_minute_candidates(work_date, time_text, local_timezone)` returns a tuple
   of distinct aware UTC datetimes in chronological order: one for ordinary local
@@ -343,6 +343,18 @@ separate task/day service. No schema, identity or persistent state is added.
   UTC order. A nonexistent endpoint raises a clear `ValueError`. Invalid requests,
   occurrence selections and unrepresentable conversions also raise `ValueError`.
   Stop must be strictly after start in UTC, and elapsed seconds use UTC subtraction.
+- `resolve_timed_interval_edit_input(original_start_utc, original_stop_utc,
+  start_date, start_time, end_date, end_time, local_timezone, *,
+  start_occurrence=None, end_occurrence=None)` validates aware original endpoints,
+  positive original UTC span and local representability. It resolves proposed
+  endpoints independently. Subtracting each original endpoint's local seconds
+  and microseconds from its UTC instant establishes a minute candidate, which
+  must occur in `local_minute_candidates` for the displayed date/clock. A matching
+  proposed candidate restores the complete original endpoint. Only then are
+  UTC ordering and precise duration checked. Equivalent clock text and editing
+  back preserve precision; positive same-minute original spans remain valid.
+  Changed occurrences are distinct candidates; no sticky dirty flag or rounding
+  is used. The return shape remains exactly the same three fields.
 
 Candidate validation tries both fold values and round-trips local → UTC → local,
 requiring the complete requested wall datetime to survive. Results deduplicate
@@ -389,15 +401,21 @@ values, shows the affected endpoint or interval error and raises `ValueError`;
 success clears obsolete errors. There is no cached successful result, inferred
 overnight date, truncated second input, guessed occurrence or adjusted gap.
 
-The containing editor still owns confirmation/cancellation and saving. This
-frame has no Save actions, mutation callbacks, duration switch, reason policy,
-running-stop operation, record identity, audit interface or persistence. It does
-not decide how existing sub-minute records map into future edits. Record-editor integration,
-stale-record protection and committed-versus-refresh handling in the editor,
-mixed-history display and production activation remain pending. The separate
-[staged correction service](#timed-interval-corrections-staged) supplies journal-backed
-registration outcomes without connecting this frame. The active legacy
-`TimelineEntryDialog`, its callers and legacy service writers remain unchanged.
+`resolve_edit_input(original_start_utc, original_stop_utc)` freshly delegates
+current fields and choices to the precision-preserving resolver with the same
+inline-error/draft retention behavior. Ordinary `resolve_input()` is unchanged.
+`set_occurrence(endpoint, occurrence)` accepts start/end and None/first/second;
+None clears one choice, while first/second requires a valid repeated-time draft.
+Invalid requests raise without changing drafts or the other endpoint. The
+standalone editor initializes only occurrences proved by stored UTC evidence;
+ordinary frame construction still leaves repeated-time choices empty.
+
+The containing editor owns confirmation/cancellation and saving. This frame has
+no Save actions, mutation callbacks, duration switch, reason policy, running-stop
+operation, record identity, audit interface or persistence. It is composed by the
+[standalone correction dialog](#standalone-timed-interval-correction-dialog-staged),
+with no production callers. Mixed-history display and production activation remain
+pending; the legacy `TimelineEntryDialog` and its writers remain unchanged.
 
 ## Timed-interval corrections (staged)
 
@@ -461,10 +479,57 @@ snapshot is saved. Snapshot failure returns true/false and reports registration.
 Recovery warnings preserve append-error context. Unverified or pre-registration
 outcomes raise; they do not assert that no bytes were written.
 
+`read_task_for_timed_interval_correction(task_id) -> TaskState` strictly reads
+the journal, reuses the detached reconstruction helper, resolves through
+`_require_task` and returns a deep copy. Known deleted tasks remain readable for
+conflict presentation; missing tasks and projects reject. No constructor,
+installation, synchronization, snapshot, backup or clock capture is used.
+
 This is serialized staged service behavior, not a transaction/power-loss or
-concurrent-writer guarantee. It activates no editor, deletion operation, dated
-writer, running-stop correction or production workflow. The form remains
-unconnected and legacy required reasons/checkpoint checks remain unchanged.
+concurrent-writer guarantee. The standalone dialog consumes these APIs without
+production callers. Legacy required reasons/checkpoint checks remain unchanged.
+
+## Standalone timed-interval correction dialog (staged)
+
+`timed_interval_editor.TimedIntervalCorrectionDialog(parent, service, task_id,
+interval_id)` composes the form and correction services. It edits one complete,
+effective, positive, genuine closed interval of a nondeleted task. Dated,
+synthetic, open, missing and superseded work reject. Authoritative loading and
+local representability checks occur before creating the modal; construction
+failure destroys any partial window/grab. The explicit service timezone supplies
+separate dates, minute clocks and proved original occurrences; the optional
+comment starts empty. Audit timezone metadata is not resolved.
+
+Before every new preparation, the dialog reloads authority and compares the
+reviewed interval record, retaining drafts/comments on failure. Task renaming
+and unrelated work do not invalidate a record. Fresh conflict information is
+read-only: only an unambiguous, acyclic same-task replacement chain is followed
+to a supported current successor. Deletion, missing evidence, branching, cycles
+and unsupported records are reported without retargeting or replacing drafts.
+
+Edit-aware form resolution preserves original precision. Preparation/registration
+remain delegated to the accepted services; no-op/comment-only saves finish
+unchanged. A prepared event is retained before registration. After an attempt,
+inputs/comment are locked, Cancel becomes Close and retries invoke only the
+registrar with the unchanged event, bypassing the original-prior UI gate.
+Reentrant Save/retry/close callbacks are ignored while a service call is active.
+
+An exception without a previous returned result means unverified registration:
+the correction may already be recorded. Close/Escape/window-close share a brief
+confirmation in that case. Any returned result establishes registration. Complete
+results without warnings finish immediately; otherwise the dialog displays the
+returned diagnostics. Incomplete installation/snapshot results offer Retry refresh.
+A recovery warning with both completion flags true is not called an incomplete
+refresh. Failed refresh retries preserve the earlier verified result and show
+the new error separately.
+
+On completion, detached `dialog.result` contains exactly `status`,
+`prepared_event`, `registration_result`. Cancelled/unchanged have both other values
+None; unverified retains the event; registered retains the event and latest
+returned result. This is in-memory handoff only, without persistent drafts, retry
+stores or restart guarantees. No production menus/timelines, creation/deletion,
+dated editing, running-stop repair, audit/history UI, preferences, Reset removal
+or additional recovery mechanism are activated.
 
 ## Independent-task timesheet renderer (staged)
 

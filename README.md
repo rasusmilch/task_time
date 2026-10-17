@@ -100,7 +100,7 @@ precision or billing-rounding rule. Existing production time helpers remain acti
 The standalone staged [TimedIntervalInputFrame](DESIGN_NOTES.md#timed-interval-input-form-staged)
 provides separate date/time fields, explicit occurrence choices with UTC offsets
 and inline validation through those APIs. It supplies no saving or record access;
-record-editor integration, work-history display and production activation remain
+production record-editor integration, work-history display and activation remain
 pending. Production still uses the legacy `TimelineEntryDialog`.
 
 Separate staged [timed-correction APIs](DESIGN_NOTES.md#timed-interval-corrections-staged)
@@ -109,7 +109,11 @@ saves write nothing; changed endpoints preserve the other endpoint's precision,
 comments are optional, and stale priors reject. Frozen identities support verified
 journal recovery/reuse without rolling back newer work or confirmations. Results
 distinguish registered evidence from projection/snapshot failures. These services
-are not connected to the form or production editing; legacy mutators are unchanged.
+are now consumed by a [standalone correction dialog](DESIGN_NOTES.md#standalone-timed-interval-correction-dialog-staged).
+It authoritatively loads one closed record, preserves unchanged precision behind
+minute controls, retains stale drafts and distinguishes unverified registration
+from recorded corrections with refresh warnings. Retries keep the same event;
+production menus/timelines and legacy mutators remain unchanged.
 
 `build_timesheet_text()` separately renders those accounting results as a
 plain-text timesheet with independent task rows, dated daily columns and weekly
