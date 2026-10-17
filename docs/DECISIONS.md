@@ -91,7 +91,8 @@ interval, with affected-date deletion warnings. Editing preserves entry type;
 earlier versions/deletions remain accessible through audit/details. Current week
 is the UI default, with custom dates and All history. Date direction is a single
 user-wide persisted preference, initially newest first, switched through the
-date-column header. Exact link-marker styling remains undecided.
+date-column header. Exact link-marker styling was left undecided at that approval;
+the later standalone-table approval below resolves it.
 
 The explicit direction removes replacement Reset actions and resettable counters.
 It narrows the earlier reset-independence wording so it cannot imply a requirement
@@ -136,6 +137,25 @@ A detached prepared event retains both identities through uncertain appends;
 authoritative replay and journal synchronization establish registration before
 projection installation. No revision token, operation store or new event/schema
 is selected. This foundation does not activate record-editor UI or dated writers.
+
+### Mixed-history table presentation and related-portion feedback
+
+**Status:** current. **Provenance:** explicit user approval supplied with the
+standalone mixed-history table instructions, after the history-reader planning
+review; current owner: [mixed history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
+
+The later approval resolves the earlier presentation questions: minute clocks
+include a differing endpoint date and actual UTC offsets for repeated minutes;
+durations show completed whole minutes, with 0:00 for zero and <1 min for positive
+sub-minute work. Raw amounts and endpoints remain unchanged. Linked portions show
+↔; selecting a portion highlights its other visible task/kind/entry portions
+without selecting them or performing edits. Running portions remain task-scoped;
+dated entries do not link. No routine explanatory text is added.
+
+This selects standalone rendering and visual feedback, not browser controls,
+preferences, editing/deletion, production activation or removal of legacy Reset.
+It establishes no earlier approval of the previously undecided styling, no billing
+rounding and no new persistent identity or state.
 
 ### Local dates and configurable reporting weeks
 

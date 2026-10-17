@@ -326,6 +326,47 @@ preference, edit/delete and audit capabilities, production dated writers and
 production Reset removal are not implemented by this reader. POL-R remains a
 separate task/day service. No schema, identity or persistent state is added.
 
+## Mixed work-history table (staged)
+
+`work_history_view.WorkHistoryFrame(parent, *, local_timezone)` is a standalone
+`ttk.Frame`/Treeview. `display_rows(rows)` consumes the complete ordered results of
+the history service above; it performs no service/journal access, clock capture,
+scheduling, settings management or application-state installation. Its timezone
+is explicit. Complete rows are copied into UI-local metadata behind distinct
+transient widget handles, without adding fields or generating segment identities.
+Input order, precise seconds, original endpoints and continuation flags survive.
+
+Columns are link marker, Date, Kind, Start, End / as of and Duration. Dates use
+YYYY-MM-DD. Kind is Timed, Date only or Running; dated clock cells are blank.
+Timed segment endpoints use local 24-hour HH:MM, prefixed with their actual date
+when different from the row date. Repeated-minute detection reuses
+`local_minute_candidates`; ambiguous endpoints include their actual UTC offset,
+including non-hour offsets. Running stops are supplied observation boundaries,
+not recorded stops. Durations use supplied seconds: 0:00 for zero, <1 min for
+positive values below 60 seconds, otherwise completed minutes as H:MM with
+unbounded hours. This formatting neither derives work from displayed clocks nor
+changes accounting, raw precision, billing rounding, exports or confirmations.
+
+Interval portions show ↔ when either continuation flag is true. A selection
+callback highlights other visible portions sharing task/kind/entry identity with
+a component-local bold-font tag, without global style changes or multi-selection.
+Running __open__ identities remain task-scoped; dated entries do not link. Stale
+handles are ignored and replacement/selection changes clear obsolete feedback.
+
+All copied rows and display values are prepared before widget replacement.
+Unsupported kinds, missing data, invalid durations and unrepresentable endpoint
+conversions fail visibly and propagate, preserving the previous successful rows
+and metadata. Widget-update failure invalidates metadata/selection and hides the
+untrusted table where usable, with a visible error; it claims no GUI rollback.
+A subsequent explicit successful render restores the table and clears the error.
+Empty input is a valid empty display. No rows are silently omitted or legacy
+synthetic work converted.
+
+This component is not the complete history browser. Period/sort controls,
+preferences, automatic refresh, correction actions, creation/deletion, audit,
+production integration and Reset removal remain pending. The legacy timeline and
+its formatters are unchanged; no new persistent state or domain projection exists.
+
 ## Replacement timed-input validation (staged)
 
 `task_timer.work_entry_inputs` provides three pure APIs, without a service facade:
@@ -414,8 +455,9 @@ The containing editor owns confirmation/cancellation and saving. This frame has
 no Save actions, mutation callbacks, duration switch, reason policy, running-stop
 operation, record identity, audit interface or persistence. It is composed by the
 [standalone correction dialog](#standalone-timed-interval-correction-dialog-staged),
-with no production callers. Mixed-history display and production activation remain
-pending; the legacy `TimelineEntryDialog` and its writers remain unchanged.
+with no production callers. Standalone mixed-history rendering is available
+separately; production history integration and activation remain pending. The
+legacy `TimelineEntryDialog` and its writers remain unchanged.
 
 ## Timed-interval corrections (staged)
 

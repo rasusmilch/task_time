@@ -85,6 +85,15 @@ linked local-day interval segments and whole date-only amounts, with explicit
 cutoff, inclusive dates or All history, and deterministic date/within-day ordering.
 It ignores legacy resets and preserves underlying entry identity without writes.
 See the [staged service contract](DESIGN_NOTES.md#mixed-work-history-service-staged).
+
+The standalone staged [WorkHistoryFrame](DESIGN_NOTES.md#mixed-work-history-table-staged)
+renders supplied rows in their exact order, with minute clocks, endpoint dates and
+repeated-hour offsets, completed-minute durations and ↔ linked-portion markers.
+Selection highlights related visible portions without work mutations. Full precise
+row metadata stays detached behind temporary widget handles; rendering errors are
+visible rather than silently presenting incomplete results. It loads no services,
+settings or clocks and is not connected to production.
+
 The [Selected replacement history](docs/TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history)
 includes current-week/custom/All UI periods, persistent date sorting and segment
 editing/audit interactions; those integrations and removal of production Reset
@@ -100,8 +109,8 @@ precision or billing-rounding rule. Existing production time helpers remain acti
 The standalone staged [TimedIntervalInputFrame](DESIGN_NOTES.md#timed-interval-input-form-staged)
 provides separate date/time fields, explicit occurrence choices with UTC offsets
 and inline validation through those APIs. It supplies no saving or record access;
-production record-editor integration, work-history display and activation remain
-pending. Production still uses the legacy `TimelineEntryDialog`.
+production record-editor/history integration and activation remain pending.
+Production still uses the legacy `TimelineEntryDialog`.
 
 Separate staged [timed-correction APIs](DESIGN_NOTES.md#timed-interval-corrections-staged)
 prepare and register one effective closed genuine interval replacement. Unchanged

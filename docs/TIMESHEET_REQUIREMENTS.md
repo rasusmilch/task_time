@@ -117,9 +117,28 @@ them without invented clock positions.
 
 Intervals crossing local midnight appear as linked daily segments of one
 underlying interval. Editing or deleting a segment acts on that complete
-interval; deletion warns about affected dates. Precise link-marker styling
-remains undecided; no routine extra text is selected. POL-R reconciliation stays
-per task/day, without per-entry confirmation or Delta state.
+interval; deletion warns about affected dates. POL-R reconciliation stays per
+task/day, without per-entry confirmation or Delta state.
+
+The history table presents a compact link column, Date, Kind, Start, End / as of
+and Duration. Dates use YYYY-MM-DD; Kind distinguishes Timed, Date only and
+Running. Dated entries have blank clock cells; running endpoints are observation
+boundaries, not recorded stops. The approved presentation rules are:
+
+- Segment clocks use 24-hour HH:MM. An endpoint on a different local date from
+  the row includes its actual YYYY-MM-DD date, including next-date midnight.
+- Repeated local minutes include the endpoint's actual UTC offset, preserving
+  non-hour offsets. Ambiguity comes from valid local-minute candidates, not a
+  timezone name or abbreviation.
+- Durations use supplied seconds: zero displays 0:00, positive sub-minute work
+  displays <1 min, and other amounts display completed whole minutes as H:MM
+  with unbounded hours. These display rules change no stored precision,
+  accounting, billing rounding, exports or POL-R values.
+- Linked interval portions show ↔ when either continuation flag is true.
+  Selecting one portion visually highlights its other visible portions by
+  task/kind/entry identity, including task-scoped running portions. Selection
+  stays on the chosen row; dated entries do not link. No routine extra text is
+  added. This later approval resolves the earlier undecided link styling.
 
 The detached [work-history service](../DESIGN_NOTES.md#mixed-work-history-service-staged)
 and pure [timed-input validation](../DESIGN_NOTES.md#replacement-timed-input-validation-staged)
@@ -128,8 +147,10 @@ are staged, together with a standalone
 [closed-interval correction preparation/registration](../DESIGN_NOTES.md#timed-interval-corrections-staged).
 A [standalone correction dialog](../DESIGN_NOTES.md#standalone-timed-interval-correction-dialog-staged)
 now connects those components without production callers.
-Production record-editor integration, minute-only work-history display,
-UI periods/sorting controls, preference persistence, audit presentation,
+A standalone [work-history table](../DESIGN_NOTES.md#mixed-work-history-table-staged)
+now renders supplied rows and related-portion feedback without service access.
+Production record-editor/history integration, UI periods/sorting controls,
+preference persistence, audit presentation,
 segment editing/deletion handlers, dated writer activation and production Reset
 removal remain subsequent work.
 
@@ -401,7 +422,7 @@ Source describes what executes, not an alternative product contract. See
 | Project/task foundation | Separate UUID-based service records, optional current project membership and independent task-owned time. |
 | Date-only duration foundation | Separate endpoint-free records with append-only creation/correction/deletion replay and snapshots; new production duration writers are inactive. |
 | Mixed accounting | Read-only explicit local-date windows, real intervals plus effective dated records, derived project/Unassigned/application totals, and fixed Sunday-start weeks. |
-| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable; production timeline, editing and reset controls are unchanged. |
+| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting; production timeline, editing and reset controls are unchanged. |
 | Timed input validation | Pure minute-clock candidate/resolution APIs with separate endpoint dates, explicit repeated-time occurrences, gap rejection, UTC ordering and edit-aware restoration of unchanged precision. Consumed by the form and standalone editor; production callers remain unchanged. |
 | Timed input form | Standalone minute-only endpoint fields, canonical dates, timezone/occurrence choices and inline errors using the accepted validators. No stored-record loading, saving or production connection; legacy TimelineEntryDialog is unchanged. |
 | Timed corrections | Separate staged preparation/registration of one effective closed genuine interval replacement, preserving unchanged precision, optional comments and retry identities. No-op saves write nothing; stale priors reject. Consumed by the standalone dialog; production editing remains inactive. |
