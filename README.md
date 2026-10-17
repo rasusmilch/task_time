@@ -90,6 +90,13 @@ includes current-week/custom/All UI periods, persistent date sorting and segment
 editing/audit interactions; those integrations and removal of production Reset
 controls remain pending. Existing production timeline and counters are unchanged.
 
+Pure [timed-input validation](DESIGN_NOTES.md#replacement-timed-input-validation-staged)
+separately resolves minute-only clock inputs with independent start/end dates,
+explicit repeated-time occurrences, nonexistent-time rejection and UTC elapsed
+ordering. Replacement entry/editing/display is Selected as minute-only; this
+module activates no editor, writer or display changes and alters no recorded
+precision or billing-rounding rule. Existing production time helpers remain active.
+
 `build_timesheet_text()` separately renders those accounting results as a
 plain-text timesheet with independent task rows, dated daily columns and weekly
 totals grouped by current project. Project subtotals are informational and

@@ -79,6 +79,15 @@ Selected workflow; normal history and calendar Actual are independent of legacy
 reset boundaries. This target does not remove currently active legacy controls.
 Real work must remain recordable when allocations are exhausted or unknown.
 
+Replacement timed-work entry, editing and work-history display use minute-only
+clock precision, with separate start/end dates and times. Repeated local times
+require explicit first/second occurrence selection, ordered by their UTC instants;
+nonexistent local times are rejected. Endpoint ordering and elapsed duration use
+UTC, so valid work may cross midnight or have an earlier-looking stop clock
+during a fallback. No overnight rollover, gap adjustment or occurrence is guessed.
+This selects input/display behavior, not billing rounding or changes to existing
+recorded precision, raw accounting or export representations.
+
 ## SELECTED — Mixed work history
 
 Normal task history contains genuine timed intervals and date-only entries
@@ -98,8 +107,10 @@ interval; deletion warns about affected dates. Precise link-marker styling
 remains undecided; no routine extra text is selected. POL-R reconciliation stays
 per task/day, without per-entry confirmation or Delta state.
 
-Only the detached [work-history service](../DESIGN_NOTES.md#mixed-work-history-service-staged)
-is staged. UI periods/sorting controls, preference persistence, audit presentation,
+The detached [work-history service](../DESIGN_NOTES.md#mixed-work-history-service-staged)
+and pure [timed-input validation](../DESIGN_NOTES.md#replacement-timed-input-validation-staged)
+are staged. Minute-only display and editor integration, UI periods/sorting
+controls, preference persistence, audit presentation,
 segment editing/deletion handlers, dated writer activation and production Reset
 removal remain subsequent work.
 
@@ -372,6 +383,7 @@ Source describes what executes, not an alternative product contract. See
 | Date-only duration foundation | Separate endpoint-free records with append-only creation/correction/deletion replay and snapshots; new production duration writers are inactive. |
 | Mixed accounting | Read-only explicit local-date windows, real intervals plus effective dated records, derived project/Unassigned/application totals, and fixed Sunday-start weeks. |
 | Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable; production timeline, editing and reset controls are unchanged. |
+| Timed input validation | Pure minute-clock candidate/resolution APIs with separate endpoint dates, explicit repeated-time occurrences, gap rejection and UTC elapsed ordering. No editor, writer or display integration; existing helpers/callers and stored precision remain unchanged. |
 | Timesheet rendering/generation | Staged independent-task exact and decimal renderers with authoritative scope/timezone metadata, safe calendar slots, reversible escaping and wrapped borders. Decimal output rounds task/day cells once and sums displayed hundredths; service generation still uses exact durations. |
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
 | Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; current duration UI still uses synthetic intervals. |

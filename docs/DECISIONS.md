@@ -101,6 +101,21 @@ established by that wording or by legacy source. POL-R stays per task/day.
 The staged projection is implementation evidence, not approval or delivery of
 the future UI, preference, editing, audit or production reset-removal work.
 
+### Minute-only replacement clock input and daylight-saving choices
+
+**Status:** current. **Provenance:** explicit user approval supplied with the
+staged timed-input validation instructions; current owner:
+[Actual-time records](TIMESHEET_REQUIREMENTS.md#selected--actual-time-records).
+
+Replacement timed-work entry, editing and display use minutes, with separate
+start/end dates and times. Repeated local times require explicit first/second
+occurrence selection in chronological UTC order; nonexistent local times are
+rejected. Genuine elapsed ordering uses resolved UTC endpoints, without guessed
+overnight rollover or gap adjustment. This approval selects input/display
+behavior, not a billing-rounding rule or conversion of earlier recorded work.
+Existing raw-precision accounting remains binding. The staged pure validators
+do not establish delivery of the replacement editor, writer or display.
+
 ### Local dates and configurable reporting weeks
 
 **Status:** current. **Provenance:** explicit user confirmation; current owner:

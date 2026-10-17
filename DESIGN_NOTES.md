@@ -326,6 +326,41 @@ preference, edit/delete and audit capabilities, production dated writers and
 production Reset removal are not implemented by this reader. POL-R remains a
 separate task/day service. No schema, identity or persistent state is added.
 
+## Replacement timed-input validation (staged)
+
+`task_timer.work_entry_inputs` adds two pure APIs, without a service facade:
+
+- `local_minute_candidates(work_date, time_text, local_timezone)` returns a tuple
+  of distinct aware UTC datetimes in chronological order: one for ordinary local
+  time, two for repeated time and none for a nonexistent time. It requires an
+  exact `date`, string clock input and a valid supplied timezone object. It reuses
+  `parse_flexible_time` unchanged; seconds/fractions in clock input are rejected.
+- `resolve_timed_interval_input(start_date, start_time, end_date, end_time,
+  local_timezone, *, start_occurrence=None, end_occurrence=None)` returns a detached
+  dictionary with exactly `start_utc`, `stop_utc` and `duration_seconds`.
+  Each endpoint is resolved independently. An ordinary endpoint requires `None`;
+  a repeated endpoint requires `"first"` or `"second"`, referring to chronological
+  UTC order. A nonexistent endpoint raises a clear `ValueError`. Invalid requests,
+  occurrence selections and unrepresentable conversions also raise `ValueError`.
+  Stop must be strictly after start in UTC, and elapsed seconds use UTC subtraction.
+
+Candidate validation tries both fold values and round-trips local → UTC → local,
+requiring the complete requested wall datetime to survive. Results deduplicate
+by UTC instant; different folds/offsets alone do not prove ambiguity. Standard
+`ZoneInfo` and fixed-offset `timezone` objects are supported, including non-hour
+transitions. No timezone detection, current date/clock capture, network lookup,
+default occurrence, overnight inference or automatic gap adjustment is performed.
+
+The [Selected minute-only behavior](docs/TIMESHEET_REQUIREMENTS.md#selected--actual-time-records)
+applies to replacement entry/editing/display. These APIs interpret input only:
+they do not format display, alter existing recorded work, round accounting/billing,
+create identities, persist state or activate a writer/editor. Existing
+`parse_flexible_time`, timezone-attaching `combine_local_date_time`, production
+dialogs, service mutations, accounting, replay, exports and confirmations remain
+unchanged. Those active legacy callers do not yet use this validation. Stale-edit
+protection, running-work actions, audit UI, sort preferences and linked-row styling
+are not delivered by this module.
+
 ## Independent-task timesheet renderer (staged)
 
 `task_timer.exporter.build_timesheet_text(report, *, local_timezone=None, scope=None)`
