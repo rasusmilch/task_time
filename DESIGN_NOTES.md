@@ -91,7 +91,7 @@ Task-only timer, manual-time, correction, reset, and deletion operations reject
 project or unknown task IDs before mutation. Starting a task validates the target
 before stopping valid running work. Bulk reset/delete selection validates all
 requested IDs before touching any task. Valid task switching still enforces the
-one-running-task rule. Historical corrections to existing deleted task records
+one-running-task rule. Legacy historical corrections to existing deleted task records
 retain the previous behavior; deleted tasks cannot be started or reassigned.
 
 This foundation does not change the production UI, export calculations,
@@ -392,10 +392,79 @@ overnight date, truncated second input, guessed occurrence or adjusted gap.
 The containing editor still owns confirmation/cancellation and saving. This
 frame has no Save actions, mutation callbacks, duration switch, reason policy,
 running-stop operation, record identity, audit interface or persistence. It does
-not decide how existing sub-minute records map into future edits. Record editing,
-stale-record protection, committed-versus-refresh failure handling, mixed-history
-display and production activation remain pending. The active legacy
-`TimelineEntryDialog`, its callers and service writers remain unchanged.
+not decide how existing sub-minute records map into future edits. Record-editor integration,
+stale-record protection and committed-versus-refresh handling in the editor,
+mixed-history display and production activation remain pending. The separate
+[staged correction service](#timed-interval-corrections-staged) supplies journal-backed
+registration outcomes without connecting this frame. The active legacy
+`TimelineEntryDialog`, its callers and legacy service writers remain unchanged.
+
+## Timed-interval corrections (staged)
+
+`prepare_timed_interval_correction(task_id, interval_id, *, start_utc=None,
+stop_utc=None, comment="")` strictly reads the authoritative journal and reuses
+existing work replay on a detached temporary service/state copy, without calling
+the service constructor or installing state. It requires a nondeleted task and
+an effective, positive, genuine closed interval. Projects, dated/synthetic work,
+open intervals and superseded/deleted priors reject; a separate running interval
+is preserved. No legacy checkpoint/submission restriction is consulted.
+
+`None` preserves an endpoint exactly. Supplied endpoints are aware datetimes
+normalized to UTC; a changed endpoint must be a whole local minute, while an
+explicitly unchanged endpoint retains seconds/fractions. Stop must exceed start
+in UTC. Comments are trimmed strings and may be empty. No endpoint change returns
+`None` without a correction event, backup, snapshot or audit-clock capture; this
+is not standalone comment editing.
+
+Otherwise preparation freezes the existing `interval_edited` envelope with a
+new event UUID and replacement interval UUID, unchanged schema and UTC-second
+audit timestamp. `local_timezone` is offline UTF-8 metadata text with no surrounding
+whitespace or C0/C1 controls, not a database-resolution requirement. Payload fields
+are exactly `interval_id`, `new_interval_id`, `start_utc`, `stop_utc`, `entry_mode`,
+`prior_interval_label`, `reason`; mode is `interval`. Endpoints use canonical UTC
+`Z` strings preserving fractional precision. The label retains original canonical
+start, ` to `, and stop. The original tombstone, replacement link/comment and event
+audit time retain correction evidence. Replacement IDs cannot reuse interval or
+dated-entry identities, including tombstones.
+
+Structural validation lives in `interval_corrections.py`. Prospective replay uses
+the candidate's next physical read sequence and checks exactly the intended
+replacement against applying it once to the detached authoritative baseline.
+Other work, task/project attributes, timers and export/confirmation projections
+must agree; only the affected task's update timestamp may reflect normal replay
+order. Problematic backdating rejects rather than retimestamping or changing the
+shared replay policy.
+
+`register_prepared_timed_interval_correction(prepared_event)` copies and validates
+the frozen event, strictly rebuilds current authority, and checks identity before
+prior effectiveness. One exact existing event may be reused; repeated occurrences,
+conflicting content and cross-type identities fail closed. New events recheck
+ownership, effective prior, endpoints, replacement collisions and prospective
+effects, use the configured risky-operation backup hook, then repeat the gate
+before one `storage.append_event` call. Generic `_append` is not used.
+
+Ordinary successful append supplies flushing; strict reread verifies the event
+and all projections. Exact reuse or recovery of a complete event after append
+error requires successful `synchronize_journal`, including handle close, then
+strict reread and complete replay. Healthy absence raises with retry context;
+partial/unreadable/conflicting evidence fails closed without repair or another
+append. Retries retain both identities and rebuild the latest complete state,
+never reinstalling an older correction or confirmation.
+
+After verified registration, state, journal and export/confirmation projections
+are installed together, then the existing derived snapshot is saved. The detached
+result has exactly `event_id`, `replacement_interval_id`, `projection_installed`,
+`snapshot_saved`, and `warnings` (a tuple of diagnostic strings). Normal booleans
+are both true. Installation failure returns both false, identifying the correction
+as registered and retaining the prepared event for unchanged retry; no stale
+snapshot is saved. Snapshot failure returns true/false and reports registration.
+Recovery warnings preserve append-error context. Unverified or pre-registration
+outcomes raise; they do not assert that no bytes were written.
+
+This is serialized staged service behavior, not a transaction/power-loss or
+concurrent-writer guarantee. It activates no editor, deletion operation, dated
+writer, running-stop correction or production workflow. The form remains
+unconnected and legacy required reasons/checkpoint checks remain unchanged.
 
 ## Independent-task timesheet renderer (staged)
 

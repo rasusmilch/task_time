@@ -52,6 +52,7 @@ existence; their detailed contracts remain in Design Notes rather than here.
 | Mixed accounting | Genuine intervals and dated amounts; local-day/DST splitting; independent task totals; derived project/Unassigned/application totals; historical actuals independent of counter resets. Week start is currently Sunday only. | [accounting.py](../src/task_timer/accounting.py), [mixed service](../DESIGN_NOTES.md#mixed-date-window-accounting-service-only) |
 | Mixed work history | Read-only current effective task records; linked local-day interval segments and whole dated amounts; explicit cutoff/date filtering and deterministic ordering. No production timeline, preferences or edit/delete integration. | [work_history.py](../src/task_timer/work_history.py), [history service](../DESIGN_NOTES.md#mixed-work-history-service-staged) |
 | Timed input validation | Pure minute-only endpoint interpretation, separate dates, explicit repeated-time choices, gap rejection and UTC ordering; used by the standalone form without record editing or writer activation. | [work_entry_inputs.py](../src/task_timer/work_entry_inputs.py), [input contract](../DESIGN_NOTES.md#replacement-timed-input-validation-staged) |
+| Timed corrections | Staged closed genuine-interval preparation/registration with no-op purity, preserved unchanged precision, optional comments, stale-prior rejection and journal-verified retries/warning outcomes. No production editor/form connection. | [correction contract](../DESIGN_NOTES.md#timed-interval-corrections-staged) |
 | Timed input form | Unconnected ttk component with separate endpoint fields, occurrence selection and inline errors using the accepted validators; no record editing, saving or production activation. | [timed_interval_form.py](../src/task_timer/timed_interval_form.py), [form contract](../DESIGN_NOTES.md#timed-interval-input-form-staged) |
 | Timesheet presentation | Independent daily/weekly task rows, informational project subtotals, authoritative scope, duplicate-name references, multiline borders and reversible Unicode escaping protections. Exact and separate decimal renderers are staged; decimal task/day ROUND_HALF_UP cells conserve integer-hundredth rollups. | [exporter.py](../src/task_timer/exporter.py), [exact renderer](../DESIGN_NOTES.md#independent-task-timesheet-renderer-staged), [decimal renderer](../DESIGN_NOTES.md#decimal-hour-timesheet-renderer-staged) |
 | Service reporting | Date-range generation; exact UTF-8 output; same-directory complete staging and atomic no-overwrite hard-link publication, destination protection and staging-only cleanup under documented assumptions. Saves files without immutable export registration. | [service workflow](../DESIGN_NOTES.md#date-range-timesheet-service-staged) |
@@ -170,7 +171,8 @@ Return any newly necessary material decision for user/ChatGPT adjudication.
 
 **Status:** **APPROVED / NOT IMPLEMENTED** in production; foundations
 are staged, including the detached mixed work-history reader and pure timed-input
-validation plus a standalone timed-interval form. These foundations do not activate
+validation, a standalone timed-interval form and closed-interval correction
+preparation/registration. These foundations do not activate
 dated writers or satisfy the active-reader/UI gate below.
 
 **Outcome:** activate genuine date-only creation and correction/deletion, an
@@ -186,8 +188,11 @@ their production removal and these UI integrations remain pending.
 The [Selected timed-input behavior](TIMESHEET_REQUIREMENTS.md#selected--actual-time-records)
 requires minute-only entry/editing/display, separate endpoint dates/times,
 explicit repeated-time occurrence choices and rejection of nonexistent local
-times. Input interpretation and the standalone form are staged; stored-record
-editing, work-history display and production activation remain pending.
+times. Input interpretation, the standalone form and closed timed-correction
+services are staged. The correction path preserves unchanged endpoints, allows
+optional comments and rejects stale saves; unchanged saves create no event.
+Record-editor integration, work-history display and production activation remain
+pending.
 
 **Dependency:** do not activate a production dated-duration writer while any
 required active reader omits that work. Integrate mixed accounting/readers with

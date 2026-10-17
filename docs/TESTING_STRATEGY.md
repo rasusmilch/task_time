@@ -70,6 +70,7 @@ their assertions before selecting a run.
 | Accounting and time boundaries | [test_mixed_accounting.py](../tests/test_mixed_accounting.py), [test_time_utils.py](../tests/test_time_utils.py): conservation, selection, cutoffs, midnight/DST, corrections, resets, fractional amounts and fixed Sunday weeks. |
 | Replacement timed inputs | [test_work_entry_inputs.py](../tests/test_work_entry_inputs.py): accepted minute formats, strict date/clock/timezone/occurrence validation, second/fraction rejection, round-trip candidates, ordinary deduplication, Chicago gap/repeat, UTC ordering despite reversed wall clocks, overnight/fixed offsets, Lord Howe non-hour transitions, representability limits, detached results, prohibited external operations and fresh import/evaluation without service/storage dependencies. Pure input interpretation only; no editor, writer or minute-display integration qualification. |
 | Timed input form | [test_timed_interval_form.py](../tests/test_timed_interval_form.py): actual component construction with widget doubles, variable/event wiring, separate dates, minute formats, canonical date rejection, gaps/repeats/offset labels, independent choice clearing, draft retention/error correction, fresh validator delegation and absence of external writes/clock detection. Separate real-Tk smoke cases exercise construction, field callbacks, choice selection and resolution when a display is available; otherwise they skip with a reason. Neither doubles nor Linux Tk smoke establish stored-record editing, production activation or native Windows interaction. |
+| Timed corrections | [test_timed_interval_corrections.py](../tests/test_timed_interval_corrections.py): authoritative detached preparation, optional comments, unchanged fractional endpoints, no-op purity, effective-prior/identity/schema rejection, prospective equal/backdated replay, stale caches and backup-hook rechecks, configured backups, append absence/no-op/partial/complete-error and rotation-manifest faults, synchronization open/fsync/close/inspection/validation failures, installation/snapshot warnings, exact retry after newer work/confirmations, midnight/DST agreement, restart/rotation/rebuild/restore. Earlier evidence and prepared identities remain detached; no production editor or universal durability qualification. |
 | Mixed work history | [test_work_history.py](../tests/test_work_history.py): real isolated service/model projection, exact detached row shape, mixed entries, known deleted-task lookup, inclusive/All dates, date direction with stable within-day chronology, linked daily identity/continuations, midnight/DST/fixed offsets, running cutoffs, whole dated amounts, correction/redating/deletion/restart, reset/confirmation independence, synthetic refusal and per-day accounting agreement. State/event/snapshot/file comparisons and prohibited journal/write/clock/UUID calls cover purity on success and rejection. No production timeline, edit/delete handler, sort-preference or audit UI qualification. |
 | Rendering | [test_timesheet_renderer.py](../tests/test_timesheet_renderer.py): scope, partial/multiple weeks, calendar boundaries, exact durations, duplicate identity, wrapping/geometry and Unicode escaping. |
 | Decimal rendering | [test_decimal_timesheet_renderer.py](../tests/test_decimal_timesheet_renderer.py): ROUND_HALF_UP conversion/boundaries, invalid numbers, task/day rounding and displayed-rollup conservation, selection/identity, partial/multiple weeks, calendar edges, Unicode wrapping, purity and exact/legacy byte compatibility. This is a pure staged renderer, not export-evidence persistence. |
@@ -413,6 +414,9 @@ interrupted-recovery scenario.
 [storage.py](../src/task_timer/storage.py) appends JSONL, flushes/fsyncs,
 orders archived/active reads and replaces derived JSON files. The service validates
 new project/dated lifecycle and export-snapshot events before append and replay.
+The separate staged timed-correction path structurally validates frozen
+`interval_edited` candidates and checks prospective effects using existing detached
+work replay; legacy interval mutators and replay ordering remain unchanged.
 These mechanisms do not establish universal transactional or power-loss guarantees.
 
 Export snapshots and confirmation batches have bounded replay/fault coverage
@@ -432,7 +436,13 @@ remain renderer-independent and install the latest complete confirmation project
 Test installation-failure recovery without another append; compare prepared inputs,
 event counts, dataset bytes, Actual/timers, snapshots and external copies. Operational
 failure may retain complete/partial evidence; logical integrity is not filesystem
-rollback. Preserve one-event confirmation batch integrity and authoritative journal
+rollback. Timed-correction recovery/reuse also requires synchronization and full
+work/export/confirmation reconstruction before installation. Exercise unchanged
+endpoints, no-op saves, stale priors, backup gates and prospective replay ordering;
+returned registered-but-not-installed/saved warnings must differ from uncertain
+outcomes that raise. Historical retries must install current work, not roll it
+back, and must not save stale snapshots after installation failure.
+Preserve one-event confirmation batch integrity and authoritative journal
 precedence over derived snapshots. This strategy defines tests, not another event/schema/recovery owner.
 
 ## File publication and cross-resource failures

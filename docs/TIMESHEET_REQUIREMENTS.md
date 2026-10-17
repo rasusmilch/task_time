@@ -88,6 +88,14 @@ during a fallback. No overnight rollover, gap adjustment or occurrence is guesse
 This selects input/display behavior, not billing rounding or changes to existing
 recorded precision, raw accounting or export representations.
 
+Ordinary timed editing applies to closed genuine intervals. Saving unchanged
+work writes no event, including when only a comment is entered. Changing one
+endpoint preserves the other exactly; recorded seconds/fractions are not
+automatically rounded. A genuinely changed endpoint must be a whole local minute.
+Correction comments are optional. Original/replacement values and the correction
+audit timestamp remain available, and changes to the reviewed entry reject the
+save. A separate running interval does not prevent correcting older closed work.
+
 ## SELECTED — Mixed work history
 
 Normal task history contains genuine timed intervals and date-only entries
@@ -110,8 +118,9 @@ per task/day, without per-entry confirmation or Delta state.
 The detached [work-history service](../DESIGN_NOTES.md#mixed-work-history-service-staged)
 and pure [timed-input validation](../DESIGN_NOTES.md#replacement-timed-input-validation-staged)
 are staged, together with a standalone
-[timed-interval form](../DESIGN_NOTES.md#timed-interval-input-form-staged).
-Record editing, minute-only work-history display, production integration,
+[timed-interval form](../DESIGN_NOTES.md#timed-interval-input-form-staged) and
+[closed-interval correction preparation/registration](../DESIGN_NOTES.md#timed-interval-corrections-staged).
+Record-editor integration, minute-only work-history display, production integration,
 UI periods/sorting controls, preference persistence, audit presentation,
 segment editing/deletion handlers, dated writer activation and production Reset
 removal remain subsequent work.
@@ -387,6 +396,7 @@ Source describes what executes, not an alternative product contract. See
 | Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable; production timeline, editing and reset controls are unchanged. |
 | Timed input validation | Pure minute-clock candidate/resolution APIs with separate endpoint dates, explicit repeated-time occurrences, gap rejection and UTC elapsed ordering, consumed by the standalone form. No record editing or writer activation; legacy helpers/callers and stored precision remain unchanged. |
 | Timed input form | Standalone minute-only endpoint fields, canonical dates, timezone/occurrence choices and inline errors using the accepted validators. No stored-record loading, saving or production connection; legacy TimelineEntryDialog is unchanged. |
+| Timed corrections | Separate staged preparation/registration of one effective closed genuine interval replacement, preserving unchanged precision, optional comments and retry identities. No-op saves write nothing; stale priors reject. No production editor or form connection. |
 | Timesheet rendering/generation | Staged independent-task exact and decimal renderers with authoritative scope/timezone metadata, safe calendar slots, reversible escaping and wrapped borders. Decimal output rounds task/day cells once and sums displayed hundredths; service generation still uses exact durations. |
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
 | Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; current duration UI still uses synthetic intervals. |

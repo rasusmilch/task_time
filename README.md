@@ -11,7 +11,7 @@ Selected functionality is not automatically implemented.
 | Status | What it means here |
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, mixed work-history projection, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
+| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, mixed work-history projection, closed timed-correction preparation/registration, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
 | Production still pending | Production export integration, file-status/recovery UI, replacement UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
 
 [Phase 2's bounded evidence and daily-reconciliation service gate](docs/ROADMAP.md#phase-2--pol-r-evidence-and-reconciliation)
@@ -100,8 +100,16 @@ precision or billing-rounding rule. Existing production time helpers remain acti
 The standalone staged [TimedIntervalInputFrame](DESIGN_NOTES.md#timed-interval-input-form-staged)
 provides separate date/time fields, explicit occurrence choices with UTC offsets
 and inline validation through those APIs. It supplies no saving or record access;
-record editing, work-history display and production activation remain pending.
-Production still uses the legacy `TimelineEntryDialog`.
+record-editor integration, work-history display and production activation remain
+pending. Production still uses the legacy `TimelineEntryDialog`.
+
+Separate staged [timed-correction APIs](DESIGN_NOTES.md#timed-interval-corrections-staged)
+prepare and register one effective closed genuine interval replacement. Unchanged
+saves write nothing; changed endpoints preserve the other endpoint's precision,
+comments are optional, and stale priors reject. Frozen identities support verified
+journal recovery/reuse without rolling back newer work or confirmations. Results
+distinguish registered evidence from projection/snapshot failures. These services
+are not connected to the form or production editing; legacy mutators are unchanged.
 
 `build_timesheet_text()` separately renders those accounting results as a
 plain-text timesheet with independent task rows, dated daily columns and weekly

@@ -22,7 +22,12 @@ receipts or commits. No release or production activation is implied below.
   direction: current-week/custom/All periods, persisted user-wide date sorting,
   full-interval segment editing/deletion, effective history with audit access,
   and removal of replacement Reset actions/counters. Those UI/preference/editing,
-  audit and production reset-removal integrations remain pending.
+  audit and production reset-removal integrations remain pending. Stage closed
+  genuine-interval correction preparation/registration using existing replacement
+  events: no-op saves write nothing, unchanged endpoints retain precision, comments
+  are optional and stale priors reject. Frozen identities, prospective replay and
+  synchronized recovery/reuse preserve newer state; results distinguish verified
+  registration from projection/snapshot failures. No production editor is activated.
 - Provide read-only independent-task timesheet rendering and date-range generation
   with precise durations, explicit selection scope, Unicode-safe escaping and
   wrapping, and bounded calendar-week layout. A separate pure decimal-hour renderer

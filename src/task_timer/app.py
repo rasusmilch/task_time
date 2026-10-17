@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import tkinter as tk
 import tkinter.font as tkfont
-from copy import deepcopy
+from copy import copy, deepcopy
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from hashlib import sha256
@@ -21,6 +21,10 @@ from uuid import UUID, uuid4
 
 from .backups import BackupManager
 from .accounting import calculate_date_window
+from .interval_corrections import (
+    aware_utc, canonical_uuid, parse_endpoint, prior_label, utc_text,
+    validate_prepared_interval_correction,
+)
 from .work_history import build_task_work_history
 from .dialogs import (
     AddTaskDialog,
@@ -99,6 +103,181 @@ class _ExportFileConflict(FileExistsError):
 
 class TaskTimerService:
     """Business logic layer that emits events and derives state."""
+
+    def _derive_timed_correction_journal(self, journal):
+        # Reuse work replay on a detached service, never its constructor or live state.
+        detached = copy(self)
+        detached.events = deepcopy(journal)
+        detached._rebuild_state(detached.events)
+        return detached
+
+    @staticmethod
+    def _reviewed_closed_interval(baseline, task_id, interval_id):
+        canonical_uuid(task_id)
+        canonical_uuid(interval_id)
+        task = baseline._require_task(task_id)
+        if task.is_deleted:
+            raise ValueError("Correction task is deleted")
+        prior = task.intervals.get(interval_id)
+        if prior is None or prior.deleted or prior.entry_mode != "interval" or prior.task_id != task_id:
+            raise ValueError("Correction requires an effective genuine closed interval")
+        if aware_utc(prior.stop_utc) <= aware_utc(prior.start_utc):
+            raise ValueError("Correction requires a positive closed interval")
+        return prior
+
+    def _prospective_timed_correction(self, journal, baseline, event):
+        validate_prepared_interval_correction(event)
+        payload = event["payload"]
+        task_id = event["task_id"]
+        prior = self._reviewed_closed_interval(baseline, task_id, payload["interval_id"])
+        if any(item.get("event_id") == event["event_id"] for item in journal):
+            raise ValueError("Correction event identity already exists")
+        if any(payload["new_interval_id"] in task.intervals or payload["new_interval_id"] in task.dated_durations
+               for task in baseline.state.tasks.values()):
+            raise ValueError("Correction replacement identity already exists, including history")
+        if payload["prior_interval_label"] != prior_label(prior.start_utc, prior.stop_utc):
+            raise ValueError("Reviewed interval endpoints changed")
+        first, last = parse_endpoint(payload["start_utc"]), parse_endpoint(payload["stop_utc"])
+        if first == prior.start_utc and last == prior.stop_utc:
+            raise ValueError("Prepared correction must change actual time")
+        for value, original in ((first, prior.start_utc), (last, prior.stop_utc)):
+            if value != original:
+                try:
+                    local = value.astimezone(self.local_tz)
+                except (ValueError, OverflowError) as exc:
+                    raise ValueError("Changed correction endpoint is not representable locally") from exc
+                if local.second or local.microsecond:
+                    raise ValueError("Changed correction endpoints must be whole local minutes")
+
+        # Check one application's postconditions, then compare with real ordered replay.
+        once = copy(baseline)
+        once.state = deepcopy(baseline.state)
+        once._apply_event(deepcopy(event))
+        intended = deepcopy(baseline.state)
+        owner = intended.tasks[task_id]
+        owner.intervals[payload["interval_id"]].deleted = True
+        owner.intervals[payload["new_interval_id"]] = IntervalRecord(
+            payload["new_interval_id"], task_id, first, last, "edit",
+            replaced_interval_id=payload["interval_id"], edit_reason=payload["reason"],
+        )
+        owner.updated_at_utc = parse_endpoint(event["timestamp_utc"])
+        if once.state != intended:
+            raise ValueError("Correction does not produce exactly the intended replacement")
+        prospective = self._derive_timed_correction_journal(self._confirmation_candidate_journal(journal, event))
+        # Only this timestamp may differ because later audit-ordered events replay after it.
+        intended.tasks[task_id].updated_at_utc = prospective.state.tasks[task_id].updated_at_utc
+        if (prospective.state != intended or prospective._timesheet_exports != baseline._timesheet_exports
+                or prospective._polr_confirmations != baseline._polr_confirmations):
+            raise ValueError("Correction cannot reproduce intended effects under existing replay ordering")
+
+    def prepare_timed_interval_correction(
+        self, task_id, interval_id, *, start_utc=None, stop_utc=None, comment="",
+    ) -> dict[str, Any] | None:
+        """Freeze a real correction without installation, backups or persistence."""
+        if not isinstance(comment, str):
+            raise ValueError("Correction comment must be a string")
+        journal = self.storage.iter_all_events(strict=True)
+        baseline = self._derive_timed_correction_journal(journal)
+        prior = self._reviewed_closed_interval(baseline, task_id, interval_id)
+        first = aware_utc(prior.start_utc if start_utc is None else start_utc)
+        last = aware_utc(prior.stop_utc if stop_utc is None else stop_utc)
+        if last <= first:
+            raise ValueError("Correction stop must be after start in UTC")
+        if first == prior.start_utc and last == prior.stop_utc:
+            return None  # comments accompany time corrections, not standalone edits
+        event = event_dict(
+            event_id=str(uuid4()), timestamp_utc=to_utc_z(utc_now()), local_timezone=self.local_tz_name,
+            task_id=task_id, event_type="interval_edited", payload={
+                "interval_id": interval_id, "new_interval_id": str(uuid4()),
+                "start_utc": utc_text(first), "stop_utc": utc_text(last), "entry_mode": "interval",
+                "prior_interval_label": prior_label(prior.start_utc, prior.stop_utc), "reason": comment.strip(),
+            },
+        )
+        self._prospective_timed_correction(journal, baseline, event)
+        return event
+
+    def _inspect_timed_correction(self, journal, event):
+        existing = [item for item in journal if item.get("event_id") == event["event_id"]]
+        if existing and (len(existing) != 1 or not same_export_event(
+            {key: value for key, value in existing[0].items() if key != "_read_sequence"}, event,
+        )):
+            raise ValueError("Correction identity is repeated or belongs to different journal content")
+        return self._derive_timed_correction_journal(journal), bool(existing)
+
+    def _install_timed_correction_journal(self, rebuilt):
+        self.__dict__.update(state=rebuilt.state, events=rebuilt.events,
+                             _timesheet_exports=rebuilt._timesheet_exports,
+                             _polr_confirmations=rebuilt._polr_confirmations)
+
+    def register_prepared_timed_interval_correction(self, prepared_event) -> dict[str, Any]:
+        """Verify registration, then install fresh projections and report snapshot status."""
+        event = deepcopy(prepared_event)
+        validate_prepared_interval_correction(event)
+        journal = self.storage.iter_all_events(strict=True)
+        rebuilt, reuse = self._inspect_timed_correction(journal, event)
+        append_failure = None
+        if not reuse:
+            self._prospective_timed_correction(journal, rebuilt, event)
+            try:
+                self._create_risky_operation_backup("before timed interval correction")
+            except Exception as backup_error:
+                backup_error.add_note("Correction backup gate failed before this operation attempted append; retain prepared event")
+                raise
+            # The hook may have allowed state to change: repeat the entire authority gate.
+            journal = self.storage.iter_all_events(strict=True)
+            rebuilt, reuse = self._inspect_timed_correction(journal, event)
+            if not reuse:
+                self._prospective_timed_correction(journal, rebuilt, event)
+                try:
+                    self.storage.append_event(event)
+                except Exception as append_error:
+                    append_failure = append_error
+                try:
+                    journal = self.storage.iter_all_events(strict=True)
+                    rebuilt, present = self._inspect_timed_correction(journal, event)
+                except Exception as inspection_error:
+                    inspection_error.add_note(
+                        "Correction registration is uncertain after append; retain the unchanged prepared event; "
+                        "no repair or additional append was attempted"
+                    )
+                    raise inspection_error from append_failure
+                if not present:
+                    error = append_failure or ValueError("Correction append returned without its event")
+                    error.add_note("Correction identity absent from a healthy journal; retain the same event for retry")
+                    raise error
+                reuse = append_failure is not None
+        if reuse:
+            try:
+                self.storage.synchronize_journal()
+                journal = self.storage.iter_all_events(strict=True)
+                rebuilt, present = self._inspect_timed_correction(journal, event)
+                if not present:
+                    raise ValueError("Correction identity absent after synchronization")
+            except Exception as synchronization_error:
+                synchronization_error.add_note(
+                    "Correction registration remains unverified: synchronization/close/revalidation failed; "
+                    "retain the unchanged prepared event; no additional append"
+                )
+                raise synchronization_error from append_failure
+        warnings = []
+        if append_failure is not None:
+            warnings.append(f"Correction registered after append error and successful synchronization: {append_failure}")
+        result = {"event_id": event["event_id"], "replacement_interval_id": event["payload"]["new_interval_id"],
+                  "projection_installed": False, "snapshot_saved": False, "warnings": ()}
+        try:
+            self._install_timed_correction_journal(rebuilt)
+        except Exception as installation_error:
+            warnings.append(f"Correction is registered; projection installation failed; retry unchanged event: {installation_error}")
+        else:
+            result["projection_installed"] = True
+            try:
+                self._save_snapshot()
+            except Exception as snapshot_error:
+                warnings.append(f"Correction is registered and installed; derived snapshot save failed: {snapshot_error}")
+            else:
+                result["snapshot_saved"] = True
+        result["warnings"] = tuple(warnings)
+        return result
 
     def prepare_timesheet_export_snapshot(
         self, start_date: date, end_date: date, *, cutoff_utc: datetime,

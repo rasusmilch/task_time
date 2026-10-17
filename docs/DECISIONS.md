@@ -116,6 +116,27 @@ behavior, not a billing-rounding rule or conversion of earlier recorded work.
 Existing raw-precision accounting remains binding. The staged pure validators
 do not establish delivery of the replacement editor, writer or display.
 
+### Closed timed corrections and unchanged recorded precision
+
+**Status:** current. **Provenance:** explicit user-approved behavior and ChatGPT
+architecture adjudication supplied with the staged timed-correction instructions;
+current owner: [Actual-time records](TIMESHEET_REQUIREMENTS.md#selected--actual-time-records).
+
+Unchanged saves write no event. Changing one endpoint preserves the other;
+comments are optional and attach to actual time corrections, not standalone
+comment edits. Ordinary editing is for closed genuine intervals. Reviewed-entry
+changes reject the save; original/replacement values and correction time stay
+auditable. Minute-only controls do not authorize rounding existing precision.
+These Selected rules differ from legacy required-reason and endpoint handling;
+they neither change the active legacy mutators nor establish an earlier approved
+replacement-editing policy.
+
+The selected mechanism reuses `interval_edited` and its replacement identity.
+A detached prepared event retains both identities through uncertain appends;
+authoritative replay and journal synchronization establish registration before
+projection installation. No revision token, operation store or new event/schema
+is selected. This foundation does not activate record-editor UI or dated writers.
+
 ### Local dates and configurable reporting weeks
 
 **Status:** current. **Provenance:** explicit user confirmation; current owner:
