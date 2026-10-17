@@ -109,8 +109,10 @@ per task/day, without per-entry confirmation or Delta state.
 
 The detached [work-history service](../DESIGN_NOTES.md#mixed-work-history-service-staged)
 and pure [timed-input validation](../DESIGN_NOTES.md#replacement-timed-input-validation-staged)
-are staged. Minute-only display and editor integration, UI periods/sorting
-controls, preference persistence, audit presentation,
+are staged, together with a standalone
+[timed-interval form](../DESIGN_NOTES.md#timed-interval-input-form-staged).
+Record editing, minute-only work-history display, production integration,
+UI periods/sorting controls, preference persistence, audit presentation,
 segment editing/deletion handlers, dated writer activation and production Reset
 removal remain subsequent work.
 
@@ -383,7 +385,8 @@ Source describes what executes, not an alternative product contract. See
 | Date-only duration foundation | Separate endpoint-free records with append-only creation/correction/deletion replay and snapshots; new production duration writers are inactive. |
 | Mixed accounting | Read-only explicit local-date windows, real intervals plus effective dated records, derived project/Unassigned/application totals, and fixed Sunday-start weeks. |
 | Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable; production timeline, editing and reset controls are unchanged. |
-| Timed input validation | Pure minute-clock candidate/resolution APIs with separate endpoint dates, explicit repeated-time occurrences, gap rejection and UTC elapsed ordering. No editor, writer or display integration; existing helpers/callers and stored precision remain unchanged. |
+| Timed input validation | Pure minute-clock candidate/resolution APIs with separate endpoint dates, explicit repeated-time occurrences, gap rejection and UTC elapsed ordering, consumed by the standalone form. No record editing or writer activation; legacy helpers/callers and stored precision remain unchanged. |
+| Timed input form | Standalone minute-only endpoint fields, canonical dates, timezone/occurrence choices and inline errors using the accepted validators. No stored-record loading, saving or production connection; legacy TimelineEntryDialog is unchanged. |
 | Timesheet rendering/generation | Staged independent-task exact and decimal renderers with authoritative scope/timezone metadata, safe calendar slots, reversible escaping and wrapped borders. Decimal output rounds task/day cells once and sums displayed hundredths; service generation still uses exact durations. |
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
 | Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; current duration UI still uses synthetic intervals. |

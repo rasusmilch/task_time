@@ -69,6 +69,7 @@ their assertions before selecting a run.
 | Date-only replay | [test_dated_durations.py](../tests/test_dated_durations.py): endpoint-free records, correction/deletion, ownership/payload rejection, equal-second replay, archives, rebuild and backup/restore. Uses isolated private event fixtures; it does not activate production writers. |
 | Accounting and time boundaries | [test_mixed_accounting.py](../tests/test_mixed_accounting.py), [test_time_utils.py](../tests/test_time_utils.py): conservation, selection, cutoffs, midnight/DST, corrections, resets, fractional amounts and fixed Sunday weeks. |
 | Replacement timed inputs | [test_work_entry_inputs.py](../tests/test_work_entry_inputs.py): accepted minute formats, strict date/clock/timezone/occurrence validation, second/fraction rejection, round-trip candidates, ordinary deduplication, Chicago gap/repeat, UTC ordering despite reversed wall clocks, overnight/fixed offsets, Lord Howe non-hour transitions, representability limits, detached results, prohibited external operations and fresh import/evaluation without service/storage dependencies. Pure input interpretation only; no editor, writer or minute-display integration qualification. |
+| Timed input form | [test_timed_interval_form.py](../tests/test_timed_interval_form.py): actual component construction with widget doubles, variable/event wiring, separate dates, minute formats, canonical date rejection, gaps/repeats/offset labels, independent choice clearing, draft retention/error correction, fresh validator delegation and absence of external writes/clock detection. Separate real-Tk smoke cases exercise construction, field callbacks, choice selection and resolution when a display is available; otherwise they skip with a reason. Neither doubles nor Linux Tk smoke establish stored-record editing, production activation or native Windows interaction. |
 | Mixed work history | [test_work_history.py](../tests/test_work_history.py): real isolated service/model projection, exact detached row shape, mixed entries, known deleted-task lookup, inclusive/All dates, date direction with stable within-day chronology, linked daily identity/continuations, midnight/DST/fixed offsets, running cutoffs, whole dated amounts, correction/redating/deletion/restart, reset/confirmation independence, synthetic refusal and per-day accounting agreement. State/event/snapshot/file comparisons and prohibited journal/write/clock/UUID calls cover purity on success and rejection. No production timeline, edit/delete handler, sort-preference or audit UI qualification. |
 | Rendering | [test_timesheet_renderer.py](../tests/test_timesheet_renderer.py): scope, partial/multiple weeks, calendar boundaries, exact durations, duplicate identity, wrapping/geometry and Unicode escaping. |
 | Decimal rendering | [test_decimal_timesheet_renderer.py](../tests/test_decimal_timesheet_renderer.py): ROUND_HALF_UP conversion/boundaries, invalid numbers, task/day rounding and displayed-rollup conservation, selection/identity, partial/multiple weeks, calendar edges, Unicode wrapping, purity and exact/legacy byte compatibility. This is a pure staged renderer, not export-evidence persistence. |
@@ -105,9 +106,10 @@ current-week/custom/All periods, persisted user-wide date direction, linked
 segment edit/delete acting on the complete interval with affected-date warnings,
 entry-type preservation, effective-only normal history and audit/details access.
 Pure timed-input tests separately cover the Selected minute-only and daylight-saving
-interpretation rules. Future editor/display integration must preserve separate
-endpoint dates, obtain explicit repeated-time choices and reject nonexistent
-times without assuming that validator tests establish the operator workflow.
+interpretation rules. The standalone form has field/occurrence/inline-error
+coverage. Future stored-record editing must preserve separate endpoint dates,
+obtain explicit repeated-time choices and reject nonexistent times. Form/validator
+tests do not establish work-history display or the complete operator workflow.
 Production Reset removal is separate from proving that staged history ignores
 legacy reset boundaries. Service projection tests do not establish those UI or
 preference capabilities, native Windows interaction or production qualification.

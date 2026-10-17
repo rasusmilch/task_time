@@ -97,6 +97,12 @@ ordering. Replacement entry/editing/display is Selected as minute-only; this
 module activates no editor, writer or display changes and alters no recorded
 precision or billing-rounding rule. Existing production time helpers remain active.
 
+The standalone staged [TimedIntervalInputFrame](DESIGN_NOTES.md#timed-interval-input-form-staged)
+provides separate date/time fields, explicit occurrence choices with UTC offsets
+and inline validation through those APIs. It supplies no saving or record access;
+record editing, work-history display and production activation remain pending.
+Production still uses the legacy `TimelineEntryDialog`.
+
 `build_timesheet_text()` separately renders those accounting results as a
 plain-text timesheet with independent task rows, dated daily columns and weekly
 totals grouped by current project. Project subtotals are informational and

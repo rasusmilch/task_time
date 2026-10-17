@@ -361,6 +361,42 @@ unchanged. Those active legacy callers do not yet use this validation. Stale-edi
 protection, running-work actions, audit UI, sort preferences and linked-row styling
 are not delivered by this module.
 
+## Timed-interval input form (staged)
+
+`timed_interval_form.TimedIntervalInputFrame(parent, *, local_timezone,
+start_date, end_date, start_time="", end_time="")` is a standalone `ttk.Frame`.
+The caller supplies the timezone object, exact date objects and clock strings;
+the frame captures no current date/time and loads no stored records. It uses only
+standard tkinter/ttk controls, with separate Start date/time and End date/time
+fields, initial ISO dates, a compact timezone label and inline endpoint/interval
+errors. Date text must be canonical `YYYY-MM-DD` after surrounding whitespace
+is trimmed for parsing; entered draft text is retained. Clock interpretation
+delegates to the [accepted pure validators](#replacement-timed-input-validation-staged).
+
+Each endpoint shows a readonly occurrence selector only for two valid UTC
+candidates, in their chronological order. Labels include First/Second, local
+`HH:MM` and the candidate's actual UTC offset, including non-hour offsets.
+Repeated-time choices start empty. Any change to an endpoint's date or clock
+text clears that endpoint's choice and recomputes its candidates without clearing
+the other endpoint's still-valid selection. Ordinary, invalid and nonexistent
+drafts have no active occurrence selector; invalid drafts report inline errors
+without escaping widget callbacks.
+
+`resolve_input()` revalidates current fields/selections through
+`resolve_timed_interval_input` on every call, returning its fresh detached
+`start_utc`, `stop_utc`, `duration_seconds` dictionary. Failure preserves entered
+values, shows the affected endpoint or interval error and raises `ValueError`;
+success clears obsolete errors. There is no cached successful result, inferred
+overnight date, truncated second input, guessed occurrence or adjusted gap.
+
+The containing editor still owns confirmation/cancellation and saving. This
+frame has no Save actions, mutation callbacks, duration switch, reason policy,
+running-stop operation, record identity, audit interface or persistence. It does
+not decide how existing sub-minute records map into future edits. Record editing,
+stale-record protection, committed-versus-refresh failure handling, mixed-history
+display and production activation remain pending. The active legacy
+`TimelineEntryDialog`, its callers and service writers remain unchanged.
+
 ## Independent-task timesheet renderer (staged)
 
 `task_timer.exporter.build_timesheet_text(report, *, local_timezone=None, scope=None)`
