@@ -74,6 +74,7 @@ their assertions before selecting a run.
 | Standalone timed editor | [test_timed_interval_editor.py](../tests/test_timed_interval_editor.py): actual construction/callbacks with widget doubles and real isolated services, precise/no-op editing, stale conflict and replacement-chain presentation, locked frozen retries, registration uncertainty versus refresh/recovery warnings, earlier verified-result retention, reentry, Close/Cancel handoffs and unrelated-work/evidence preservation. Real-Tk cases exercise construction, occurrence selection, Save/retry and unverified close when a display is available. No production or platform qualification. |
 | Mixed work history | [test_work_history.py](../tests/test_work_history.py): real isolated service/model projection, exact detached row shape, mixed entries, known deleted-task lookup, inclusive/All dates, date direction with stable within-day chronology, linked daily identity/continuations, midnight/DST/fixed offsets, running cutoffs, whole dated amounts, correction/redating/deletion/restart, reset/confirmation independence, synthetic refusal and per-day accounting agreement. State/event/snapshot/file comparisons and prohibited journal/write/clock/UUID calls cover purity on success and rejection. No production timeline, edit/delete handler, sort-preference or audit UI qualification. |
 | Mixed-history table | [test_work_history_view.py](../tests/test_work_history_view.py): actual constructor/callbacks with widget doubles and real isolated service rows, exact order and detached complete metadata, midnight dates, DST/repeated-hour offsets, fixed/non-hour zones, running boundaries, precise retained amounts and completed-minute display, task-scoped related highlighting, stale handles, replacement/empty results, preparation failure preservation and widget-update invalidation/explicit recovery. Prohibited service/file/settings/clock/scheduling calls and dataset/state comparisons cover purity. Separate real-Tk smoke exercises construction, mapping, selection/highlighting, replacement and failures when a display is available; otherwise it skips with a reason. No production browser or native Windows qualification. |
+| Single-task history browser | [test_work_history_browser.py](../tests/test_work_history_browser.py): real isolated reader/table composition with constructor/callback doubles, exact load arguments and clock counts, seven week starts, rollover/UTC-local/DST boundaries, mixed and future dated work, inclusive Custom/All, running cutoffs, Apply-only typed/calendar drafts, seed/cancel/disposal, stable local sorting without newer records, committed Custom refresh, initial failure versus valid empty history, clock/service/preparation/widget faults, recovery and state/file/settings/timer/scheduling purity. Separate real-Tk smoke uses actual Calendar selection/cancellation, focus changes, Apply, Date-heading invocation, Refresh, errors and replacement. These tests do not qualify global persistence, production workflows or native Windows. |
 | Rendering | [test_timesheet_renderer.py](../tests/test_timesheet_renderer.py): scope, partial/multiple weeks, calendar boundaries, exact durations, duplicate identity, wrapping/geometry and Unicode escaping. |
 | Decimal rendering | [test_decimal_timesheet_renderer.py](../tests/test_decimal_timesheet_renderer.py): ROUND_HALF_UP conversion/boundaries, invalid numbers, task/day rounding and displayed-rollup conservation, selection/identity, partial/multiple weeks, calendar edges, Unicode wrapping, purity and exact/legacy byte compatibility. This is a pure staged renderer, not export-evidence persistence. |
 | Export registration | [test_export_snapshot_registration.py](../tests/test_export_snapshot_registration.py): frozen request/cells/text/digest, strict validation, stable identity/retry, journal health, synchronized recovery/reuse, ambiguous append and projection failures, immutable replay order, restart/rotation/rebuild/backup restore and no report publication or confirmation creation by registration. Includes reuse checks for preservation of existing materialized bytes and installation of the latest valid confirmation projection. Dedicated materialization and confirmation suites provide broader feature coverage. |
@@ -95,7 +96,8 @@ invalid-operation assertions meaningful.
 
 Currently, mixed accounting is staged and Sunday-only, mixed work-history
 projection is service-only with a separate standalone rendering/selection-feedback
-component, production date-only writers are inactive, and saving publishes a file
+component and staged standalone browser with periods/explicit refresh/local sorting,
+production date-only writers are inactive, and saving publishes a file
 without immutable export-event registration. Confirmation preparation/registration/replay and daily reconciliation
 calculation are staged; configurable weeks, POL-R confirmation/reconciliation UI,
 weekly reconciliation summaries and
@@ -105,7 +107,8 @@ implementation; test names or prior receipts do not change that status.
 
 Future history integration must validate the
 [Selected UI behavior](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history):
-current-week/custom/All periods, persisted user-wide date direction, linked
+production current-week/custom/All workflows, global persisted date direction
+across tasks/datasets for the same computer account, linked
 segment edit/delete acting on the complete interval with affected-date warnings,
 entry-type preservation, effective-only normal history and audit/details access.
 Pure timed-input tests separately cover the Selected minute-only and daylight-saving
@@ -115,8 +118,9 @@ dialog connects these to real correction services, with its own callback,
 registration/retry and real-Tk cases. Future production integration must retain
 these guarantees and validate the operator workflow. Those input/editor tests do
 not establish work-history rendering; the separate table suite covers standalone
-rendering and related-portion feedback, not browser integration, native Windows
-interaction or production readiness.
+rendering and related-portion feedback. The browser suite separately covers
+standalone reader/table integration and explicit interactions, not production
+integration, global preference persistence, native Windows or production readiness.
 Production Reset removal is separate from proving that staged history ignores
 legacy reset boundaries. Service projection tests do not establish those UI or
 preference capabilities, native Windows interaction or production qualification.

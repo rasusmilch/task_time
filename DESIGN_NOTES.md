@@ -362,10 +362,62 @@ A subsequent explicit successful render restores the table and clears the error.
 Empty input is a valid empty display. No rows are silently omitted or legacy
 synthetic work converted.
 
-This component is not the complete history browser. Period/sort controls,
-preferences, automatic refresh, correction actions, creation/deletion, audit,
-production integration and Reset removal remain pending. The legacy timeline and
-its formatters are unchanged; no new persistent state or domain projection exists.
+This render-only component delegates period/sort controls to the staged browser
+below. Neither component schedules automatic loading. Global preferences,
+correction actions, creation/deletion, audit, production integration and Reset
+removal remain pending. The legacy timeline and its formatters are unchanged;
+no new persistent state or domain projection exists.
+
+## Single-task history browser (staged)
+
+`work_history_browser.WorkHistoryBrowserFrame(parent, service, task_id, *,
+now_utc, week_start=6, newest_first=True)` composes the existing reader/table for
+one fixed task. Configuration requires an explicit callable clock, an actual
+integer weekday 0–6 (Monday=0) and actual boolean direction; invalid configuration
+rejects before loading. It uses the service timezone. Construction attempts one
+Current week load. `refresh()` reports True on successful loading/rendering and
+False after inline operation failure; routine UI callback failures do not escape.
+
+Each load observes the supplied clock once, validates/normalizes the aware cutoff
+to UTC and calls the history reader once for a valid request. Current week derives
+seven inclusive calendar dates from the local observation and supplied weekday;
+it recalculates on refresh without fixed UTC-hour spans or changes to shared
+accounting/week helpers. All omits both date bounds. The weekday argument is a
+staged integration seam, not a configurable-week setting.
+
+Custom exposes ordinary editable YYYY-MM-DD fields and owned `tkcalendar.Calendar`
+popups. Drafts are not applied by typing, focus changes or picking. Apply trims
+surrounding whitespace and requires canonical real ordered dates, rejecting the
+reader's unsupported final-date boundary without clipping. A picker starts from
+a valid draft or a previously captured valid local observation date, never a new
+application clock capture; absent a seed it reports an error. Selection changes
+only that draft to canonical ISO; cancellation changes nothing. Required
+`tkcalendar` is imported without a silent picker fallback. Owned popups are
+closed on browser destruction.
+
+Opening, Apply, switching to Current week/All and explicit Refresh load work;
+entering Custom only reveals retained drafts. Refresh uses the last successfully
+applied period/Custom dates, ignoring unapplied drafts, or retries Current week
+when no load has succeeded. A concise last-successful period and local as-of
+label commits only after rendering; Not loaded is distinct from successful empty
+history. Clock/service/validation failure preserves rows, metadata, selection,
+drafts and applied information. Table preparation preservation and widget-update
+invalidation remain owned by the table; failed candidate results are not installed
+and no GUI rollback is claimed. A later explicit load can recover.
+
+The browser owns the existing Date heading command. It stably sorts detached
+successful rows by work_date only, preserving within-day order and every field;
+no reader/clock call, draft application or cutoff change occurs. The exposed
+`newest_first` property changes only after successful rendering. Both successful
+loads and sorts use the table's selection clearing and related-portion behavior.
+
+Results, drafts and last-successful request/cutoff are temporary UI state, not an
+authoritative projection or cache installed in the application. Global direction
+persistence across tasks/datasets for the same computer account, cross-window
+coordination, production routing, editing/audit, writer activation and Reset
+removal remain unimplemented. The browser accesses no settings, writes no work,
+and schedules no refresh, retries or asynchronous loading. Existing services,
+legacy dialogs, accounting and settings ownership are unchanged.
 
 ## Replacement timed-input validation (staged)
 

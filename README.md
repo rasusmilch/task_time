@@ -94,10 +94,18 @@ row metadata stays detached behind temporary widget handles; rendering errors ar
 visible rather than silently presenting incomplete results. It loads no services,
 settings or clocks and is not connected to production.
 
+The standalone staged [WorkHistoryBrowserFrame](DESIGN_NOTES.md#single-task-history-browser-staged)
+connects the reader/table with Current week, Custom and All periods, typed dates
+and calendar pickers, Apply and explicit Refresh. It retains unapplied drafts and
+last-successful period/as-of information on failure. Date-header sorting stably
+reorders existing results without loading newer records or advancing the cutoff;
+direction remains in memory. The caller supplies a clock and week start (initially
+Sunday); this is not the configurable-week setting or production integration.
 The [Selected replacement history](docs/TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history)
-includes current-week/custom/All UI periods, persistent date sorting and segment
-editing/audit interactions; those integrations and removal of production Reset
-controls remain pending. Existing production timeline and counters are unchanged.
+requires global persisted direction across tasks/datasets for the same computer
+account, segment editing and audit interactions. Those capabilities and removal
+of production Reset controls remain pending. Existing production timeline and
+counters are unchanged.
 
 Pure [timed-input validation](DESIGN_NOTES.md#replacement-timed-input-validation-staged)
 separately resolves minute-only clock inputs with independent start/end dates,

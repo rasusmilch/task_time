@@ -111,9 +111,27 @@ preserves entry type; a dated amount must not acquire fabricated endpoints.
 
 The default UI period is the current week, with custom inclusive dates and All
 history available. The date-column header switches oldest/newest date order;
-one user-wide preference persists across restarts, initially newest first.
-Within each date, timed portions stay chronological and date-only entries follow
-them without invented clock positions.
+one global preference persists across restarts and applies across tasks and
+datasets for the same computer account, initially newest first. Within each date,
+timed portions stay chronological and date-only entries follow them without
+invented clock positions.
+
+History loads on opening, Apply, switching to Current week or All, and explicit
+Refresh. Date-header sorting reorders the displayed results without loading newer
+records or advancing the cutoff. Successful loads and sorts clear selection.
+Current week covers seven local calendar dates from the supplied week start,
+initially Sunday, and rolls over on refresh rather than through scheduled loading.
+This staged caller input is not delivery of the configurable-week setting.
+
+Custom dates support typing and owned calendar pickers; Apply is required.
+Entering Custom, typing, focus changes and calendar selection do not load work.
+After surrounding whitespace is trimmed, Apply requires canonical YYYY-MM-DD,
+real ordered inclusive dates and the reader's representable boundary. Drafts are
+retained on failure and across period switches. Refresh reloads the last
+successfully applied period, reusing its Custom dates rather than unapplied
+drafts; before any success it retries Current week. Failed loading must leave
+last-successful period/as-of information truthful and distinguish unestablished
+history from a valid empty result. Rendering retains the table's failure rules.
 
 Intervals crossing local midnight appear as linked daily segments of one
 underlying interval. Editing or deleting a segment acts on that complete
@@ -149,8 +167,12 @@ A [standalone correction dialog](../DESIGN_NOTES.md#standalone-timed-interval-co
 now connects those components without production callers.
 A standalone [work-history table](../DESIGN_NOTES.md#mixed-work-history-table-staged)
 now renders supplied rows and related-portion feedback without service access.
-Production record-editor/history integration, UI periods/sorting controls,
-preference persistence, audit presentation,
+The standalone [history browser](../DESIGN_NOTES.md#single-task-history-browser-staged)
+now composes that reader/table with periods, typed/calendar drafts, explicit
+refresh and in-memory sorting. Its initial direction argument and local direction
+are integration seams, not global preference persistence.
+Production record-editor/history integration, global preference persistence,
+audit presentation,
 segment editing/deletion handlers, dated writer activation and production Reset
 removal remain subsequent work.
 
@@ -422,7 +444,7 @@ Source describes what executes, not an alternative product contract. See
 | Project/task foundation | Separate UUID-based service records, optional current project membership and independent task-owned time. |
 | Date-only duration foundation | Separate endpoint-free records with append-only creation/correction/deletion replay and snapshots; new production duration writers are inactive. |
 | Mixed accounting | Read-only explicit local-date windows, real intervals plus effective dated records, derived project/Unassigned/application totals, and fixed Sunday-start weeks. |
-| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting; production timeline, editing and reset controls are unchanged. |
+| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting. A standalone browser adds Current week/Custom/All, Apply-only calendar/typed dates, explicit Refresh and local date sorting. Global preference persistence and production integration remain pending; production timeline, editing and reset controls are unchanged. |
 | Timed input validation | Pure minute-clock candidate/resolution APIs with separate endpoint dates, explicit repeated-time occurrences, gap rejection, UTC ordering and edit-aware restoration of unchanged precision. Consumed by the form and standalone editor; production callers remain unchanged. |
 | Timed input form | Standalone minute-only endpoint fields, canonical dates, timezone/occurrence choices and inline errors using the accepted validators. No stored-record loading, saving or production connection; legacy TimelineEntryDialog is unchanged. |
 | Timed corrections | Separate staged preparation/registration of one effective closed genuine interval replacement, preserving unchanged precision, optional comments and retry identities. No-op saves write nothing; stale priors reject. Consumed by the standalone dialog; production editing remains inactive. |

@@ -157,6 +157,29 @@ preferences, editing/deletion, production activation or removal of legacy Reset.
 It establishes no earlier approval of the previously undecided styling, no billing
 rounding and no new persistent identity or state.
 
+### Standalone history browsing and global direction scope
+
+**Status:** current. **Provenance:** explicit user approval supplied with the
+single-task history browser instructions after the browser planning review;
+current owner: [mixed history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
+
+The later approval specifies loading on opening, Apply, Current week/All switches
+and explicit Refresh. Current week uses seven local dates from a caller-supplied
+weekday, initially Sunday, and rolls over on refresh. Sorting reorders existing
+rows without new work/cutoff capture; within-day order stays fixed. Custom typed
+and calendar-picked drafts require Apply; Refresh uses committed period/dates.
+Failures retain drafts and truthful last-successful information, preserving the
+table's preparation-versus-widget failure boundary. Successful replacement or
+sorting clears selection. No polling or automatic data refresh is selected here.
+
+The earlier user-wide direction requirement is clarified as global across tasks
+and datasets for the same computer account, initially newest first and persistent
+across restarts. The standalone browser stages only an initial argument and local
+direction; persistence is not implemented, and storage ownership/cross-window
+coordination are not selected through this unit. No production callers are
+activated and no legacy timeline is retired. This later clarification does not invent earlier
+approval of account-global storage or change the separate configurable-week gate.
+
 ### Local dates and configurable reporting weeks
 
 **Status:** current. **Provenance:** explicit user confirmation; current owner:
