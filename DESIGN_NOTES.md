@@ -1324,7 +1324,11 @@ post-export Reset prompt or reset call; cancellation/failure does not proceed to
 completion effects. Configured pre-export backups remain.
 
 Selected export retains cancellation, overlap acknowledgement and optional legacy
-submission markers. Its completion dialog offers Leave and Delete only; window
+submission markers. Overlap warnings display an unbounded lower intersection as
+"Beginning of recorded history" without converting the UTC minimum sentinel to
+local time. Finite intersection boundaries retain local date/minute formatting;
+acknowledgement and overlap calculation are unchanged.
+Its completion dialog offers Leave and Delete only; window
 closure means Leave. Leave preserves running timers and work. Explicit Delete
 still uses its configured risky-operation backup and scoped deletion, may stop
 running deleted tasks, clears affected selection and refreshes structure/live

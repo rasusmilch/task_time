@@ -3120,7 +3120,10 @@ class TaskTimerApp:
                     "Overlaps:",
                 ]
                 for item in overlaps:
-                    start = item["overlap_start_utc"].astimezone(self.service.local_tz).strftime("%Y-%m-%d %I:%M %p")
+                    if item["overlap_start_utc"] == datetime.min.replace(tzinfo=timezone.utc):
+                        start = "Beginning of recorded history"
+                    else:
+                        start = item["overlap_start_utc"].astimezone(self.service.local_tz).strftime("%Y-%m-%d %I:%M %p")
                     end = item["overlap_end_utc"].astimezone(self.service.local_tz).strftime("%Y-%m-%d %I:%M %p")
                     reason = item["existing_reason"] or "n/a"
                     lines.append(
