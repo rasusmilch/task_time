@@ -2943,11 +2943,43 @@ class TaskTimerApp:
             on_direction_changed=self._remember_history_date_direction,
         )
 
-    def _open_history_window(self, service, task_id, *, now_utc, week_start=6):
+    @staticmethod
+    def _history_widget_exists(widget):
+        # Unlike winfo, this exact command lookup also works after root.destroy().
+        # Do not turn arbitrary Tcl failures into a claim that a widget died.
+        if widget.master is not None and widget.master.children.get(widget._name) is not widget:
+            return False  # A new widget at the same Tcl path is not the saved widget.
+        return bool(widget.tk.call("namespace", "which", "-command", widget._w))
+
+    def _history_modal_parent(self, supplied):
+        parent = self.root if supplied is None else supplied
+        if (not isinstance(parent, tk.Misc) or parent.tk is not self.root.tk
+                or parent._root() is not self.root
+                or not self._history_widget_exists(self.root)
+                or not self._history_widget_exists(parent)
+                or parent.winfo_toplevel() is not parent):
+            raise ValueError("History modal parent must be a live top-level of this application")
+        return parent
+
+    def _restore_history_modal_parent(self, parent, prior_grab, prior_focus):
+        if not self._history_widget_exists(self.root) or not self._history_widget_exists(parent):
+            return
+        current = parent.grab_current()
+        if current is not None and current is not parent and self._history_widget_exists(current):
+            return  # A competing live window owns both grab and focus decisions.
+        if prior_grab is parent and current is not parent:
+            parent.grab_set()
+        target = parent
+        if (prior_focus is not None and self._history_widget_exists(prior_focus)
+                and prior_focus.winfo_toplevel() is parent):
+            target = prior_focus
+        target.focus_set()
+
+    def _open_history_window(self, service, task_id, *, now_utc, week_start=6, modal_parent=None):
         if self._history_window_opening:
             return
         if self._history_window is not None:
-            if self._history_window.window.winfo_exists():
+            if self._history_widget_exists(self._history_window.window):
                 return
             self._history_window = None
 
@@ -2955,22 +2987,38 @@ class TaskTimerApp:
 
         self._history_window_opening = True
         try:
-            owned = HistoryWindow(
-                self.root,
-                make_browser=lambda parent: self._make_history_browser(
-                    parent, service, task_id, now_utc=now_utc, week_start=week_start),
-                on_closed=self._history_window_closed,
-            )
-            self._history_window = owned
+            parent = self._history_modal_parent(modal_parent)
+            prior_grab = parent.grab_current()
+            if prior_grab is not None and (prior_grab is not parent or parent.grab_status() != "local"):
+                raise ValueError("History cannot replace an unrelated or global grab")
+            prior_focus = parent.focus_get()
+            owned = None
+            primary = None
+            try:
+                owned = HistoryWindow(
+                    parent,
+                    make_browser=lambda container: self._make_history_browser(
+                        container, service, task_id, now_utc=now_utc, week_start=week_start),
+                    on_closed=self._history_window_closed,
+                )
+                self._history_window = owned
+                owned.show_modal()
+            except BaseException as exc:
+                primary = exc
+                raise
+            finally:
+                if owned is not None and self._history_window is owned:
+                    self._history_window_closed(owned)
+                try:
+                    self._restore_history_modal_parent(parent, prior_grab, prior_focus)
+                except BaseException as restoration:
+                    if primary is None:
+                        raise
+                    primary.add_note(
+                        f"History modal return also failed ({type(restoration).__name__}): {restoration}")
+            return owned
         finally:
             self._history_window_opening = False
-        try:
-            owned.show_modal()
-        except BaseException:
-            if self._history_window is owned:
-                self._history_window_closed(owned)
-            raise
-        return owned
 
     def _history_window_closed(self, window):
         if self._history_window is window:

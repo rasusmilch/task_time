@@ -13,22 +13,77 @@ from task_timer import history_window as windows
 from task_timer.settings import UISettingsStore
 from task_timer.storage import EventStorage
 from test_history_session_direction import owner_factory
+from test_app_ui import _FakeRoot
 from test_mixed_accounting import setup, dated, local, MON, TUE
 from test_work_history import interval, capture
 from test_work_history_view import make_view
 from test_work_history_browser import build, Clock, spy, Popup
 
 
-class Window(Popup):
+class FakeTk:
+    def __init__(self):
+        self.widgets = {}
+        self.focus = None
+
+    def call(self, *args):
+        assert args[:3] == ('namespace', 'which', '-command')
+        widget = self.widgets.get(args[3])
+        return args[3] if widget is not None and widget.exists else ''
+
+
+class Root(_FakeRoot, tk.Misc):
+    def __init__(self):
+        _FakeRoot.__init__(self)
+        self.master, self._w, self.exists = None, '.', True
+        self.tk = FakeTk()
+        self.tk.widgets[self._w] = self
+        self.widgets = []
+        self.children = {}
+        self.acquisitions = 0
+
+    def winfo_toplevel(self):
+        return self
+
+    def grab_current(self):
+        return Window.grabbed
+
+    def grab_status(self):
+        return 'local' if Window.grabbed is self else None
+
+    def grab_set(self):
+        self.acquisitions += 1
+        Window.grabbed = self
+
+    def focus_get(self):
+        return self.tk.focus
+
+    def focus_set(self):
+        self.tk.focus = self
+
+    def destroy(self):
+        self.exists = False
+        for child in tuple(Window.created):
+            child.destroy()
+
+
+class Window(Popup, tk.Misc):
     created = []
     grabbed = None
     wait_action = None
 
     def __init__(self, parent):
         super().__init__(parent)
+        self.master = parent
+        self._name = f'window{len(self.created)}'
+        self.children = {}
+        parent.children[self._name] = self
+        self.tk, self._w = parent.tk, f'{parent._w.rstrip(".")}.{self._name}'
+        self.tk.widgets[self._w] = self
         self.exists = True
         self.releases = 0
         self.waits = 0
+        self.acquisitions = 0
+        self.status = 'local'
         self.created.append(self)
 
     def withdraw(self):
@@ -52,7 +107,17 @@ class Window(Popup):
         return Window.grabbed
 
     def grab_set(self):
+        self.acquisitions += 1
         Window.grabbed = self
+
+    def grab_status(self):
+        return self.status if Window.grabbed is self else None
+
+    def focus_get(self):
+        return self.tk.focus
+
+    def focus_set(self):
+        self.tk.focus = self
 
     def grab_release(self):
         assert Window.grabbed is self
@@ -61,6 +126,7 @@ class Window(Popup):
 
     def focus_force(self):
         self.focused = True
+        self.tk.focus = self
 
     def wait_window(self):
         self.waits += 1
@@ -89,7 +155,7 @@ def owned_ui(build, owner_factory, setup, monkeypatch):
     Window.created, Window.grabbed, Window.wait_action = [], None, None
     monkeypatch.setattr(windows, 'Toplevel', Window)
     owner = owner_factory(setup[0])
-    owner.root.winfo_toplevel = lambda: owner.root
+    owner.root = Root()
     return owner
 
 
@@ -143,7 +209,7 @@ def test_one_owned_window_reentrancy_sequential_tasks_datasets_and_session_direc
     monkeypatch.setattr(owner, '_make_history_browser', make_with_reentry)
     def during_wait(window):
         wrapper = owner._history_window
-        assert wrapper.window is window and not owner._history_window_opening
+        assert wrapper.window is window and owner._history_window_opening
         assert window.grab_current() is window and window.focused
         assert wrapper.browser.task_id == builds[-1][1]
         old = deepcopy(wrapper.browser._rows), wrapper.browser._cutoff_utc
@@ -242,7 +308,6 @@ def test_destruction_notifies_once_for_owned_toplevel_only(setup, owned_ui, monk
         elif how == 'external': window.destroy()
         else:
             # Isolate root destruction itself; actual Tk shutdown is tested below.
-            owned_ui.root.destroy = lambda: [w.destroy() for w in Window.created]
             owned_ui.root.destroy()
         wrapper.close()
         wrapper._on_destroy(SimpleNamespace(widget=window))
@@ -255,7 +320,9 @@ def test_destruction_notifies_once_for_owned_toplevel_only(setup, owned_ui, monk
 
 def test_stale_reference_and_old_callback_cannot_block_or_clear_new_owner(setup, owned_ui):
     s, a, *_ = setup
-    stale = SimpleNamespace(window=SimpleNamespace(winfo_exists=lambda: False))
+    stale = SimpleNamespace(window=Window(owned_ui.root))
+    stale.window.destroy()
+    Window.created.clear()
     owned_ui._history_window = stale
     def inspect(window):
         current = owned_ui._history_window
@@ -269,14 +336,14 @@ def test_stale_reference_and_old_callback_cannot_block_or_clear_new_owner(setup,
 
 def test_cleanup_never_releases_a_foreign_grab(setup, owned_ui, monkeypatch):
     s, a, *_ = setup
-    foreign = object()
+    foreign = Window(owned_ui.root)
     def fail_after_replacement(window):
         Window.grabbed = foreign
         raise tk.TclError('focus failed')
     monkeypatch.setattr(Window, 'focus_force', fail_after_replacement)
     with pytest.raises(tk.TclError, match='focus failed'):
         owned_ui._open_history_window(s, a, now_utc=Clock(local(s, TUE, 12)))
-    assert Window.grabbed is foreign and Window.created[0].releases == 0
+    assert Window.grabbed is foreign and foreign.releases == 0
     assert owned_ui._history_window is None
 
 
@@ -347,7 +414,10 @@ def tk_root():
         pytest.skip(f'Real Tk/display unavailable: {exc}')
     root.geometry('1000x700+0+0')
     root.update()
+    if not root.winfo_viewable():
+        root.wait_visibility()
     root.focus_force()
+    root.update()
     errors = []
     root.report_callback_exception = lambda *args: errors.append(args)
     try:
@@ -382,11 +452,22 @@ def pointer(tk_root):
     xt.XTestFakeKeyEvent.argtypes = [c.c_void_p, c.c_uint, c.c_int, c.c_ulong]
     display = x.XOpenDisplay(None)
     assert display, 'Could not open the test display for real pointer input'
+    def settle():
+        # Let the separate window manager process map/configure/focus requests
+        # before using screen coordinates; keep normal Tk events running.
+        done = tk.StringVar(tk_root, value='')
+        tk_root.after(20, lambda: done.set('ready'))
+        tk_root.wait_variable(done)
     def sync():
         x.XSync(display, False)
+        settle()
         tk_root.update()
     def click(widget):
-        tk_root.update_idletasks()
+        top = widget.winfo_toplevel()
+        if not top.winfo_viewable():
+            top.wait_visibility()
+        settle()
+        tk_root.update()
         assert widget.winfo_ismapped()
         xx = widget.winfo_rootx() + widget.winfo_width() // 2
         yy = widget.winfo_rooty() + widget.winfo_height() // 2

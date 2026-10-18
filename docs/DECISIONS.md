@@ -231,6 +231,29 @@ checked destruction cleanup and a construction guard protect that opening path.
 The approval activates neither production timeline route and does not establish
 production-wide enforcement; editor/audit and other Phase 3 work remain separate.
 
+### Originating-parent history return prerequisite
+
+**Status:** current. **Provenance:** later explicit architecture adjudication
+supplied with the originating-parent/modal-return implementation instructions,
+after production-access planning. Technical owner:
+[owned history window](../DESIGN_NOTES.md#owned-modal-history-window-staged).
+
+The application owner selects and validates the live originating top-level and
+captures its local grab and focus. The history shell owns its own widgets/grab
+and rechecks acquisition after visibility processing. The owner restores eligible
+captured context only after disposal, outside destruction callbacks, while the
+opening guard remains active. Destroyed origins are not recreated or redirected;
+competing live grabs and their focus are left alone. Return restores only a
+previous local parent grab and uses ordinary focus, without forced activation.
+Unexpected restoration failures propagate; an earlier construction/presentation
+failure remains primary with additional diagnostics retained.
+
+This approval extends the staged shell without production routing. It does not
+authorize changes to task-editor drafts or its unrelated recursive lifecycle,
+choose production access locations/transitional editing access, or select
+legacy-dataset applicability. No modal-stack framework or new durable mechanism
+is approved or needed. Earlier modal/session approvals retain their chronology.
+
 ### Local dates and configurable reporting weeks
 
 **Status:** current. **Provenance:** explicit user confirmation; current owner:

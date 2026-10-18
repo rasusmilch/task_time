@@ -183,6 +183,8 @@ browser openings, without persistence or production activation.
 A staged [owned modal window](../DESIGN_NOTES.md#owned-modal-history-window-staged)
 now composes the browser through an unrouted application opening path, with
 single-window ownership and lifecycle cleanup limited to that path.
+Originating-parent validation and safe modal return are also staged, without
+production editor callbacks or a legacy-data applicability decision.
 Production record-editor/history integration, application-wide window enforcement,
 audit presentation,
 segment editing/deletion handlers, dated writer activation and production Reset

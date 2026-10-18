@@ -110,7 +110,9 @@ it adds no settings or preference files. A staged
 composes the browser and Close, preserving timers and session direction. Its
 unrouted opening helper rejects duplicate requests without refreshing or changing
 the original task. Single-window enforcement covers that path; both legacy
-production timeline routes remain unchanged. Production history integration,
+production timeline routes remain unchanged. Explicit originating-parent
+validation and safe grab/focus return are staged without wiring editor callbacks
+or choosing legacy-data applicability. Production history integration,
 segment editing, audit interactions and removal
 of production Reset controls remain pending. Existing production timeline and
 counters are unchanged.

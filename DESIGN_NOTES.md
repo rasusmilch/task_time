@@ -440,8 +440,11 @@ Existing services, legacy dialogs, accounting and settings ownership are unchang
 `history_window.HistoryWindow(parent, *, make_browser, on_closed)` creates a
 withdrawn `window` Toplevel, composes the accepted browser and adds Close. The
 constructor neither grabs nor waits. `show_modal()` presents it transient to its
-parent, waits for visibility, establishes a local grab, focuses history and uses
-Tk's normal window wait. Presentation performs no additional history load.
+parent, waits for visibility, rechecks the current grab immediately before
+acquisition, focuses history and uses Tk's normal window wait. Acquisition permits
+no grab or the originating top-level's local grab; an unrelated/global grab that
+appears during visibility waiting is preserved and the conflict propagates after
+history cleanup. Presentation performs no additional history load.
 Normal scheduled events continue, including existing timer processing; no
 automatic history refresh or work mutation is introduced. The browser remains
 attached to its original task and owns its calendars, drafts and explicit loads.
@@ -450,14 +453,22 @@ Apply-only, and picker Escape does not close history or release its modality.
 
 `TaskTimerApp` initializes `_history_window = None` and
 `_history_window_opening = False` before building controls. Its lazy, unrouted
-`_open_history_window(service, task_id, *, now_utc, week_start=6)` sets the
-construction guard, delegates browser composition to `_make_history_browser`,
-then publishes the owned wrapper before presentation can process modal events.
+`_open_history_window(service, task_id, *, now_utc, week_start=6, modal_parent=None)`
+uses the root by default and sets the in-progress guard before parent validation
+and context capture. An explicit parent must be a live top-level of this
+application's Tk root; invalid parents reject before widgets, clock capture or
+work reads. Before construction the owner captures its grab/focus, permitting no
+grab or that parent's local grab only. It delegates browser composition to
+`_make_history_browser`, then publishes the owned wrapper before presentation
+can process modal events.
 Duplicate/reentrant requests return without building, observing the clock,
 reading work, refreshing or retargeting. A destroyed stale reference does not
 block reopening. `_history_window_closed(window)` clears ownership only by
 object identity, so an old callback cannot clear a later wrapper. Closing retains
 the application's session direction; later openings use the existing handoff.
+The guard remains active through construction, presentation, cleanup and return
+restoration, including after the owned reference has been cleared. Duplicate
+requests do not inspect their supplied arguments.
 
 `close()` is idempotent. Close, window-manager closure, external destruction and
 root shutdown dispose of the browser/calendars and release the modal wait.
@@ -469,10 +480,30 @@ and the construction guard are cleared so later openings can succeed. An initial
 inline browser loading failure is a usable window, recoverable through explicit
 Refresh, rather than a construction failure.
 
+The application owner restores modal context after disposal, outside Destroy
+callbacks, on normal closure, external destruction and construction/presentation
+failure. If the application or originating parent was destroyed, it skips return
+without recreating or redirecting to an ancestor. Another live window's grab
+causes an intentional skip of both grab and focus restoration. Otherwise only a
+captured local parent grab is restored, without reacquiring one already held;
+no prior grab means no invented return grab. A surviving saved focus widget in
+the same top-level receives ordinary `focus_set()`, otherwise the surviving
+parent does. Return never forces application activation. Widget survival uses
+existing Tk object membership and exact Tcl command existence, including after
+root destruction; a reused widget path does not revive an old object. Unexpected
+inspection/restoration errors propagate rather than being classified as death.
+If an earlier failure exists, it remains primary with restoration/cleanup
+diagnostics retained. The guard clears in the final exit path even on failure.
+No originating editor is saved, closed, reconstructed or refreshed.
+
 This path enforces one owned window only through the staged opening helper.
 Both production EditTimelineDialog entry points remain unchanged and outside
 that path; application-wide production enforcement is not established. Existing
 shutdown/reminder choices, services, storage and settings remain unchanged.
+Actual task and recursive subtask editors are exercised by isolated test drivers
+only; no production editor callback is wired. Production access locations,
+transitional legacy editing access and legacy-dataset applicability remain
+unselected. This prerequisite does not satisfy the Phase 3 active-reader gate.
 There is no window registry, persistent identity, polling or additional mainloop.
 
 ## Replacement timed-input validation (staged)

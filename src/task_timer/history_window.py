@@ -36,6 +36,10 @@ class HistoryWindow:
             self.window.transient(self._parent.winfo_toplevel())
             self.window.deiconify()
             self.window.wait_visibility()
+            grab = self.window.grab_current()
+            if grab is not None and (grab is not self._parent.winfo_toplevel()
+                                     or grab.grab_status() != "local"):
+                raise ValueError("History cannot acquire an unrelated or global grab")
             self.window.grab_set()
             self.window.focus_force()
             self.window.wait_window()
