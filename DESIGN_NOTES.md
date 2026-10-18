@@ -908,7 +908,8 @@ described above still apply.
 
 ## Frozen timesheet preview (standalone)
 
-`TimesheetPreviewFrame(parent, service, *, now_utc)` in `timesheet_preview.py`
+`TimesheetPreviewFrame(parent, service, *, now_utc, on_readiness_changed=None)`
+in `timesheet_preview.py`
 constructs controls without loading. `refresh_preview() -> bool` resolves This
 week (default), Last week or inclusive Custom dates from one supplied aware
 observation, normalized to UTC. Relative weeks use local calendar arithmetic and
@@ -939,12 +940,49 @@ Refresh. No report is prepared during construction or on a schedule.
 Preparation failure retains drafts and prior trusted output. Widget-update
 failure invalidates readiness, hides untrusted output where possible and reports
 the original diagnostic through Tk; explicit later success restores the report.
-Valid empty All results are successful. There is no Save/retry, file dialog,
+Valid empty All results are successful. Optional readiness notifications follow
+committed transitions, never construction. An observer failure retains the actual
+preview outcome and reports its original diagnostic separately. `set_locked(bool)`
+disables draft/Preview/picker controls and disposes owned calendars without
+invalidating a ready candidate; direct locked refresh/picker callbacks do nothing.
+Programmatic draft writes still invalidate readiness. The report remains readable.
+The preview itself has no Save/retry, file dialog,
 modal wrapper, application route, path memory, confirmation or work mutation.
 Existing production exports remain unchanged and dated writers remain blocked
 on remaining active-reader integration. This is a standalone foundation for the
 [Selected target](docs/TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports),
 not the completed Timesheet workflow.
+
+## Standalone frozen-export Save/retry
+
+`TimesheetSaveFrame(parent, service, *, now_utc)` in `timesheet_save.py` composes
+`self.preview`. `save() -> bool` requires a current detached candidate before an
+owned .txt destination dialog, temporarily locks preview interaction, and rechecks
+that candidate after selection. Cancellation releases this temporary lock with
+no durable operation. Before the first registration call it retains the exact
+prepared event and explicit destination; it never changes `preferred_destination`.
+
+From that attempt onward the preview remains locked. Every explicit Retry calls
+`register_prepared_timesheet_export()` again with the unchanged event and requires
+its expected identity before `materialize_timesheet_export()` at the retained
+path. A registration exception means registration is not verified; publication
+is prohibited even when bytes are visible. A materialization exception means the
+save call did not complete; it does not imply absence and causes no deletion.
+Original exceptions, traceback chains and notes are reported through Tk.
+`choose_another_file() -> bool` is available after failure; cancellation keeps
+retry inputs, while selection retries the same event at the new path. Existing
+service gates own synchronization, complete validation, matching-copy reuse and
+no-overwrite protection. Busy actions reject reentrancy without more dialogs or
+service calls; retries never consult changed work or reprepare the preview.
+
+Only successful materialization sets `saved_path` and completion, before success
+presentation. Later presentation failure cannot erase that result. Completed
+instances reject duplicate actions. `get_save_attempt() -> dict | None` returns
+only deep-copied `prepared_event` and `destination` after the first attempt, with
+no clock or I/O. This is an ephemeral current-attempt handoff, not persisted
+recovery, a permanent file-status flag or an eventual Close/new-export policy.
+The component has no production route, general recovery UI, confirmation,
+submission/checkpoint, timer or settings effects. Backend contracts are unchanged.
 
 ## Immutable export-snapshot registration (staged)
 
@@ -1086,7 +1124,7 @@ needed to materialize the original bytes after later work or renderer changes.
 Every call verifies anew: later external changes/deletion invalidate earlier
 observations. There is no persisted completion flag, file-status history or
 distinction between never-published and subsequently deleted paths. No automatic
-missing-file recovery, dashboard, confirmation, UI integration or cutover is added.
+missing-file recovery, dashboard, confirmation, production UI integration or cutover is added.
 Linux fault injection does not establish Windows/NTFS execution, power-loss
 durability, universal filesystem support or concurrent/hostile-directory safety.
 

@@ -361,9 +361,20 @@ registration uncertainty, materialization and recovery rules.
 prepares and displays an unregistered candidate only after explicit Preview/
 Refresh. It retains a detached candidate and returns it only while its displayed
 preview is current; failed preparation or rendering invalidates readiness.
-It has no Save/retry, window wrapper or production route. Existing export routes
-remain active; this component does not unblock production dated writers.
-The separate staged save service publishes a
+The preview itself does not register or publish files. Its composed standalone
+`TimesheetSaveFrame` locks the reviewed candidate, registers it before verified
+materialization and retains its exact event and explicit destination for retry.
+Unverified registration never permits publication; a failed save call does not
+prove the destination absent. Conflicting files require another selected path,
+while matching copies may be reused. Only a returned materialization result
+establishes that save call's completion, not permanent current-file availability.
+No recalculation, submission, checkpoint, confirmation or timer mutation belongs
+in Save. The current component supports one operation per instance and ephemeral
+retry-input handoff; this staging boundary does not decide the eventual window's
+Close/new-export lifecycle or restart recovery UI. Production routing and general
+recovery UI remain pending. Existing export routes remain active; these
+components do not unblock production dated writers.
+The separate file-only save service publishes a
 report file but does not register an immutable export-snapshot event. It still
 uses exact HH:MM:SS output and lacks snapshot-linked byte verification/recovery.
 The separate pure decimal renderer and immutable snapshot-registration APIs are

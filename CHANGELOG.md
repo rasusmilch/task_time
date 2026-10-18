@@ -66,6 +66,9 @@ receipts or commits. No release or production qualification is implied below.
   Separately materialize exact frozen UTF-8 copies after journal verification,
   using exclusive staging/publication and complete destination-byte/SHA-256 checks.
   Reuse matching files and retry without new evidence; protect conflicting files.
+  Compose standalone explicit frozen preview and Save/retry components: independent
+  task selection, locked reviewed candidates, exact-event retries and explicit
+  protected destinations, without production routing or general recovery UI.
   Evaluate destination-relative PENDING/READY/MISSING/CONFLICT/UNVERIFIABLE outcomes
   from freshly validated evidence and current file inspection, without writes,
   retained status or publication-history state.

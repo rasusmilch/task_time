@@ -339,6 +339,26 @@ without Save/retry or production routing. Existing export routes remain until
 replacement is ready. This approval does not activate dated writers or choose
 remembered paths, restart policy, configurable weeks or installation cutover.
 
+### Standalone frozen-export Save/retry
+
+**Status:** current. **Provenance:** later explicit user approval supplied with
+the standalone saving/retry implementation instructions. This extends the earlier
+preview-only component approval without changing its historical boundary.
+
+Compose the accepted preview with existing registration and verified
+materialization services. Save publishes the reviewed event unchanged, with an
+explicit destination, after verified registration. Uncertainty retains exact
+retry inputs; every retry re-registers the same event before publication. Lock
+preview editing after the first registration attempt; no recalculation or
+confirmation/submission/checkpoint/timer effects are authorized. Matching copies
+may be reused and conflicting files require another path. Completion follows
+only a successful materializer return and survives later presentation failure.
+
+The approved standalone component's single-operation instance and deep-copied
+in-memory attempt handoff do not select permanent Timesheet-window lifecycle,
+Close behavior, path memory or restart recovery UI. Production routing, general
+recovery UI, dated writers and installation cutover remain outside this approval.
+
 ### Absolute daily external confirmations
 
 **Status:** current. **Provenance:** explicit user confirmation of daily
@@ -494,7 +514,7 @@ It is not evidence that the user had previously approved fabricated intervals.
 
 The production application still has parent/subtask handling, local-noon synthetic
 manual intervals, timestamp export checkpoints and legacy submission markers.
-Mixed service accounting currently uses Sunday weeks; the new save service
+Mixed service accounting currently uses Sunday weeks; the file-only save service
 publishes a file without immutable export registration. Source presence does not
 select these as permanent product behavior or approve reuse of legacy submission
 semantics for POL-R. New endpoint-free replay/accounting services are staged;

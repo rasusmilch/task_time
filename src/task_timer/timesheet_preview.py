@@ -24,15 +24,19 @@ def _parse_date(text):
 class TimesheetPreviewFrame(ttk.Frame):
     """Prepare once on request; drafts and frozen results have no durable effects."""
 
-    def __init__(self, parent, service, *, now_utc):
+    def __init__(self, parent, service, *, now_utc, on_readiness_changed=None):
         if not callable(now_utc):
             raise ValueError("now_utc must be an explicit callable")
+        if on_readiness_changed is not None and not callable(on_readiness_changed):
+            raise ValueError("on_readiness_changed must be callable or None")
         super().__init__(parent)
         self.service = service
         self.local_timezone = service.local_tz
         self._now_utc = now_utc
         self._prepared = None
         self._ready = False
+        self._on_readiness_changed = on_readiness_changed
+        self._locked = False
         self._applied_info = None
         self._observation_date = None
         self._pickers = {}
@@ -112,8 +116,33 @@ class TimesheetPreviewFrame(ttk.Frame):
             variable.trace_add("write", self._draft_changed)
         self.bind("<Destroy>", self._on_destroy, add="+")
 
+    def _set_ready(self, ready):
+        changed = self._ready != ready
+        self._ready = ready
+        if changed and self._on_readiness_changed is not None:
+            try:
+                self._on_readiness_changed(ready)
+            except Exception as exc:
+                self.error_var.set(f"Preview readiness updated; unable to notify owner: {exc}")
+                self.error_label.grid()
+                self._root().report_callback_exception(type(exc), exc, exc.__traceback__)
+
+    def set_locked(self, locked: bool):
+        """Disable draft interaction without changing the frozen candidate's readiness."""
+        if type(locked) is not bool:
+            raise ValueError("locked must be a boolean")
+        self._locked = locked
+        if locked:
+            for popup in tuple(self._pickers):
+                self._close_picker(popup)
+        controls = (*self.period_buttons.values(), *self.scope_buttons.values(),
+                    *self.date_entries.values(), *self.picker_buttons.values(),
+                    *self.task_buttons.values(), self.preview_button)
+        for control in controls:
+            control.configure(state="disabled" if locked else "normal")
+
     def _draft_changed(self, *_args):
-        self._ready = False
+        self._set_ready(False)
         if self.period_var.get() == "Custom":
             self.custom.grid()
         else:
@@ -127,7 +156,7 @@ class TimesheetPreviewFrame(ttk.Frame):
             self.info_var.set("No current preview. Preview required.")
 
     def _error(self, exc):
-        self._ready = False
+        self._set_ready(False)
         self._show_previous()
         self.error_var.set(f"Unable to preview timesheet: {exc}")
         self.error_label.grid()
@@ -136,7 +165,9 @@ class TimesheetPreviewFrame(ttk.Frame):
 
     def refresh_preview(self) -> bool:
         """Explicitly resolve drafts and replace the display with one frozen candidate."""
-        self._ready = False
+        if self._locked:
+            return False
+        self._set_ready(False)
         try:
             cutoff = self._now_utc()
             if not isinstance(cutoff, datetime) or cutoff.tzinfo is None or cutoff.utcoffset() is None:
@@ -196,7 +227,7 @@ class TimesheetPreviewFrame(ttk.Frame):
             return self._error(exc)
         self._prepared = candidate
         self._applied_info = applied_info
-        self._ready = True
+        self._set_ready(True)
         return True
 
     def get_prepared_export(self) -> dict | None:
@@ -204,6 +235,8 @@ class TimesheetPreviewFrame(ttk.Frame):
         return deepcopy(self._prepared) if self._ready else None
 
     def _open_picker(self, variable):
+        if self._locked:
+            return False
         popup = None
         try:
             try:
@@ -231,6 +264,8 @@ class TimesheetPreviewFrame(ttk.Frame):
             return self._error(exc)
 
     def _choose_date(self, popup, calendar, variable):
+        if self._locked:
+            return False
         try:
             chosen = calendar.selection_get()
             if type(chosen) is not date:

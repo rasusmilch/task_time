@@ -25,7 +25,11 @@ replay are implemented/staged; registration publishes no external report file.
 A standalone frozen preview now uses that preparation API without registration,
 file output, Save/retry or production routing. It displays the exact candidate
 text and invalidates readiness on draft changes/failure. The event and
-registration contracts below are unchanged.
+registration contracts below are unchanged. A separate standalone Save/retry
+component now composes the preview with those existing services, retaining one
+exact event and explicit destination through uncertainty. Production routing and
+general recovery UI remain pending; its in-memory completion/path handoff is not
+persisted file status or a restart guarantee.
 Verified materialization from committed evidence is also staged: exact-byte/digest
 checking, matching-file reuse and exclusive no-overwrite publication are available
 through a separate service operation. Standalone read-only destination-relative
