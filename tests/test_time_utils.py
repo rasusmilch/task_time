@@ -118,3 +118,13 @@ def test_last_business_day_rules() -> None:
 def test_is_last_business_day() -> None:
     assert is_last_business_day(date(2026, 3, 31)) is True  # Tuesday month-end
     assert is_last_business_day(date(2026, 3, 30)) is False
+
+
+def test_service_exposes_real_local_timezone_name(monkeypatch, tmp_path) -> None:
+    from zoneinfo import ZoneInfo
+    from task_timer.app import TaskTimerService
+    from task_timer.storage import EventStorage
+
+    monkeypatch.setattr("task_timer.app.detect_local_timezone", lambda: ZoneInfo("America/Chicago"))
+    service = TaskTimerService(EventStorage(tmp_path))
+    assert service.local_tz_name == "America/Chicago"

@@ -166,27 +166,27 @@ boundaries, not recorded stops. The approved presentation rules are:
   stays on the chosen row; dated entries do not link. No routine extra text is
   added. This later approval resolves the earlier undecided link styling.
 
-The detached [work-history service](../DESIGN_NOTES.md#mixed-work-history-service-staged)
+The detached [work-history service](../DESIGN_NOTES.md#mixed-work-history-service)
 and pure [timed-input validation](../DESIGN_NOTES.md#replacement-timed-input-validation-staged)
-are staged, together with a standalone
+are available, together with a standalone
 [timed-interval form](../DESIGN_NOTES.md#timed-interval-input-form-staged) and
 [closed-interval correction preparation/registration](../DESIGN_NOTES.md#timed-interval-corrections-staged).
 A [standalone correction dialog](../DESIGN_NOTES.md#standalone-timed-interval-correction-dialog-staged)
 now connects those components without production callers.
-A standalone [work-history table](../DESIGN_NOTES.md#mixed-work-history-table-staged)
+A standalone [work-history table](../DESIGN_NOTES.md#mixed-work-history-table)
 now renders supplied rows and related-portion feedback without service access.
-The standalone [history browser](../DESIGN_NOTES.md#single-task-history-browser-staged)
+The standalone [history browser](../DESIGN_NOTES.md#single-task-history-browser)
 now composes that reader/table with periods, typed/calendar drafts, explicit
-refresh and in-memory sorting. A staged application-owned boolean and unrouted
-composition helper now hand off successfully rendered direction across sequential
-browser openings, without persistence or production activation.
-A staged [owned modal window](../DESIGN_NOTES.md#owned-modal-history-window-staged)
-now composes the browser through an unrouted application opening path, with
-single-window ownership and lifecycle cleanup limited to that path.
-Originating-parent validation and safe modal return are also staged, without
-production editor callbacks or a legacy-data applicability decision.
-Production record-editor/history integration, application-wide window enforcement,
-audit presentation,
+refresh and in-memory sorting. An application-owned boolean hands off successfully
+rendered direction across sequential browser openings without persistence.
+The [owned modal window](../DESIGN_NOTES.md#owned-modal-history-window)
+now connects both shipped Work History commands, in the selected-task panel and
+recursive task editors, through one owner with originating-parent validation,
+safe modal return and lifecycle cleanup. It replaces the old timeline UI without
+a parallel legacy interface or compatibility requirement. Applicable unsupported
+synthetic work remains a visible reader error; no data is converted or omitted.
+This activates read-only browsing only, not replacement editing or installation/
+data-directory cutover. Replacement record-editor integration, audit presentation,
 segment editing/deletion handlers, dated writer activation and production Reset
 removal remain subsequent work.
 
@@ -458,14 +458,14 @@ Source describes what executes, not an alternative product contract. See
 | Project/task foundation | Separate UUID-based service records, optional current project membership and independent task-owned time. |
 | Date-only duration foundation | Separate endpoint-free records with append-only creation/correction/deletion replay and snapshots; new production duration writers are inactive. |
 | Mixed accounting | Read-only explicit local-date windows, real intervals plus effective dated records, derived project/Unassigned/application totals, and fixed Sunday-start weeks. |
-| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting. A standalone browser adds Current week/Custom/All, Apply-only calendar/typed dates, explicit Refresh and local date sorting, with staged application-session direction handoff. An owned modal wrapper enforces single-window ownership through its unrouted opening path. Production integration and application-wide enforcement remain pending; production timeline, editing and reset controls are unchanged. |
+| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting. A standalone browser adds Current week/Custom/All, Apply-only calendar/typed dates, explicit Refresh and local date sorting, with application-session direction handoff. Both shipped Work History commands use one owned modal path with safe originating-parent return. Superseded timeline presentation is removed; replacement editing, audit and Reset removal remain pending. |
 | Timed input validation | Pure minute-clock candidate/resolution APIs with separate endpoint dates, explicit repeated-time occurrences, gap rejection, UTC ordering and edit-aware restoration of unchanged precision. Consumed by the form and standalone editor; production callers remain unchanged. |
-| Timed input form | Standalone minute-only endpoint fields, canonical dates, timezone/occurrence choices and inline errors using the accepted validators. No stored-record loading, saving or production connection; legacy TimelineEntryDialog is unchanged. |
+| Timed input form | Standalone minute-only endpoint fields, canonical dates, timezone/occurrence choices and inline errors using the accepted validators. No stored-record loading, saving or production correction connection; legacy timeline input UI is removed. |
 | Timed corrections | Separate staged preparation/registration of one effective closed genuine interval replacement, preserving unchanged precision, optional comments and retry identities. No-op saves write nothing; stale priors reject. Consumed by the standalone dialog; production editing remains inactive. |
 | Standalone timed editor | Authoritative detached loading, minute controls preserving unchanged precision, stale conflict presentation, optional comments and frozen correction registration/retry. No production callers, creation/deletion or dated/running editing. |
 | Timesheet rendering/generation | Staged independent-task exact and decimal renderers with authoritative scope/timezone metadata, safe calendar slots, reversible escaping and wrapped borders. Decimal output rounds task/day cells once and sums displayed hundredths; service generation still uses exact durations. |
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
-| Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; current duration UI still uses synthetic intervals. |
+| Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; read-only mixed Work History replaces the legacy timeline; replacement work-entry/editing UI remains pending. |
 | Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay, verified materialization and read-only destination-relative five-status evaluation. Exact copies, matching-file reuse and no-overwrite publication are staged; materialization/evaluation create no new events or persistent file-status flags. |
 | POL-R target workflow | Immutable confirmation-batch preparation/registration/replay, frozen-export proposals/selected preparation and latest absolute task/day projection are staged. Read-only daily Actual/Confirmed/Delta/Enter calculation is staged; confirmation/reconciliation UI, weekly summaries and production integration remain unimplemented. Legacy markers are not this contract; export registration is not confirmation or successful file export. |
 | Week configuration and allocations | No selectable week-start setting or selected weekly-allocation management. |

@@ -396,7 +396,7 @@ def test_render_and_selection_prohibit_domain_clock_files_and_scheduling(setup, 
     def forbidden(*args, **kwargs):
         pytest.fail("Table attempted service, filesystem, clock, identity, settings or scheduled work")
     with monkeypatch.context() as m:
-        for name in ("get_task_work_history", "get_task_timeline", "_append", "_save_snapshot",
+        for name in ("get_task_work_history", "_append", "_save_snapshot",
                      "read_task_for_timed_interval_correction", "calculate_date_window", "create_backup_now"):
             m.setattr(s, name, forbidden)
         for name in ("append_event", "iter_all_events", "save_snapshot", "synchronize_journal"):

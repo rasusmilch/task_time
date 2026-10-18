@@ -236,7 +236,7 @@ production-wide enforcement; editor/audit and other Phase 3 work remain separate
 **Status:** current. **Provenance:** later explicit architecture adjudication
 supplied with the originating-parent/modal-return implementation instructions,
 after production-access planning. Technical owner:
-[owned history window](../DESIGN_NOTES.md#owned-modal-history-window-staged).
+[owned history window](../DESIGN_NOTES.md#owned-modal-history-window).
 
 The application owner selects and validates the live originating top-level and
 captures its local grab and focus. The history shell owns its own widgets/grab
@@ -253,6 +253,29 @@ authorize changes to task-editor drafts or its unrelated recursive lifecycle,
 choose production access locations/transitional editing access, or select
 legacy-dataset applicability. No modal-stack framework or new durable mechanism
 is approved or needed. Earlier modal/session approvals retain their chronology.
+
+### Replacement Work History access
+
+**Status:** current. **Provenance:** explicit user approval supplied with the
+replacement Work History integration instructions, after acceptance of the
+originating-parent prerequisite. Current owner:
+[mixed history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
+
+Both former Edit Timeline commands become Work History, using the application
+owner and each originating top-level, including recursive task editors. The
+fresh replacement has no migration/backward-compatibility requirement and no
+temporary parallel legacy history UI. Old timeline presentation and its editing
+controls are retired; replacement creation, correction/deletion, missed-stop UI
+and audit remain separate outcomes. This later approval resolves the previously
+unselected production access/transitional-retention boundary; it does not
+retroactively attribute activation to the earlier staged approvals.
+
+Read-only access preserves the accepted browser, session direction and modal
+return contracts. Launch failures are inline at their origin with original Tk
+diagnostics; unsupported synthetic work is a visible reader error, never a
+fallback or silent omission. No user files are removed, no dataset is converted,
+and installation/data-directory cutover and unrelated Open matters remain Open.
+History access alone does not satisfy the Phase 3 active-reader gate.
 
 ### Local dates and configurable reporting weeks
 

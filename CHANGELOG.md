@@ -2,7 +2,7 @@
 
 This is Chronicle's sole canonical historical project-change record.
 Unreleased changes describe cumulative material effects, not individual tasks,
-receipts or commits. No release or production activation is implied below.
+receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
@@ -23,11 +23,13 @@ receipts or commits. No release or production activation is implied below.
   across task/dataset history openings with newest-first application startup,
   full-interval segment editing/deletion, effective history with audit access,
   and removal of replacement Reset actions/counters. Stage an application-owned
-  in-memory direction handoff to sequential browsers without production routing
-  or persistence. Compose an owned modal history window with duplicate-request
-  protection and lifecycle cleanup through an unrouted opening path; production-wide
-  enforcement remains pending. Production UI/editor,
-  audit and Reset-removal integrations remain pending. Stage closed
+  in-memory direction handoff without persistence. Connect both Work History
+  commands, including recursive task editors, through one owned modal browser
+  with duplicate protection, safe originating-parent return and inline launch
+  diagnostics. Remove the superseded timeline UI/reader/formatter without a
+  compatibility interface, migration or user-file/data-directory cutover.
+  Replacement creation/editing/deletion, missed-stop UI, audit and Reset-removal
+  integrations remain pending. Stage closed
   genuine-interval correction preparation/registration using existing replacement
   events: no-op saves write nothing, unchanged endpoints retain precision, comments
   are optional and stale priors reject. Frozen identities, prospective replay and

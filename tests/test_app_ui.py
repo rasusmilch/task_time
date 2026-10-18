@@ -1314,30 +1314,6 @@ def test_edit_task_dialog_save_updates_task_and_tags_and_marks_changed() -> None
     ]
 
 
-def test_edit_task_dialog_timeline_marks_changed_when_dialog_changed() -> None:
-    dialog = EditTaskDialog.__new__(EditTaskDialog)
-    dialog.service = object()
-    dialog.task_id = "task-1"
-    dialog.window = object()
-    dialog.changed = False
-
-    import task_timer.dialogs as dialogs_module
-
-    original = dialogs_module.EditTimelineDialog
-
-    class _Timeline:
-        def __init__(self, *_args) -> None:
-            self.changed = True
-
-    dialogs_module.EditTimelineDialog = _Timeline
-    try:
-        EditTaskDialog._edit_timeline(dialog)
-    finally:
-        dialogs_module.EditTimelineDialog = original
-
-    assert dialog.changed is True
-
-
 def test_edit_task_dialog_has_move_task_button() -> None:
     import inspect
     source = inspect.getsource(EditTaskDialog.__init__)
@@ -1492,7 +1468,8 @@ def test_edit_task_button_triggers_edit_flow() -> None:
     original = app_module.EditTaskDialog
 
     class _Dialog:
-        def __init__(self, *_args) -> None:
+        def __init__(self, *_args, open_history) -> None:
+            assert open_history == app._open_task_history
             self.changed = True
 
     app_module.EditTaskDialog = _Dialog
@@ -1516,7 +1493,8 @@ def test_edit_task_move_changed_refreshes_main_tree_after_close() -> None:
     original = app_module.EditTaskDialog
 
     class _Dialog:
-        def __init__(self, *_args) -> None:
+        def __init__(self, *_args, open_history) -> None:
+            assert open_history == app._open_task_history
             self.changed = True
             self.added_subtask = False
 
@@ -1542,7 +1520,8 @@ def test_edit_task_button_expands_parent_when_subtask_added() -> None:
     original = app_module.EditTaskDialog
 
     class _Dialog:
-        def __init__(self, *_args) -> None:
+        def __init__(self, *_args, open_history) -> None:
+            assert open_history == app._open_task_history
             self.changed = True
             self.added_subtask = True
 
@@ -1656,34 +1635,6 @@ def test_edit_task_dialog_refresh_subtasks_shows_direct_children_only() -> None:
 
     assert dialog.subtask_tree.deleted == ["old"]
     assert dialog.subtask_tree.inserted == ["child-a", "child-b"]
-
-
-def test_edit_task_dialog_timeline_uses_selected_nested_task_id() -> None:
-    dialog = EditTaskDialog.__new__(EditTaskDialog)
-    dialog.window = object()
-    dialog.service = object()
-    dialog.task_id = "nested-1"
-    dialog.changed = False
-
-    import task_timer.dialogs as dialogs_module
-
-    original = dialogs_module.EditTimelineDialog
-
-    seen: list[str] = []
-
-    class _Timeline:
-        def __init__(self, _window, _service, task_id) -> None:
-            seen.append(task_id)
-            self.changed = True
-
-    dialogs_module.EditTimelineDialog = _Timeline
-    try:
-        EditTaskDialog._edit_timeline(dialog)
-    finally:
-        dialogs_module.EditTimelineDialog = original
-
-    assert seen == ["nested-1"]
-    assert dialog.changed is True
 
 
 def test_edit_task_dialog_apply_subtask_templates_refreshes_and_summarizes() -> None:
@@ -2292,7 +2243,7 @@ def test_selected_panel_none_disables_controls(tmp_path) -> None:
     app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
     app.selected_move_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("move", {}).update(kwargs))
     app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
-    app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
+    app.selected_history_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("history", {}).update(kwargs))
     app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
     TaskTimerApp._refresh_selected_task_panel(app)
     assert state["label"]["text"] == "Selected: None"
@@ -2321,7 +2272,7 @@ def test_selected_panel_subtask_label_and_toggle_text(tmp_path) -> None:
     app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
     app.selected_move_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("move", {}).update(kwargs))
     app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
-    app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
+    app.selected_history_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("history", {}).update(kwargs))
     app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
     TaskTimerApp._refresh_selected_task_panel(app)
     assert state["label"]["text"] == "Selected: Parent / Child"
@@ -2347,7 +2298,7 @@ def test_selected_panel_nested_subtask_path_label(tmp_path) -> None:
     app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
     app.selected_move_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("move", {}).update(kwargs))
     app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
-    app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
+    app.selected_history_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("history", {}).update(kwargs))
     app._selected_state_colors = TaskTimerApp._selected_state_colors.__get__(app, TaskTimerApp)
     app.root = SimpleNamespace(cget=lambda _name: "#f0f0f0")
     app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
@@ -2406,7 +2357,7 @@ def test_selected_panel_state_updates_with_task_start_stop(tmp_path) -> None:
     app.selected_delete_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("delete", {}).update(kwargs))
     app.selected_move_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("move", {}).update(kwargs))
     app.selected_edit_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("edit", {}).update(kwargs))
-    app.selected_timeline_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("timeline", {}).update(kwargs))
+    app.selected_history_btn = SimpleNamespace(configure=lambda **kwargs: state.setdefault("history", {}).update(kwargs))
     app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
 
     TaskTimerApp._refresh_selected_task_panel(app)

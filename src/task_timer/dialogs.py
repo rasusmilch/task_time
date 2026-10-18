@@ -1,9 +1,9 @@
-"""Dialog windows for manual interval and timeline editing."""
+"""Task and application configuration dialogs."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, time, timezone
+from datetime import datetime, time, timezone
 from tkinter import BooleanVar, StringVar, Toplevel, messagebox, simpledialog, ttk
 import tkinter as tk
 
@@ -13,364 +13,10 @@ from .models import NOTES_MAX_LENGTH
 from .settings import BackupSettings, UISettings
 from .tag_dialogs import TagSelectionFrame
 from .tags import normalize_tag
-from .time_utils import combine_local_date_time, format_duration_hm, parse_utc_z, utc_now
+from .time_utils import combine_local_date_time, parse_utc_z, utc_now
 
 if TYPE_CHECKING:
     from .app import TaskTimerService
-
-try:
-    from tkcalendar import DateEntry
-except Exception:  # noqa: BLE001
-    DateEntry = None
-
-
-@dataclass(slots=True)
-class TimelineEntryResult:
-    mode: str
-    work_date: date
-    start_local: datetime | None
-    stop_local: datetime | None
-    duration_seconds: float | None
-    reason: str
-
-
-class TimelineEntryDialog:
-    """Single-form timeline entry dialog for interval/duration/fix workflows."""
-
-    def __init__(
-        self,
-        parent: Toplevel,
-        service: "TaskTimerService",
-        *,
-        title: str,
-        default_mode: str = "start_end",
-        initial_date: date | None = None,
-        initial_start_text: str = "",
-        initial_stop_text: str = "",
-        initial_duration_text: str = "",
-        initial_reason: str = "",
-        running_start_label: str | None = None,
-        force_fix_stop: bool = False,
-    ) -> None:
-        self.result: TimelineEntryResult | None = None
-        self.service = service
-        self.force_fix_stop = force_fix_stop
-        self.window = Toplevel(parent)
-        self.window.title(title)
-        self.window.transient(parent)
-        self.window.grab_set()
-        self.window.resizable(False, False)
-
-        self.mode_var = StringVar(value=default_mode)
-        self.date_var = StringVar(value=(initial_date or datetime.now(service.local_tz).date()).isoformat())
-        self.start_var = StringVar(value=initial_start_text)
-        self.stop_var = StringVar(value=initial_stop_text)
-        self.duration_var = StringVar(value=initial_duration_text)
-        self.reason_var = StringVar(value=initial_reason)
-        self.error_var = StringVar(value="")
-
-        row = 0
-        if not force_fix_stop:
-            mode_bar = ttk.Frame(self.window)
-            mode_bar.grid(row=row, column=0, columnspan=2, padx=8, pady=(8, 4), sticky="w")
-            ttk.Radiobutton(mode_bar, text="Start / End", variable=self.mode_var, value="start_end", command=self._refresh_mode).pack(
-                side="left", padx=(0, 10)
-            )
-            ttk.Radiobutton(mode_bar, text="Duration", variable=self.mode_var, value="duration", command=self._refresh_mode).pack(
-                side="left"
-            )
-            row += 1
-
-        if running_start_label:
-            ttk.Label(self.window, text=f"Running since: {running_start_label}").grid(row=row, column=0, columnspan=2, padx=8, pady=(0, 4), sticky="w")
-            row += 1
-
-        ttk.Label(self.window, text="Date").grid(row=row, column=0, padx=(8, 4), pady=2, sticky="w")
-        if DateEntry is not None:
-            self.date_widget = DateEntry(self.window, date_pattern="yyyy-mm-dd")
-            self.date_widget.grid(row=row, column=1, padx=(0, 8), pady=2, sticky="ew")
-            self.date_widget.set_date((initial_date or datetime.now(service.local_tz).date()).isoformat())
-        else:
-            self.date_widget = ttk.Entry(self.window, textvariable=self.date_var)
-            self.date_widget.grid(row=row, column=1, padx=(0, 8), pady=2, sticky="ew")
-        row += 1
-
-        self.start_row = row
-        self.start_label = ttk.Label(self.window, text="Start")
-        self.start_label.grid(row=self.start_row, column=0, padx=(8, 4), pady=2, sticky="w")
-        self.start_entry = ttk.Entry(self.window, textvariable=self.start_var)
-        self.start_entry.grid(row=self.start_row, column=1, padx=(0, 8), pady=2, sticky="ew")
-        row += 1
-
-        self.stop_row = row
-        stop_label = "Corrected stop" if force_fix_stop else "Stop"
-        self.stop_label = ttk.Label(self.window, text=stop_label)
-        self.stop_label.grid(row=self.stop_row, column=0, padx=(8, 4), pady=2, sticky="w")
-        self.stop_entry = ttk.Entry(self.window, textvariable=self.stop_var)
-        self.stop_entry.grid(row=self.stop_row, column=1, padx=(0, 8), pady=2, sticky="ew")
-        row += 1
-
-        self.duration_row = row
-        self.duration_label = ttk.Label(self.window, text="Duration")
-        self.duration_label.grid(row=self.duration_row, column=0, padx=(8, 4), pady=2, sticky="w")
-        self.duration_entry = ttk.Entry(self.window, textvariable=self.duration_var)
-        self.duration_entry.grid(row=self.duration_row, column=1, padx=(0, 8), pady=2, sticky="ew")
-        row += 1
-
-        ttk.Label(self.window, text="Reason").grid(row=row, column=0, padx=(8, 4), pady=2, sticky="w")
-        ttk.Entry(self.window, textvariable=self.reason_var).grid(row=row, column=1, padx=(0, 8), pady=2, sticky="ew")
-        row += 1
-
-        ttk.Label(self.window, textvariable=self.error_var, foreground="#b00020").grid(row=row, column=0, columnspan=2, padx=8, pady=(2, 4), sticky="w")
-        row += 1
-
-        actions = ttk.Frame(self.window)
-        actions.grid(row=row, column=0, columnspan=2, padx=8, pady=(2, 8), sticky="e")
-        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
-        ttk.Button(actions, text="OK", command=self._confirm).pack(side="right")
-
-        self.window.grid_columnconfigure(1, weight=1)
-        self.window.bind("<Return>", lambda _event: self._confirm())
-        self._refresh_mode()
-        parent.wait_window(self.window)
-
-    def _selected_date(self) -> date:
-        if DateEntry is not None and hasattr(self.date_widget, "get_date"):
-            return self.date_widget.get_date()
-        return datetime.strptime(self.date_var.get().strip(), "%Y-%m-%d").date()
-
-    def _refresh_mode(self) -> None:
-        if self.force_fix_stop:
-            self.start_label.grid_remove()
-            self.start_entry.grid_remove()
-            self.duration_label.grid_remove()
-            self.duration_entry.grid_remove()
-            self.stop_label.grid()
-            self.stop_entry.grid()
-            return
-        is_duration = self.mode_var.get() == "duration"
-        if is_duration:
-            self.start_label.grid_remove()
-            self.start_entry.grid_remove()
-            self.stop_label.grid_remove()
-            self.stop_entry.grid_remove()
-            self.duration_label.grid()
-            self.duration_entry.grid()
-        else:
-            self.start_label.grid()
-            self.start_entry.grid()
-            self.stop_label.grid()
-            self.stop_entry.grid()
-            self.duration_label.grid_remove()
-            self.duration_entry.grid_remove()
-
-    def _confirm(self) -> None:
-        try:
-            work_date = self._selected_date()
-            reason = self.reason_var.get().strip()
-            if not reason:
-                raise ValueError("Reason is required")
-
-            if self.force_fix_stop:
-                if not self.stop_var.get().strip():
-                    raise ValueError("Corrected stop time is required")
-                stop_local = self.service.parse_local_datetime_inputs(work_date, self.stop_var.get().strip())
-                self.result = TimelineEntryResult("fix_stop", work_date, None, stop_local, None, reason)
-            elif self.mode_var.get() == "duration":
-                if not self.duration_var.get().strip():
-                    raise ValueError("Duration is required")
-                duration_seconds = self.service.parse_duration_input_seconds(self.duration_var.get().strip())
-                self.result = TimelineEntryResult("duration", work_date, None, None, duration_seconds, reason)
-            else:
-                if not self.start_var.get().strip() or not self.stop_var.get().strip():
-                    raise ValueError("Start and stop are required")
-                start_local = self.service.parse_local_datetime_inputs(work_date, self.start_var.get().strip())
-                stop_local = self.service.parse_local_datetime_inputs(work_date, self.stop_var.get().strip())
-                if stop_local <= start_local:
-                    raise ValueError("Stop must be after start")
-                self.result = TimelineEntryResult("start_end", work_date, start_local, stop_local, None, reason)
-        except Exception as exc:  # noqa: BLE001
-            self.error_var.set(str(exc))
-            return
-        self.window.destroy()
-
-
-class EditTimelineDialog:
-    """Dialog for append-only timeline corrections on a task."""
-
-    def __init__(self, parent: Toplevel, service: "TaskTimerService", task_id: str) -> None:
-        self.changed = False
-        self.service = service
-        self.task_id = task_id
-        self.window = Toplevel(parent)
-        self.window.title("Edit Timeline")
-        self.window.geometry("980x420")
-        self.window.grid_columnconfigure(0, weight=1)
-        self.window.grid_rowconfigure(1, weight=1)
-
-        self.include_history_var = BooleanVar(value=False)
-        ttk.Checkbutton(
-            self.window,
-            text="Show intervals before last reset",
-            variable=self.include_history_var,
-            command=self._refresh_table,
-        ).grid(row=0, column=0, sticky="w", padx=6, pady=(6, 2))
-        self.tz_label_var = StringVar(value=f"Times shown in local timezone: {self.service.local_tz_name}")
-        ttk.Label(self.window, textvariable=self.tz_label_var).grid(row=0, column=0, sticky="e", padx=6, pady=(6, 2))
-
-        columns = ("date", "start", "stop", "duration", "source", "notes", "interval_id")
-        self.tree = ttk.Treeview(self.window, columns=columns, show="headings", height=12)
-        headings = {
-            "date": "Date",
-            "start": "Start time",
-            "stop": "Stop time",
-            "duration": "Duration",
-            "source": "Source",
-            "notes": "Notes/reason",
-            "interval_id": "Interval ID",
-        }
-        widths = {"date": 90, "start": 150, "stop": 150, "duration": 90, "source": 120, "notes": 280, "interval_id": 180}
-        for key in columns:
-            self.tree.heading(key, text=headings[key])
-            self.tree.column(key, width=widths[key], anchor="w")
-        self.tree.grid(row=1, column=0, sticky="nsew", padx=6, pady=4)
-
-        button_bar = ttk.Frame(self.window)
-        button_bar.grid(row=2, column=0, sticky="ew", padx=6, pady=6)
-        ttk.Button(button_bar, text="Add interval", command=self._add_interval).pack(side="left", padx=2)
-        ttk.Button(button_bar, text="Add duration", command=self._add_duration).pack(side="left", padx=2)
-        ttk.Button(button_bar, text="Edit selected interval", command=self._edit_selected).pack(side="left", padx=2)
-        ttk.Button(button_bar, text="Delete selected interval", command=self._delete_selected).pack(side="left", padx=2)
-        ttk.Button(button_bar, text="Fix running/missed stop", command=self._fix_running).pack(side="left", padx=2)
-        ttk.Button(button_bar, text="Close", command=self.window.destroy).pack(side="right", padx=2)
-
-        self._refresh_table()
-        self.window.transient(parent)
-        self.window.grab_set()
-        parent.wait_window(self.window)
-
-    def _refresh_table(self) -> None:
-        for child in self.tree.get_children():
-            self.tree.delete(child)
-        rows = self.service.get_task_timeline(self.task_id, include_before_reset=self.include_history_var.get())
-        for row in rows:
-            iid = row["interval_id"]
-            self.tree.insert(
-                "",
-                "end",
-                iid=iid,
-                values=(row["date"], row["start"], row["stop"], row["duration"], row["source"], row["notes"], iid),
-            )
-
-    def _add_interval(self) -> None:
-        try:
-            entry = TimelineEntryDialog(self.window, self.service, title="Add timeline entry", default_mode="start_end").result
-            if not entry:
-                return
-            if entry.mode == "start_end" and entry.start_local and entry.stop_local:
-                self.service.add_manual_interval(self.task_id, entry.start_local, entry.stop_local, entry.reason)
-            elif entry.mode == "duration" and entry.duration_seconds is not None:
-                self.service.add_manual_duration(self.task_id, entry.work_date, entry.duration_seconds, entry.reason)
-            else:
-                raise ValueError("Invalid timeline entry")
-            self.changed = True
-            self._refresh_table()
-        except Exception as exc:  # noqa: BLE001
-            messagebox.showerror("Invalid interval", str(exc))
-
-    def _add_duration(self) -> None:
-        try:
-            entry = TimelineEntryDialog(self.window, self.service, title="Add timeline entry", default_mode="duration").result
-            if not entry:
-                return
-            if entry.mode == "duration" and entry.duration_seconds is not None:
-                self.service.add_manual_duration(self.task_id, entry.work_date, entry.duration_seconds, entry.reason)
-            elif entry.mode == "start_end" and entry.start_local and entry.stop_local:
-                self.service.add_manual_interval(self.task_id, entry.start_local, entry.stop_local, entry.reason)
-            else:
-                raise ValueError("Invalid timeline entry")
-            self.changed = True
-            self._refresh_table()
-        except Exception as exc:  # noqa: BLE001
-            messagebox.showerror("Invalid duration", str(exc))
-
-    def _selected_interval_id(self) -> str:
-        selected = self.tree.selection()
-        if not selected:
-            raise ValueError("Select an interval first")
-        interval_id = selected[0]
-        if interval_id == "__open__":
-            raise ValueError("Use Fix running/missed stop for running intervals")
-        return interval_id
-
-    def _edit_selected(self) -> None:
-        try:
-            interval_id = self._selected_interval_id()
-            task = self.service.state.tasks[self.task_id]
-            interval = task.intervals[interval_id]
-            start_local = interval.start_utc.astimezone(self.service.local_tz)
-            stop_local = interval.stop_utc.astimezone(self.service.local_tz)
-            default_mode = "duration" if interval.entry_mode == "duration" else "start_end"
-            entry = TimelineEntryDialog(
-                self.window,
-                self.service,
-                title="Edit timeline entry",
-                default_mode=default_mode,
-                initial_date=(date.fromisoformat(interval.work_date_local) if interval.work_date_local else start_local.date()),
-                initial_start_text=start_local.strftime("%I:%M %p").lstrip("0"),
-                initial_stop_text=stop_local.strftime("%I:%M %p").lstrip("0"),
-                initial_duration_text=format_duration_hm(interval.duration_seconds or (interval.stop_utc - interval.start_utc).total_seconds()),
-            ).result
-            if not entry:
-                return
-            if entry.mode == "duration" and entry.duration_seconds is not None:
-                self.service.edit_duration_interval(self.task_id, interval_id, entry.work_date, entry.duration_seconds, entry.reason)
-            elif entry.mode == "start_end" and entry.start_local and entry.stop_local:
-                self.service.edit_interval(self.task_id, interval_id, entry.start_local, entry.stop_local, entry.reason)
-            else:
-                raise ValueError("Invalid timeline entry")
-            self.changed = True
-            self._refresh_table()
-        except Exception as exc:  # noqa: BLE001
-            messagebox.showerror("Invalid edit", str(exc))
-
-    def _delete_selected(self) -> None:
-        try:
-            interval_id = self._selected_interval_id()
-            reason = simpledialog.askstring("Delete interval", "Reason:", parent=self.window)
-            if reason is None or not reason.strip():
-                raise ValueError("Reason is required")
-            if not messagebox.askyesno("Confirm delete", "Delete selected interval from totals?", parent=self.window):
-                return
-            self.service.delete_interval(self.task_id, interval_id, reason.strip())
-            self.changed = True
-            self._refresh_table()
-        except Exception as exc:  # noqa: BLE001
-            messagebox.showerror("Delete failed", str(exc))
-
-    def _fix_running(self) -> None:
-        try:
-            task = self.service.state.tasks[self.task_id]
-            if not task.is_running or not task.currently_open_interval_start_utc:
-                raise ValueError("Task is not currently running")
-            local_start = task.currently_open_interval_start_utc.astimezone(self.service.local_tz)
-            entry = TimelineEntryDialog(
-                self.window,
-                self.service,
-                title="Fix running / missed stop",
-                initial_date=local_start.date(),
-                initial_stop_text=local_start.strftime("%I:%M %p").lstrip("0"),
-                running_start_label=local_start.strftime("%Y-%m-%d %I:%M %p"),
-                force_fix_stop=True,
-            ).result
-            if not entry or not entry.stop_local:
-                return
-            self.service.correct_running_interval_stop(self.task_id, entry.stop_local, entry.reason)
-            self.changed = True
-            self._refresh_table()
-        except Exception as exc:  # noqa: BLE001
-            messagebox.showerror("Fix missed stop failed", str(exc))
-
 
 class AddTaskDialog:
     """Dialog prompting for initial task name and notes."""
@@ -874,45 +520,6 @@ class PostSelectedExportActionDialog:
         self.window.destroy()
 
 
-def _source_label(source: str) -> str:
-    mapping = {
-        "normal": "normal",
-        "manual": "manual interval",
-        "manual_duration": "manual duration",
-        "edit": "edited",
-        "open": "open",
-    }
-    return mapping.get(source, source)
-
-
-def format_timeline_row(interval: Any, local_tz: Any) -> dict[str, str]:
-    start_local = interval.start_utc.astimezone(local_tz)
-    stop_local = interval.stop_utc.astimezone(local_tz)
-    if interval.entry_mode == "duration":
-        display_date = interval.work_date_local or start_local.date().isoformat()
-        start_text = "--"
-        stop_text = "--"
-        duration_seconds = interval.duration_seconds or (interval.stop_utc - interval.start_utc).total_seconds()
-    else:
-        display_date = start_local.date().isoformat()
-        if start_local.date() == stop_local.date():
-            start_text = start_local.strftime("%I:%M %p")
-            stop_text = stop_local.strftime("%I:%M %p")
-        else:
-            start_text = start_local.strftime("%Y-%m-%d %I:%M %p")
-            stop_text = stop_local.strftime("%Y-%m-%d %I:%M %p")
-        duration_seconds = (interval.stop_utc - interval.start_utc).total_seconds()
-    return {
-        "interval_id": interval.interval_id,
-        "date": display_date,
-        "start": start_text,
-        "stop": stop_text,
-        "duration": format_duration_hm(duration_seconds),
-        "source": _source_label(interval.source),
-        "notes": interval.edit_reason or "",
-    }
-
-
 def build_move_task_option_labels(tasks: list[Any]) -> tuple[list[str], list[str]]:
     """Build move-target labels with stable task-id mapping."""
     ordered_tasks = sorted(tasks, key=lambda task: (task.name.strip().casefold(), task.task_id))
@@ -1008,7 +615,8 @@ class MoveTaskDialog:
 
 
 class EditTaskDialog:
-    def __init__(self, parent: Toplevel, service: "TaskTimerService", task_id: str) -> None:
+    def __init__(self, parent: Toplevel, service: "TaskTimerService", task_id: str, *, open_history) -> None:
+        self.open_history = open_history
         self.changed = False
         self.added_subtask = False
         self.service = service
@@ -1076,18 +684,34 @@ class EditTaskDialog:
 
         bar = ttk.Frame(self.window)
         bar.grid(row=row, column=0, columnspan=2, sticky="e")
-        ttk.Button(bar, text="Edit Timeline", command=self._edit_timeline).pack(side="left")
+        self.history_button = ttk.Button(bar, text="Work History", command=self._open_history)
+        self.history_button.pack(side="left")
         ttk.Button(bar, text="Move Task...", command=self._move_task).pack(side="left", padx=(6, 0))
         ttk.Button(bar, text="Cancel", command=self.window.destroy).pack(side="right")
         ttk.Button(bar, text="Save", command=self._save).pack(side="right")
+        self.history_launch_error_var = StringVar(value="")
+        self.history_launch_error_label = ttk.Label(self.window, textvariable=self.history_launch_error_var, foreground="#b00020")
+        self.history_launch_error_label.grid(row=row + 1, column=0, columnspan=2, sticky="w")
+        self.history_launch_error_label.grid_remove()
         self.window.grid_columnconfigure(1, weight=1)
         self.window.grid_rowconfigure(max(0, row - 1), weight=1)
         parent.wait_window(self.window)
 
-    def _edit_timeline(self) -> None:
-        timeline_dialog = EditTimelineDialog(self.window, self.service, self.task_id)
-        if timeline_dialog.changed:
-            self.changed = True
+    def _set_history_launch_error(self, text: str) -> None:
+        if self.window.tk.call("namespace", "which", "-command", self.history_launch_error_label._w):
+            self.history_launch_error_var.set(text)
+            if text:
+                self.history_launch_error_label.grid()
+            else:
+                self.history_launch_error_label.grid_remove()
+
+    def _open_history(self) -> None:
+        self._set_history_launch_error("")
+        try:
+            self.open_history(self.window, self.service, self.task_id)
+        except Exception as exc:
+            self._set_history_launch_error(f"Unable to open work history: {exc}")
+            self.window._root().report_callback_exception(type(exc), exc, exc.__traceback__)
 
     def _move_task(self) -> None:
         task = self.service.state.tasks.get(self.task_id)
@@ -1149,7 +773,7 @@ class EditTaskDialog:
         except Exception as exc:  # noqa: BLE001
             messagebox.showerror("Edit Subtask", str(exc), parent=self.window)
             return
-        dialog = EditTaskDialog(self.window, self.service, subtask_id)
+        dialog = EditTaskDialog(self.window, self.service, subtask_id, open_history=self.open_history)
         if dialog.changed:
             self.changed = True
             self._refresh_subtasks()

@@ -32,13 +32,11 @@ from .dialogs import (
     ManageSubtaskTemplatesDialog,
     ManageTagsDialog,
     BackupSettingsDialog,
-    EditTimelineDialog,
     MonthEndCloseReminderDialog,
     MonthEndReminderSettingsDialog,
     MoveTaskDialog,
     PostSelectedExportActionDialog,
     SelectedTaskExportDialog,
-    format_timeline_row,
 )
 from .exporter import (
     build_decimal_timesheet_text, build_export_text, build_selected_tasks_export_text,
@@ -71,8 +69,6 @@ from .time_utils import (
     combine_local_date_time,
     interval_seconds_in_local_day,
     interval_seconds_in_local_week,
-    parse_duration_seconds,
-    parse_flexible_time,
     parse_utc_z,
     sunday_week_start,
     to_utc_z,
@@ -1411,13 +1407,6 @@ class TaskTimerService:
             self.reset_task_tree(child.task_id)
         self.reset_task_only(task_id)
 
-    def parse_local_datetime_inputs(self, work_date: date, time_text: str) -> datetime:
-        parsed_time = parse_flexible_time(time_text)
-        return combine_local_date_time(work_date, parsed_time, self.local_tz)
-
-    def parse_duration_input_seconds(self, duration_text: str) -> float:
-        return parse_duration_seconds(duration_text)
-
     def add_manual_interval(self, task_id: str, start_local: datetime, stop_local: datetime, reason: str) -> None:
         self._require_task(task_id)
         if stop_local <= start_local:
@@ -1564,13 +1553,6 @@ class TaskTimerService:
                 "reason": reason.strip(),
             },
         )
-
-    def get_task_timeline(self, task_id: str, include_before_reset: bool = False, now_utc: datetime | None = None) -> list[dict[str, str]]:
-        task = self.state.tasks[task_id]
-        check_now = now_utc or utc_now()
-        intervals = self._all_intervals(task, check_now) if include_before_reset else self._effective_intervals(task, check_now)
-        intervals = sorted(intervals, key=lambda i: (i.start_utc, i.stop_utc, i.interval_id))
-        return [format_timeline_row(interval, self.local_tz) for interval in intervals]
 
     def export_report(self, target: Path, reset_after: bool) -> None:
         self._create_risky_operation_backup("before export")
@@ -3284,8 +3266,13 @@ class TaskTimerApp:
         self.selected_move_btn.pack(side="left", padx=4)
         self.selected_edit_btn = ttk.Button(button_bar, text="Edit Task", command=self._edit_selected_task)
         self.selected_edit_btn.pack(side="left", padx=4)
-        self.selected_timeline_btn = ttk.Button(button_bar, text="Edit Timeline", command=self._edit_selected_timeline)
-        self.selected_timeline_btn.pack(side="left", padx=4)
+        self.selected_history_btn = ttk.Button(button_bar, text="Work History", command=self._open_selected_history)
+        self.selected_history_btn.pack(side="left", padx=4)
+        self.history_launch_error_var = tk.StringVar(value="")
+        self.history_launch_error_label = ttk.Label(self.selected_task_panel, textvariable=self.history_launch_error_var, foreground="#b00020")
+        self.history_launch_error_label.grid(row=2, column=0, columnspan=2, sticky="w")
+        self.history_launch_error_label.grid_remove()
+        self._history_error_task_id = None
         self._refresh_selected_task_panel()
 
     def refresh_structure(self) -> None:
@@ -3424,6 +3411,10 @@ class TaskTimerApp:
         if not hasattr(self, "selected_task_label_var"):
             return
         task_id = self._selected_task_id()
+        if getattr(self, "_history_error_task_id", None) != task_id:
+            if hasattr(self, "history_launch_error_label"):
+                self._set_history_launch_error("")
+            self._history_error_task_id = task_id
         task = self.service.state.tasks.get(task_id) if task_id else None
         has_selected_task = bool(task and not task.is_deleted)
         if not has_selected_task:
@@ -3432,7 +3423,7 @@ class TaskTimerApp:
                 bg, fg = self._selected_state_colors("")
                 self.selected_state_label.configure(text="", bg=bg, fg=fg)
             self.selected_toggle_btn.configure(text="Start", state="disabled")
-            for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_move_btn, self.selected_edit_btn, self.selected_timeline_btn):
+            for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_move_btn, self.selected_edit_btn, self.selected_history_btn):
                 btn.configure(state="disabled")
             return
         path_names: list[str] = [task.name]
@@ -3449,7 +3440,7 @@ class TaskTimerApp:
             bg, fg = self._selected_state_colors(state_text)
             self.selected_state_label.configure(text=f"State: {state_text}", bg=bg, fg=fg)
         self.selected_toggle_btn.configure(text="Stop" if task.is_running else "Start", state="normal")
-        for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_move_btn, self.selected_edit_btn, self.selected_timeline_btn):
+        for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_move_btn, self.selected_edit_btn, self.selected_history_btn):
             btn.configure(state="normal")
 
     def _toggle_selected_task(self) -> None:
@@ -3478,13 +3469,28 @@ class TaskTimerApp:
         if task_id:
             self._edit_task(task_id)
 
-    def _edit_selected_timeline(self) -> None:
+    def _open_task_history(self, parent, service, task_id):
+        return self._open_history_window(service, task_id, modal_parent=parent,
+                                         now_utc=utc_now, week_start=6)
+
+    def _set_history_launch_error(self, text: str) -> None:
+        if self.root.tk.call("namespace", "which", "-command", self.history_launch_error_label._w):
+            self.history_launch_error_var.set(text)
+            if text:
+                self.history_launch_error_label.grid()
+            else:
+                self.history_launch_error_label.grid_remove()
+
+    def _open_selected_history(self) -> None:
         task_id = self._selected_task_id()
         if not task_id:
             return
-        dialog = EditTimelineDialog(self.root, self.service, task_id)
-        if dialog.changed:
-            self._after_state_change()
+        self._set_history_launch_error("")
+        try:
+            self._open_task_history(self.root, self.service, task_id)
+        except Exception as exc:
+            self._set_history_launch_error(f"Unable to open work history: {exc}")
+            self.root.report_callback_exception(type(exc), exc, exc.__traceback__)
 
     def _on_tree_double_click(self, _event: object | None = None) -> str | None:
         self._toggle_selected_task()
@@ -3588,7 +3594,7 @@ class TaskTimerApp:
             self._after_state_change()
 
     def _edit_task(self, task_id: str) -> None:
-        dialog = EditTaskDialog(self.root, self.service, task_id)
+        dialog = EditTaskDialog(self.root, self.service, task_id, open_history=self._open_task_history)
         if getattr(dialog, "added_subtask", False):
             self.expanded_parents.add(task_id)
         if dialog.changed:

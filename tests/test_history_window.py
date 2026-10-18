@@ -385,27 +385,6 @@ def test_window_lifecycle_preserves_dataset_timers_settings_and_clock_count(setu
     assert clock.calls == 1 and capture(s) == before
 
 
-def test_both_production_entry_points_still_use_the_legacy_dialog(setup, owned_ui, monkeypatch):
-    from task_timer import dialogs
-    s, a, b, *_ = setup
-    calls = []
-    def legacy(*args):
-        calls.append(args)
-        return SimpleNamespace(changed=False)
-    def forbidden(*args, **kwargs):
-        pytest.fail('A production route opened staged history')
-    monkeypatch.setattr(app_module, 'EditTimelineDialog', legacy)
-    monkeypatch.setattr(dialogs, 'EditTimelineDialog', legacy)
-    monkeypatch.setattr(owned_ui, '_open_history_window', forbidden)
-    monkeypatch.setattr(owned_ui, '_selected_task_id', lambda: a)
-    owned_ui._edit_selected_timeline()
-    parent = object()
-    task_dialog = SimpleNamespace(window=parent, service=s, task_id=b, changed=False)
-    dialogs.EditTaskDialog._edit_timeline(task_dialog)
-    assert calls == [(owned_ui.root, s, a), (parent, s, b)]
-    assert owned_ui._history_window is None and not task_dialog.changed
-
-
 @pytest.fixture
 def tk_root():
     try:
@@ -460,17 +439,19 @@ def pointer(tk_root):
         tk_root.wait_variable(done)
     def sync():
         x.XSync(display, False)
-        settle()
-        tk_root.update()
-    def click(widget):
+        tk_root.update()  # Deliver input before waiting; it may destroy the root.
+        if tk_root.tk.call('namespace', 'which', '-command', tk_root._w):
+            settle()
+            tk_root.update()
+    def click(widget, *, x_offset=None, y_offset=None):
         top = widget.winfo_toplevel()
         if not top.winfo_viewable():
             top.wait_visibility()
         settle()
         tk_root.update()
         assert widget.winfo_ismapped()
-        xx = widget.winfo_rootx() + widget.winfo_width() // 2
-        yy = widget.winfo_rooty() + widget.winfo_height() // 2
+        xx = widget.winfo_rootx() + (widget.winfo_width() // 2 if x_offset is None else x_offset)
+        yy = widget.winfo_rooty() + (widget.winfo_height() // 2 if y_offset is None else y_offset)
         assert xt.XTestFakeMotionEvent(display, -1, xx, yy, 0)
         sync()
         for pressed in (True, False):

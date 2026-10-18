@@ -161,11 +161,11 @@ the same logs and snapshots without introducing a new persistent file.
 New lifecycle events are currently
 exercised through isolated fixtures and internal validation; **there is no new
 public duration writer**. `add_manual_duration`, `edit_duration_interval`, legacy
-synthetic records, real interval handling, resets, checkpoints, timeline UI,
-mini-mode, totals, tags, exports and submission behavior remain unchanged.
-Those production consumers do not include the new records yet. The separate
-mixed calculation and work-history projection below are available for service use;
-active-reader integration must be validated before the new workflow emits these
+synthetic records, real interval handling, resets, checkpoints, mini-mode, totals,
+tags, exports and submission behavior remain unchanged. Those interval-oriented
+consumers still omit dated records. Work History now includes both supported
+record types through the reader/table/browser below. Mixed accounting remains
+staged; active-reader integration must be validated before the new workflow emits these
 events. Production
 reset/checkpoint consumers remain legacy. The selected
 [date-scoped POL-R workflow](docs/TIMESHEET_REQUIREMENTS.md) does not use an
@@ -265,7 +265,7 @@ effective projections remain authoritative; snapshots remain rebuildable. New
 reader/writer integration and the separate empty-directory cutover are later
 tasks. Tests use isolated temporary datasets and leave existing user data alone.
 
-## Mixed work-history service (staged)
+## Mixed work-history service
 
 `TaskTimerService.get_task_work_history(task_id, *, cutoff_utc,
 start_date=None, end_date=None, newest_first=True)` resolves the task through
@@ -327,7 +327,7 @@ production dated writers and production Reset removal are not implemented by
 this reader. POL-R remains a separate task/day service. No schema, identity or
 persistent state is added.
 
-## Mixed work-history table (staged)
+## Mixed work-history table
 
 `work_history_view.WorkHistoryFrame(parent, *, local_timezone)` is a standalone
 `ttk.Frame`/Treeview. `display_rows(rows)` consumes the complete ordered results of
@@ -363,13 +363,14 @@ A subsequent explicit successful render restores the table and clears the error.
 Empty input is a valid empty display. No rows are silently omitted or legacy
 synthetic work converted.
 
-This render-only component delegates period/sort controls to the staged browser
-below. Neither component schedules automatic loading. Production window ownership,
-correction actions, creation/deletion, audit, production integration and Reset
-removal remain pending. The legacy timeline and its formatters are unchanged;
-no new persistent state or domain projection exists.
+This render-only component delegates period/sort controls to the browser
+below. Neither component schedules automatic loading. Both shipped Work History
+commands compose these components through the application-owned modal path.
+Correction actions, creation/deletion, audit and Reset removal remain pending.
+The superseded timeline dialogs/formatter/reader are removed; no new persistent
+state or domain projection exists.
 
-## Single-task history browser (staged)
+## Single-task history browser
 
 `work_history_browser.WorkHistoryBrowserFrame(parent, service, task_id, *,
 now_utc, week_start=6, newest_first=True, on_direction_changed=None)` composes the
@@ -421,7 +422,7 @@ the completed sort and its True result; it neither rolls back nor retries.
 Results, drafts and last-successful request/cutoff are temporary UI state, not an
 authoritative projection or cache installed in the application.
 `TaskTimerApp` initializes `_history_newest_first = True` before building controls,
-independently of dataset settings. Its unrouted
+independently of dataset settings. Its
 `_make_history_browser(parent, service, task_id, *, now_utc, week_start=6)` imports
 the browser locally and supplies that owner direction and the bound
 `_remember_history_date_direction(newest_first)` assignment callback. It neither
@@ -429,13 +430,13 @@ opens a window nor changes the application's service. Sequential browsers for
 different tasks/datasets share only that in-memory direction; closing a browser
 does not reset it, and a new application owner starts newest-first. No preference
 file, resolver, settings field or cross-process coordination is used or required.
-Window ownership is provided by the staged modal path below; neither the Frame
-nor the browser factory enforces it. Production routing, editing/audit, writer
-activation and Reset removal remain unimplemented. The browser accesses no
-settings, writes no work, and schedules no refresh, retries or asynchronous loading.
-Existing services, legacy dialogs, accounting and settings ownership are unchanged.
+Window ownership is provided by the modal path below; neither the Frame
+nor the browser factory enforces it. Read-only production access is connected;
+editing/audit, writer activation and Reset removal remain unimplemented.
+The browser accesses no settings, writes no work, and schedules no refresh, retries or asynchronous loading.
+Accounting, mutation services and settings ownership are unchanged.
 
-## Owned modal history window (staged)
+## Owned modal history window
 
 `history_window.HistoryWindow(parent, *, make_browser, on_closed)` creates a
 withdrawn `window` Toplevel, composes the accepted browser and adds Close. The
@@ -452,7 +453,7 @@ Calendar mouse selection/cancellation remains usable under the ancestor grab,
 Apply-only, and picker Escape does not close history or release its modality.
 
 `TaskTimerApp` initializes `_history_window = None` and
-`_history_window_opening = False` before building controls. Its lazy, unrouted
+`_history_window_opening = False` before building controls. Its lazy
 `_open_history_window(service, task_id, *, now_utc, week_start=6, modal_parent=None)`
 uses the root by default and sets the in-progress guard before parent validation
 and context capture. An explicit parent must be a live top-level of this
@@ -496,15 +497,31 @@ If an earlier failure exists, it remains primary with restoration/cleanup
 diagnostics retained. The guard clears in the final exit path even on failure.
 No originating editor is saved, closed, reconstructed or refreshed.
 
-This path enforces one owned window only through the staged opening helper.
-Both production EditTimelineDialog entry points remain unchanged and outside
-that path; application-wide production enforcement is not established. Existing
-shutdown/reminder choices, services, storage and settings remain unchanged.
-Actual task and recursive subtask editors are exercised by isolated test drivers
-only; no production editor callback is wired. Production access locations,
-transitional legacy editing access and legacy-dataset applicability remain
-unselected. This prerequisite does not satisfy the Phase 3 active-reader gate.
-There is no window registry, persistent identity, polling or additional mainloop.
+Both shipped Work History commands use this one application owner. The bound
+`_open_task_history(parent, service, task_id)` adapter supplies the explicit origin,
+service/task, `utc_now` callable and Sunday `week_start=6`. The selected-task panel
+uses the root; `EditTaskDialog` requires keyword-only `open_history`, propagates
+the same bound callback to recursive subtask editors and supplies its own window.
+History does not set editor changed flags, save drafts or refresh the origin.
+The main command disables without a selection. Origin-local inline launch errors
+start “Unable to open work history:” and clear on a new attempt; main errors also
+clear when the selected task changes. Ordinary launch exceptions are reported
+with their original traceback/notes through Tk's `report_callback_exception`,
+without message boxes or grab/focus changes. Destroyed origins are not recreated.
+Browser load failures stay inside the usable browser and are not launch errors.
+
+`EditTimelineDialog`, `TimelineEntryDialog`/result, `get_task_timeline` and the
+exclusive timeline formatter and UI-only service parsing wrappers are removed,
+without compatibility aliases.
+Read-only access replaces both old commands; the old creation/correction/deletion
+and missed-stop controls are not retained as a parallel interface. Replacement
+editing/audit remains separate. Existing shutdown/reminder choices, mutation
+services, storage and settings remain unchanged. This is fresh replacement work,
+not legacy-data compatibility: applicable synthetic work fails visibly under the
+existing reader contract, without fallback, conversion or omission. User files
+and installation/data-directory cutover are untouched. Read-only history alone
+does not satisfy the Phase 3 active-reader gate. There is no window registry,
+persistent identity, polling or additional mainloop.
 
 ## Replacement timed-input validation (staged)
 
@@ -594,9 +611,9 @@ The containing editor owns confirmation/cancellation and saving. This frame has
 no Save actions, mutation callbacks, duration switch, reason policy, running-stop
 operation, record identity, audit interface or persistence. It is composed by the
 [standalone correction dialog](#standalone-timed-interval-correction-dialog-staged),
-with no production callers. Standalone mixed-history rendering is available
-separately; production history integration and activation remain pending. The
-legacy `TimelineEntryDialog` and its writers remain unchanged.
+with no production correction callers. Mixed-history browsing is connected
+separately; replacement record editing and writer activation remain pending.
+The retired legacy timeline input dialog is removed; mutation services remain.
 
 ## Timed-interval corrections (staged)
 
@@ -1341,6 +1358,6 @@ Windows Aero Snap behavior is owned by the operating system. The app reduces acc
 ## Main window task list behavior
 
 - The main Chronicle window displays tasks and subtasks with a `ttk.Treeview` hierarchy (parent rows with nested child rows).
-- Main window actions (`Start/Stop`, `Reset`, `Delete`, `Edit Task`, `Edit Timeline`) operate on the currently selected task row.
+- Main window actions (`Start/Stop`, `Reset`, `Delete`, `Edit Task`, `Work History`) operate on the currently selected task row.
 - Tree interactions support quick toggles: double-click, `Enter`, and `Space` all trigger selected task `Start/Stop`.
 - Parent expansion/collapse state is tracked during runtime and parents with running subtasks are automatically kept expanded.

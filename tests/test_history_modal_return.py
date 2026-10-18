@@ -459,7 +459,7 @@ def test_real_tk_actual_task_and_nested_editors_preserve_drafts_and_return_modal
             if owner._history_widget_exists(editor.window): editor.window.destroy()
     watchdog = tk_root.after(7000, timeout)
     tk_root.after(100, safe(lambda: visit(0)))
-    dialogs.EditTaskDialog(tk_root, s, a)
+    dialogs.EditTaskDialog(tk_root, s, a, open_history=owner._open_task_history)
     tk_root.after_cancel(watchdog)
     assert failures == [] and len(editors) == len(path)
     assert capture(s) == before and clock.calls == 1
@@ -503,7 +503,7 @@ def test_real_tk_actual_editor_or_root_destruction_skips_return_and_disposes_cal
             tk_root.after_cancel(job)
             if owner._history_widget_exists(editor.window): editor.window.destroy()
     tk_root.after(100, drive)
-    dialogs.EditTaskDialog(tk_root, s, a)
+    dialogs.EditTaskDialog(tk_root, s, a, open_history=owner._open_task_history)
     assert errors == [] and capture(s) == before and clock.calls == 1
 
 

@@ -1,6 +1,6 @@
 """Verified copies of committed evidence; every dataset/output is disposable."""
 from copy import deepcopy
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
@@ -32,7 +32,7 @@ def registered(setup, tmp_path):
     s.update_task(a, 'Management é 漢字 e\u0301 \u202e ' + 'long assignment ' * 8 + 'end', '')
     u = s.create_task('Unassigned', '')
     dated(s, a, MON, 60)
-    start = s.parse_local_datetime_inputs(MON, '09:00')
+    start = datetime.combine(MON, time(9), s.local_tz)
     s.add_manual_interval(b, start, start + timedelta(seconds=60), 'Real work')
     dated(s, u, MON, 60)
     s.start_task(a)

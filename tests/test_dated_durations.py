@@ -381,7 +381,6 @@ def test_dated_records_never_enter_legacy_clipping_replacement_or_reset_paths(se
     assert [record.interval_id for record in service._all_intervals(service.state.tasks[owner], STAMP)] == list(intervals_before)
     assert service._windowed_intervals(service.state.tasks[owner], None, STAMP) == [(STAMP - timedelta(hours=2), STAMP - timedelta(hours=1))]
     assert service.task_elapsed(service.state.tasks[owner], STAMP) == 3600  # staged: dated work is not included yet
-    assert service.get_task_timeline(owner)[0]["interval_id"] in intervals_before
     files_before = _files(service.storage.data_dir)
     for operation in (
         lambda: service.edit_interval(owner, entry_id, STAMP, STAMP + timedelta(hours=1), "Wrong kind"),

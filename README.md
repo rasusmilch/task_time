@@ -11,16 +11,19 @@ Selected functionality is not automatically implemented.
 | Status | What it means here |
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, mixed work-history projection, closed timed-correction preparation/registration, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
-| Production still pending | Production export integration, file-status/recovery UI, replacement UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
+| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, closed timed-correction preparation/registration, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
+| Connected read-only history | Main-panel and recursive task-editor Work History commands share the modal browser, originating-parent return and session-only sorting. Replacement editing remains pending. |
+| Production still pending | Production export integration, file-status/recovery UI, remaining replacement editing UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
 
 [Phase 2's bounded evidence and daily-reconciliation service gate](docs/ROADMAP.md#phase-2--pol-r-evidence-and-reconciliation)
 is independently accepted as Complete under serialized dataset ownership;
 capabilities remain staged and production/release qualification remains pending.
 
-Current production still uses legacy parent/subtask interfaces, synthetic manual
-duration intervals, timestamp checkpoints and legacy submission markers. This
-staging does not select a permanent parallel legacy interface.
+Current production retains parent/subtask interfaces, timestamp checkpoints and
+legacy submission markers, alongside the read-only Work History replacement.
+Retained mutation/accounting services still handle synthetic duration records;
+Work History refuses applicable synthetic work rather than adapting it. There
+is no parallel legacy history interface.
 `save_date_range_timesheet()` still creates an exact-format file only, without
 export-event evidence or POL-R confirmation. Separate snapshot-first operations
 now register frozen decimal evidence and materialize verified copies. They are
@@ -41,7 +44,7 @@ decimal-hour, snapshot, file verification/recovery and confirmation semantics.
 
 The following describes the current production application.
 
-- Persistent tasks with start/stop/reset/delete/edit-time controls.
+- Persistent tasks with start/stop/reset/delete/task-edit controls and read-only Work History.
 - Event-sourced storage with append-only JSONL logs.
 - Archived immutable segments + manifest + derived snapshot.
 - Crash-safe behavior: each state-changing action appends and flushes an event immediately.
@@ -84,38 +87,39 @@ for selection semantics and the explicit legacy synthetic-duration boundary.
 linked local-day interval segments and whole date-only amounts, with explicit
 cutoff, inclusive dates or All history, and deterministic date/within-day ordering.
 It ignores legacy resets and preserves underlying entry identity without writes.
-See the [staged service contract](DESIGN_NOTES.md#mixed-work-history-service-staged).
+See the [history service contract](DESIGN_NOTES.md#mixed-work-history-service).
 
-The standalone staged [WorkHistoryFrame](DESIGN_NOTES.md#mixed-work-history-table-staged)
+The standalone [WorkHistoryFrame](DESIGN_NOTES.md#mixed-work-history-table)
 renders supplied rows in their exact order, with minute clocks, endpoint dates and
 repeated-hour offsets, completed-minute durations and ↔ linked-portion markers.
 Selection highlights related visible portions without work mutations. Full precise
 row metadata stays detached behind temporary widget handles; rendering errors are
 visible rather than silently presenting incomplete results. It loads no services,
-settings or clocks and is not connected to production.
+settings or clocks; the modal browser composes it for read-only history access.
 
-The standalone staged [WorkHistoryBrowserFrame](DESIGN_NOTES.md#single-task-history-browser-staged)
+The standalone [WorkHistoryBrowserFrame](DESIGN_NOTES.md#single-task-history-browser)
 connects the reader/table with Current week, Custom and All periods, typed dates
 and calendar pickers, Apply and explicit Refresh. It retains unapplied drafts and
 last-successful period/as-of information on failure. Date-header sorting stably
 reorders existing results without loading newer records or advancing the cutoff;
 direction remains in memory. The caller supplies a clock and week start (initially
-Sunday); this is not the configurable-week setting or production integration.
+Sunday); this is not the configurable-week setting.
 The [Selected replacement history](docs/TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history)
 starts each application session newest-first and remembers successful direction
 changes across subsequent task/dataset history openings only in that session.
-The staged application-owned handoff is available through an unrouted factory;
-it adds no settings or preference files. A staged
-[owned modal history window](DESIGN_NOTES.md#owned-modal-history-window-staged)
-composes the browser and Close, preserving timers and session direction. Its
-unrouted opening helper rejects duplicate requests without refreshing or changing
-the original task. Single-window enforcement covers that path; both legacy
-production timeline routes remain unchanged. Explicit originating-parent
-validation and safe grab/focus return are staged without wiring editor callbacks
-or choosing legacy-data applicability. Production history integration,
-segment editing, audit interactions and removal
-of production Reset controls remain pending. Existing production timeline and
-counters are unchanged.
+The application-owned handoff adds no settings or preference files. The
+[owned modal history window](DESIGN_NOTES.md#owned-modal-history-window)
+now connects Work History in the main selected-task panel and recursive task
+editors through one owner, preserving timers, session direction and origin drafts.
+It rejects duplicate requests without refreshing or changing the original task,
+validates the originating parent and safely returns grab/focus. Launch errors
+appear inline at their origin with Tk diagnostics; browser load errors remain
+inside the browser. This read-only replacement removes the old timeline UI and
+its editing tools without compatibility fallbacks. Unsupported synthetic work
+fails visibly; no migration or user-file/data-directory cutover occurs.
+Replacement segment editing, creation/deletion, missed-stop tools, audit and
+removal of production Reset controls remain pending. Other production counters
+remain unchanged.
 
 Pure [timed-input validation](DESIGN_NOTES.md#replacement-timed-input-validation-staged)
 separately resolves minute-only clock inputs with independent start/end dates,
@@ -127,8 +131,8 @@ precision or billing-rounding rule. Existing production time helpers remain acti
 The standalone staged [TimedIntervalInputFrame](DESIGN_NOTES.md#timed-interval-input-form-staged)
 provides separate date/time fields, explicit occurrence choices with UTC offsets
 and inline validation through those APIs. It supplies no saving or record access;
-production record-editor/history integration and activation remain pending.
-Production still uses the legacy `TimelineEntryDialog`.
+production record-editor integration and writer activation remain pending.
+The old timeline input dialog is removed; the standalone form is not routed.
 
 Separate staged [timed-correction APIs](DESIGN_NOTES.md#timed-interval-corrections-staged)
 prepare and register one effective closed genuine interval replacement. Unchanged
@@ -140,7 +144,7 @@ are now consumed by a [standalone correction dialog](DESIGN_NOTES.md#standalone-
 It authoritatively loads one closed record, preserves unchanged precision behind
 minute controls, retains stale drafts and distinguishes unverified registration
 from recorded corrections with refresh warnings. Retries keep the same event;
-production menus/timelines and legacy mutators remain unchanged.
+production correction routing remains pending; legacy mutation services are unchanged.
 
 `build_timesheet_text()` separately renders those accounting results as a
 plain-text timesheet with independent task rows, dated daily columns and weekly

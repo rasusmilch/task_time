@@ -48,9 +48,9 @@ existence; their detailed contracts remain in Design Notes rather than here.
 | Foundation | Implemented capability and boundary | Source / technical owner |
 | --- | --- | --- |
 | Project/task identity | Separate UUIDs; projects own no direct time; tasks own independent records, optional membership and reassignment preserving work. | [models.py](../src/task_timer/models.py), [project/task service](../DESIGN_NOTES.md#projecttask-service-foundation) |
-| Date-only duration | Endpoint-free stable records; event-backed creation/correction/deletion replay; derived snapshots and existing backup compatibility. Production manual-duration UI still uses synthetic intervals. | [replay foundation](../DESIGN_NOTES.md#dated-duration-replay-foundation), [app.py](../src/task_timer/app.py), [backups.py](../src/task_timer/backups.py) |
+| Date-only duration | Endpoint-free stable records; event-backed creation/correction/deletion replay; derived snapshots and existing backup compatibility. Replacement duration-entry UI is pending; retained synthetic mutation services are not a compatibility guarantee. | [replay foundation](../DESIGN_NOTES.md#dated-duration-replay-foundation), [app.py](../src/task_timer/app.py), [backups.py](../src/task_timer/backups.py) |
 | Mixed accounting | Genuine intervals and dated amounts; local-day/DST splitting; independent task totals; derived project/Unassigned/application totals; historical actuals independent of counter resets. Week start is currently Sunday only. | [accounting.py](../src/task_timer/accounting.py), [mixed service](../DESIGN_NOTES.md#mixed-date-window-accounting-service-only) |
-| Mixed work history | Read-only current effective task records; linked local-day interval segments and whole dated amounts; explicit cutoff/date filtering and deterministic ordering. Standalone row rendering includes approved minute/date/offset/duration formatting and related-portion highlighting. A standalone browser adds periods, calendar/typed custom drafts, explicit Refresh and in-memory sorting, with staged application-session direction handoff. An owned modal wrapper enforces one window through its unrouted opening path. No production timeline, application-wide enforcement or edit/delete integration. | [owned window](../DESIGN_NOTES.md#owned-modal-history-window-staged), [history browser](../DESIGN_NOTES.md#single-task-history-browser-staged), [history table](../DESIGN_NOTES.md#mixed-work-history-table-staged), [work_history.py](../src/task_timer/work_history.py), [history service](../DESIGN_NOTES.md#mixed-work-history-service-staged) |
+| Mixed work history | Read-only current effective task records; linked local-day interval segments and whole dated amounts; explicit cutoff/date filtering and deterministic ordering. Standalone row rendering includes approved minute/date/offset/duration formatting and related-portion highlighting. A standalone browser adds periods, calendar/typed custom drafts, explicit Refresh and in-memory sorting, with application-session direction handoff. Both shipped Work History commands use one owned modal path with originating-parent return. The retired timeline UI is removed; replacement editing/audit and other active-reader integration remain pending. | [owned window](../DESIGN_NOTES.md#owned-modal-history-window), [history browser](../DESIGN_NOTES.md#single-task-history-browser), [history table](../DESIGN_NOTES.md#mixed-work-history-table), [work_history.py](../src/task_timer/work_history.py), [history service](../DESIGN_NOTES.md#mixed-work-history-service) |
 | Timed input validation | Pure minute-only endpoint interpretation, separate dates, explicit repeated-time choices, gap rejection, UTC ordering and edit-aware preservation of unchanged precision; used by the form and standalone editor without production activation. | [work_entry_inputs.py](../src/task_timer/work_entry_inputs.py), [input contract](../DESIGN_NOTES.md#replacement-timed-input-validation-staged) |
 | Timed corrections | Staged closed genuine-interval preparation/registration with no-op purity, preserved unchanged precision, optional comments, stale-prior rejection and journal-verified retries/warning outcomes. Consumed by the standalone correction dialog; no production callers. | [correction contract](../DESIGN_NOTES.md#timed-interval-corrections-staged) |
 | Timed input form | Record-independent ttk component with separate endpoint fields, occurrence selection, edit-aware precision preservation and inline errors; composed by the standalone editor without production activation. | [timed_interval_form.py](../src/task_timer/timed_interval_form.py), [form contract](../DESIGN_NOTES.md#timed-interval-input-form-staged) |
@@ -62,7 +62,7 @@ existence; their detailed contracts remain in Design Notes rather than here.
 | Confirmation evidence | Dedicated immutable batch preparation/registration/replay, prior/stale/duplicate rules, recovery synchronization, frozen-export proposals/selected preparation and an in-memory effective task/day projection. Read-only daily reconciliation is staged; no confirmation/reconciliation UI or weekly summaries. | [confirmation replay](../DESIGN_NOTES.md#immutable-pol-r-confirmation-replay-staged) |
 
 These foundations do **not** constitute a completed production replacement.
-New production date-only writers, replacement UI, production export integration,
+New production date-only writers, remaining replacement editing UI, production export integration,
 general file-status/recovery UI,
 POL-R confirmation/reconciliation UI and weekly summaries, configurable weeks, allocations and release
 cutover remain pending. Existing production legacy behavior is not permanent
@@ -170,13 +170,13 @@ Return any newly necessary material decision for user/ChatGPT adjudication.
 
 ## Phase 3 — Time entry and project workflow
 
-**Status:** **APPROVED / NOT IMPLEMENTED** in production; foundations
-are staged, including the detached mixed work-history reader, standalone history
-table/browser with related-portion highlighting, period/calendar controls,
-explicit refresh and in-memory sorting, pure timed-input validation, a standalone
-timed-interval form and closed-interval correction
-preparation/registration connected by a standalone correction dialog. These
-foundations do not activate dated writers or satisfy the active-reader/UI gate below.
+**Status:** **IN PROGRESS**; read-only Work History access is connected through
+the application owner in the main panel and recursive task editors, composing
+the reader/table/browser with related-portion feedback, periods, calendars,
+explicit refresh and session sorting. Pure timed-input validation, the standalone
+timed-interval form and closed-interval correction preparation/registration with
+its standalone dialog remain staged. This delivered history slice does not
+activate dated writers or satisfy the active-reader/UI gate below.
 
 **Outcome:** activate genuine date-only creation and correction/deletion, an
 appropriate mixed timeline editor, project/task navigation, project creation and
@@ -190,10 +190,10 @@ session, at most one modal history window per application, attached to its origi
 task with browsing and Close only (timers continue),
 linked daily portions that edit/delete the full interval, type-preserving editing
 and audit/details. Replacement Reset actions/counters are removed from the target;
-their production removal and production browser/editing integrations remain pending.
+their production removal and replacement editing integration remain pending.
 The standalone browser's caller-supplied week start and application-owned direction
-handoff are staged seams. The owned modal opening path is staged; production
-routing/enforcement and configurable-week settings remain pending. No cross-restart
+handoff are available. Both Work History routes use the owned modal opening
+path; configurable-week settings remain pending. No cross-restart
 preference is required.
 The [Selected timed-input behavior](TIMESHEET_REQUIREMENTS.md#selected--actual-time-records)
 requires minute-only entry/editing/display, separate endpoint dates/times,
@@ -201,8 +201,10 @@ explicit repeated-time occurrence choices and rejection of nonexistent local
 times. Input interpretation, the standalone form and closed timed-correction
 services are staged. The correction path preserves unchanged endpoints, allows
 optional comments and rejects stale saves; unchanged saves create no event.
-Standalone closed-record editing and mixed-history rendering are staged;
-production editor/history integration and activation remain pending.
+Standalone closed-record editing is staged; mixed-history rendering is connected;
+production replacement editor integration and writer activation remain pending.
+Read-only history replaces the old timeline presentation without a parallel
+legacy interface, migration or installation/data-directory cutover.
 
 **Dependency:** do not activate a production dated-duration writer while any
 required active reader omits that work. Integrate mixed accounting/readers with
