@@ -1,6 +1,8 @@
 """Explicit one-call replacement; disposable services and connected Save controls."""
 from pathlib import Path
 from hashlib import sha256
+import errno
+from types import SimpleNamespace
 
 import pytest
 
@@ -14,6 +16,31 @@ from test_timesheet_preview import build as preview_widgets
 from test_mixed_accounting import setup, dated, local, MON, TUE
 from test_work_history import capture
 from test_history_window import tk_root, pointer
+
+
+_NATIVE_UNAVAILABLE = {errno.EACCES, errno.EPERM, errno.ENOSYS, errno.ENOTSUP, errno.EOPNOTSUPP}
+
+
+def _make_fifo(path):
+    if not hasattr(app_module.os, 'mkfifo'):
+        pytest.skip('FIFO creation unavailable: os.mkfifo is absent')
+    try:
+        app_module.os.mkfifo(path)
+    except (OSError, NotImplementedError) as exc:
+        if isinstance(exc, (PermissionError, NotImplementedError)) or exc.errno in _NATIVE_UNAVAILABLE:
+            pytest.skip(f'FIFO creation unavailable: {exc}')
+        raise
+
+
+def _make_symlink(path, target, *, target_is_directory=False):
+    try:
+        path.symlink_to(target, target_is_directory=target_is_directory)
+    except (OSError, NotImplementedError) as exc:
+        if (isinstance(exc, (PermissionError, NotImplementedError))
+                or exc.errno in _NATIVE_UNAVAILABLE
+                or getattr(exc, 'winerror', None) in (1, 50, 1314)):
+            pytest.skip(f'Symlink creation unavailable: {exc}')
+        raise
 
 
 @pytest.fixture
@@ -92,8 +119,8 @@ def test_unsuitable_or_inconclusive_inspection_cannot_authorize_replacement(regi
     if kind in ('directory', 'symlink', 'dangling', 'fifo'):
         target.unlink()
         if kind == 'directory': target.mkdir()
-        elif kind == 'fifo': app_module.os.mkfifo(target)
-        else: target.symlink_to(target.parent / ('missing' if kind == 'dangling' else 'source.txt'))
+        elif kind == 'fifo': _make_fifo(target)
+        else: _make_symlink(target, target.parent / ('missing' if kind == 'dangling' else 'source.txt'))
     source = target.parent / 'source.txt'
     source.write_bytes(b'Symlink source remains')
     original_open, fdopen = app_module.os.open, app_module.os.fdopen
@@ -135,7 +162,7 @@ def test_dataset_paths_and_resolved_directory_aliases_are_protected(registered, 
     before = {p: p.read_bytes() for p in s.storage.data_dir.rglob('*') if p.is_file()}
     if alias:
         directory = tmp_path / 'dataset-alias'
-        directory.symlink_to(s.storage.data_dir, target_is_directory=True)
+        _make_symlink(directory, s.storage.data_dir, target_is_directory=True)
         target = directory / relative
     monkeypatch.setattr(app_module.tempfile, 'mkstemp', lambda **kw: pytest.fail('dataset replacement staged'))
     with pytest.raises(ValueError, match='dataset'):
@@ -143,28 +170,64 @@ def test_dataset_paths_and_resolved_directory_aliases_are_protected(registered, 
     assert {p: p.read_bytes() for p in s.storage.data_dir.rglob('*') if p.is_file()} == before
 
 
-@pytest.mark.parametrize('change', ['disappear', 'replace', 'modify', 'same-size', 'symlink'])
+@pytest.mark.parametrize('change', ['disappear', 'replace', 'modify', 'symlink'])
 def test_target_change_after_staging_is_detected_before_replacement(registered, monkeypatch, change):
     s, event, target = registered
+    # Establish native symlink capability before entering the service operation.
+    pending_link = target.with_name('changed-symlink')
+    if change == 'symlink':
+        _make_symlink(pending_link, target.parent / 'another-file')
+    before = evidence(s)
     sync = app_module.os.fsync
-    observation = target.stat()
     def change_target(fd):
         sync(fd)
-        if change == 'same-size':
-            target.write_bytes(b'X' * observation.st_size)
-            app_module.os.utime(target, ns=(observation.st_atime_ns, observation.st_mtime_ns))
-            return
         if change != 'modify': target.unlink()
         if change in ('replace', 'modify'): target.write_bytes(b'Changed target must survive')
-        if change == 'symlink': target.symlink_to(target.parent / 'another-file')
+        if change == 'symlink': pending_link.rename(target)
     monkeypatch.setattr(app_module.os, 'fsync', change_target)
     monkeypatch.setattr(app_module.os, 'replace', lambda *a: pytest.fail('changed target replaced'))
     with pytest.raises(OSError): s.materialize_timesheet_export(event['event_id'], target, overwrite=True)
     if change in ('replace', 'modify'): assert target.read_bytes() == b'Changed target must survive'
-    elif change == 'same-size': assert target.read_bytes() == b'X' * observation.st_size
     elif change == 'symlink': assert target.is_symlink()
     else: assert not target.exists()
-    assert not stages(target.parent)
+    assert not stages(target.parent) and evidence(s) == before
+
+
+def test_restored_mtime_change_time_portability_recheck_is_deterministic(registered, monkeypatch):
+    s, event, target = registered
+    before = evidence(s)
+    lstat, sync = Path.lstat, app_module.os.fsync
+    initial, final_checks, changed = [], [], []
+    fields = ('st_mode', 'st_dev', 'st_ino', 'st_size', 'st_mtime_ns', 'st_ctime_ns')
+    def observation(path, *args, **kw):
+        current = lstat(path, *args, **kw)
+        if path != target:
+            return current
+        if not initial:
+            initial.append(current)
+        if changed:
+            # Only the final target recheck receives injected metadata. Keep all
+            # other compared fields equal, independent of native ctime semantics.
+            values = {field: getattr(initial[0], field) for field in fields}
+            values['st_ctime_ns'] += 1
+            final_checks.append(values)
+            return SimpleNamespace(**values)
+        return current
+    def mutate_after_staging_sync(fd):
+        sync(fd)
+        target.write_bytes(b'X' * initial[0].st_size)
+        app_module.os.utime(target, ns=(initial[0].st_atime_ns, initial[0].st_mtime_ns))
+        changed.append(True)
+    monkeypatch.setattr(Path, 'lstat', observation)
+    monkeypatch.setattr(app_module.os, 'fsync', mutate_after_staging_sync)
+    monkeypatch.setattr(app_module.os, 'replace', lambda *a: pytest.fail('changed target replaced'))
+    with pytest.raises(OSError, match='changed before replacement'):
+        s.materialize_timesheet_export(event['event_id'], target, overwrite=True)
+    assert changed == [True] and len(final_checks) == 1
+    assert all(final_checks[0][field] == getattr(initial[0], field) for field in fields[:-1])
+    assert final_checks[0]['st_ctime_ns'] == initial[0].st_ctime_ns + 1
+    assert target.read_bytes() == b'X' * initial[0].st_size
+    assert not stages(target.parent) and evidence(s) == before
 
 
 @pytest.mark.parametrize('phase', ['write', 'short-write', 'flush', 'fsync', 'close', 'replace'])
@@ -419,3 +482,57 @@ def test_real_tk_overwrite_retry_alternate_confirmation_and_replacement(setup, t
     assert second.read_bytes() == event['payload']['report_text'].encode('utf-8')
     assert first.read_bytes() == b'First' and str(second) in confirms[-1]['message']
     assert capture(s) == before and len(exports(s)) == 1
+
+
+def test_fifo_api_unavailable_portability_skips_only_native_setup(monkeypatch, tmp_path):
+    monkeypatch.delattr(app_module.os, 'mkfifo', raising=False)
+    with pytest.raises(pytest.skip.Exception, match='FIFO'):
+        _make_fifo(tmp_path / 'pipe')
+
+
+@pytest.mark.parametrize('kind', ['fifo', 'symlink'])
+@pytest.mark.parametrize('error', [PermissionError(errno.EACCES, 'Denied'),
+                                 OSError(errno.ENOTSUP, 'Unsupported'),
+                                 NotImplementedError('Unavailable')])
+def test_native_setup_portability_restrictions_are_narrow_skips(monkeypatch, tmp_path, kind, error):
+    def restricted(*args, **kw): raise error
+    if kind == 'fifo':
+        monkeypatch.setattr(app_module.os, 'mkfifo', restricted, raising=False)
+    else:
+        monkeypatch.setattr(Path, 'symlink_to', restricted)
+    with pytest.raises(pytest.skip.Exception, match='unavailable'):
+        if kind == 'fifo': _make_fifo(tmp_path / 'pipe')
+        else: _make_symlink(tmp_path / 'alias', tmp_path / 'source', target_is_directory=True)
+
+
+@pytest.mark.parametrize('kind', ['fifo', 'symlink'])
+@pytest.mark.parametrize('error', [OSError(errno.EIO, 'Unexpected I/O error'),
+                                 FileNotFoundError(errno.ENOENT, 'Bad setup path'),
+                                 AssertionError('Unexpected setup assertion')])
+def test_unexpected_setup_errors_portability_remain_failures(monkeypatch, tmp_path, kind, error):
+    def broken(*args, **kw): raise error
+    if kind == 'fifo':
+        monkeypatch.setattr(app_module.os, 'mkfifo', broken, raising=False)
+    else:
+        monkeypatch.setattr(Path, 'symlink_to', broken)
+    try:
+        with pytest.raises(type(error)) as caught:
+            if kind == 'fifo': _make_fifo(tmp_path / 'pipe')
+            else: _make_symlink(tmp_path / 'alias', tmp_path / 'source')
+    except pytest.skip.Exception as skipped:
+        pytest.fail(f'Unexpected setup failure was hidden as a capability skip: {skipped}')
+    assert caught.value is error
+
+
+def test_symlink_target_setup_portability_precedes_materialization(registered, monkeypatch):
+    s, _, _ = registered
+    calls = []
+    def denied(*args, **kw): raise PermissionError(errno.EACCES, 'No symlink privilege')
+    def service(*args, **kw):
+        calls.append(1)
+        pytest.fail('Native test object was not established before service execution')
+    monkeypatch.setattr(Path, 'symlink_to', denied)
+    monkeypatch.setattr(s, 'materialize_timesheet_export', service)
+    with pytest.raises(pytest.skip.Exception, match='Symlink'):
+        test_target_change_after_staging_is_detected_before_replacement(registered, monkeypatch, 'symlink')
+    assert calls == []
