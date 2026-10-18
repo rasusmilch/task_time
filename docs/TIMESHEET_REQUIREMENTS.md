@@ -314,8 +314,24 @@ is mandatory acceptance behavior, not optional illustration.
 
 ## SELECTED — Preview and saved exports
 
-**Preview timesheet** displays current calculated actual work without persistence,
-submission, timer resets or checkpoints.
+**Preview timesheet** displays a frozen candidate of current calculated Actual
+without persistence, submission, confirmation, timer resets or checkpoints.
+The eventual single Timesheet window replaces the shipped export workflows.
+Periods are **This week**, **Last week** and **Custom**, initially This week;
+Custom accepts typed dates and calendar pickers. Current weeks use Sunday through
+Saturday; configurable-week support remains separate.
+
+Choose All tasks or explicitly checked task UUIDs, independently of legacy
+hierarchy; selecting a parent never selects descendants. Retained deleted-task
+work remains reportable. No automatic submission, confirmation, Reset or
+post-export task deletion belongs in the replacement workflow.
+
+Explicit Preview/Refresh captures a new cutoff and prepares one complete frozen
+candidate. Date/period or task-selection changes require a fresh successful
+preview before Save, even if changed back. Prior output retains its applied
+range/cutoff and is marked previous/refresh-required. Later work, corrections,
+renaming and project movement do not mutate that candidate. Saving must publish
+exactly the previewed amounts and text; it must not recalculate on Save.
 
 **Save/export timesheet** must save a complete readable report and record immutable
 evidence of that export's work-date amounts. It preserves the selected date
@@ -341,7 +357,13 @@ do not persist publication-history or completion state.
 The [technical contract](EXPORT_EVIDENCE_CONTRACT.md) owns identity, contents,
 registration uncertainty, materialization and recovery rules.
 
-**CURRENT IMPLEMENTATION distinction:** the staged save service publishes a
+**CURRENT IMPLEMENTATION distinction:** standalone `TimesheetPreviewFrame`
+prepares and displays an unregistered candidate only after explicit Preview/
+Refresh. It retains a detached candidate and returns it only while its displayed
+preview is current; failed preparation or rendering invalidates readiness.
+It has no Save/retry, window wrapper or production route. Existing export routes
+remain active; this component does not unblock production dated writers.
+The separate staged save service publishes a
 report file but does not register an immutable export-snapshot event. It still
 uses exact HH:MM:SS output and lacks snapshot-linked byte verification/recovery.
 The separate pure decimal renderer and immutable snapshot-registration APIs are

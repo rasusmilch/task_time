@@ -898,12 +898,53 @@ Positive seconds may round to `0.00` without changing their source records.
 The report labels its two-place format and rounding rule. No intervals or dated
 records are recalculated, and no report/state/events/files are mutated.
 
-This renderer is independently callable only: existing generation/save services
-still use the exact renderer. Separate export-snapshot registration is staged
+This renderer is independently callable and used by snapshot preparation and the
+standalone frozen preview. Existing generation/save services still use the exact
+renderer. Separate export-snapshot registration is staged
 below; confirmation UI, file-status/recovery UI, production export/UI
 integration, configurable week starts and fresh-directory cutover remain
 unimplemented. The shared Unicode-width and extreme-date accounting limitations
 described above still apply.
+
+## Frozen timesheet preview (standalone)
+
+`TimesheetPreviewFrame(parent, service, *, now_utc)` in `timesheet_preview.py`
+constructs controls without loading. `refresh_preview() -> bool` resolves This
+week (default), Last week or inclusive Custom dates from one supplied aware
+observation, normalized to UTC. Relative weeks use local calendar arithmetic and
+Sunday starts. Typed/calendar drafts never prepare automatically. A picker uses
+a valid draft or an already captured observation date; it captures no clock and
+its cancellation changes nothing. The frame disposes its owned popups on destroy.
+
+Known tasks, including marked deleted tasks and distinct UUID-backed duplicate
+names, have independent checkboxes. All scope passes `all_tasks=True`; Selected
+passes exactly checked IDs and rejects empty selection. Both pass
+`include_deleted=True`, with no project selection or descendant expansion.
+
+Preparation calls `prepare_timesheet_export_snapshot()` once with explicit dates,
+cutoff, task scope and `preferred_destination=None`. The component deep-copies
+that complete event and displays its exact `payload.report_text` in a read-only,
+vertically/horizontally scrollable Text widget. It does not calculate separately
+or derive cells from text. UUID and audit metadata remain the service's existing
+in-memory preparation behavior; no evidence is registered or report file saved.
+
+`get_prepared_export() -> dict | None` returns a deep copy only after complete
+successful rendering while drafts remain unchanged. Period/date/scope/checkbox
+writes invalidate readiness immediately, including changes back to earlier
+values. Previous trusted output retains its applied range/cutoff and a refresh-
+required indication. Later work or label/group changes do not mutate it; explicit
+Refresh creates a new candidate. The action is Preview until first success, then
+Refresh. No report is prepared during construction or on a schedule.
+
+Preparation failure retains drafts and prior trusted output. Widget-update
+failure invalidates readiness, hides untrusted output where possible and reports
+the original diagnostic through Tk; explicit later success restores the report.
+Valid empty All results are successful. There is no Save/retry, file dialog,
+modal wrapper, application route, path memory, confirmation or work mutation.
+Existing production exports remain unchanged and dated writers remain blocked
+on remaining active-reader integration. This is a standalone foundation for the
+[Selected target](docs/TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports),
+not the completed Timesheet workflow.
 
 ## Immutable export-snapshot registration (staged)
 

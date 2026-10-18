@@ -323,6 +323,22 @@ previously reserved for adjudication are now selected in the
 [technical contract](EXPORT_EVIDENCE_CONTRACT.md). The staged file-only service
 does not fulfill immutable export registration merely by publishing text.
 
+### Frozen preview and eventual Timesheet export replacement
+
+**Status:** current. **Provenance:** later explicit user approval supplied with
+the standalone timesheet-preview implementation instructions; current owner:
+[preview and saved exports](TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports).
+
+One eventual Timesheet window replaces shipped exports, with This week/Last week/
+Custom periods, typed/calendar dates, and All or independently selected task UUIDs.
+Retained deleted work remains reportable. Save publishes the exact frozen preview;
+changing dates or selection requires another preview even after backtracking.
+No automatic submission, confirmation, Reset or post-export deletion is selected.
+The approved first component prepares and displays only an unregistered candidate,
+without Save/retry or production routing. Existing export routes remain until
+replacement is ready. This approval does not activate dated writers or choose
+remembered paths, restart policy, configurable weeks or installation cutover.
+
 ### Absolute daily external confirmations
 
 **Status:** current. **Provenance:** explicit user confirmation of daily

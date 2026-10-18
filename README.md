@@ -14,6 +14,7 @@ Selected functionality is not automatically implemented.
 | Staged service capability | Independent projects/tasks, date-only replay, closed timed-correction preparation/registration, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
 | Connected calendar Actual | Main own-task Today/This week and mini Today use mixed accounting at one cutoff; application totals include retained deleted work. Failed calculations remain visibly unavailable until a successful refresh. Exports remain interval-only. |
 | Connected read-only history | Main-panel and recursive task-editor Work History commands share the modal browser, originating-parent return and session-only sorting. Replacement editing remains pending. |
+| Standalone frozen preview | TimesheetPreviewFrame offers explicit This week/Last week/Custom preparation, independent All/Selected task scope including deleted work, and exact read-only frozen text. Draft changes/failures invalidate readiness. Save/retry and production routing remain pending. |
 | Production still pending | Production export integration, file-status/recovery UI, remaining replacement editing UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
 
 [Phase 2's bounded evidence and daily-reconciliation service gate](docs/ROADMAP.md#phase-2--pol-r-evidence-and-reconciliation)
@@ -29,6 +30,9 @@ is no parallel legacy history interface.
 export-event evidence or POL-R confirmation. Separate snapshot-first operations
 now register frozen decimal evidence and materialize verified copies. They are
 not combined or connected to the production UI; saving never confirms POL-R entry.
+A [standalone timesheet preview](DESIGN_NOTES.md#frozen-timesheet-preview-standalone)
+now prepares an unregistered frozen candidate without writes. It does not replace
+shipped export routes, add Save/retry or unblock dated writers.
 
 See [repository instructions](AGENTS.md), [current technical design](DESIGN_NOTES.md)
 and the [canonical changelog](CHANGELOG.md) for their respective authority scopes.

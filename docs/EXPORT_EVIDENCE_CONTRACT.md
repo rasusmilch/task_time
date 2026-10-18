@@ -14,13 +14,18 @@ below under that direction. Codex records them without selecting an alternative.
 [ROADMAP.md](ROADMAP.md) owns sequencing and gates; and
 [TESTING_STRATEGY.md](TESTING_STRATEGY.md) owns validation applicability.
 
-Current mixed accounting, exact HH:MM:SS rendering and safe file-only saving are
-staged services. Pure decimal replacement rendering is also implemented/staged:
+Mixed accounting supplies main/mini calendar Actual. Exact HH:MM:SS rendering
+and safe file-only saving remain separate staged reporting services. Pure decimal
+replacement rendering is also implemented/staged:
 `build_decimal_timesheet_text()` and reusable `seconds_to_decimal_hundredths()`
 apply the cell-rounding and displayed-rollup rules below without persistence.
 The existing generation/save services still use the exact renderer. Separate
 export-snapshot preparation, durable registration, detached lookup and journal
 replay are implemented/staged; registration publishes no external report file.
+A standalone frozen preview now uses that preparation API without registration,
+file output, Save/retry or production routing. It displays the exact candidate
+text and invalidates readiness on draft changes/failure. The event and
+registration contracts below are unchanged.
 Verified materialization from committed evidence is also staged: exact-byte/digest
 checking, matching-file reuse and exclusive no-overwrite publication are available
 through a separate service operation. Standalone read-only destination-relative
