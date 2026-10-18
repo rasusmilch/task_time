@@ -3069,8 +3069,6 @@ class TaskTimerApp:
         tools_menu = tk.Menu(menubar, tearoff=0)
         tools_menu.add_command(label="Reopen Last Export Checkpoint", command=self._reopen_last_export_checkpoint)
         tools_menu.add_separator()
-        tools_menu.add_command(label="Reset All Task Timers...", command=self._reset_all_task_timers)
-        tools_menu.add_separator()
         tools_menu.add_command(label="Manage Tags", command=self._manage_tags)
         tools_menu.add_command(label="Manage Subtask Templates", command=self._manage_subtask_templates)
         tools_menu.add_command(label="Month-End Reminder Settings", command=self._open_month_end_reminder_settings)
@@ -3101,9 +3099,6 @@ class TaskTimerApp:
             return False
         self.service.export_report(Path(target), reset_after=False)
         self.mark_month_end_reminder_handled_today()
-        should_reset = messagebox.askyesno("Reset after export", "Export done. Reset all non-deleted task timers?")
-        if should_reset:
-            self.service.reset_all_non_deleted_tasks()
         self.refresh_structure()
         self.refresh_live_values()
         self._refresh_month_end_reminder_ui()
@@ -3164,12 +3159,6 @@ class TaskTimerApp:
 
     def _handle_selected_export_post_action(self, action: str, selected_task_ids: list[str]) -> None:
         if action == "leave":
-            return
-        if action == "reset":
-            self._create_risky_operation_backup("before resetting selected exported tasks")
-            self.service.reset_selected_tasks(selected_task_ids)
-            self.refresh_structure()
-            self.refresh_live_values()
             return
         if action == "delete":
             self._create_risky_operation_backup("before deleting selected exported tasks")
@@ -3258,8 +3247,6 @@ class TaskTimerApp:
         button_bar.grid(row=1, column=0, sticky="w")
         self.selected_toggle_btn = ttk.Button(button_bar, text="Start", command=self._toggle_selected_task)
         self.selected_toggle_btn.pack(side="left", padx=(0, 4))
-        self.selected_reset_btn = ttk.Button(button_bar, text="Reset", command=self._reset_selected_task)
-        self.selected_reset_btn.pack(side="left", padx=4)
         self.selected_delete_btn = ttk.Button(button_bar, text="Delete", command=self._delete_selected_task)
         self.selected_delete_btn.pack(side="left", padx=4)
         self.selected_move_btn = ttk.Button(button_bar, text="Move Task", command=self._move_selected_task)
@@ -3423,7 +3410,7 @@ class TaskTimerApp:
                 bg, fg = self._selected_state_colors("")
                 self.selected_state_label.configure(text="", bg=bg, fg=fg)
             self.selected_toggle_btn.configure(text="Start", state="disabled")
-            for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_move_btn, self.selected_edit_btn, self.selected_history_btn):
+            for btn in (self.selected_delete_btn, self.selected_move_btn, self.selected_edit_btn, self.selected_history_btn):
                 btn.configure(state="disabled")
             return
         path_names: list[str] = [task.name]
@@ -3440,18 +3427,13 @@ class TaskTimerApp:
             bg, fg = self._selected_state_colors(state_text)
             self.selected_state_label.configure(text=f"State: {state_text}", bg=bg, fg=fg)
         self.selected_toggle_btn.configure(text="Stop" if task.is_running else "Start", state="normal")
-        for btn in (self.selected_reset_btn, self.selected_delete_btn, self.selected_move_btn, self.selected_edit_btn, self.selected_history_btn):
+        for btn in (self.selected_delete_btn, self.selected_move_btn, self.selected_edit_btn, self.selected_history_btn):
             btn.configure(state="normal")
 
     def _toggle_selected_task(self) -> None:
         task_id = self._selected_task_id()
         if task_id:
             self._toggle_task(task_id)
-
-    def _reset_selected_task(self) -> None:
-        task_id = self._selected_task_id()
-        if task_id:
-            self._reset_task(task_id)
 
     def _delete_selected_task(self) -> None:
         task_id = self._selected_task_id()
@@ -3517,55 +3499,6 @@ class TaskTimerApp:
         else:
             self.service.start_task(task_id)
         self._after_state_change()
-
-    def _reset_task(self, task_id: str) -> None:
-        task = self.service.state.tasks.get(task_id)
-        if not task:
-            return
-        children = self.service.child_tasks(task_id, include_deleted=False)
-
-        if children:
-            choice = messagebox.askyesnocancel(
-                "Confirm reset",
-                "This task has subtasks. Choose reset scope:\n\n"
-                "• Yes = Reset selected task and all subtasks (default)\n"
-                "• No = Reset selected task only\n"
-                "• Cancel = Do nothing",
-                default=messagebox.YES,
-            )
-            if choice is None:
-                return
-            if choice:
-                self._create_risky_operation_backup("before resetting selected task and descendants")
-                self.service.reset_task_tree(task_id)
-            else:
-                self._create_risky_operation_backup("before resetting selected task")
-                self.service.reset_task_only(task_id)
-            self._after_state_change()
-            return
-
-        if messagebox.askyesno("Confirm reset", "Reset this task timer to zero?"):
-            self._create_risky_operation_backup("before resetting selected task")
-            self.service.reset_task_only(task_id)
-            self._after_state_change()
-
-    def _reset_all_task_timers(self) -> None:
-        should_reset = messagebox.askyesno(
-            "Confirm Reset All Timers",
-            "Reset elapsed time for all active tasks to zero?\n\n"
-            "This will record reset events for every non-deleted task.\n\n"
-            "Task history will remain in the journal, but current elapsed totals will restart from this point.",
-        )
-        if not should_reset:
-            return
-        has_active = any(not task.is_deleted for task in self.service.state.tasks.values())
-        if not has_active:
-            messagebox.showinfo("Reset All Task Timers", "There are no active tasks to reset.")
-            return
-        self._create_risky_operation_backup("before reset all task timers")
-        self.service.reset_all_non_deleted_tasks()
-        self._after_state_change()
-        messagebox.showinfo("Reset All Task Timers", "All active task timers were reset.")
 
     def _delete_task(self, task_id: str) -> None:
         task = self.service.state.tasks.get(task_id)

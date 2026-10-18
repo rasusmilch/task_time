@@ -28,8 +28,11 @@ receipts or commits. No release or production qualification is implied below.
   with duplicate protection, safe originating-parent return and inline launch
   diagnostics. Remove the superseded timeline UI/reader/formatter without a
   compatibility interface, migration or user-file/data-directory cutover.
-  Replacement creation/editing/deletion, missed-stop UI, audit and Reset-removal
-  integrations remain pending. Stage closed
+  Remove shipped task Reset controls and Reset branches from both export
+  completion paths, preserving Start/Stop and selected-export Leave/Delete.
+  Backend reset contracts, historical evidence and reset-sensitive counters are
+  unchanged. Replacement creation/editing/deletion, missed-stop UI, audit, counter
+  replacement and production POL-R presentation remain pending. Stage closed
   genuine-interval correction preparation/registration using existing replacement
   events: no-op saves write nothing, unchanged endpoints retain precision, comments
   are optional and stale priors reject. Frozen identities, prospective replay and

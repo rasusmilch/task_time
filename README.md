@@ -44,12 +44,13 @@ decimal-hour, snapshot, file verification/recovery and confirmation semantics.
 
 The following describes the current production application.
 
-- Persistent tasks with start/stop/reset/delete/task-edit controls and read-only Work History.
+- Persistent tasks with start/stop/delete/task-edit controls and read-only Work History.
 - Event-sourced storage with append-only JSONL logs.
 - Archived immutable segments + manifest + derived snapshot.
 - Crash-safe behavior: each state-changing action appends and flushes an event immediately.
 - One-running-task rule: starting a task auto-stops the currently running task.
-- Resets are logical cut lines for *current* totals (history is preserved).
+- Task Reset commands and export-completion Reset choices are removed. Retained
+  backend reset evidence still bounds current counters; historical work remains.
 - Export to human-readable text with totals and audit history.
 
 ## Project/task foundation (service only)
@@ -117,9 +118,10 @@ appear inline at their origin with Tk diagnostics; browser load errors remain
 inside the browser. This read-only replacement removes the old timeline UI and
 its editing tools without compatibility fallbacks. Unsupported synthetic work
 fails visibly; no migration or user-file/data-directory cutover occurs.
-Replacement segment editing, creation/deletion, missed-stop tools, audit and
-removal of production Reset controls remain pending. Other production counters
-remain unchanged.
+Replacement segment editing, creation/deletion, missed-stop tools and audit
+remain pending. Task Reset controls and both export Reset branches are removed;
+backend reset APIs, persisted evidence and reset-sensitive counters are unchanged.
+This UI removal does not integrate POL-R presentation or replace production totals.
 
 Pure [timed-input validation](DESIGN_NOTES.md#replacement-timed-input-validation-staged)
 separately resolves minute-only clock inputs with independent start/end dates,
@@ -343,7 +345,7 @@ Export is plain text and includes:
 
 ## Subtask Templates
 
-Subtask Templates are reusable groups of subtask definitions. Applying a template copies those definitions into a parent task as real subtasks. The created subtasks are independent and can be edited, timed, reset, deleted, and exported like any other subtask.
+Subtask Templates are reusable groups of subtask definitions. Applying a template copies those definitions into a parent task as real subtasks. The created subtasks are independent and can be edited, timed, deleted, and exported like any other subtask.
 
 - Manage templates in **Tools → Manage Subtask Templates**.
 - Templates are definitions only; they are not timed/running work items by themselves.

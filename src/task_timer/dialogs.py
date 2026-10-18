@@ -502,17 +502,12 @@ class PostSelectedExportActionDialog:
         actions = ttk.Frame(frame)
         actions.pack(fill="x")
         ttk.Button(actions, text="Leave tasks unchanged", command=self._leave).pack(fill="x", pady=2)
-        ttk.Button(actions, text="Reset selected task timers to zero", command=self._reset).pack(fill="x", pady=2)
         ttk.Button(actions, text="Delete/remove selected tasks from active list", command=self._delete).pack(fill="x", pady=2)
 
         parent.wait_window(self.window)
 
     def _leave(self) -> None:
         self.choice = "leave"
-        self.window.destroy()
-
-    def _reset(self) -> None:
-        self.choice = "reset"
         self.window.destroy()
 
     def _delete(self) -> None:

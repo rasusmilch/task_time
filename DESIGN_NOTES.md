@@ -323,9 +323,9 @@ The [Selected history contract](docs/TIMESHEET_REQUIREMENTS.md#selected--mixed-w
 also covers current-week/custom/All UI periods, application-session date direction,
 one history window per application, linked segment interaction, type-preserving
 editing and audit/details. Those UI/session, edit/delete and audit capabilities,
-production dated writers and production Reset removal are not implemented by
-this reader. POL-R remains a separate task/day service. No schema, identity or
-persistent state is added.
+production dated writers and replacement of reset-sensitive counters are not
+implemented by this reader; UI Reset removal is described below. POL-R remains
+a separate task/day service. No schema, identity or persistent state is added.
 
 ## Mixed work-history table
 
@@ -366,7 +366,8 @@ synthetic work converted.
 This render-only component delegates period/sort controls to the browser
 below. Neither component schedules automatic loading. Both shipped Work History
 commands compose these components through the application-owned modal path.
-Correction actions, creation/deletion, audit and Reset removal remain pending.
+Correction actions, creation/deletion, audit and replacement of reset-sensitive
+production counters remain pending; task Reset UI actions are removed.
 The superseded timeline dialogs/formatter/reader are removed; no new persistent
 state or domain projection exists.
 
@@ -432,7 +433,8 @@ does not reset it, and a new application owner starts newest-first. No preferenc
 file, resolver, settings field or cross-process coordination is used or required.
 Window ownership is provided by the modal path below; neither the Frame
 nor the browser factory enforces it. Read-only production access is connected;
-editing/audit, writer activation and Reset removal remain unimplemented.
+editing/audit, writer activation and replacement of reset-sensitive counters
+remain unimplemented. Task Reset UI actions are removed separately.
 The browser accesses no settings, writes no work, and schedules no refresh, retries or asynchronous loading.
 Accounting, mutation services and settings ownership are unchanged.
 
@@ -1299,29 +1301,44 @@ Corrections are represented via explicit events:
 
 ## Reset semantics
 
-These are current legacy counter semantics. The Selected replacement removes
-Reset actions and resettable counters; production controls are still unchanged.
-Calendar Actual and mixed work history ignore these legacy boundaries.
+These are retained backend/counter semantics, not Selected replacement behavior
+or a compatibility guarantee. Task Reset controls, Tools Reset All, and Reset
+branches in both export-completion flows are removed. No replacement reset
+mechanism is added. The backend reset APIs, replay, snapshots and reset-sensitive
+production counters are unchanged. Calendar Actual and mixed work history ignore
+these legacy boundaries; removing UI commands alone does not replace counters or
+integrate production POL-R reconciliation.
 
 `reset` creates a logical totals boundary (`last_reset_utc`) for each task:
 
 - Current elapsed/day/week totals ignore prior intervals.
 - Historical events remain visible in exports.
 
-## Export + reset flow
+## Export completion and retained reset backend
 
-This is the active legacy export flow. The
-[selected replacement workflow](docs/TIMESHEET_REQUIREMENTS.md) separates preview,
-saved export evidence and explicit POL-R confirmation without export-triggered
-timer stops, resets or implicit checkpoints.
+All shipped full-export routes (toolbar, reminder banner and close reminder)
+use `export_report(..., reset_after=False)`. The file is generated first, then the
+existing `export_checkpoint` is appended. Success still marks the reminder handled,
+refreshes structure/live/reminder presentation and returns True. There is no
+post-export Reset prompt or reset call; cancellation/failure does not proceed to
+completion effects. Configured pre-export backups remain.
 
-- Export file is generated first.
-- The service records an `export_checkpoint` after successful file writing.
-- If reset was not requested, this operation records no reset events.
-- If reset was requested, it then resets all non-deleted tasks; running tasks
-  are stopped through the existing reset path before their reset event.
+Selected export retains cancellation, overlap acknowledgement and optional legacy
+submission markers. Its completion dialog offers Leave and Delete only; window
+closure means Leave. Leave preserves running timers and work. Explicit Delete
+still uses its configured risky-operation backup and scoped deletion, may stop
+running deleted tasks, clears affected selection and refreshes structure/live
+values. It is not an incidental export reset. Export and deletion backups remain
+separate configured operations. Neither export flow creates POL-R confirmation.
 
-Default reset scope is all non-deleted tasks.
+The backend `export_report(reset_after=True)` contract remains unchanged: its
+report header and checkpoint payload retain the flag, and an explicit backend
+request resets all non-deleted tasks after file/checkpoint creation, stopping
+running tasks through the existing reset path. No UI route supplies that request.
+Historical reset/checkpoint evidence and audit rendering remain intact.
+The [Selected replacement workflow](docs/TIMESHEET_REQUIREMENTS.md) still requires
+separate export evidence and explicit task/day POL-R confirmation; this UI slice
+does not deliver that integration or choose counter-display policy.
 
 ## Time handling
 
@@ -1358,6 +1375,6 @@ Windows Aero Snap behavior is owned by the operating system. The app reduces acc
 ## Main window task list behavior
 
 - The main Chronicle window displays tasks and subtasks with a `ttk.Treeview` hierarchy (parent rows with nested child rows).
-- Main window actions (`Start/Stop`, `Reset`, `Delete`, `Edit Task`, `Work History`) operate on the currently selected task row.
+- Main window actions (`Start/Stop`, `Delete`, `Edit Task`, `Work History`) operate on the currently selected task row.
 - Tree interactions support quick toggles: double-click, `Enter`, and `Space` all trigger selected task `Start/Stop`.
 - Parent expansion/collapse state is tracked during runtime and parents with running subtasks are automatically kept expanded.

@@ -176,7 +176,9 @@ the reader/table/browser with related-portion feedback, periods, calendars,
 explicit refresh and session sorting. Pure timed-input validation, the standalone
 timed-interval form and closed-interval correction preparation/registration with
 its standalone dialog remain staged. This delivered history slice does not
-activate dated writers or satisfy the active-reader/UI gate below.
+activate dated writers or satisfy the active-reader/UI gate below. Task Reset
+UI removal is delivered separately; it does not complete reset-free accounting
+or production POL-R integration.
 
 **Outcome:** activate genuine date-only creation and correction/deletion, an
 appropriate mixed timeline editor, project/task navigation, project creation and
@@ -190,7 +192,9 @@ session, at most one modal history window per application, attached to its origi
 task with browsing and Close only (timers continue),
 linked daily portions that edit/delete the full interval, type-preserving editing
 and audit/details. Replacement Reset actions/counters are removed from the target;
-their production removal and replacement editing integration remain pending.
+task Reset UI commands and both export-completion Reset branches are removed.
+Backend reset capabilities and reset-sensitive production counters are unchanged;
+remaining reader/accounting and replacement editing integration remain pending.
 The standalone browser's caller-supplied week start and application-owned direction
 handoff are available. Both Work History routes use the owned modal opening
 path; configurable-week settings remain pending. No cross-restart
