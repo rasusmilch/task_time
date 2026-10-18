@@ -77,7 +77,7 @@ def files(root):
 def capture(s):
     return (deepcopy(s.state), deepcopy(s.events), files(s.storage.data_dir),
             deepcopy(s.list_time_submissions()),
-            {key: s.task_elapsed(task, CUTOFF) for key, task in s.state.tasks.items()})
+            {key: sum((stop - start).total_seconds() for start, stop in s._windowed_intervals(task, None, CUTOFF)) for key, task in s.state.tasks.items()})
 
 
 def test_complete_weekly_report_has_independent_exact_values(setup):

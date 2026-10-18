@@ -5,9 +5,9 @@ from __future__ import annotations
 import sys
 import tkinter as tk
 from tkinter import StringVar, Toplevel, ttk
-from typing import Callable
+from typing import Callable, Mapping
 
-from .time_utils import format_duration_hm, utc_now
+from .time_utils import format_duration_hm
 from .window_chrome import disable_snap_maximize, install_zoom_guard
 
 RUNNING_COLOR = "#1f9d55"
@@ -36,7 +36,8 @@ class MiniModeWindow:
         self._configure_window_chrome()
 
         self.task_name_var = StringVar(value="No task selected")
-        self.elapsed_var = StringVar(value="00:00")
+        self.elapsed_var = StringVar(value="Today: —")
+        self.time_totals_error_var = StringVar(value="")
         self._display_task_id: str | None = None
 
         wrapper = tk.Frame(self.window, padx=6, pady=6)
@@ -50,6 +51,7 @@ class MiniModeWindow:
             font=("TkDefaultFont", 11, "bold"),
         )
         self.elapsed_bar_label.pack(fill="x", pady=(4, 6))
+        ttk.Label(wrapper, textvariable=self.time_totals_error_var).pack(fill="x")
         self.reminder_label = tk.Label(
             wrapper,
             text="Month-end time due",
@@ -65,7 +67,6 @@ class MiniModeWindow:
         ttk.Button(actions, text="Show Main", command=self.restore_main).pack(side="left", padx=(6, 0), expand=True, fill="x")
 
         self.refresh_structure()
-        self.refresh_live_values()
 
     def _configure_window_chrome(self) -> None:
         self.window.attributes("-topmost", True)
@@ -121,13 +122,15 @@ class MiniModeWindow:
     def refresh_structure(self) -> None:
         self._display_task_id = self._resolve_display_task_id()
 
-    def refresh_live_values(self) -> None:
+    def refresh_live_values(self, *, today_seconds_by_task: Mapping[str, float] | None) -> None:
+        # The application owns the observation and accounting; this window only renders.
+        self.time_totals_error_var.set("Time totals unavailable." if today_seconds_by_task is None else "")
         self.refresh_structure()
-        self._sync_reminder_indicator()
+        self.refresh_reminder()
         task = self.service.state.tasks.get(self._display_task_id or "") if self._display_task_id else None
         if not task:
             self.task_name_var.set("No tasks available")
-            self.elapsed_var.set("00:00")
+            self.elapsed_var.set("Today: —" if today_seconds_by_task is None else "Today: 00:00")
             self.toggle_btn.configure(text="Start")
             self.toggle_btn.state(["disabled"])
             self.elapsed_bar_label.configure(bg=STOPPED_COLOR)
@@ -135,12 +138,13 @@ class MiniModeWindow:
         is_running = task.is_running
         color = RUNNING_COLOR if is_running else STOPPED_COLOR
         self.task_name_var.set(task.name.strip() or "Untitled Task")
-        self.elapsed_var.set(format_duration_hm(self.service.task_elapsed(task, utc_now())))
+        self.elapsed_var.set("Today: —" if today_seconds_by_task is None else
+                             f"Today: {format_duration_hm(today_seconds_by_task[task.task_id])}")
         self.toggle_btn.configure(text="Stop" if is_running else "Start")
         self.toggle_btn.state(["!disabled"])
         self.elapsed_bar_label.configure(bg=color)
 
-    def _sync_reminder_indicator(self) -> None:
+    def refresh_reminder(self) -> None:
         if not hasattr(self, "reminder_label"):
             return
         provider = getattr(self, "month_end_due_provider", None)

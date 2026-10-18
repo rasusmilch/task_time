@@ -105,6 +105,23 @@ established by that wording or by legacy source. POL-R stays per task/day.
 The staged projection is implementation evidence, not approval or delivery of
 the future UI, preference, editing, audit or production reset-removal work.
 
+### Calendar Actual production displays
+
+**Status:** current. **Provenance:** later explicit user approval in the production
+Actual-display implementation instructions, following the read-only reader
+inventory; current owner: [calendar Actual displays](TIMESHEET_REQUIREMENTS.md#selected--calendar-actual-displays).
+
+Main task rows show own Today and This week, including parents without descendant
+roll-up. Mini-mode shows Today. Application totals include retained deleted-task
+work. All use one application-refresh observation and the complete containing
+calendar week (currently Sunday-start). Timed work is cutoff-capped; whole-date
+amounts retain their dates, including later dates within the week. Failed
+calculation shows — with one inline error per window, preserves Start/Stop and
+recovers on a later normal refresh. This later approval specifies display choices
+not established by earlier labels or reset-sensitive source. It activates readers
+only; remaining exports/readers still block dated-writer activation. It selects no
+migration, cutover, configurable-week setting or production POL-R integration.
+
 ### Minute-only replacement clock input and daylight-saving choices
 
 **Status:** current. **Provenance:** explicit user approval supplied with the

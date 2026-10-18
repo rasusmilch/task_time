@@ -183,7 +183,7 @@ def test_historical_reset_preserves_both_types_without_changing_current_counter(
     clock[0] = local(s, MON, 10).astimezone(timezone.utc)
     s.reset_task(a)
     timed(s, a, MON, 1800, hour=11)
-    assert s.task_elapsed(s.state.tasks[a], CUTOFF) == 1800
+    assert sum((stop - start).total_seconds() for start, stop in s._windowed_intervals(s.state.tasks[a], None, CUTOFF)) == 1800
     assert pure_report(s, all_tasks=True)["tasks"][a]["window_seconds"] == 18000
 
 
@@ -267,7 +267,7 @@ def test_legacy_synthetic_duration_has_explicit_scope_boundary(setup):
         with pytest.raises(UnsupportedLegacyDurationError):
             report(s, start, end, all_tasks=True)
     assert (s.state, s.events, files(s)) == before
-    assert s.task_elapsed(s.state.tasks[a], CUTOFF) == 50400
+    assert sum((stop - start).total_seconds() for start, stop in s._windowed_intervals(s.state.tasks[a], None, CUTOFF)) == 50400
     assert pure_report(s, MON, MON, all_tasks=True)["application"]["window_seconds"] == 0
     assert pure_report(s, SAT, SUN, task_ids=(b,))["application"]["window_seconds"] == 0
     legacy = next(iter(s.state.tasks[a].intervals))

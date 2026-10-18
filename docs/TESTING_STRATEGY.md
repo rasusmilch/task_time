@@ -72,6 +72,7 @@ their assertions before selecting a run.
 | Timed input form | [test_timed_interval_form.py](../tests/test_timed_interval_form.py): actual component construction with widget doubles, variable/event wiring, separate dates, minute formats, canonical date rejection, gaps/repeats/offset labels, independent choice clearing, draft retention/error correction, fresh validator delegation and absence of external writes/clock detection. Separate real-Tk smoke cases exercise construction, field callbacks, choice selection and resolution when a display is available; otherwise they skip with a reason. Edit-aware resolution and the validated occurrence setter have separate draft/error/fresh-delegation assertions. Neither doubles nor Linux Tk smoke establish production activation or native Windows interaction. |
 | Timed corrections | [test_timed_interval_corrections.py](../tests/test_timed_interval_corrections.py): authoritative detached preparation, optional comments, unchanged fractional endpoints, no-op purity, effective-prior/identity/schema rejection, prospective equal/backdated replay, stale caches and backup-hook rechecks, configured backups, append absence/no-op/partial/complete-error and rotation-manifest faults, synchronization open/fsync/close/inspection/validation failures, installation/snapshot warnings, exact retry after newer work/confirmations, midnight/DST agreement, restart/rotation/rebuild/restore. The authoritative correction reader also covers stale caches, detached/deleted task reads, owner rejection and write-prohibited journal failures. Earlier evidence and prepared identities remain detached; no production editor or universal durability qualification. |
 | Standalone timed editor | [test_timed_interval_editor.py](../tests/test_timed_interval_editor.py): actual construction/callbacks with widget doubles and real isolated services, precise/no-op editing, stale conflict and replacement-chain presentation, locked frozen retries, registration uncertainty versus refresh/recovery warnings, earlier verified-result retention, reentry, Close/Cancel handoffs and unrelated-work/evidence preservation. Real-Tk cases exercise construction, occurrence selection, Save/retry and unverified close when a display is available. No production or platform qualification. |
+| Production Actual displays | [test_actual_readers.py](../tests/test_actual_readers.py): real isolated services through application/mini refresh, own task values, deleted work in application totals, full Sunday calendar weeks, future dated amounts, cutoff-capped timed work, fractional seconds, DST/midnight rollover, effective corrections/redating/deletion, reset/confirmation independence and single-observation handoff. Faults cover clock/date/accounting/malformed numeric/formatting/synthetic failures, unavailable presentation, original diagnostics, continued cadence and recovery with Start/Stop. Captures and prohibited writes protect domain/settings purity. Separate real-Tk construction and server mouse input cover minimum-size columns, headlines, mini opening, Start/Stop and failure recovery; Linux Tk is not native Windows or full writer/export workflow qualification. |
 | Mixed work history | [test_work_history.py](../tests/test_work_history.py): real isolated service/model projection, exact detached row shape, mixed entries, known deleted-task lookup, inclusive/All dates, date direction with stable within-day chronology, linked daily identity/continuations, midnight/DST/fixed offsets, running cutoffs, whole dated amounts, correction/redating/deletion/restart, reset/confirmation independence, synthetic refusal and per-day accounting agreement. State/event/snapshot/file comparisons and prohibited journal/write/clock/UUID calls cover purity on success and rejection. No production timeline, edit/delete handler, sort-preference or audit UI qualification. |
 | Mixed-history table | [test_work_history_view.py](../tests/test_work_history_view.py): actual constructor/callbacks with widget doubles and real isolated service rows, exact order and detached complete metadata, midnight dates, DST/repeated-hour offsets, fixed/non-hour zones, running boundaries, precise retained amounts and completed-minute display, task-scoped related highlighting, stale handles, replacement/empty results, preparation failure preservation and widget-update invalidation/explicit recovery. Prohibited service/file/settings/clock/scheduling calls and dataset/state comparisons cover purity. Separate real-Tk smoke exercises construction, mapping, selection/highlighting, replacement and failures when a display is available; otherwise it skips with a reason. Component coverage alone does not qualify production routing or native Windows. |
 | Single-task history browser | [test_work_history_browser.py](../tests/test_work_history_browser.py): real isolated reader/table composition with constructor/callback doubles, exact load arguments and clock counts, seven week starts, rollover/UTC-local/DST boundaries, mixed and future dated work, inclusive Custom/All, running cutoffs, Apply-only typed/calendar drafts, seed/cancel/disposal, stable local sorting without newer records, committed Custom refresh, initial failure versus valid empty history, clock/service/preparation/widget faults, recovery and state/file/settings/timer/scheduling purity. Separate real-Tk smoke uses actual Calendar selection/cancellation, focus changes, Apply, Date-heading invocation, Refresh, errors and replacement. These tests do not qualify production window ownership, workflows or native Windows. |
@@ -100,8 +101,8 @@ Existing fixtures use pytest `tmp_path` and `monkeypatch`, including fixed clock
 and America/Chicago timezone examples. File/state snapshots make purity and
 invalid-operation assertions meaningful.
 
-Currently, mixed accounting is staged and Sunday-only, mixed work-history
-projection/table/browser are connected for read-only Work History through both
+Currently, mixed accounting is Sunday-only and supplies main/mini calendar Actual;
+mixed work-history projection/table/browser are connected for read-only Work History through both
 shipped commands, with periods, explicit refresh, session sorting and modal return,
 production date-only writers are inactive, and saving publishes a file
 without immutable export-event registration. Confirmation preparation/registration/replay and daily reconciliation
@@ -139,7 +140,8 @@ establish legacy-data compatibility. Read-only access is fresh replacement work;
 installation/data-directory cutover remains separate.
 Task Reset UI removal has separate constructed-control/export and real-Tk
 coverage. It is distinct from proving that history ignores legacy reset boundaries
-or replacing reset-sensitive production counters. Backend reset/replay/audit tests
+or qualifying all active readers. Main/mini calendar Actual has separate connected
+reader coverage; exports remain interval-only. Backend reset/replay/audit tests
 remain applicable to unchanged implementations, without selecting compatibility
 policy. Service projection or Linux UI tests do not establish native Windows
 interaction, production POL-R integration or release qualification.
@@ -167,9 +169,9 @@ do not establish correctness from rounded report text alone. Test:
   selected project/task unions deduplicate by UUID and an empty selection stays
   empty. Partial date windows contain no unrequested work.
 - Task daily/weekly/window totals reconcile. Counter resets do not erase
-  historical date-based Actual; test current counters separately under their
-  existing contract. Unsupported legacy synthetic records must not silently
-  become genuine work in the new accounting path.
+  historical date-based Actual. Main/mini calendar displays must ignore resets;
+  retained backend/export clipping is a separate contract. Unsupported legacy
+  synthetic records must not silently become genuine work in the new accounting path.
 
 **Future configurable-week acceptance:** test every selectable weekday with
 Sunday as the initial default, consistent weekly reporting/reconciliation, and

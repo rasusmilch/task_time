@@ -205,7 +205,7 @@ def test_invalid_owners_cannot_mutate_or_interrupt_running_work(setup, clock, ki
     payload = {"entry_id": entry_id, "reason": "Remove"} if kind == "dated_duration_deleted" else _payload(entry_id)
     _reject(service, _event(target, kind, payload))
     assert service.state.running_task_id == owner
-    assert service.task_elapsed(service.state.tasks[owner], clock[0]) == 600
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[owner], None, clock[0])) == 600
     assert len(service.events) == 5
 
 
@@ -241,7 +241,7 @@ def test_dated_entry_cannot_alias_an_existing_interval_identity(setup):
     interval_id = next(iter(service.state.tasks[owner].intervals))
     _reject(service, _event(other, "dated_duration_added", _payload(interval_id)))
     assert service.state.tasks[other].dated_durations == {}
-    assert service.task_elapsed(service.state.tasks[owner], STAMP) == 3600
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[owner], None, STAMP)) == 3600
     assert len(service.events) == 4
 
 
@@ -380,7 +380,7 @@ def test_dated_records_never_enter_legacy_clipping_replacement_or_reset_paths(se
     assert service.state.tasks[owner].intervals == intervals_before
     assert [record.interval_id for record in service._all_intervals(service.state.tasks[owner], STAMP)] == list(intervals_before)
     assert service._windowed_intervals(service.state.tasks[owner], None, STAMP) == [(STAMP - timedelta(hours=2), STAMP - timedelta(hours=1))]
-    assert service.task_elapsed(service.state.tasks[owner], STAMP) == 3600  # staged: dated work is not included yet
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[owner], None, STAMP)) == 3600  # Retained export-window reader remains interval-only.
     files_before = _files(service.storage.data_dir)
     for operation in (
         lambda: service.edit_interval(owner, entry_id, STAMP, STAMP + timedelta(hours=1), "Wrong kind"),
@@ -393,7 +393,7 @@ def test_dated_records_never_enter_legacy_clipping_replacement_or_reset_paths(se
     assert len(service.events) == 5
     clock[0] += timedelta(hours=1)
     service.reset_task(owner)
-    assert service.task_elapsed(service.state.tasks[owner], clock[0]) == 0
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[owner], None, clock[0])) == 0
     assert service.state.tasks[owner].dated_durations == dated_before
     assert service.state.tasks[owner].intervals == intervals_before
 
@@ -411,7 +411,7 @@ def test_legacy_duration_writer_and_correction_are_not_switched_to_dated_events(
     service.edit_duration_interval(owner, old_id, date(2026, 10, 14), 10800, "Legacy correction")
     assert task.intervals[old_id].deleted is True
     assert len(task.intervals) == 2 and task.dated_durations == {}
-    assert service.task_elapsed(task, STAMP) == 10800
+    assert [record.duration_seconds for record in task.intervals.values() if not record.deleted] == [10800]
     assert [event["event_type"] for event in service.events[3:]] == ["manual_duration_added", "interval_edited"]
 
 

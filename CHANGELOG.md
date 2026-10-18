@@ -30,9 +30,14 @@ receipts or commits. No release or production qualification is implied below.
   compatibility interface, migration or user-file/data-directory cutover.
   Remove shipped task Reset controls and Reset branches from both export
   completion paths, preserving Start/Stop and selected-export Leave/Delete.
-  Backend reset contracts, historical evidence and reset-sensitive counters are
-  unchanged. Replacement creation/editing/deletion, missed-stop UI, audit, counter
-  replacement and production POL-R presentation remain pending. Stage closed
+  Replace main elapsed counters with own-task Today/This week calendar Actual,
+  and mini-mode with Today from one coordinated observation. Application totals
+  retain deleted-task work; full-week dated amounts preserve exact attribution.
+  Failures show unavailable values and inline errors while Start/Stop and normal
+  refresh recovery remain usable. Retire superseded display helpers. Backend reset
+  contracts, historical evidence and interval-only export/submission readers are
+  unchanged. Replacement creation/editing/deletion, missed-stop UI, audit, remaining
+  active-reader integration and production POL-R presentation remain pending. Stage closed
   genuine-interval correction preparation/registration using existing replacement
   events: no-op saves write nothing, unchanged endpoints retain precision, comments
   are optional and stale priors reject. Frozen identities, prospective replay and

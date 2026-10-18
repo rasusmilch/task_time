@@ -11,7 +11,8 @@ Selected functionality is not automatically implemented.
 | Status | What it means here |
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, fixed Sunday-start mixed accounting, closed timed-correction preparation/registration, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
+| Staged service capability | Independent projects/tasks, date-only replay, closed timed-correction preparation/registration, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
+| Connected calendar Actual | Main own-task Today/This week and mini Today use mixed accounting at one cutoff; application totals include retained deleted work. Failed calculations remain visibly unavailable until a successful refresh. Exports remain interval-only. |
 | Connected read-only history | Main-panel and recursive task-editor Work History commands share the modal browser, originating-parent return and session-only sorting. Replacement editing remains pending. |
 | Production still pending | Production export integration, file-status/recovery UI, remaining replacement editing UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
 
@@ -50,7 +51,10 @@ The following describes the current production application.
 - Crash-safe behavior: each state-changing action appends and flushes an event immediately.
 - One-running-task rule: starting a task auto-stops the currently running task.
 - Task Reset commands and export-completion Reset choices are removed. Retained
-  backend reset evidence still bounds current counters; historical work remains.
+  backend reset evidence and interval-only export clipping remain unchanged.
+- Main task rows show own Today/This week Actual; mini-mode shows Today from the
+  same observation. Application totals include deleted-task work. Failures show
+  — inline and retain Start/Stop with normal refresh recovery.
 - Export to human-readable text with totals and audit history.
 
 ## Project/task foundation (service only)
@@ -76,12 +80,13 @@ for the implemented APIs and event contract.
 The replay foundation also supports `DatedDurationRecord`: a separate task-owned
 work date and duration amount with audit timestamps and append-only corrections
 and deletion. These records have no start/stop timestamps. This support is
-not enabled in production time entry or totals yet. The legacy duration-entry UI
-has been removed; replacement duration-entry UI remains pending. A separate
-read-only service API now derives mixed daily/weekly totals over explicit local-date windows; it is not connected
-to production readers or exports. No public dated-duration writer, historical
-migration, or data-directory cutover is included. See
-[mixed accounting](DESIGN_NOTES.md#mixed-date-window-accounting-service-only)
+not enabled in production time entry yet. The legacy duration-entry UI has been
+removed; replacement duration-entry UI remains pending. The read-only mixed
+accounting API now supplies main/mini calendar Actual over explicit local-date
+windows. Exports/submission readers remain interval-only, so dated writer
+activation remains blocked on their separate integration. No public dated-duration
+writer, historical migration, or data-directory cutover is included. See
+[mixed accounting](DESIGN_NOTES.md#mixed-date-window-accounting)
 for selection semantics and the explicit legacy synthetic-duration boundary.
 
 `get_task_work_history()` separately returns detached mixed history for one task:
@@ -120,8 +125,9 @@ its editing tools without compatibility fallbacks. Unsupported synthetic work
 fails visibly; no migration or user-file/data-directory cutover occurs.
 Replacement segment editing, creation/deletion, missed-stop tools and audit
 remain pending. Task Reset controls and both export Reset branches are removed;
-backend reset APIs, persisted evidence and reset-sensitive counters are unchanged.
-This UI removal does not integrate POL-R presentation or replace production totals.
+backend reset APIs, persisted evidence and interval-only exports are unchanged.
+Main/mini calendar Actual is connected separately; production POL-R presentation
+and remaining active-reader integration stay pending.
 
 Pure [timed-input validation](DESIGN_NOTES.md#replacement-timed-input-validation-staged)
 separately resolves minute-only clock inputs with independent start/end dates,

@@ -161,12 +161,11 @@ the same logs and snapshots without introducing a new persistent file.
 New lifecycle events are currently
 exercised through isolated fixtures and internal validation; **there is no new
 public duration writer**. `add_manual_duration`, `edit_duration_interval`, legacy
-synthetic records, real interval handling, resets, checkpoints, mini-mode, totals,
-tags, exports and submission behavior remain unchanged. Those interval-oriented
-consumers still omit dated records. Work History now includes both supported
-record types through the reader/table/browser below. Mixed accounting remains
-staged; active-reader integration must be validated before the new workflow emits these
-events. Production
+synthetic records, real interval mutation, resets, checkpoints, tags, exports and
+submission behavior remain unchanged. Interval-only export/submission consumers
+still omit dated records. Main/mini calendar Actual and Work History now include
+both supported record types. Remaining active-reader integration must be validated
+before the new workflow emits production dated events. Production
 reset/checkpoint consumers remain legacy. The selected
 [date-scoped POL-R workflow](docs/TIMESHEET_REQUIREMENTS.md) does not use an
 implicit export checkpoint or timer reset to distinguish newly worked time.
@@ -174,7 +173,7 @@ No new date-based checkpoint/reset extension is implemented. No legacy migration
 or fresh-directory cutover is performed; `~/.task_timer_data` remains outside
 this development workflow.
 
-## Mixed date-window accounting (service only)
+## Mixed date-window accounting
 
 Sunday-start weeks are current source behavior. The
 [selected configurable-week model](docs/TIMESHEET_REQUIREMENTS.md#selected--configurable-week-convention)
@@ -259,11 +258,46 @@ explicitly. Deleted legacy records, unselected tasks, and legacy records entirel
 outside the window do not contribute. No legacy conversion or event rewriting
 is performed; the old production reporting path continues unchanged.
 
-This API persists nothing and activates no writer, UI, export, submission,
-checkpoint, reset-counter, or mini-mode consumer. The event logs and their
-effective projections remain authoritative; snapshots remain rebuildable. New
-reader/writer integration and the separate empty-directory cutover are later
-tasks. Tests use isolated temporary datasets and leave existing user data alone.
+This API persists nothing. Main/mini calendar Actual now consumes it; exports,
+submission/checkpoint rules and production dated writers remain unchanged.
+The event logs and their effective projections remain authoritative; snapshots
+remain rebuildable. Remaining reader/writer integration and the separate
+empty-directory cutover are later tasks. Tests use isolated temporary datasets.
+
+## Production calendar Actual displays
+
+`TaskTimerApp.refresh_live_values()` captures and validates one aware observation,
+normalizes it to UTC, derives local today and its Sunday-through-Saturday week,
+and calls `calculate_date_window()` once with `all_tasks=True` and
+`include_deleted=True`. Each task's Today uses `daily_seconds[today]` (absent
+bucket means zero); This week uses `window_seconds`. Application headlines use
+the report's application totals. Parent rows retain hierarchy but display only
+own work; deleted work contributes to application totals without visible task
+rows. Full-week dated amounts are included even after today's cutoff date;
+timed contributions remain cutoff-capped under the existing accounting contract.
+
+The application prepares all numeric values and completed-minute text before
+replacing numbers. New rows start with —. Calculation/date/formatting failure
+marks all time cells and headlines —, reports the original exception through
+Tk callback diagnostics and shows one inline "Time totals unavailable." message
+per window. Task states and Start/Stop remain available. The normal minute tick
+continues and a successful refresh clears the error; destruction prevents new
+scheduled callbacks. No report is retained across refreshes.
+
+`MiniModeWindow.refresh_live_values(*, today_seconds_by_task)` receives the same
+ephemeral raw Today mapping, or `None` on failure. It renders `Today: HH:MM`, or
+`Today: —`; valid no-task results retain the no-task state and `Today: 00:00`.
+The mini constructor starts unavailable and performs no numeric refresh. The
+application publishes the new window before coordinated refresh; opening an
+existing mini also refreshes through the owner. Start/Stop uses its existing
+application callback. `refresh_reminder()` changes only reminder visibility.
+Mini-mode captures no accounting clock and queries no totals service.
+
+The superseded `compute_totals`, `task_elapsed`, `task_own_elapsed` and
+`task_tree_elapsed` display helpers are removed. `_all_intervals`,
+`_effective_intervals` and `_windowed_intervals` retain their interval-only,
+reset-sensitive export dependencies. Production dated writers, project navigation,
+POL-R presentation and configurable-week settings are not activated.
 
 ## Mixed work-history service
 
@@ -323,8 +357,8 @@ The [Selected history contract](docs/TIMESHEET_REQUIREMENTS.md#selected--mixed-w
 also covers current-week/custom/All UI periods, application-session date direction,
 one history window per application, linked segment interaction, type-preserving
 editing and audit/details. Those UI/session, edit/delete and audit capabilities,
-production dated writers and replacement of reset-sensitive counters are not
-implemented by this reader; UI Reset removal is described below. POL-R remains
+production dated writers are not implemented by this reader; calendar Actual
+displays and UI Reset removal are described separately. POL-R remains
 a separate task/day service. No schema, identity or persistent state is added.
 
 ## Mixed work-history table
@@ -366,8 +400,8 @@ synthetic work converted.
 This render-only component delegates period/sort controls to the browser
 below. Neither component schedules automatic loading. Both shipped Work History
 commands compose these components through the application-owned modal path.
-Correction actions, creation/deletion, audit and replacement of reset-sensitive
-production counters remain pending; task Reset UI actions are removed.
+Correction actions, creation/deletion and audit remain pending; task Reset UI
+actions are removed and main/mini calendar Actual is connected separately.
 The superseded timeline dialogs/formatter/reader are removed; no new persistent
 state or domain projection exists.
 
@@ -433,8 +467,8 @@ does not reset it, and a new application owner starts newest-first. No preferenc
 file, resolver, settings field or cross-process coordination is used or required.
 Window ownership is provided by the modal path below; neither the Frame
 nor the browser factory enforces it. Read-only production access is connected;
-editing/audit, writer activation and replacement of reset-sensitive counters
-remain unimplemented. Task Reset UI actions are removed separately.
+editing/audit and writer activation remain unimplemented. Task Reset UI actions
+are removed and main/mini calendar Actual is connected separately.
 The browser accesses no settings, writes no work, and schedules no refresh, retries or asynchronous loading.
 Accounting, mutation services and settings ownership are unchanged.
 
@@ -1301,17 +1335,16 @@ Corrections are represented via explicit events:
 
 ## Reset semantics
 
-These are retained backend/counter semantics, not Selected replacement behavior
+These are retained backend/export semantics, not Selected replacement behavior
 or a compatibility guarantee. Task Reset controls, Tools Reset All, and Reset
 branches in both export-completion flows are removed. No replacement reset
-mechanism is added. The backend reset APIs, replay, snapshots and reset-sensitive
-production counters are unchanged. Calendar Actual and mixed work history ignore
-these legacy boundaries; removing UI commands alone does not replace counters or
-integrate production POL-R reconciliation.
+mechanism is added. Backend reset APIs, replay, snapshots and interval-only
+export clipping are unchanged. Main/mini calendar Actual and mixed work history
+ignore these legacy boundaries. Production POL-R reconciliation remains pending.
 
 `reset` creates a logical totals boundary (`last_reset_utc`) for each task:
 
-- Current elapsed/day/week totals ignore prior intervals.
+- Retained interval-only export readers exclude or clip earlier work at this boundary.
 - Historical events remain visible in exports.
 
 ## Export completion and retained reset backend
@@ -1342,7 +1375,7 @@ running tasks through the existing reset path. No UI route supplies that request
 Historical reset/checkpoint evidence and audit rendering remain intact.
 The [Selected replacement workflow](docs/TIMESHEET_REQUIREMENTS.md) still requires
 separate export evidence and explicit task/day POL-R confirmation; this UI slice
-does not deliver that integration or choose counter-display policy.
+does not deliver that integration; main/mini calendar display policy is documented above.
 
 ## Time handling
 

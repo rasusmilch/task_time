@@ -82,8 +82,8 @@ def test_assignment_move_and_unassignment_preserve_direct_time_and_other_tasks(s
         assert service.state.tasks[a].task_id == a
         assert service.state.tasks[a].project_id == destination
         assert service.state.tasks[a].intervals == intervals
-        assert service.task_elapsed(service.state.tasks[a], START) == 3600
-        assert service.task_elapsed(service.state.tasks[b], START) == 7200
+        assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[a], None, START)) == 3600
+        assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[b], None, START)) == 7200
         assert service.state.tasks[b].project_id == first
         assert service.state.tasks[unassigned].project_id is None
     assert service.events[:7] == original_events
@@ -109,7 +109,7 @@ def test_project_update_preserves_membership_and_task_time(service, clock):
     assert project.created_at_utc == START
     assert project.updated_at_utc == clock[0]
     assert asdict(service.state.tasks[task_id]) == task_before
-    assert service.task_elapsed(service.state.tasks[task_id], clock[0]) == 3600
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[task_id], None, clock[0])) == 3600
 
 
 def test_duplicate_task_names_never_merge_and_rename_preserves_intervals(service):
@@ -122,7 +122,7 @@ def test_duplicate_task_names_never_merge_and_rename_preserves_intervals(service
     before = deepcopy(service.state.tasks[ids[0]].intervals)
     service.update_task(ids[0], "Renamed", "Context")
     assert service.state.tasks[ids[0]].intervals == before
-    assert [service.task_elapsed(service.state.tasks[task_id], START) for task_id in ids] == [1800, 3600, 5400, 7200]
+    assert [sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[task_id], None, START)) for task_id in ids] == [1800, 3600, 5400, 7200]
     assert len(service.events) == 11
 
 
@@ -168,7 +168,7 @@ def test_invalid_time_targets_have_no_side_effects(service, clock, operation, ta
     assert service.state.running_task_id == running
     assert service.state.tasks[running].is_running
     assert service.state.tasks[running].intervals == {}
-    assert service.task_elapsed(service.state.tasks[running], clock[0]) == 600
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[running], None, clock[0])) == 600
 
 
 def test_valid_timer_switch_and_running_reassignment_preserve_elapsed(service, clock):
@@ -181,17 +181,17 @@ def test_valid_timer_switch_and_running_reassignment_preserve_elapsed(service, c
     service.assign_task_to_project(a, q)
     assert service.state.running_task_id == a
     assert service.state.tasks[a].currently_open_interval_start_utc == START
-    assert service.task_elapsed(service.state.tasks[a], clock[0]) == 1800
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[a], None, clock[0])) == 1800
     service.start_task(b)
     assert len(service.events) == 8
     assert service.state.running_task_id == b
     assert not service.state.tasks[a].is_running
-    assert service.task_elapsed(service.state.tasks[a], clock[0]) == 1800
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[a], None, clock[0])) == 1800
     clock[0] += timedelta(minutes=15)
     service.stop_task(b)
     assert len(service.events) == 9
     assert service.state.running_task_id is None
-    assert service.task_elapsed(service.state.tasks[b], clock[0]) == 900
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[b], None, clock[0])) == 900
 
 
 @pytest.mark.parametrize("action", [
@@ -342,8 +342,8 @@ def test_archive_replay_and_snapshot_rebuild_restore_projects_and_membership(tmp
     assert rebuilt.snapshot_dict() == expected
     assert rebuilt.state.tasks[a].project_id == q
     assert rebuilt.state.tasks[b].project_id is None
-    assert rebuilt.task_elapsed(rebuilt.state.tasks[a], START) == 3600
-    assert rebuilt.task_elapsed(rebuilt.state.tasks[b], START) == 7200
+    assert sum((stop - start).total_seconds() for start, stop in rebuilt._windowed_intervals(rebuilt.state.tasks[a], None, START)) == 3600
+    assert sum((stop - start).total_seconds() for start, stop in rebuilt._windowed_intervals(rebuilt.state.tasks[b], None, START)) == 7200
     rebuilt.state.projects.clear()
     rebuilt.state.tasks[a].project_id = None
     rebuilt.rebuild_snapshot_from_journal()
@@ -366,7 +366,7 @@ def test_backup_restore_retains_project_identity_and_assignment(service):
     assert service.snapshot_dict() == expected
     assert service.state.tasks[t].task_id == t
     assert service.state.tasks[t].project_id == p
-    assert service.task_elapsed(service.state.tasks[t], START) == 3600
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[t], None, START)) == 3600
     assert len(service.events) == 4
 
 

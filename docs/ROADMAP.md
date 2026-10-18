@@ -42,14 +42,14 @@ validation are pending; release readiness is not established.
 
 ## Implemented foundation — staged, not production replacement
 
-These capabilities are **IMPLEMENTED / STAGED**. Source inspection supports their
-existence; their detailed contracts remain in Design Notes rather than here.
+These foundations are implemented, with staged and connected slices distinguished
+below. Source inspection supports their existence; their detailed contracts remain in Design Notes rather than here.
 
 | Foundation | Implemented capability and boundary | Source / technical owner |
 | --- | --- | --- |
 | Project/task identity | Separate UUIDs; projects own no direct time; tasks own independent records, optional membership and reassignment preserving work. | [models.py](../src/task_timer/models.py), [project/task service](../DESIGN_NOTES.md#projecttask-service-foundation) |
 | Date-only duration | Endpoint-free stable records; event-backed creation/correction/deletion replay; derived snapshots and existing backup compatibility. Replacement duration-entry UI is pending; retained synthetic mutation services are not a compatibility guarantee. | [replay foundation](../DESIGN_NOTES.md#dated-duration-replay-foundation), [app.py](../src/task_timer/app.py), [backups.py](../src/task_timer/backups.py) |
-| Mixed accounting | Genuine intervals and dated amounts; local-day/DST splitting; independent task totals; derived project/Unassigned/application totals; historical actuals independent of counter resets. Week start is currently Sunday only. | [accounting.py](../src/task_timer/accounting.py), [mixed service](../DESIGN_NOTES.md#mixed-date-window-accounting-service-only) |
+| Mixed accounting | Genuine intervals and dated amounts; local-day/DST splitting; independent task totals; derived project/Unassigned/application totals; historical actuals independent of counter resets; supplies production main/mini Today/This week displays. Week start is currently Sunday only. | [accounting.py](../src/task_timer/accounting.py), [mixed service](../DESIGN_NOTES.md#mixed-date-window-accounting) |
 | Mixed work history | Read-only current effective task records; linked local-day interval segments and whole dated amounts; explicit cutoff/date filtering and deterministic ordering. Standalone row rendering includes approved minute/date/offset/duration formatting and related-portion highlighting. A standalone browser adds periods, calendar/typed custom drafts, explicit Refresh and in-memory sorting, with application-session direction handoff. Both shipped Work History commands use one owned modal path with originating-parent return. The retired timeline UI is removed; replacement editing/audit and other active-reader integration remain pending. | [owned window](../DESIGN_NOTES.md#owned-modal-history-window), [history browser](../DESIGN_NOTES.md#single-task-history-browser), [history table](../DESIGN_NOTES.md#mixed-work-history-table), [work_history.py](../src/task_timer/work_history.py), [history service](../DESIGN_NOTES.md#mixed-work-history-service) |
 | Timed input validation | Pure minute-only endpoint interpretation, separate dates, explicit repeated-time choices, gap rejection, UTC ordering and edit-aware preservation of unchanged precision; used by the form and standalone editor without production activation. | [work_entry_inputs.py](../src/task_timer/work_entry_inputs.py), [input contract](../DESIGN_NOTES.md#replacement-timed-input-validation-staged) |
 | Timed corrections | Staged closed genuine-interval preparation/registration with no-op purity, preserved unchanged precision, optional comments, stale-prior rejection and journal-verified retries/warning outcomes. Consumed by the standalone correction dialog; no production callers. | [correction contract](../DESIGN_NOTES.md#timed-interval-corrections-staged) |
@@ -177,8 +177,9 @@ explicit refresh and session sorting. Pure timed-input validation, the standalon
 timed-interval form and closed-interval correction preparation/registration with
 its standalone dialog remain staged. This delivered history slice does not
 activate dated writers or satisfy the active-reader/UI gate below. Task Reset
-UI removal is delivered separately; it does not complete reset-free accounting
-or production POL-R integration.
+UI removal and main/mini calendar Actual are delivered separately; interval-only
+exports still block dated-writer activation, and production POL-R integration
+remains pending.
 
 **Outcome:** activate genuine date-only creation and correction/deletion, an
 appropriate mixed timeline editor, project/task navigation, project creation and
@@ -193,8 +194,10 @@ task with browsing and Close only (timers continue),
 linked daily portions that edit/delete the full interval, type-preserving editing
 and audit/details. Replacement Reset actions/counters are removed from the target;
 task Reset UI commands and both export-completion Reset branches are removed.
-Backend reset capabilities and reset-sensitive production counters are unchanged;
-remaining reader/accounting and replacement editing integration remain pending.
+Main task Today/This week and mini Today now use mixed calendar Actual from one
+observation, with own task values and retained deleted work in application totals.
+Backend reset capabilities and interval-only export/submission readers remain
+unchanged; remaining reader and replacement editing integration remain pending.
 The standalone browser's caller-supplied week start and application-owned direction
 handoff are available. Both Work History routes use the owned modal opening
 path; configurable-week settings remain pending. No cross-restart

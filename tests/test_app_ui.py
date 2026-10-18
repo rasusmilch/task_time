@@ -18,6 +18,9 @@ class _FakeRoot:
         self.resizable_calls: list[tuple[bool, bool]] = []
         self.minsize_calls: list[tuple[int, int]] = []
 
+    def winfo_exists(self):
+        return True
+
     def after(self, delay_ms: int, callback: object) -> str:
         self.after_calls.append(delay_ms)
         return "after-id"
@@ -50,27 +53,6 @@ def test_tick_refreshes_live_values_only() -> None:
     assert app.root.after_calls
 
 
-def _test_refresh_live_values_does_not_call_structure_or_full_row_refresh() -> None:
-    app = TaskTimerApp.__new__(TaskTimerApp)
-    task_id = "task-1"
-    calls: list[str] = []
-    app.service = SimpleNamespace(
-        state=SimpleNamespace(tasks={task_id: SimpleNamespace(is_running=False, is_deleted=False)}),
-        compute_totals=lambda _now: (0, 0, 0),
-    )
-    app.rows = {task_id: {}}
-    app.daily_var = SimpleNamespace(set=lambda _v: None)
-    app.weekly_var = SimpleNamespace(set=lambda _v: None)
-    app.mini_mode_window = None
-    app.refresh_row = lambda _task_id: calls.append("refresh_row")
-    app.refresh_structure = lambda: calls.append("refresh_structure")
-    app._refresh_row_live_values = lambda _task_id, _now: calls.append("live_row")
-
-    TaskTimerApp.refresh_live_values(app)
-
-    assert calls == ["live_row"]
-
-
 def test_ui_duration_formatter_is_hours_minutes_only() -> None:
     assert format_duration_hm(59) == "00:00"
     assert format_duration_hm(61) == "00:01"
@@ -81,13 +63,13 @@ def test_task_id_stable_after_rename_and_history_retained(tmp_path) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     task_id = service.create_task("Original", "n1")
     service.add_manual_interval(task_id, start_local=_local_dt("2026-01-01 10:00"), stop_local=_local_dt("2026-01-01 11:00"), reason="seed")
-    before = service.task_elapsed(service.state.tasks[task_id])
+    before = sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[task_id], None, datetime.now(timezone.utc)))
     service.update_task(task_id, "Renamed", "n2")
     service.start_task(task_id)
     service.stop_task(task_id)
     assert task_id in service.state.tasks
     assert service.state.tasks[task_id].name == "Renamed"
-    assert service.task_elapsed(service.state.tasks[task_id]) >= before
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[task_id], None, datetime.now(timezone.utc))) >= before
 
 
 def test_starting_one_task_stops_prior_running_task(tmp_path) -> None:
@@ -164,56 +146,6 @@ def _test_row_refresh_sets_toggle_text_and_color() -> None:
     assert app.rows[task_id]["toggle_btn"].config["text"] == "Stop"
     assert app.rows[task_id]["name_label"].config["text"] == "Name"
     assert app.rows[task_id]["notes_label"].config["text"] == "Notes"
-
-
-def _test_refresh_row_live_values_updates_only_changed_values() -> None:
-    app = TaskTimerApp.__new__(TaskTimerApp)
-    task_id = "task-1"
-    task = SimpleNamespace(is_running=False, is_deleted=False)
-    app.service = SimpleNamespace(
-        state=SimpleNamespace(tasks={task_id: task}),
-        is_subtask=lambda _task_id: False,
-        task_tree_elapsed=lambda _task_id, _now: 3600,
-        task_own_elapsed=lambda _task_id, _now: 60,
-    )
-
-    class _Widget:
-        def __init__(self) -> None:
-            self.config: dict[str, object] = {}
-            self.configure_calls = 0
-
-        def configure(self, **kwargs: object) -> None:
-            self.configure_calls += 1
-            self.config.update(kwargs)
-
-    app.rows = {
-        task_id: {
-            "elapsed_label": _Widget(),
-            "toggle_btn": _Widget(),
-            "state_label": _Widget(),
-        }
-    }
-
-    now = datetime.now(timezone.utc)
-    TaskTimerApp._refresh_row_live_values(app, task_id, now)
-    first_calls = (
-        app.rows[task_id]["elapsed_label"].configure_calls,
-        app.rows[task_id]["toggle_btn"].configure_calls,
-        app.rows[task_id]["state_label"].configure_calls,
-    )
-    TaskTimerApp._refresh_row_live_values(app, task_id, now)
-    second_calls = (
-        app.rows[task_id]["elapsed_label"].configure_calls,
-        app.rows[task_id]["toggle_btn"].configure_calls,
-        app.rows[task_id]["state_label"].configure_calls,
-    )
-    assert first_calls == second_calls
-
-    task.is_running = True
-    TaskTimerApp._refresh_row_live_values(app, task_id, now)
-    assert app.rows[task_id]["toggle_btn"].config["text"] == "Stop"
-    assert app.rows[task_id]["state_label"].config["text"] == "Running"
-    assert app.rows[task_id]["state_label"].config["bg"] == RUNNING_COLOR
 
 
 def _test_clip_table_text_truncates_and_normalizes() -> None:
@@ -394,6 +326,7 @@ def test_open_mini_mode_minimizes_main_window_when_keep_unchecked() -> None:
     root = _FakeRoot()
     app.root = root
     app.service = object()
+    app.refresh_live_values = lambda: None  # Isolate window visibility; coordinated values have dedicated coverage.
     app.mini_mode_window = None
     app._after_state_change = lambda: None
     app.ui_settings = UISettings(keep_mini_open=False)
@@ -418,6 +351,7 @@ def test_open_mini_mode_keeps_main_visible_when_keep_checked() -> None:
     root = _FakeRoot()
     app.root = root
     app.service = object()
+    app.refresh_live_values = lambda: None  # Isolate window visibility; coordinated values have dedicated coverage.
     app.mini_mode_window = None
     app._after_state_change = lambda: None
     app.ui_settings = UISettings(keep_mini_open=True)
@@ -518,19 +452,19 @@ def test_mini_mode_refresh_live_values_running_uses_elapsed_bar() -> None:
     mini = MiniModeWindow.__new__(MiniModeWindow)
     mini.service = SimpleNamespace(
         state=SimpleNamespace(tasks={task_id: task}),
-        task_elapsed=lambda _task, _now=None: 3900,
     )
     mini.task_name_var = _Var()
     mini.elapsed_var = _Var()
+    mini.time_totals_error_var = _Var()
     mini.toggle_btn = _Widget()
     mini.elapsed_bar_label = _Widget()
     mini.refresh_structure = lambda: setattr(mini, "_display_task_id", task_id)
     mini._display_task_id = None
 
-    MiniModeWindow.refresh_live_values(mini)
+    MiniModeWindow.refresh_live_values(mini, today_seconds_by_task={task_id: 3900})
 
     assert mini.task_name_var.value == "Focus"
-    assert mini.elapsed_var.value == "01:05"
+    assert mini.elapsed_var.value == "Today: 01:05"
     assert mini.toggle_btn.config["text"] == "Stop"
     assert mini.elapsed_bar_label.config["bg"] == RUNNING_COLOR
     assert ["!disabled"] in mini.toggle_btn.states
@@ -561,18 +495,18 @@ def test_mini_mode_refresh_live_values_stopped_uses_red_elapsed_bar() -> None:
     mini = MiniModeWindow.__new__(MiniModeWindow)
     mini.service = SimpleNamespace(
         state=SimpleNamespace(tasks={task_id: task}),
-        task_elapsed=lambda _task, _now=None: 2580,
     )
     mini.task_name_var = _Var()
     mini.elapsed_var = _Var()
+    mini.time_totals_error_var = _Var()
     mini.toggle_btn = _Widget()
     mini.elapsed_bar_label = _Widget()
     mini.refresh_structure = lambda: setattr(mini, "_display_task_id", task_id)
     mini._display_task_id = None
 
-    MiniModeWindow.refresh_live_values(mini)
+    MiniModeWindow.refresh_live_values(mini, today_seconds_by_task={task_id: 2580})
 
-    assert mini.elapsed_var.value == "00:43"
+    assert mini.elapsed_var.value == "Today: 00:43"
     assert mini.toggle_btn.config["text"] == "Start"
     assert mini.elapsed_bar_label.config["bg"] == MINI_STOPPED_COLOR
 
@@ -600,15 +534,16 @@ def test_mini_mode_refresh_live_values_no_task_sets_default_and_disables_toggle(
     mini.service = SimpleNamespace(state=SimpleNamespace(tasks={}))
     mini.task_name_var = _Var()
     mini.elapsed_var = _Var()
+    mini.time_totals_error_var = _Var()
     mini.toggle_btn = _Widget()
     mini.elapsed_bar_label = _Widget()
     mini.refresh_structure = lambda: setattr(mini, "_display_task_id", None)
     mini._display_task_id = None
 
-    MiniModeWindow.refresh_live_values(mini)
+    MiniModeWindow.refresh_live_values(mini, today_seconds_by_task={})
 
     assert mini.task_name_var.value == "No tasks available"
-    assert mini.elapsed_var.value == "00:00"
+    assert mini.elapsed_var.value == "Today: 00:00"
     assert mini.toggle_btn.config["text"] == "Start"
     assert mini.elapsed_bar_label.config["bg"] == MINI_STOPPED_COLOR
     assert ["disabled"] in mini.toggle_btn.states
@@ -997,8 +932,6 @@ def test_add_task_dialog_confirm_uses_selected_tags() -> None:
 
     assert dialog.confirmed is True
     assert dialog.tags == ["alpha", "beta"]
-
-
 
 
 def test_add_task_dialog_confirm_collects_selected_template_ids() -> None:
@@ -1550,13 +1483,13 @@ def test_rename_task_preserves_uuid_history_and_tags(tmp_path) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     task_id = service.create_task("Original", "n1", ["alpha"])
     service.add_manual_interval(task_id, start_local=_local_dt("2026-01-01 10:00"), stop_local=_local_dt("2026-01-01 11:00"), reason="seed")
-    before = service.task_elapsed(service.state.tasks[task_id])
+    before = sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[task_id], None, datetime.now(timezone.utc)))
     service.update_task(task_id, "Renamed", "n2")
 
     assert task_id in service.state.tasks
     assert service.state.tasks[task_id].name == "Renamed"
     assert service.state.tasks[task_id].tags == {"alpha"}
-    assert service.task_elapsed(service.state.tasks[task_id]) >= before
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[task_id], None, datetime.now(timezone.utc))) >= before
 
 def test_selected_export_menu_item_exists_in_build_menus() -> None:
     import inspect
@@ -1784,6 +1717,7 @@ def test_open_mini_mode_keep_checked_lifts_existing_without_duplicate() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
     app.root = _FakeRoot()
     app.service = object()
+    app.refresh_live_values = lambda: None  # Isolate window visibility; coordinated values have dedicated coverage.
     app._after_state_change = lambda: None
     app.ui_settings = UISettings(keep_mini_open=True)
     lifts: list[str] = []
@@ -1865,7 +1799,6 @@ def test_manage_subtask_templates_dialog_opens(monkeypatch) -> None:
     monkeypatch.setattr(app_module, "ManageSubtaskTemplatesDialog", _Dialog)
     TaskTimerApp._manage_subtask_templates(app)
     assert called["opened"] == 1
-
 
 
 def test_treeview_structure_and_iids(tmp_path) -> None:
@@ -1961,7 +1894,6 @@ def test_running_nested_subtask_forces_both_ancestors_open(tmp_path) -> None:
     TaskTimerApp.refresh_structure(app)
     assert app.task_tree.data[root_id]["open"] is True
     assert app.task_tree.data[child_id]["open"] is True
-
 
 
 def test_on_tree_close_keeps_parent_open_when_descendant_running(tmp_path) -> None:
@@ -2096,41 +2028,6 @@ def test_selected_panel_nested_subtask_path_label(tmp_path) -> None:
     assert state["label"]["text"] == "Selected: Root / Child / Nested"
 
 
-def test_refresh_live_values_elapsed_by_depth(tmp_path) -> None:
-    service = TaskTimerService(EventStorage(tmp_path))
-    root_id = service.create_task("Root", "")
-    child_id = service.create_subtask(root_id, "Child", "")
-    nested_id = service.create_subtask(child_id, "Nested", "")
-    app = TaskTimerApp.__new__(TaskTimerApp)
-    app.service = service
-    app.task_tree = SimpleNamespace(
-        exists=lambda _iid: True,
-        set=lambda *_args, **_kwargs: "■ Stopped",
-        item=lambda *_args, **_kwargs: None,
-        parent=lambda iid: {root_id: "", child_id: root_id, nested_id: child_id}[iid],
-    )
-    calls: list[tuple[str, str]] = []
-    app.task_tree.set = lambda iid, col, value=None: (calls.append((iid, col)) if value is None else None) or ("■ Stopped" if value is None else None)  # type: ignore[assignment]
-    app.task_tree.item = lambda *_args, **_kwargs: None
-    app.task_tree.get_children = lambda _item="": ()
-    app.sort_alpha_var = SimpleNamespace(get=lambda: False)
-    app.expanded_parents = set()
-    app.daily_var = SimpleNamespace(set=lambda *_: None)
-    app.weekly_var = SimpleNamespace(set=lambda *_: None)
-    app.mini_mode_window = None
-    app.ui_settings = SimpleNamespace(long_running_task_warning_hours=12)
-    own_calls: list[str] = []
-    tree_calls: list[str] = []
-    original_own = service.task_own_elapsed
-    original_tree = service.task_tree_elapsed
-    service.task_own_elapsed = lambda task_id, now=None: own_calls.append(task_id) or original_own(task_id, now)  # type: ignore[assignment]
-    service.task_tree_elapsed = lambda task_id, now=None: tree_calls.append(task_id) or original_tree(task_id, now)  # type: ignore[assignment]
-    TaskTimerApp.refresh_live_values(app)
-    assert root_id in tree_calls
-    assert child_id in tree_calls
-    assert nested_id in own_calls
-
-
 def test_selected_panel_state_updates_with_task_start_stop(tmp_path) -> None:
     service = TaskTimerService(EventStorage(tmp_path))
     task_id = service.create_task("Task", "")
@@ -2236,7 +2133,8 @@ def test_task_tree_column_defaults_are_compact() -> None:
     assert app.task_tree.columns["notes"]["width"] <= 300
     assert app.task_tree.columns["state"]["width"] >= 120
     assert app.task_tree.columns["state"]["stretch"] is False
-    assert app.task_tree.columns["elapsed"]["stretch"] is False
+    assert app.task_tree.columns["today"]["stretch"] is False
+    assert app.task_tree.columns["week"]["stretch"] is False
 
 
 def test_task_state_display_labels() -> None:

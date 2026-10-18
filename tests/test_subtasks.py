@@ -76,8 +76,6 @@ def test_reset_task_tree_resets_parent_and_subtasks(tmp_path):
     assert service.state.tasks[child].last_reset_utc is not None
 
 
-
-
 def test_reset_depth_one_only_leaves_nested_child_untouched(tmp_path):
     service = TaskTimerService(EventStorage(tmp_path))
     root = service.create_task("Root", "")
@@ -149,21 +147,6 @@ def test_start_subtask_preserves_one_running_invariant(tmp_path):
     assert running == [other]
 
 
-def test_task_tree_elapsed_and_own_elapsed(tmp_path):
-    service = TaskTimerService(EventStorage(tmp_path))
-    parent = service.create_task("P", "")
-    child = service.create_subtask(parent, "C", "")
-    start_parent = datetime(2026, 1, 1, 10, 0, tzinfo=service.local_tz)
-    stop_parent = datetime(2026, 1, 1, 11, 0, tzinfo=service.local_tz)
-    start_child = datetime(2026, 1, 1, 11, 0, tzinfo=service.local_tz)
-    stop_child = datetime(2026, 1, 1, 11, 30, tzinfo=service.local_tz)
-    service.add_manual_interval(parent, start_local=start_parent, stop_local=stop_parent, reason="p")
-    service.add_manual_interval(child, start_local=start_child, stop_local=stop_child, reason="c")
-    assert service.task_own_elapsed(parent) == 3600
-    assert service.task_own_elapsed(child) == 1800
-    assert service.task_tree_elapsed(parent) == 5400
-
-
 def test_move_task_root_to_subtask_and_preserve_data(tmp_path):
     service = TaskTimerService(EventStorage(tmp_path))
     parent = service.create_task("Parent", "parent")
@@ -178,7 +161,8 @@ def test_move_task_root_to_subtask_and_preserve_data(tmp_path):
     assert moved.task_id == task
     assert moved.notes == "notes"
     assert "a" in moved.tags
-    assert service.task_own_elapsed(task) == 3600
+    assert sum((record.stop_utc - record.start_utc).total_seconds()
+               for record in moved.intervals.values() if not record.deleted) == 3600
 
 
 def test_move_subtask_promote_and_reparent(tmp_path):
@@ -289,21 +273,6 @@ def test_delete_and_reset_tree_with_nested_subtasks(tmp_path):
     assert service.state.tasks[root2].last_reset_utc is not None
     assert service.state.tasks[sub2].last_reset_utc is not None
     assert service.state.tasks[nested2].last_reset_utc is not None
-
-
-def test_task_tree_elapsed_includes_nested_descendants(tmp_path):
-    service = TaskTimerService(EventStorage(tmp_path))
-    root = service.create_task("Root", "")
-    sub = service.create_subtask(root, "Sub", "")
-    nested = service.create_subtask(sub, "Nested", "")
-
-    service.add_manual_interval(root, datetime(2026, 1, 1, 9, 0, tzinfo=service.local_tz), datetime(2026, 1, 1, 10, 0, tzinfo=service.local_tz), "r")
-    service.add_manual_interval(sub, datetime(2026, 1, 1, 10, 0, tzinfo=service.local_tz), datetime(2026, 1, 1, 10, 30, tzinfo=service.local_tz), "s")
-    service.add_manual_interval(nested, datetime(2026, 1, 1, 10, 30, tzinfo=service.local_tz), datetime(2026, 1, 1, 10, 45, tzinfo=service.local_tz), "n")
-
-    assert service.task_tree_elapsed(root) == 6300
-    assert service.task_tree_elapsed(sub) == 2700
-    assert service.task_tree_elapsed(nested) == 900
 
 
 def test_start_nested_subtask_stops_running_task(tmp_path):

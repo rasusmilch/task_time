@@ -186,6 +186,7 @@ def test_real_tk_main_control_browser_failures_refresh_and_session_reopening(
         browser = wrapper.browser
         assert wrapper.window.master is tk_root and browser.task_id == a
         assert browser._rows is None and browser.info_var.get() == 'Not loaded'
+        tk_root.update_idletasks()  # Settle layout before measuring inline visibility.
         assert browser.error_label.winfo_ismapped() and not owner.history_launch_error_label.winfo_ismapped()
         errors[0] = False
         pointer.click(browser.refresh_button)
@@ -217,6 +218,7 @@ def test_real_tk_main_control_browser_failures_refresh_and_session_reopening(
         errors[0] = True
         pointer.click(browser.refresh_button)
         assert browser._rows == old and browser._cutoff_utc == cutoff
+        tk_root.update_idletasks()
         assert browser.error_label.winfo_ismapped()
         # Actual Date-header mouse input; sorting neither reloads nor advances cutoff.
         tree = browser.history.tree
@@ -434,6 +436,7 @@ def test_real_tk_unsupported_work_is_browser_error_without_legacy_fallback(
         browser = wrapper.browser
         assert browser._rows is None and browser.info_var.get() == 'Not loaded'
         assert 'synthetic' in browser.error_var.get().lower()
+        tk_root.update_idletasks()  # Settle layout before measuring inline visibility.
         assert browser.error_label.winfo_ismapped() and not owner.history_launch_error_label.winfo_ismapped()
         assert owner._history_window is wrapper
         pointer.click(browser.refresh_button)

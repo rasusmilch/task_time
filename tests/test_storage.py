@@ -128,9 +128,9 @@ def test_reset_excludes_older_intervals(tmp_path: Path) -> None:
         datetime(2026, 1, 1, 11, 0).astimezone(),
         "missed",
     )
-    before = service.task_elapsed(service.state.tasks[task_id])
+    before = sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[task_id], None, datetime.now(timezone.utc)))
     service.reset_task(task_id)
-    after = service.task_elapsed(service.state.tasks[task_id])
+    after = sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[task_id], None, datetime.now(timezone.utc)))
     assert before >= 3600
     assert after == 0
 

@@ -321,7 +321,7 @@ def test_reset_after_export_still_resets_and_keeps_checkpoint_behavior(tmp_path:
     monkeypatch.setattr("task_timer.app.utc_now", lambda: parse_utc_z("2026-01-02T00:00:00Z"))
 
     service.export_report(tmp_path / "out.txt", reset_after=True)
-    assert service.task_elapsed(service.state.tasks[task_id], parse_utc_z("2026-01-02T00:00:00Z")) == 0
+    assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[task_id], None, parse_utc_z("2026-01-02T00:00:00Z"))) == 0
     checkpoints = [e for e in service.events if e["task_id"] == "__app__" and e["event_type"] == "export_checkpoint"]
     assert checkpoints[-1]["payload"]["reset_after"] is True
 

@@ -720,7 +720,7 @@ class TaskTimerService:
         project_ids: tuple[str, ...] = (), include_unassigned: bool = False,
         include_deleted: bool = False,
     ) -> dict[str, Any]:
-        """Read-only mixed historical accounting; not used by production readers."""
+        """Read-only mixed calendar Actual, including production main/mini displays."""
         return calculate_date_window(
             self.state, self.local_tz, start_date, end_date, cutoff_utc=cutoff_utc,
             all_tasks=all_tasks, task_ids=task_ids, project_ids=project_ids,
@@ -1622,49 +1622,6 @@ class TaskTimerService:
         for task_id in affected:
             self.delete_task(task_id)
         return affected
-
-    def compute_totals(self, now_utc: datetime | None = None) -> tuple[float, float, list[dict[str, Any]]]:
-        check_now = now_utc or utc_now()
-        local_now = check_now.astimezone(self.local_tz)
-        day_ref = local_now
-        overall_today = 0.0
-        overall_week = 0.0
-        rows: list[dict[str, Any]] = []
-        for task in self.state.tasks.values():
-            if task.is_deleted:
-                continue
-            intervals = self._effective_intervals(task, check_now)
-            today_seconds = sum(interval_seconds_in_local_day(i.start_utc, i.stop_utc, self.local_tz, day_ref) for i in intervals)
-            week_seconds = sum(interval_seconds_in_local_week(i.start_utc, i.stop_utc, self.local_tz, local_now) for i in intervals)
-            overall_today += today_seconds
-            overall_week += week_seconds
-            rows.append(
-                {
-                    "task_id": task.task_id,
-                    "name": task.name,
-                    "notes": task.notes,
-                    "state": "running" if task.is_running else "stopped",
-                    "today_seconds": today_seconds,
-                    "week_seconds": week_seconds,
-                }
-            )
-        return overall_today, overall_week, rows
-
-    def task_elapsed(self, task: TaskState, now_utc: datetime | None = None) -> float:
-        check_now = now_utc or utc_now()
-        return sum((i.stop_utc - i.start_utc).total_seconds() for i in self._effective_intervals(task, check_now))
-
-    def task_own_elapsed(self, task_id: str, now_utc: datetime | None = None) -> float:
-        task = self.state.tasks.get(task_id)
-        if not task or task.is_deleted:
-            return 0.0
-        return self.task_elapsed(task, now_utc)
-
-    def task_tree_elapsed(self, parent_task_id: str, now_utc: datetime | None = None) -> float:
-        total = self.task_own_elapsed(parent_task_id, now_utc)
-        for child in self.child_tasks(parent_task_id, include_deleted=False):
-            total += self.task_tree_elapsed(child.task_id, now_utc)
-        return total
 
     def build_history_lines(self) -> list[str]:
         output: list[str] = []
@@ -2894,6 +2851,7 @@ class TaskTimerApp:
         self.selected_task_id: str | None = None
         self.daily_var = StringVar()
         self.weekly_var = StringVar()
+        self.time_totals_error_var = StringVar()
         self.ui_settings_store = UISettingsStore(self.service.storage.data_dir)
         self.ui_settings = self.ui_settings_store.load()
         self.sort_alpha_var = tk.BooleanVar(value=self.ui_settings.sort_alphabetically)
@@ -3035,10 +2993,13 @@ class TaskTimerApp:
             self.toolbar_frame, text="Sort A-Z", variable=self.sort_alpha_var, command=self._on_sort_toggle
         )
         self.sort_alpha_checkbox.pack(side="left", padx=(10, 4))
-        self.daily_total_label = ttk.Label(self.toolbar_frame, textvariable=self.daily_var)
-        self.daily_total_label.pack(side="left", padx=(12, 4))
-        self.weekly_total_label = ttk.Label(self.toolbar_frame, textvariable=self.weekly_var)
+        totals_frame = ttk.Frame(self.root)
+        totals_frame.pack(fill="x", padx=8)
+        self.daily_total_label = ttk.Label(totals_frame, textvariable=self.daily_var)
+        self.daily_total_label.pack(side="left", padx=(0, 12))
+        self.weekly_total_label = ttk.Label(totals_frame, textvariable=self.weekly_var)
         self.weekly_total_label.pack(side="left", padx=4)
+        ttk.Label(totals_frame, textvariable=self.time_totals_error_var).pack(side="left", padx=8)
 
         self.table_frame = ttk.Frame(self.root)
         self.table_frame.pack(fill="both", expand=True, padx=8, pady=8)
@@ -3189,6 +3150,7 @@ class TaskTimerApp:
             self.mini_mode_window.window.lift()
             if not should_keep_open:
                 self.root.iconify()
+            self.refresh_live_values()
             return
         self.mini_mode_window = MiniModeWindow(
             self.root,
@@ -3198,20 +3160,23 @@ class TaskTimerApp:
             keep_open_provider=lambda: self.ui_settings.keep_mini_open,
             on_destroy=self._on_mini_mode_closed,
         )
+        self.refresh_live_values()
         if not should_keep_open:
             self.root.iconify()
 
     def _build_task_tree(self) -> None:
         # Keep the task tree column first because ttk.Treeview uses #0 for hierarchy.
-        self.task_tree = ttk.Treeview(self.table_frame, columns=("notes", "state", "elapsed"), show="tree headings", selectmode="browse")
+        self.task_tree = ttk.Treeview(self.table_frame, columns=("notes", "state", "today", "week"), show="tree headings", selectmode="browse")
         self.task_tree.heading("#0", text="Task")
         self.task_tree.heading("notes", text="Notes")
         self.task_tree.heading("state", text="State")
-        self.task_tree.heading("elapsed", text="Elapsed")
-        self.task_tree.column("#0", width=240, minwidth=170, stretch=False, anchor="w")
-        self.task_tree.column("notes", width=280, minwidth=200, stretch=True, anchor="w")
+        self.task_tree.heading("today", text="Today")
+        self.task_tree.heading("week", text="This week")
+        self.task_tree.column("#0", width=220, minwidth=170, stretch=False, anchor="w")
+        self.task_tree.column("notes", width=240, minwidth=160, stretch=True, anchor="w")
         self.task_tree.column("state", width=130, minwidth=120, stretch=False, anchor="center")
-        self.task_tree.column("elapsed", width=80, minwidth=75, stretch=False, anchor="e")
+        self.task_tree.column("today", width=85, minwidth=75, stretch=False, anchor="e")
+        self.task_tree.column("week", width=90, minwidth=85, stretch=False, anchor="e")
         y_scroll = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.task_tree.yview)
         self.task_tree.configure(yscrollcommand=y_scroll.set)
         self.task_tree.grid(row=0, column=0, sticky="nsew")
@@ -3275,14 +3240,14 @@ class TaskTimerApp:
             children = self._sorted_tasks(children_map.get(root.task_id, []))
             if self._has_running_descendant(root.task_id, children_map):
                 self.expanded_parents.add(root.task_id)
-            self.task_tree.insert("", "end", iid=root.task_id, text=root.name, values=(root.notes, "■ Stopped", "00:00"), open=root.task_id in self.expanded_parents, tags=self._tree_tags(root, is_subtask=False, has_children=bool(children)))
+            self.task_tree.insert("", "end", iid=root.task_id, text=root.name, values=(root.notes, "■ Stopped", "—", "—"), open=root.task_id in self.expanded_parents, tags=self._tree_tags(root, is_subtask=False, has_children=bool(children)))
             for child in children:
                 grandkids = self._sorted_tasks(children_map.get(child.task_id, []))
                 if self._has_running_descendant(child.task_id, children_map):
                     self.expanded_parents.add(child.task_id)
-                self.task_tree.insert(root.task_id, "end", iid=child.task_id, text=child.name, values=(child.notes, "■ Stopped", "00:00"), open=child.task_id in self.expanded_parents, tags=self._tree_tags(child, is_subtask=True, has_children=bool(grandkids)))
+                self.task_tree.insert(root.task_id, "end", iid=child.task_id, text=child.name, values=(child.notes, "■ Stopped", "—", "—"), open=child.task_id in self.expanded_parents, tags=self._tree_tags(child, is_subtask=True, has_children=bool(grandkids)))
                 for nested in grandkids:
-                    self.task_tree.insert(child.task_id, "end", iid=nested.task_id, text=nested.name, values=(nested.notes, "■ Stopped", "00:00"), tags=self._tree_tags(nested, is_subtask=True, has_children=False))
+                    self.task_tree.insert(child.task_id, "end", iid=nested.task_id, text=nested.name, values=(nested.notes, "■ Stopped", "—", "—"), tags=self._tree_tags(nested, is_subtask=True, has_children=False))
             if self._has_running_descendant(root.task_id, children_map):
                 self.task_tree.item(root.task_id, open=True)
         if selected and self.task_tree.exists(selected):
@@ -3323,14 +3288,52 @@ class TaskTimerApp:
         self.refresh_structure()
         self.refresh_live_values()
 
+    @staticmethod
+    def _format_actual_seconds(seconds: float) -> str:
+        if (isinstance(seconds, bool) or not isinstance(seconds, (int, float))
+                or not math.isfinite(seconds) or seconds < 0):
+            raise ValueError("Actual totals must be finite nonnegative seconds")
+        return format_duration_hm(seconds)
+
     def refresh_live_values(self) -> None:
-        now_utc = utc_now()
+        cutoff = None
+        failure = None
+        today_seconds = None
+        try:
+            observation = utc_now()
+            if (not isinstance(observation, datetime) or observation.tzinfo is None
+                    or observation.utcoffset() is None):
+                raise ValueError("Time totals require an aware observation")
+            cutoff = observation.astimezone(timezone.utc)
+            today = cutoff.astimezone(self.service.local_tz).date()
+            week_start = today - timedelta(days=(today.weekday() + 1) % 7)
+            report = self.service.calculate_date_window(
+                week_start, week_start + timedelta(days=6), cutoff_utc=cutoff,
+                all_tasks=True, include_deleted=True,
+            )
+            # Prepare every number before publishing any, including mini's raw input.
+            today_seconds = {}
+            cells = {}
+            for task_id in self.service.state.tasks:
+                row = report["tasks"][task_id]
+                seconds = row["daily_seconds"].get(today, 0)
+                cells[task_id] = (self._format_actual_seconds(seconds),
+                                  self._format_actual_seconds(row["window_seconds"]))
+                today_seconds[task_id] = seconds
+            daily_text = "Today: " + self._format_actual_seconds(report["application"]["daily_seconds"].get(today, 0))
+            weekly_text = "This week: " + self._format_actual_seconds(report["application"]["window_seconds"])
+        except Exception as exc:  # Report the original failure after marking every surface.
+            failure = exc
+            today_seconds = None
+            cells = {task_id: ("—", "—") for task_id in self.service.state.tasks}
+            daily_text, weekly_text = "Today: —", "This week: —"
+
         for task_id, task in self.service.state.tasks.items():
             if task.is_deleted or not self.task_tree.exists(task_id):
                 continue
-            elapsed = self.service.task_own_elapsed(task_id, now_utc) if not self.service.child_tasks(task_id, include_deleted=False) else self.service.task_tree_elapsed(task_id, now_utc)
-            state_text = self._task_state_display(task, now_utc)
-            self.task_tree.set(task_id, "elapsed", format_duration_hm(elapsed))
+            state_text = self._task_state_display(task, cutoff)
+            self.task_tree.set(task_id, "today", cells[task_id][0])
+            self.task_tree.set(task_id, "week", cells[task_id][1])
             if self.task_tree.set(task_id, "state") != state_text:
                 self.task_tree.set(task_id, "state", state_text)
             parent = self.task_tree.parent(task_id)
@@ -3343,18 +3346,20 @@ class TaskTimerApp:
             if self._has_running_descendant(task_id, children_map):
                 self.expanded_parents.add(task_id)
                 self.task_tree.item(task_id, open=True)
-        daily, weekly, _ = self.service.compute_totals(now_utc)
-        self.daily_var.set(f"Daily Total: {format_duration_hm(daily)}")
-        self.weekly_var.set(f"Weekly Total: {format_duration_hm(weekly)}")
+        self.daily_var.set(daily_text)
+        self.weekly_var.set(weekly_text)
+        self.time_totals_error_var.set("Time totals unavailable." if failure else "")
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
-            self.mini_mode_window.refresh_live_values()
+            self.mini_mode_window.refresh_live_values(today_seconds_by_task=today_seconds)
+        if failure is not None:
+            self.root.report_callback_exception(type(failure), failure, failure.__traceback__)
 
-    def _task_state_display(self, task: TaskState, now_utc: datetime) -> str:
+    def _task_state_display(self, task: TaskState, now_utc: datetime | None) -> str:
         if not task.is_running:
             return "■ Stopped"
         threshold = timedelta(hours=getattr(self.ui_settings, "long_running_task_warning_hours", DEFAULT_LONG_RUNNING_TASK_WARNING_HOURS))
         start_utc = getattr(task, "currently_open_interval_start_utc", None)
-        if start_utc is not None and (now_utc - start_utc) >= threshold:
+        if now_utc is not None and start_utc is not None and (now_utc - start_utc) >= threshold:
             return "⚠ Long-running"
         return "▶ Running"
 
@@ -3703,7 +3708,7 @@ class TaskTimerApp:
         elif self.reminder_banner.winfo_ismapped():
             self.reminder_banner.pack_forget()
         if self.mini_mode_window and self.mini_mode_window.window.winfo_exists():
-            self.mini_mode_window.refresh_live_values()
+            self.mini_mode_window.refresh_reminder()
 
     def _maybe_show_startup_reminder_popup(self) -> None:
         if not self.ui_settings.month_end_reminder_enabled:
@@ -3758,7 +3763,14 @@ class TaskTimerApp:
         self.root.destroy()
 
     def _tick(self) -> None:
-        self.refresh_live_values()
-        now_local = datetime.now().astimezone(self.service.local_tz)
-        next_delay_ms = max((60 - now_local.second) * 1000 - (now_local.microsecond // 1000), 1000)
-        self._tick_job = self.root.after(next_delay_ms, self._tick)
+        try:
+            self.refresh_live_values()
+        finally:
+            try:
+                alive = self.root.winfo_exists()
+            except tk.TclError:  # The Tcl application may have been destroyed.
+                alive = False
+            if alive:
+                now_local = datetime.now()
+                next_delay_ms = max((60 - now_local.second) * 1000 - (now_local.microsecond // 1000), 1000)
+                self._tick_job = self.root.after(next_delay_ms, self._tick)
