@@ -19,9 +19,12 @@ receipts or commits. No release or production activation is implied below.
   interval segments and whole dated entries, retaining underlying identity,
   precise seconds, explicit cutoff/date filtering and deterministic ordering
   without journal or state writes. Record the approved replacement history
-  direction: current-week/custom/All periods, persisted user-wide date sorting,
+  direction: current-week/custom/All periods, session-only date sorting remembered
+  across task/dataset history openings with newest-first application startup,
   full-interval segment editing/deletion, effective history with audit access,
-  and removal of replacement Reset actions/counters. Production UI/preference/editor,
+  and removal of replacement Reset actions/counters. Stage an application-owned
+  in-memory direction handoff to sequential browsers without production routing
+  or persistence; single-history-window enforcement remains pending. Production UI/editor,
   audit and Reset-removal integrations remain pending. Stage closed
   genuine-interval correction preparation/registration using existing replacement
   events: no-op saves write nothing, unchanged endpoints retain precision, comments

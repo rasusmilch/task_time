@@ -1,4 +1,4 @@
-"""Staged single-task browsing; production routing and global preferences are separate."""
+"""Staged single-task browsing with an optional application-session sort handoff."""
 
 from __future__ import annotations
 
@@ -25,13 +25,16 @@ def _parse_date(text):
 class WorkHistoryBrowserFrame(ttk.Frame):
     """Explicit loads and UI-local drafts/results; no settings or work mutation."""
 
-    def __init__(self, parent, service, task_id, *, now_utc, week_start=6, newest_first=True):
+    def __init__(self, parent, service, task_id, *, now_utc, week_start=6, newest_first=True,
+                 on_direction_changed=None):
         if type(week_start) is not int or not 0 <= week_start <= 6:
             raise ValueError("week_start must be an integer from 0 through 6")
         if type(newest_first) is not bool:
             raise ValueError("newest_first must be a boolean")
         if not callable(now_utc):
             raise ValueError("now_utc must be an explicit callable")
+        if on_direction_changed is not None and not callable(on_direction_changed):
+            raise ValueError("on_direction_changed must be callable or None")
         super().__init__(parent)
         self.service = service
         self.task_id = task_id
@@ -39,6 +42,7 @@ class WorkHistoryBrowserFrame(ttk.Frame):
         self.week_start = week_start
         self._now_utc = now_utc
         self._newest_first = newest_first
+        self._on_direction_changed = on_direction_changed
         self._applied = None
         self._cutoff_utc = None
         self._rows = None
@@ -169,9 +173,15 @@ class WorkHistoryBrowserFrame(ttk.Frame):
             self._rows = candidate
             self._newest_first = direction
             self._clear_error()
-            return True
         except Exception as exc:
             return self._error("sort history", exc)
+        # Rendering has committed. A handoff failure cannot undo that success.
+        if self._on_direction_changed is not None:
+            try:
+                self._on_direction_changed(direction)
+            except Exception as exc:
+                self._error("remember the session direction", exc)
+        return True
 
     def _open_picker(self, variable):
         popup = None

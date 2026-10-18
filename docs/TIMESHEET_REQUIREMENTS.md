@@ -110,9 +110,13 @@ Earlier revisions and deletions remain available through audit/details. Editing
 preserves entry type; a dated amount must not acquire fabricated endpoints.
 
 The default UI period is the current week, with custom inclusive dates and All
-history available. The date-column header switches oldest/newest date order;
-one global preference persists across restarts and applies across tasks and
-datasets for the same computer account, initially newest first. Within each date,
+history available. The date-column header switches oldest/newest date order.
+Every application startup begins newest-first. A successful direction change is
+remembered across subsequent history openings for any task or dataset during that
+application session; closing and reopening the application resets newest-first.
+No preference file, settings field or cross-process coordination is required.
+At most one history window may be open per application; the behavior of an
+attempted second opening is not selected here. Within each date,
 timed portions stay chronological and date-only entries follow them without
 invented clock positions.
 
@@ -169,9 +173,10 @@ A standalone [work-history table](../DESIGN_NOTES.md#mixed-work-history-table-st
 now renders supplied rows and related-portion feedback without service access.
 The standalone [history browser](../DESIGN_NOTES.md#single-task-history-browser-staged)
 now composes that reader/table with periods, typed/calendar drafts, explicit
-refresh and in-memory sorting. Its initial direction argument and local direction
-are integration seams, not global preference persistence.
-Production record-editor/history integration, global preference persistence,
+refresh and in-memory sorting. A staged application-owned boolean and unrouted
+composition helper now hand off successfully rendered direction across sequential
+browser openings, without persistence or production activation.
+Production record-editor/history integration, single-history-window enforcement,
 audit presentation,
 segment editing/deletion handlers, dated writer activation and production Reset
 removal remain subsequent work.
@@ -444,7 +449,7 @@ Source describes what executes, not an alternative product contract. See
 | Project/task foundation | Separate UUID-based service records, optional current project membership and independent task-owned time. |
 | Date-only duration foundation | Separate endpoint-free records with append-only creation/correction/deletion replay and snapshots; new production duration writers are inactive. |
 | Mixed accounting | Read-only explicit local-date windows, real intervals plus effective dated records, derived project/Unassigned/application totals, and fixed Sunday-start weeks. |
-| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting. A standalone browser adds Current week/Custom/All, Apply-only calendar/typed dates, explicit Refresh and local date sorting. Global preference persistence and production integration remain pending; production timeline, editing and reset controls are unchanged. |
+| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting. A standalone browser adds Current week/Custom/All, Apply-only calendar/typed dates, explicit Refresh and local date sorting, with staged application-session direction handoff. Production integration and single-window enforcement remain pending; production timeline, editing and reset controls are unchanged. |
 | Timed input validation | Pure minute-clock candidate/resolution APIs with separate endpoint dates, explicit repeated-time occurrences, gap rejection, UTC ordering and edit-aware restoration of unchanged precision. Consumed by the form and standalone editor; production callers remain unchanged. |
 | Timed input form | Standalone minute-only endpoint fields, canonical dates, timezone/occurrence choices and inline errors using the accepted validators. No stored-record loading, saving or production connection; legacy TimelineEntryDialog is unchanged. |
 | Timed corrections | Separate staged preparation/registration of one effective closed genuine interval replacement, preserving unchanged precision, optional comments and retry identities. No-op saves write nothing; stale priors reject. Consumed by the standalone dialog; production editing remains inactive. |

@@ -102,8 +102,12 @@ reorders existing results without loading newer records or advancing the cutoff;
 direction remains in memory. The caller supplies a clock and week start (initially
 Sunday); this is not the configurable-week setting or production integration.
 The [Selected replacement history](docs/TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history)
-requires global persisted direction across tasks/datasets for the same computer
-account, segment editing and audit interactions. Those capabilities and removal
+starts each application session newest-first and remembers successful direction
+changes across subsequent task/dataset history openings only in that session.
+The staged application-owned handoff is available through an unrouted factory;
+it adds no settings or preference files. The single-history-window target still
+requires production ownership/enforcement. Production history integration,
+segment editing, audit interactions and removal
 of production Reset controls remain pending. Existing production timeline and
 counters are unchanged.
 

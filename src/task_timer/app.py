@@ -2901,6 +2901,7 @@ class TaskTimerApp:
     def __init__(self, root: Tk, service: TaskTimerService) -> None:
         self.root = root
         self.service = service
+        self._history_newest_first = True
         self.root.title("Chronicle")
         self.root.resizable(True, True)
         self.root.minsize(800, 500)
@@ -2927,6 +2928,18 @@ class TaskTimerApp:
         self.refresh_live_values()
         self.root.after_idle(self._open_mini_mode_if_persistent_enabled)
         self._tick()
+
+    def _remember_history_date_direction(self, newest_first: bool) -> None:
+        self._history_newest_first = newest_first
+
+    def _make_history_browser(self, parent, service, task_id, *, now_utc, week_start=6):
+        from .work_history_browser import WorkHistoryBrowserFrame
+
+        return WorkHistoryBrowserFrame(
+            parent, service, task_id, now_utc=now_utc, week_start=week_start,
+            newest_first=self._history_newest_first,
+            on_direction_changed=self._remember_history_date_direction,
+        )
 
     def _build_ui(self) -> None:
         self._init_row_fonts()

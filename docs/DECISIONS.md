@@ -79,8 +79,10 @@ The rejected representation remains a legacy source artifact, described below.
 
 ### Mixed history and removal of replacement reset counters
 
-**Status:** current. **Provenance:** explicit user-approved replacement behavior
-supplied with the mixed work-history reader instructions; current owners:
+**Status:** current except the persistence clause superseded by the later
+application-session direction decision below. **Provenance:** explicit
+user-approved replacement behavior supplied with the mixed work-history reader
+instructions; current owners:
 [Actual records](TIMESHEET_REQUIREMENTS.md#selected--actual-time-records) and
 [mixed history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
 
@@ -89,10 +91,11 @@ independent of resets. Timed work crossing midnight appears as linked daily
 segments of its underlying interval; segment editing/deletion acts on that full
 interval, with affected-date deletion warnings. Editing preserves entry type;
 earlier versions/deletions remain accessible through audit/details. Current week
-is the UI default, with custom dates and All history. Date direction is a single
-user-wide persisted preference, initially newest first, switched through the
-date-column header. Exact link-marker styling was left undecided at that approval;
-the later standalone-table approval below resolves it.
+is the UI default, with custom dates and All history. At that approval, date
+direction was a single user-wide persisted preference, initially newest first,
+switched through the date-column header; the persistence clause is superseded
+below. Exact link-marker styling was left undecided at that approval; the later
+standalone-table approval below resolves it.
 
 The explicit direction removes replacement Reset actions and resettable counters.
 It narrows the earlier reset-independence wording so it cannot imply a requirement
@@ -159,8 +162,10 @@ rounding and no new persistent identity or state.
 
 ### Standalone history browsing and global direction scope
 
-**Status:** current. **Provenance:** explicit user approval supplied with the
-single-task history browser instructions after the browser planning review;
+**Status:** current for browser interactions; the global/persistence clause is
+superseded by the application-session decision below. **Provenance:** explicit
+user approval supplied with the single-task history browser instructions after
+the browser planning review;
 current owner: [mixed history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
 
 The later approval specifies loading on opening, Apply, Current week/All switches
@@ -172,13 +177,38 @@ Failures retain drafts and truthful last-successful information, preserving the
 table's preparation-versus-widget failure boundary. Successful replacement or
 sorting clears selection. No polling or automatic data refresh is selected here.
 
-The earlier user-wide direction requirement is clarified as global across tasks
-and datasets for the same computer account, initially newest first and persistent
-across restarts. The standalone browser stages only an initial argument and local
-direction; persistence is not implemented, and storage ownership/cross-window
-coordination are not selected through this unit. No production callers are
-activated and no legacy timeline is retired. This later clarification does not invent earlier
-approval of account-global storage or change the separate configurable-week gate.
+At this approval, the earlier user-wide direction requirement was clarified as
+global across tasks and datasets for the same computer account, initially newest first and persistent
+across restarts. The browser then staged only an initial argument and local
+direction; storage ownership/cross-window coordination were not selected by that
+approval. The later application-session decision below discards this persistence
+requirement and the account-global persistence proposal. No production callers
+were activated and no legacy timeline was retired. This clarification established
+no earlier approval of account-global storage or change to the configurable-week
+gate.
+
+### Application-session history direction and single-window ownership
+
+**Status:** current. **Provenance:** latest explicit user decisions supplied with
+the session-only replanning and application-owned handoff instructions; current
+owner: [mixed history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
+
+Each new application owner starts newest-first. Successfully rendered direction
+changes are remembered across subsequent history openings for different tasks
+and datasets in that running session. Browser closure does not reset the choice;
+application restart does. This supersedes the earlier history-direction
+cross-restart/account-global persistence clauses above. The discarded persistence
+proposal supplies no storage, failure, recovery or lifecycle requirements. No
+preference file, account-location resolver, settings field or cross-process
+coordination is needed.
+
+At most one history window may be open per application. Its production ownership
+and enforcement are separate from the staged in-memory handoff; behavior for an
+attempted second opening is not selected here. The approved unrouted factory and
+post-success callback do not activate history routing or enforce that window
+rule. Notification failure preserves the completed sort and reports inability
+to remember direction without rollback or automatic retry. Other approved
+browser interactions, Phase 3 dependencies and Open matters are unchanged.
 
 ### Local dates and configurable reporting weeks
 

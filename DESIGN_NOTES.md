@@ -320,11 +320,12 @@ intersects the requested window; All history includes them. An invalid declared
 date fails explicitly. Out-of-scope/deleted synthetic records are not converted.
 
 The [Selected history contract](docs/TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history)
-also covers current-week/custom/All UI periods, persistent user-wide date sorting,
-linked segment interaction, type-preserving editing and audit/details. Those UI,
-preference, edit/delete and audit capabilities, production dated writers and
-production Reset removal are not implemented by this reader. POL-R remains a
-separate task/day service. No schema, identity or persistent state is added.
+also covers current-week/custom/All UI periods, application-session date direction,
+one history window per application, linked segment interaction, type-preserving
+editing and audit/details. Those UI/session, edit/delete and audit capabilities,
+production dated writers and production Reset removal are not implemented by
+this reader. POL-R remains a separate task/day service. No schema, identity or
+persistent state is added.
 
 ## Mixed work-history table (staged)
 
@@ -363,7 +364,7 @@ Empty input is a valid empty display. No rows are silently omitted or legacy
 synthetic work converted.
 
 This render-only component delegates period/sort controls to the staged browser
-below. Neither component schedules automatic loading. Global preferences,
+below. Neither component schedules automatic loading. Production window ownership,
 correction actions, creation/deletion, audit, production integration and Reset
 removal remain pending. The legacy timeline and its formatters are unchanged;
 no new persistent state or domain projection exists.
@@ -371,10 +372,11 @@ no new persistent state or domain projection exists.
 ## Single-task history browser (staged)
 
 `work_history_browser.WorkHistoryBrowserFrame(parent, service, task_id, *,
-now_utc, week_start=6, newest_first=True)` composes the existing reader/table for
-one fixed task. Configuration requires an explicit callable clock, an actual
-integer weekday 0–6 (Monday=0) and actual boolean direction; invalid configuration
-rejects before loading. It uses the service timezone. Construction attempts one
+now_utc, week_start=6, newest_first=True, on_direction_changed=None)` composes the
+existing reader/table for one fixed task. Configuration requires an explicit
+callable clock, an actual integer weekday 0–6 (Monday=0), actual boolean direction and an optional callable
+direction handoff; invalid configuration rejects before widget construction or
+loading. It uses the service timezone. Construction attempts one
 Current week load. `refresh()` reports True on successful loading/rendering and
 False after inline operation failure; routine UI callback failures do not escape.
 
@@ -410,14 +412,29 @@ successful rows by work_date only, preserving within-day order and every field;
 no reader/clock call, draft application or cutoff change occurs. The exposed
 `newest_first` property changes only after successful rendering. Both successful
 loads and sorts use the table's selection clearing and related-portion behavior.
+Only a successful Date-heading sort notifies `on_direction_changed`, once, after
+rendering and committing its rows/direction. Construction, loads, refreshes,
+picker operations, failed sorts and destruction do not notify. Notification
+failure reports inability to remember the session direction inline, preserving
+the completed sort and its True result; it neither rolls back nor retries.
 
 Results, drafts and last-successful request/cutoff are temporary UI state, not an
-authoritative projection or cache installed in the application. Global direction
-persistence across tasks/datasets for the same computer account, cross-window
-coordination, production routing, editing/audit, writer activation and Reset
-removal remain unimplemented. The browser accesses no settings, writes no work,
-and schedules no refresh, retries or asynchronous loading. Existing services,
-legacy dialogs, accounting and settings ownership are unchanged.
+authoritative projection or cache installed in the application.
+`TaskTimerApp` initializes `_history_newest_first = True` before building controls,
+independently of dataset settings. Its unrouted
+`_make_history_browser(parent, service, task_id, *, now_utc, week_start=6)` imports
+the browser locally and supplies that owner direction and the bound
+`_remember_history_date_direction(newest_first)` assignment callback. It neither
+opens a window nor changes the application's service. Sequential browsers for
+different tasks/datasets share only that in-memory direction; closing a browser
+does not reset it, and a new application owner starts newest-first. No preference
+file, resolver, settings field or cross-process coordination is used or required.
+The Selected single-history-window rule still needs production ownership and
+enforcement; the standalone Frame/factory does not enforce it or select behavior
+for an attempted second opening. Production routing, editing/audit, writer
+activation and Reset removal remain unimplemented. The browser accesses no
+settings, writes no work, and schedules no refresh, retries or asynchronous loading.
+Existing services, legacy dialogs, accounting and settings ownership are unchanged.
 
 ## Replacement timed-input validation (staged)
 
