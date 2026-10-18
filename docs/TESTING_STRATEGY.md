@@ -86,6 +86,7 @@ their assertions before selecting a run.
 | Decimal rendering | [test_decimal_timesheet_renderer.py](../tests/test_decimal_timesheet_renderer.py): ROUND_HALF_UP conversion/boundaries, invalid numbers, task/day rounding and displayed-rollup conservation, selection/identity, partial/multiple weeks, calendar edges, Unicode wrapping, purity and exact/legacy byte compatibility. This is a pure staged renderer, not export-evidence persistence. |
 | Frozen timesheet preview | [test_timesheet_preview.py](../tests/test_timesheet_preview.py): actual frame/callbacks with widget doubles and real isolated snapshot preparation, one explicit cutoff/calculation, This week/Last week boundaries and inclusive Custom, independent UUID selection/duplicate names/deleted work, mixed/fractional/decimal cells, exact frozen text/digest, detached getter and later-work/correction/rename/group changes. Covers immediate draft invalidation/backtracking, empty All versus empty Selected, invalid dates/clocks, preparation/synthetic/render failures, original diagnostics and explicit recovery, picker seeds/cancel/disposal and prohibited durable operations with dataset/state comparison. Separate real-Tk mouse/widget cases exercise checkboxes, typed drafts, Calendar selection/cancellation, read-only report, readiness and failure recovery. Readiness transition/observer-failure and locking evidence is extended by the Save suite; the preview itself has no registration/file effects. No production routing, native Windows or dated-writer qualification. |
 | Standalone frozen Save/retry | [test_timesheet_save.py](../tests/test_timesheet_save.py): real isolated preparation/registration/materialization through actual components, readiness/dialog gates, exact frozen bytes/digest/event/cells, unchanged explicit-destination handoff, same-identity retry after absent/ambiguous registration and persistent synchronization failure, no publication before verified registration, conflicts/alternate destinations, matching-copy reuse and post-publication failure. Covers newer work/confirmation preservation, reentry, preview locks/readiness notifications, detached handoff, cancellation, completion/presentation failure and no incidental work/settings/snapshot/submission/checkpoint changes. Separate real-Tk server-input cases exercise enablement, draft invalidation, cancellation, locked retry and completion; dialogs are doubled. This is one ephemeral operation per instance, not production routing, general recovery UI, restart/power-loss or native Windows qualification. |
+| Explicit frozen overwrite | [test_timesheet_overwrite.py](../tests/test_timesheet_overwrite.py): real materialization and Save callbacks, typed stable-content eligibility versus unsuitable/inconclusive inspection, default-cancel owned confirmation and reentry, one-call authorization, ordinary Retry/alternate-path protection, exact frozen bytes/digest and registration-before-publication. Covers matching reuse, absent-target exclusive creation/races, active dataset/alias protection, detected target changes, staging/write/flush/fsync/close/replace faults, consumed/foreign staging cleanup, ambiguous/known post-replacement failures and unchanged-input retry with newer work/confirmations. Separate real-Tk server-input cases exercise Overwrite/Retry/alternate controls and completion; confirmation/file-dialog decisions are doubled. No native Windows, hostile-directory, concurrent-process, power-loss or production-routing qualification. |
 | Export registration | [test_export_snapshot_registration.py](../tests/test_export_snapshot_registration.py): frozen request/cells/text/digest, strict validation, stable identity/retry, journal health, synchronized recovery/reuse, ambiguous append and projection failures, immutable replay order, restart/rotation/rebuild/backup restore and no report publication or confirmation creation by registration. Includes reuse checks for preservation of existing materialized bytes and installation of the latest valid confirmation projection. Dedicated materialization and confirmation suites provide broader feature coverage. |
 | Verified materialization | [test_export_materialization.py](../tests/test_export_materialization.py): authoritative journal gate, exact frozen UTF-8 bytes and SHA-256, existing-file reuse/conflicts, symlinks, staging/publication/verification/cleanup failures, concurrent replacement injection, retry, restored evidence and state/journal purity. No production UI or permanent file-status guarantee. |
 | File-status evaluation | [test_export_file_status.py](../tests/test_export_file_status.py): strict evidence gate even without a destination, precedence, five current outcomes, conclusive conflict versus inspection uncertainty, complete short files versus incomplete reads, disappearance/replacement, reevaluation/restart and write-prohibited purity. Service-only coverage, not recovery UI or platform qualification. |
@@ -229,7 +230,9 @@ Apply the selected technical contract to current export services and future inte
   alternative paths or inferring whether an absent file ever existed. Test these
   semantics without adding persisted completion, publication-history or status
   state. Recoverable registered evidence is broader than PENDING. Matching files
-  may be reused, conflicts are never overwritten, and retry at another path
+  may be reused, ordinary attempts never overwrite conflicts, and explicit one-call
+  confirmation may replace only stable regular-file content conflicts outside the
+  active dataset tree. Retry at another path
   retains the original snapshot/identity without another export event.
 - Ambiguous registration reuses a valid journal event, retries a demonstrably
   absent event only with a healthy journal and the same identity, and fails closed
@@ -482,7 +485,7 @@ precedence over derived snapshots. This strategy defines tests, not another even
 
 ## File publication and cross-resource failures
 
-Current timesheet saving uses complete same-directory staging followed by
+The separate file-only timesheet saving uses complete same-directory staging followed by
 no-overwrite hard-link publication; its detailed guarantees and limitations are
 in [Design Notes](../DESIGN_NOTES.md#date-range-timesheet-service-staged).
 Existing service tests exercise several failures, including write/flush/fsync/
@@ -502,7 +505,11 @@ cross-resource boundary governed by the approved snapshot-first contract. Inject
 before/during registration, after durable registration but before publication, during derived-snapshot writes,
 through staging/publication and during final verification. Validate no external
 publication without established registration, retained immutable evidence, stable
-retry identity, no overwrite and no false success for byte disagreement. Recheck
+retry identity, default no overwrite and no false success for byte disagreement.
+Explicit confirmed replacement must validate the target, protect dataset-owned
+paths/aliases, recheck identity/metadata before `os.replace`, verify full final
+bytes, preserve one-call permission and report attempted/known replacement
+truthfully. Bounded checks do not establish atomic compare-and-replace. Recheck
 externally changed files before status/confirmation use. Backup/restore
 interruptions require corresponding recovery evidence where applicable.
 The strategy adds no alternate transaction or recovery policy. Staging fsync is

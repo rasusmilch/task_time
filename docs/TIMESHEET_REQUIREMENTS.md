@@ -346,8 +346,17 @@ One immutable journal-backed snapshot is authoritative; external files are
 reproducible copies. Register and verify that snapshot before file publication,
 then verify complete file bytes before reporting successful export. A failed
 materialization leaves recoverable registered evidence. Retry the same snapshot
-without recalculating work or overwriting existing files; a conflicting destination
-requires another user-selected path. Matching existing bytes may be recognized.
+without recalculating work. Ordinary Save/Retry never overwrites. A completely
+inspected stable regular-file content conflict permits a separate, user-confirmed
+Overwrite operation or another selected path. Authorization applies to that call
+only; it does not change immutable evidence. Matching copies are reused without
+rewriting, and initially absent destinations retain exclusive creation.
+Unsuitable/unreadable/unstable files cannot authorize replacement. Explicit
+replacement is prohibited inside the active dataset tree, including resolved
+aliases. Use complete owned staging and `os.replace()`, with a final target
+identity/metadata recheck and complete byte/digest verification. These bounded
+checks assume trusted directories and serialized ownership; they are not atomic
+compare-and-replace or protection against arbitrary concurrent changes.
 File availability is derived from valid committed evidence and the selected
 destination: an explicit path, otherwise the original preferred path if present.
 No available destination differs from a selected destination with no file. An
@@ -365,8 +374,12 @@ The preview itself does not register or publish files. Its composed standalone
 `TimesheetSaveFrame` locks the reviewed candidate, registers it before verified
 materialization and retains its exact event and explicit destination for retry.
 Unverified registration never permits publication; a failed save call does not
-prove the destination absent. Conflicting files require another selected path,
-while matching copies may be reused. Only a returned materialization result
+prove the destination absent. A typed stable regular-file content conflict offers
+Overwrite with an owned, default-cancel confirmation naming the exact path.
+Every confirmed replacement re-registers the retained event before publication;
+Retry and alternate paths never inherit its permission. A generic registration,
+inspection or publication failure cannot enable Overwrite. Matching copies may
+be reused. Only a returned materialization result
 establishes that save call's completion, not permanent current-file availability.
 No recalculation, submission, checkpoint, confirmation or timer mutation belongs
 in Save. The current component supports one operation per instance and ephemeral
@@ -380,7 +393,8 @@ uses exact HH:MM:SS output and lacks snapshot-linked byte verification/recovery.
 The separate pure decimal renderer and immutable snapshot-registration APIs are
 implemented/staged but are not used by these generation/save APIs. Registration
 alone publishes no file. A separate materialization API verifies journal evidence
-and exact destination bytes, reuses matching files and refuses overwrite. It does
+and exact destination bytes, reuses matching files and defaults to no overwrite;
+explicit authorized replacement follows the restrictions above. It does
 not recalculate work or create another event. Standalone status evaluation also
 strictly validates committed evidence and derives the five current file outcomes
 without writes, retained status or remembered alternative paths. Production export
@@ -525,7 +539,7 @@ Source describes what executes, not an alternative product contract. See
 | Timesheet rendering/generation | Staged independent-task exact and decimal renderers with authoritative scope/timezone metadata, safe calendar slots, reversible escaping and wrapped borders. Decimal output rounds task/day cells once and sums displayed hundredths; service generation still uses exact durations. |
 | Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
 | Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; read-only mixed Work History replaces the legacy timeline; replacement work-entry/editing UI remains pending. Task Reset UI is removed; main task Today/This week and mini Today use mixed calendar Actual with deleted work included in application totals. Backend reset APIs and interval-only exports remain. |
-| Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay, verified materialization and read-only destination-relative five-status evaluation. Exact copies, matching-file reuse and no-overwrite publication are staged; materialization/evaluation create no new events or persistent file-status flags. |
+| Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay, verified materialization and read-only destination-relative five-status evaluation. Exact copies, matching-file reuse, default no-overwrite publication and explicitly confirmed stable-file replacement are staged; materialization/evaluation create no new events or persistent file-status flags. |
 | POL-R target workflow | Immutable confirmation-batch preparation/registration/replay, frozen-export proposals/selected preparation and latest absolute task/day projection are staged. Read-only daily Actual/Confirmed/Delta/Enter calculation is staged; confirmation/reconciliation UI, weekly summaries and production integration remain unimplemented. Legacy markers are not this contract; export registration is not confirmation or successful file export. |
 | Week configuration and allocations | No selectable week-start setting or selected weekly-allocation management. |
 | Data/installation | Launcher still uses the existing data path; fresh-directory release cutover is inactive. No historical migration implemented. |

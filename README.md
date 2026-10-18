@@ -14,7 +14,7 @@ Selected functionality is not automatically implemented.
 | Staged service capability | Independent projects/tasks, date-only replay, closed timed-correction preparation/registration, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
 | Connected calendar Actual | Main own-task Today/This week and mini Today use mixed accounting at one cutoff; application totals include retained deleted work. Failed calculations remain visibly unavailable until a successful refresh. Exports remain interval-only. |
 | Connected read-only history | Main-panel and recursive task-editor Work History commands share the modal browser, originating-parent return and session-only sorting. Replacement editing remains pending. |
-| Standalone frozen preview and Save | TimesheetPreviewFrame offers explicit This week/Last week/Custom preparation, independent All/Selected task scope including deleted work, and exact read-only frozen text. Draft changes/failures invalidate readiness. TimesheetSaveFrame composes locked same-event registration/materialization retries and protected explicit destinations. Production routing and general recovery UI remain pending. |
+| Standalone frozen preview and Save | TimesheetPreviewFrame offers explicit This week/Last week/Custom preparation, independent All/Selected task scope including deleted work, and exact read-only frozen text. Draft changes/failures invalidate readiness. TimesheetSaveFrame composes locked same-event registration/materialization retries and protected explicit destinations, with a separate confirmed Overwrite action for stable regular-file content conflicts. Production routing and general recovery UI remain pending. |
 | Production still pending | Production export integration, file-status/recovery UI, remaining replacement editing UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
 
 [Phase 2's bounded evidence and daily-reconciliation service gate](docs/ROADMAP.md#phase-2--pol-r-evidence-and-reconciliation)
@@ -211,11 +211,15 @@ checkpoint or reset. A preferred destination is frozen metadata, not file status
 Registration alone does not establish a successfully exported file. See
 [snapshot registration](DESIGN_NOTES.md#immutable-export-snapshot-registration-staged).
 
-`materialize_timesheet_export(export_id, destination=None)` verifies the journal,
+`materialize_timesheet_export(export_id, destination=None, *, overwrite=False)` verifies the journal,
 then writes only the frozen report bytes to an explicit path or the snapshot's
 preferred path. New files use complete staging and exclusive hard-link publication;
-existing regular files are accepted only if every byte and SHA-256 match.
-Conflicts and symlinks are refused. Success follows complete destination
+matching regular files are reused only after full byte/SHA-256 verification.
+Ordinary Save/Retry refuses conflicts. Explicit confirmed Overwrite may replace a
+fully inspected stable regular-file conflict using owned staging and `os.replace`,
+with a target identity/metadata recheck; dataset-tree paths and resolved aliases
+are protected. Symlinks and uncertain inspections cannot authorize replacement.
+This is bounded checking, not atomic compare-and-replace or concurrency safety. Success follows complete destination
 verification, with no new events, recalculation or timer changes. Retries reuse
 the same evidence; alternative paths never change it. Verification is current at
 the check, not permanent file status. No general status/recovery UI or automatic missing-file

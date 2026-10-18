@@ -42,6 +42,7 @@ from .exporter import (
     build_decimal_timesheet_text, build_export_text, build_selected_tasks_export_text,
     build_timesheet_text, seconds_to_decimal_hundredths, write_export_file,
 )
+from .export_files import ExportFileConflict as _ExportFileConflict, ExportFileContentConflict
 from .export_snapshots import (
     EXPORT_EVENT_TYPE, collect_export_snapshots, same_export_event, validate_export_snapshot,
     validate_uuid as validate_export_uuid, work_dates,
@@ -91,10 +92,6 @@ class ApplySubtaskTemplatesResult:
     template_names: list[str]
     created_count: int = 0
     skipped_count: int = 0
-
-
-class _ExportFileConflict(FileExistsError):
-    """A conclusive destination content/type conflict, not an inspection error."""
 
 
 class TaskTimerService:
@@ -578,8 +575,12 @@ class TaskTimerService:
             return "UNVERIFIABLE"
         return "READY"
 
-    def materialize_timesheet_export(self, export_id: str, destination: Path | str | None = None) -> Path:
-        """Publish frozen journal bytes, returning only a verified destination."""
+    def materialize_timesheet_export(
+        self, export_id: str, destination: Path | str | None = None, *, overwrite: bool = False,
+    ) -> Path:
+        """Publish frozen journal bytes; replacement requires explicit one-call authority."""
+        if type(overwrite) is not bool:
+            raise ValueError("overwrite must be a boolean")
         validate_export_uuid(export_id)
         journal = self.storage.iter_all_events(strict=True)
         exports = collect_export_snapshots(journal)
@@ -597,15 +598,24 @@ class TaskTimerService:
         target = Path(target)
         if "\x00" in str(target):
             raise ValueError("Destination file path must not contain null characters")
+        replacement_observation = None
         try:
-            target.lstat()
+            observed = target.lstat()
         except FileNotFoundError:
             pass
         else:
-            self._verify_timesheet_export_file(target, expected, digest)
-            return target  # an existing complete copy; never rewrite it
+            try:
+                self._verify_timesheet_export_file(target, expected, digest, observed)
+            except ExportFileContentConflict:
+                if not overwrite:
+                    raise
+                if target.resolve().is_relative_to(self.storage.data_dir.resolve()):
+                    raise ValueError("Explicit replacement inside the active dataset is prohibited")
+                replacement_observation = observed
+            else:
+                return target  # Matching complete copies are never rewritten.
 
-        # Use the existing same-directory no-clobber staging approach without
+        # Reuse the existing owned same-directory staging sequence without
         # changing the file-only save API or introducing persistent file status.
         prefix = ".chronicle-timesheet-"
         if target.name.casefold().startswith(prefix):
@@ -640,15 +650,32 @@ class TaskTimerService:
                 handle.flush()
                 os.fsync(handle.fileno())
             require_owned_staging()
-            attempted = True
-            os.link(staging, target)
+            if replacement_observation is not None:
+                current = target.lstat()
+                def identity(item):
+                    return (item.st_dev, item.st_ino, item.st_size, item.st_mtime_ns, item.st_ctime_ns)
+                if not stat.S_ISREG(current.st_mode) or identity(current) != identity(replacement_observation):
+                    raise OSError(f"Export destination changed before replacement: {target}")
+                attempted = True
+                os.replace(staging, target)
+            else:
+                attempted = True
+                os.link(staging, target)
             published = True
-            self._verify_timesheet_export_file(target, expected, digest)
+            try:
+                self._verify_timesheet_export_file(target, expected, digest)
+            except ExportFileContentConflict as conflict:
+                # Post-publication failure must not authorize an Overwrite control.
+                raise _ExportFileConflict(str(conflict)) from conflict
         except BaseException as error:
+            operation = "Replacement" if replacement_observation is not None else "Publication"
             if published:
-                error.add_note(f"Timesheet published at {target}; complete destination verification did not succeed")
+                error.add_note(
+                    f"Timesheet published at {target}; {operation.lower()} occurred; "
+                    "complete destination verification did not succeed"
+                )
             elif attempted:
-                error.add_note(f"Publication attempted at {target}; destination contents have not been verified")
+                error.add_note(f"{operation} attempted at {target}; destination contents have not been verified")
             if descriptor is not None:
                 try:
                     os.close(descriptor)
@@ -700,7 +727,7 @@ class TaskTimerService:
         if len(actual) != opened.st_size or any(item != observations[0] for item in observations[1:]):
             raise OSError(f"Export destination inspection incomplete or changed during verification: {target}")
         if actual != expected or sha256(actual).hexdigest() != digest:
-            raise _ExportFileConflict(f"Export destination conflicts with frozen report bytes/digest: {target}")
+            raise ExportFileContentConflict(f"Export destination conflicts with frozen report bytes/digest: {target}")
 
     def get_task_work_history(
         self, task_id: str, *, cutoff_utc: datetime,

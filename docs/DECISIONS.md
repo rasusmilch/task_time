@@ -351,13 +351,36 @@ explicit destination, after verified registration. Uncertainty retains exact
 retry inputs; every retry re-registers the same event before publication. Lock
 preview editing after the first registration attempt; no recalculation or
 confirmation/submission/checkpoint/timer effects are authorized. Matching copies
-may be reused and conflicting files require another path. Completion follows
+may be reused; that approval required another path for conflicts (superseded by
+the later explicit-overwrite approval below). Completion follows
 only a successful materializer return and survives later presentation failure.
 
 The approved standalone component's single-operation instance and deep-copied
 in-memory attempt handoff do not select permanent Timesheet-window lifecycle,
 Close behavior, path memory or restart recovery UI. Production routing, general
 recovery UI, dated writers and installation cutover remain outside this approval.
+
+### Explicit confirmed frozen-export replacement
+
+**Status:** current. **Provenance:** later explicit user approval and ChatGPT
+architecture adjudication supplied with the explicit-overwrite implementation
+instructions. This narrowly supersedes the earlier blanket no-overwrite clause,
+without changing ordinary Save/Retry or the separate file-only save API.
+
+After a fully inspected stable regular-file content conflict, the standalone
+Save component offers a separate default-cancel confirmation naming the exact
+destination. Authorization applies to one materialization call only, after exact
+event re-registration. Matching copies are reused; absent destinations still use
+exclusive creation. Unsuitable/inconclusive observations do not authorize
+replacement. The active dataset tree and aliases resolving into it are protected.
+Owned staging and `os.replace()` require a last target identity/metadata recheck
+and complete final verification; no unlink-first/direct-write fallback is allowed.
+These bounded checks assume trusted directories/serialized ownership and are not
+atomic compare-and-replace or hostile/concurrent-directory protection. Failures
+after replacement retain original diagnostics and do not imply the old file
+survives or the new file is absent. Immutable evidence never changes. No overwrite
+permission is persisted in events or attempt handoffs. Production routing,
+window/reminder integration, dated writers, migration and cutover remain separate.
 
 ### Absolute daily external confirmations
 
@@ -386,7 +409,9 @@ and, for the correction, 2.50 and -0.50.
 
 **Status:** current. **Provenance:** explicit user approval of one authoritative
 immutable snapshot registered before external publication, reproducible verified
-copies, recoverable pending exports and no overwrite. ChatGPT selected the
+copies, recoverable pending exports and then no overwrite. The blanket
+no-overwrite clause is superseded by the later explicit-overwrite approval;
+default protection and immutable evidence remain. ChatGPT selected the
 concrete event identities, contents, registration/retry, verification and batch
 contracts under that user-approved direction. Technical owner:
 [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); product owner:

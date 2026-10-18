@@ -972,7 +972,16 @@ Original exceptions, traceback chains and notes are reported through Tk.
 `choose_another_file() -> bool` is available after failure; cancellation keeps
 retry inputs, while selection retries the same event at the new path. Existing
 service gates own synchronization, complete validation, matching-copy reuse and
-no-overwrite protection. Busy actions reject reentrancy without more dialogs or
+default no-overwrite protection. `overwrite() -> bool` and its Overwrite button
+are available only after the latest materialization attempt raises
+`ExportFileContentConflict`. A busy-guarded owned confirmation names the path and
+defaults to cancellation. Cancel leaves inputs/eligibility unchanged with no
+service calls. Confirmation re-registers the exact event, checks its identity and
+calls materialization with `overwrite=True` once. New service attempts clear
+eligibility; only a new content conflict re-enables it. Registration, inspection,
+unsuitable-type and publication failures cannot authorize replacement. Retry and
+Choose another file do not inherit permission; neither event nor handoff stores
+it. Busy actions reject reentrancy without more dialogs or
 service calls; retries never consult changed work or reprepare the preview.
 
 Only successful materialization sets `saved_path` and completion, before success
@@ -1076,7 +1085,7 @@ or Windows/NTFS execution.
 
 ## Verified export materialization (staged)
 
-`TaskTimerService.materialize_timesheet_export(export_id, destination=None) -> Path`
+`TaskTimerService.materialize_timesheet_export(export_id, destination=None, *, overwrite=False) -> Path`
 validates the canonical UUID and rereads the authoritative journal with strict
 validation and the existing export projection validator. Missing, malformed,
 conflicting or uncertain evidence fails before staging. Cached lookup results
@@ -1087,15 +1096,21 @@ membership are consulted. The operation does not register another event.
 An explicit string/`Path` overrides the frozen `preferred_destination` without
 changing that evidence. A destination is required; empty/null-containing paths
 are rejected and missing parent directories are not created. Existing regular
-files are read completely and accepted only on full-byte and SHA-256 agreement.
-No rewrite occurs for a match. Conflicting files, directories, symlinks (including
-dangling links) and other unsuitable objects are rejected; unreadable files are
-not matches. Verification checks `lstat`/opened-descriptor identity and regular-file
-type, uses binary/no-follow/nonblocking open flags where available, then checks
+files are read completely and reused only on full-byte and SHA-256 agreement.
+No rewrite occurs for a match, including with `overwrite=True`. The flag requires
+an actual boolean. Ordinary materialization rejects conflicts. Explicit
+replacement accepts only fully inspected stable regular-file content conflicts;
+directories, symlinks (including dangling links), other unsuitable objects and
+unreadable/unstable/incomplete observations remain rejected. Verification checks
+`lstat`/opened-descriptor identity and regular-file type, uses binary/no-follow/nonblocking open flags where available, then checks
 the destination identity again. This detects path replacement at those checks;
 it is not an arbitrary hostile-directory or concurrent-process guarantee.
-The shared verifier uses a private `FileExistsError` subclass for deliberate
-content/type conflicts, preserving existing messages and exception compatibility.
+The shared `export_files.py` defines `ExportFileConflict` (also imported under
+the existing private service name) and its narrow `ExportFileContentConflict`
+subclass. Both preserve `FileExistsError` compatibility and status classification;
+only complete stable content inequality raises the narrow signal. A final
+post-publication content error is chained under the broader conflict type so a
+publication failure cannot enable the Save component's Overwrite control.
 It also checks read length against the opened descriptor's size and compares
 size/modification/change timestamps across path and descriptor observations.
 Incomplete reads or detected changes raise inspection errors before byte
@@ -1104,13 +1119,22 @@ inequality can be treated as a conclusive conflict.
 For absent destinations, the existing safe-publication approach is reused in a
 separate method, leaving the exact-format file-only save method unchanged:
 private same-directory `mkstemp`, binary write of all bytes, flush/fsync, successful
-close, owned-staging check, then exclusive `os.link`. There is no overwrite or
-direct-write fallback. After linking, complete final bytes and SHA-256 are checked
-before return. Size or digest alone never establishes success. Cleanup targets
+close, owned-staging check, then exclusive `os.link`, including when overwrite was
+requested for an absent target. There is no direct-write or replacement fallback.
+For an explicitly authorized stable-file replacement, resolve the path and active
+dataset root before staging and reject paths inside that tree, including directory
+aliases resolving into it. Immediately before `os.replace()`, recheck regular-file
+type, device/inode identity, size and modification/change timestamps against the
+stable initial inspection. Detected changes abort without replacing the changed
+target. These bounded checks assume trusted directories and serialized ownership;
+they are not atomic compare-and-replace or arbitrary concurrency protection.
+`os.replace()` consumes the owned staging pathname; cleanup tolerates its absence
+and never targets the final file. After either publication, complete final bytes
+and SHA-256 are checked before return. Size or digest alone never establishes success. Cleanup targets
 only an owned staging pathname; it never deletes the final destination.
 
-Original failures propagate with cleanup context. An attempted/ambiguous link
-is identified as unverified; a failure after known publication identifies the
+Original failures propagate with cleanup context. An attempted/ambiguous link or
+replacement is identified as unverified; a failure after known publication identifies the
 published path and failed verification. Verification failure never undoes
 publication. Cleanup failure after successful verification raises an error stating
 that publication and verification succeeded, identifying the remaining staging
@@ -1118,9 +1142,10 @@ artifact. Uncertain staging ownership retains the questionable artifact. These
 best-effort private-path checks retain the existing trusted-directory assumption.
 
 Retry with the same UUID revalidates the journal and a matching existing copy
-without rewriting or appending evidence. A conflicting copy requires another
-explicit path. Restart, rotation and supported backup/restore retain the snapshot
-needed to materialize the original bytes after later work or renderer changes.
+without rewriting or appending evidence. A conflicting regular copy requires
+another path or explicit one-call replacement authorization. A post-replacement
+failure does not establish that the old file remains or the new copy is absent.
+Restart, rotation and supported backup/restore retain the snapshot needed to materialize the original bytes after later work or renderer changes.
 Every call verifies anew: later external changes/deletion invalidate earlier
 observations. There is no persisted completion flag, file-status history or
 distinction between never-published and subsequently deleted paths. No automatic

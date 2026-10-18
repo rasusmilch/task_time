@@ -31,7 +31,8 @@ exact event and explicit destination through uncertainty. Production routing and
 general recovery UI remain pending; its in-memory completion/path handoff is not
 persisted file status or a restart guarantee.
 Verified materialization from committed evidence is also staged: exact-byte/digest
-checking, matching-file reuse and exclusive no-overwrite publication are available
+checking, matching-file reuse, default exclusive no-overwrite publication and
+explicitly authorized replacement are available
 through a separate service operation. Standalone read-only destination-relative
 file-status evaluation is also implemented/staged. Strict immutable confirmation
 batch validation/replay, detached preparation and dedicated durable registration
@@ -159,22 +160,49 @@ export.
 
 Require a valid committed snapshot. Use private same-directory temporary staging
 and exact UTF-8 bytes from that snapshot. Complete the write, flush/fsync and close
-before exclusive no-overwrite hard-link publication (`os.link`), preserving the
-existing safe staging approach on supported filesystems. Then compare the complete
+before absent-target exclusive no-overwrite hard-link publication (`os.link`),
+preserving the existing safe staging approach on supported filesystems. Then compare the complete
 actual destination bytes with frozen UTF-8 content. SHA-256 is an additional
 integrity check, not an alternative authority or substitute for the complete
 byte comparison.
 
-Never delete, truncate, replace or modify an existing destination to finish an
-export. Matching existing bytes may be recognized as a valid materialized copy;
-different bytes or a nonmatching file type are a conflict requiring a different
-user-selected output path. Missing files may be retried. External modification
-does not change the snapshot: an identical new copy may be written elsewhere.
+`materialize_timesheet_export(export_id, destination=None, *, overwrite=False)`
+requires an actual boolean. By default, matching complete regular files are reused
+without rewriting, conflicting files are rejected, and absent destinations use
+exclusive creation. Ordinary Save/Retry never inherits overwrite permission.
+
+With explicit `overwrite=True`, only a completely inspected, stable regular-file
+content conflict may be replaced. Directories, symlinks, other unsupported objects,
+incomplete/unstable reads and inspection failures cannot authorize replacement.
+Replacement within the active dataset tree, including aliases resolving into it,
+is prohibited before replacement staging. Ordinary materialization restrictions
+are unchanged. `ExportFileContentConflict` is a narrow `FileExistsError`-compatible
+signal for the content case; broader type conflicts and arbitrary
+`FileExistsError` exceptions do not authorize the UI's Overwrite action. Current
+file-status classification remains unchanged.
+
+Reuse complete private same-directory staging, flush/fsync, successful close and
+ownership verification. Immediately before `os.replace()`, recheck the target's
+regular-file type, device/inode identity, size, modification and change timestamps
+against the stable inspection. Detected change or disappearance aborts without
+replacing the newly observed target. Never unlink first, truncate or directly
+write the destination. An initially absent destination still uses `os.link`, even
+when overwrite was requested. Matching copies are never rewritten.
+
+These are bounded checks under trusted-directory/serialized-ownership assumptions,
+not atomic compare-and-replace or immunity to arbitrary concurrent/hostile changes.
+Verify full final bytes/digest after replacement. Distinguish replacement attempted,
+known replacement and verified success. A failure after replacement does not prove
+the old file survives or the new file is absent. `os.replace()` consumes staging;
+cleanup must never delete or roll back the final destination. Preserve original
+exceptions, traceback chains and notes. Missing files may be retried. External
+file changes never alter the immutable snapshot.
 
 Staging cleanup never targets the requested final destination. Preserve the
 existing cleanup/error reporting and unsupported-filesystem protections; no
-unsafe direct-write or overwrite fallback is authorized. Do not undo publication
-to recover from staging cleanup failure.
+unsafe direct-write or replacement fallback is authorized. Explicit replacement
+is a separate authorized branch, never a fallback for failed exclusive creation.
+Do not undo publication to recover from staging cleanup failure.
 
 Reverify the relevant file when displaying current materialization status or
 relying on that file for export-based confirmation. Old verification is not proof
@@ -225,9 +253,11 @@ MISSING does not prove previous publication or deletion.
 Recoverable registered evidence is broader than uppercase PENDING. MISSING,
 CONFLICT and UNVERIFIABLE can still retain valid immutable evidence for safe
 retry or materialization elsewhere. Retry reuses the export identity and frozen
-contents without recalculation, overwrite or another snapshot for the same
-operation. Matching-file reuse and complete byte/digest verification remain
-required. Changing the output path never changes the snapshot or its original
+contents without recalculation or another snapshot for the same
+operation. Ordinary retry is non-overwriting; explicit replacement requires a new
+user confirmation for that call only, after a stable content conflict. Neither
+permission nor stored file status belongs in the immutable event or retry handoff.
+Matching-file reuse and complete byte/digest verification remain required. Changing the output path never changes the snapshot or its original
 preferred path, and no file outcome implies POL-R confirmation. A deliberate
 later new export is a new identity and frozen cutoff.
 
