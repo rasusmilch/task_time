@@ -75,9 +75,9 @@ for the implemented APIs and event contract.
 The replay foundation also supports `DatedDurationRecord`: a separate task-owned
 work date and duration amount with audit timestamps and append-only corrections
 and deletion. These records have no start/stop timestamps. This support is
-**not enabled in production time entry or totals yet**; the existing duration UI
-still uses its legacy representation. A separate read-only service API now derives
-mixed daily/weekly totals over explicit local-date windows; it is not connected
+not enabled in production time entry or totals yet. The legacy duration-entry UI
+has been removed; replacement duration-entry UI remains pending. A separate
+read-only service API now derives mixed daily/weekly totals over explicit local-date windows; it is not connected
 to production readers or exports. No public dated-duration writer, historical
 migration, or data-directory cutover is included. See
 [mixed accounting](DESIGN_NOTES.md#mixed-date-window-accounting-service-only)
