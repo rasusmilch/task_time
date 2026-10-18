@@ -429,12 +429,51 @@ opens a window nor changes the application's service. Sequential browsers for
 different tasks/datasets share only that in-memory direction; closing a browser
 does not reset it, and a new application owner starts newest-first. No preference
 file, resolver, settings field or cross-process coordination is used or required.
-The Selected single-history-window rule still needs production ownership and
-enforcement; the standalone Frame/factory does not enforce it or select behavior
-for an attempted second opening. Production routing, editing/audit, writer
+Window ownership is provided by the staged modal path below; neither the Frame
+nor the browser factory enforces it. Production routing, editing/audit, writer
 activation and Reset removal remain unimplemented. The browser accesses no
 settings, writes no work, and schedules no refresh, retries or asynchronous loading.
 Existing services, legacy dialogs, accounting and settings ownership are unchanged.
+
+## Owned modal history window (staged)
+
+`history_window.HistoryWindow(parent, *, make_browser, on_closed)` creates a
+withdrawn `window` Toplevel, composes the accepted browser and adds Close. The
+constructor neither grabs nor waits. `show_modal()` presents it transient to its
+parent, waits for visibility, establishes a local grab, focuses history and uses
+Tk's normal window wait. Presentation performs no additional history load.
+Normal scheduled events continue, including existing timer processing; no
+automatic history refresh or work mutation is introduced. The browser remains
+attached to its original task and owns its calendars, drafts and explicit loads.
+Calendar mouse selection/cancellation remains usable under the ancestor grab,
+Apply-only, and picker Escape does not close history or release its modality.
+
+`TaskTimerApp` initializes `_history_window = None` and
+`_history_window_opening = False` before building controls. Its lazy, unrouted
+`_open_history_window(service, task_id, *, now_utc, week_start=6)` sets the
+construction guard, delegates browser composition to `_make_history_browser`,
+then publishes the owned wrapper before presentation can process modal events.
+Duplicate/reentrant requests return without building, observing the clock,
+reading work, refreshing or retargeting. A destroyed stale reference does not
+block reopening. `_history_window_closed(window)` clears ownership only by
+object identity, so an old callback cannot clear a later wrapper. Closing retains
+the application's session direction; later openings use the existing handoff.
+
+`close()` is idempotent. Close, window-manager closure, external destruction and
+root shutdown dispose of the browser/calendars and release the modal wait.
+Only destruction of the owned Toplevel notifies `on_closed(wrapper)`, once for a
+successfully constructed wrapper; child destruction does not. Construction or
+presentation/grab failure disposes partial widgets, releases only that window's
+own grab and propagates the failure with cleanup context if necessary. Ownership
+and the construction guard are cleared so later openings can succeed. An initial
+inline browser loading failure is a usable window, recoverable through explicit
+Refresh, rather than a construction failure.
+
+This path enforces one owned window only through the staged opening helper.
+Both production EditTimelineDialog entry points remain unchanged and outside
+that path; application-wide production enforcement is not established. Existing
+shutdown/reminder choices, services, storage and settings remain unchanged.
+There is no window registry, persistent identity, polling or additional mainloop.
 
 ## Replacement timed-input validation (staged)
 

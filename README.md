@@ -105,8 +105,12 @@ The [Selected replacement history](docs/TIMESHEET_REQUIREMENTS.md#selected--mixe
 starts each application session newest-first and remembers successful direction
 changes across subsequent task/dataset history openings only in that session.
 The staged application-owned handoff is available through an unrouted factory;
-it adds no settings or preference files. The single-history-window target still
-requires production ownership/enforcement. Production history integration,
+it adds no settings or preference files. A staged
+[owned modal history window](DESIGN_NOTES.md#owned-modal-history-window-staged)
+composes the browser and Close, preserving timers and session direction. Its
+unrouted opening helper rejects duplicate requests without refreshing or changing
+the original task. Single-window enforcement covers that path; both legacy
+production timeline routes remain unchanged. Production history integration,
 segment editing, audit interactions and removal
 of production Reset controls remain pending. Existing production timeline and
 counters are unchanged.

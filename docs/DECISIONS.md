@@ -202,13 +202,34 @@ proposal supplies no storage, failure, recovery or lifecycle requirements. No
 preference file, account-location resolver, settings field or cross-process
 coordination is needed.
 
-At most one history window may be open per application. Its production ownership
-and enforcement are separate from the staged in-memory handoff; behavior for an
-attempted second opening is not selected here. The approved unrouted factory and
-post-success callback do not activate history routing or enforce that window
-rule. Notification failure preserves the completed sort and reports inability
+At that approval, at most one history window could be open per application, but
+behavior for an attempted second opening was not selected. The later modal
+approval below resolves it. The unrouted browser factory and post-success
+callback did not activate history routing or enforce that window rule.
+Notification failure preserves the completed sort and reports inability
 to remember direction without rollback or automatic retry. Other approved
 browser interactions, Phase 3 dependencies and Open matters are unchanged.
+
+### Modal owned history browsing
+
+**Status:** current. **Provenance:** explicit user approval supplied with the
+staged application-owned modal history-window instructions, after session
+direction and window planning review; current owner:
+[mixed history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
+
+History blocks main-application interaction until closed, stays attached to its
+original task, and supplies browsing controls and Close without main-window
+Start/Stop functions. Timers continue unchanged. Close history before using the
+main application or selecting another task. Duplicate/reentrant opening requests
+have no effect: no new window, retargeting, replacement or refresh. This resolves
+the earlier unselected repeated-opening behavior without attributing modality
+or that behavior to the earlier session-direction approval.
+
+The staged wrapper is constructed before modal presentation, allowing application
+ownership to be published before a local grab/normal Tk window wait. Identity-
+checked destruction cleanup and a construction guard protect that opening path.
+The approval activates neither production timeline route and does not establish
+production-wide enforcement; editor/audit and other Phase 3 work remain separate.
 
 ### Local dates and configurable reporting weeks
 

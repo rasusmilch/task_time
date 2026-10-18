@@ -2902,6 +2902,8 @@ class TaskTimerApp:
         self.root = root
         self.service = service
         self._history_newest_first = True
+        self._history_window = None
+        self._history_window_opening = False
         self.root.title("Chronicle")
         self.root.resizable(True, True)
         self.root.minsize(800, 500)
@@ -2940,6 +2942,39 @@ class TaskTimerApp:
             newest_first=self._history_newest_first,
             on_direction_changed=self._remember_history_date_direction,
         )
+
+    def _open_history_window(self, service, task_id, *, now_utc, week_start=6):
+        if self._history_window_opening:
+            return
+        if self._history_window is not None:
+            if self._history_window.window.winfo_exists():
+                return
+            self._history_window = None
+
+        from .history_window import HistoryWindow
+
+        self._history_window_opening = True
+        try:
+            owned = HistoryWindow(
+                self.root,
+                make_browser=lambda parent: self._make_history_browser(
+                    parent, service, task_id, now_utc=now_utc, week_start=week_start),
+                on_closed=self._history_window_closed,
+            )
+            self._history_window = owned
+        finally:
+            self._history_window_opening = False
+        try:
+            owned.show_modal()
+        except BaseException:
+            if self._history_window is owned:
+                self._history_window_closed(owned)
+            raise
+        return owned
+
+    def _history_window_closed(self, window):
+        if self._history_window is window:
+            self._history_window = None
 
     def _build_ui(self) -> None:
         self._init_row_fonts()

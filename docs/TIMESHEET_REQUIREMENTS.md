@@ -115,8 +115,12 @@ Every application startup begins newest-first. A successful direction change is
 remembered across subsequent history openings for any task or dataset during that
 application session; closing and reopening the application resets newest-first.
 No preference file, settings field or cross-process coordination is required.
-At most one history window may be open per application; the behavior of an
-attempted second opening is not selected here. Within each date,
+At most one history window may be open per application. History is modal: close
+it before using the main application or choosing another task. It stays attached
+to its original task and provides browsing controls and Close, without Start/Stop
+or other main-window functions. Duplicate or reentrant opening requests have no
+effect; they do not replace, retarget or refresh the existing window. Timers
+continue running, unchanged by opening or closing history. Within each date,
 timed portions stay chronological and date-only entries follow them without
 invented clock positions.
 
@@ -176,7 +180,10 @@ now composes that reader/table with periods, typed/calendar drafts, explicit
 refresh and in-memory sorting. A staged application-owned boolean and unrouted
 composition helper now hand off successfully rendered direction across sequential
 browser openings, without persistence or production activation.
-Production record-editor/history integration, single-history-window enforcement,
+A staged [owned modal window](../DESIGN_NOTES.md#owned-modal-history-window-staged)
+now composes the browser through an unrouted application opening path, with
+single-window ownership and lifecycle cleanup limited to that path.
+Production record-editor/history integration, application-wide window enforcement,
 audit presentation,
 segment editing/deletion handlers, dated writer activation and production Reset
 removal remain subsequent work.
@@ -449,7 +456,7 @@ Source describes what executes, not an alternative product contract. See
 | Project/task foundation | Separate UUID-based service records, optional current project membership and independent task-owned time. |
 | Date-only duration foundation | Separate endpoint-free records with append-only creation/correction/deletion replay and snapshots; new production duration writers are inactive. |
 | Mixed accounting | Read-only explicit local-date windows, real intervals plus effective dated records, derived project/Unassigned/application totals, and fixed Sunday-start weeks. |
-| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting. A standalone browser adds Current week/Custom/All, Apply-only calendar/typed dates, explicit Refresh and local date sorting, with staged application-session direction handoff. Production integration and single-window enforcement remain pending; production timeline, editing and reset controls are unchanged. |
+| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting. A standalone browser adds Current week/Custom/All, Apply-only calendar/typed dates, explicit Refresh and local date sorting, with staged application-session direction handoff. An owned modal wrapper enforces single-window ownership through its unrouted opening path. Production integration and application-wide enforcement remain pending; production timeline, editing and reset controls are unchanged. |
 | Timed input validation | Pure minute-clock candidate/resolution APIs with separate endpoint dates, explicit repeated-time occurrences, gap rejection, UTC ordering and edit-aware restoration of unchanged precision. Consumed by the form and standalone editor; production callers remain unchanged. |
 | Timed input form | Standalone minute-only endpoint fields, canonical dates, timezone/occurrence choices and inline errors using the accepted validators. No stored-record loading, saving or production connection; legacy TimelineEntryDialog is unchanged. |
 | Timed corrections | Separate staged preparation/registration of one effective closed genuine interval replacement, preserving unchanged precision, optional comments and retry identities. No-op saves write nothing; stale priors reject. Consumed by the standalone dialog; production editing remains inactive. |

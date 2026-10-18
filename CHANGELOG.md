@@ -24,7 +24,9 @@ receipts or commits. No release or production activation is implied below.
   full-interval segment editing/deletion, effective history with audit access,
   and removal of replacement Reset actions/counters. Stage an application-owned
   in-memory direction handoff to sequential browsers without production routing
-  or persistence; single-history-window enforcement remains pending. Production UI/editor,
+  or persistence. Compose an owned modal history window with duplicate-request
+  protection and lifecycle cleanup through an unrouted opening path; production-wide
+  enforcement remains pending. Production UI/editor,
   audit and Reset-removal integrations remain pending. Stage closed
   genuine-interval correction preparation/registration using existing replacement
   events: no-op saves write nothing, unchanged endpoints retain precision, comments
