@@ -457,7 +457,10 @@ external verification. Future external integration needs explicit approval.
 
 ## DEFERRED — Approved implementation work
 
-All SQLite runtime implementation awaits independent architecture acceptance and
-separately authorized work. The next runtime action is a bounded Stage 1 read-only
-implementation plan, not another whole-application planning cycle. Only optional
-expansion is deferred beyond the complete core pilot; POL-R is not deferred there.
+Stage 0's authority set is independently accepted at
+`a24aca706740b7e02cc1f856baa194042785bbcb`. SQLite runtime remains unimplemented
+on the authorized `feature/chronicle-rewrite` branch. The bounded Stage 1 read-only
+plan requires independent adjudication before separately authorized execution,
+not another whole-application planning cycle. Only optional expansion is deferred
+beyond the complete core pilot; POL-R is not deferred there. Open policies remain
+reserved before affected implementation.

@@ -546,8 +546,10 @@ means agreement with the latest confirmation, not a verified POL-R query.
 ### Tkinter transactional rewrite and core POL-R before pilot
 
 **Status:** current for Tkinter/SQLite/core scope; its daily-Actual-as-Enter clause
-is superseded below. Task 1a documentation remains pending final independent
-acceptance; this entry records direction, not final GO.
+is superseded below. At Task 1b this documentation was pending final independent
+acceptance. Stage 0 was subsequently independently accepted at
+`a24aca706740b7e02cc1f856baa194042785bbcb`, as explicitly supplied with the branch
+bootstrap instructions; that accepts the documentation gate, not SQLite runtime.
 **Provenance:** explicit user instructions titled “Reconcile
 Chronicle's Tkinter rewrite requirements, architecture and roadmap,” including
 the user's correction that POL-R reconciliation is an absolute core requirement.

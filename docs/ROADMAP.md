@@ -10,8 +10,9 @@ describes current JSONL source; [decisions](DECISIONS.md) retains chronology.
 
 The active sequence is **Stages 0–6**, superseding the old JSONL Phase 1–6 plan.
 Selected does not mean implemented; old component tests do not complete SQLite
-stages. No rewrite runtime stage is Complete. Stage 0's documentation is subject
-to independent ChatGPT GO/NO-GO, not self-acceptance by its author.
+stages. Stage 0 is independently accepted Complete for documentation only;
+no rewrite runtime stage is Complete. Stage 1 is the active engineering stage,
+not implemented, with its plan requiring independent adjudication before execution.
 
 Each stage can contain several substantial, independently reviewed tasks. Do not
 make every helper a staged feature or authorize the whole rewrite in one task.
@@ -20,20 +21,22 @@ summaries and reminders before pilot. Stage 1 is not a complete MVP.
 
 ## Stage 0 — Authority reconciliation
 
-**Current documentation outcome; independent review required.** Reconcile behavior,
+**COMPLETE — independently accepted at
+`a24aca706740b7e02cc1f856baa194042785bbcb`.** Reconciled behavior,
 Tkinter/SQLite architecture, source status, historical supersessions and validation
-map. Gate: one coherent current authority set, no JSONL-as-target/Qt direction,
-no optional post-pilot POL-R. Documentation delivers no runtime improvement.
+map. Accepted gate: one coherent current authority set, no JSONL-as-target/Qt
+direction, no optional post-pilot POL-R. This completes documentation, not runtime.
 
-After acceptance, replacement implementation proceeds on a separately authorized
-branch from that accepted architecture commit. Preserve the existing feature
-branch/history. **Next runtime action: bounded Stage 1 read-only implementation
-plan**, followed by approval, execution and validation; no new whole-app planning
-cycle is required.
+The authorized active workstream is `feature/chronicle-rewrite`, created from that
+accepted commit. Preserve `feature/chronicle-projects-timesheets` as the Stage 0
+source/history branch; normal rewrite publication uses the new branch under
+[AGENTS.md](../AGENTS.md). Its origin does not pin the old branch's future HEAD.
+The bounded Stage 1 read-only plan requires independent approval before runtime
+execution; no new whole-app planning cycle or implementation is authorized here.
 
 ## Stage 1 — Working timer foundation
 
-**Selected / not implemented; engineering slice, NOT complete MVP or pilot.**
+**Active planning / NOT IMPLEMENTED; engineering slice, NOT complete MVP or pilot.**
 Fresh SQLite, task/project identities, Start/Stop/Switch, persisted active timer,
 main/mini display, worker bridge and early native Windows onedir smoke. Design
 immutable frozen-export and absolute-confirmation batches/cells/current-reference

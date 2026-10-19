@@ -234,8 +234,10 @@ of a qualified rewrite. Do not invent performance targets or exact version pins
 without validation. Linux/unit evidence is not Windows, concurrency or universal
 power-loss qualification.
 
-After independent GO/NO-GO on this documentation, the next runtime work is a
-bounded Stage 1 read-only implementation plan. A separately authorized branch
-will originate from the accepted architecture commit; preserve this feature
-branch and its history. No runtime, data-path cutover or new branch is authorized
-by this document alone.
+Stage 0's documentation is independently accepted at
+`a24aca706740b7e02cc1f856baa194042785bbcb`. The authorized
+`feature/chronicle-rewrite` workstream originates there; preserve the old
+`feature/chronicle-projects-timesheets` source/history branch. Stage 1 remains
+unimplemented. Its bounded read-only plan requires independent adjudication
+before runtime execution under [AGENTS.md](../AGENTS.md); accepted architecture
+does not itself authorize code, data-path cutover or resolution of Open policy.

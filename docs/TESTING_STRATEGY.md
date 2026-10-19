@@ -119,7 +119,11 @@ implementation. Task 1b adds future obligations below, not passing runtime tests
 
 ## Rewrite evidence by stage
 
-These are future acceptance obligations, **not existing tests or passing results**.
+Stage 0's documentation gate is independently accepted at
+`a24aca706740b7e02cc1f856baa194042785bbcb`; this supplies no SQLite/runtime evidence.
+The runtime rows below remain future acceptance obligations, **not existing tests
+or passing results**. Stage 1 planning is active on `feature/chronicle-rewrite`;
+runtime execution/validation still requires independent adjudication.
 Tests follow the user-selected [architecture](ARCHITECTURE.md) and
 [semantic contract](EXPORT_EVIDENCE_CONTRACT.md); they do not choose stronger
 recovery/platform policy. Integrity tests begin in each slice, not only Stage 4.

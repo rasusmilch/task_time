@@ -34,9 +34,15 @@ requirements, policies, schemas, workflows or previously Open matters. Return an
 unresolved material design choice for user/ChatGPT adjudication.
 
 Read the product contract and target architecture before replacement work.
-After independent architecture acceptance, the next runtime action is a bounded
-Stage 1 read-only implementation plan on a separately authorized branch from
-that accepted commit; do not create it during documentation reconciliation.
+Stage 0's documentation gate is independently accepted at
+`a24aca706740b7e02cc1f856baa194042785bbcb`. The active rewrite workstream is
+`feature/chronicle-rewrite`, originating at that commit. Stage 1 is the next active
+engineering stage and is **not implemented**. Its bounded, source-grounded plan
+requires independent adjudication before runtime execution; execution may use
+substantial coherent slices without unnecessary microtasks. The fresh rewrite
+requires no legacy JSONL compatibility/import, old internal APIs or duplicate UI
+paths. Existing user files remain protected; no reset, clean or user-data mutation
+is authorized as workflow cleanup.
 Read the product contract before POL-R-related work. Selected does not mean
 implemented. Do not claim target functionality is active or treat superseded
 legacy behavior as permanent replacement-product policy.
@@ -107,13 +113,21 @@ availability must never be a prerequisite for creating that commit.
 **Expected publication:** GitHub publication is the standing Chronicle workflow.
 After a successful local commit, publish whenever the execution environment
 provides the necessary Git remote, network access and credentials. The user
-authorizes only normal non-force, fast-forward publication to
-`feature/chronicle-projects-timesheets` in `rasusmilch/task_time`, as a
+authorizes only normal non-force publication to
+`refs/heads/feature/chronicle-rewrite` in `rasusmilch/task_time`, as a
 workstream-specific exception to the ordinary local-only Codex_guide boundary:
 
 ```sh
-git push origin HEAD:refs/heads/feature/chronicle-projects-timesheets
+git push origin HEAD:refs/heads/feature/chronicle-rewrite
 ```
+
+The first successful publication creates that remote branch; later publication
+must advance it normally by fast-forward. `feature/chronicle-projects-timesheets`
+is the accepted Stage 0 source/history branch, with handoff commit
+`a24aca706740b7e02cc1f856baa194042785bbcb`. Preserve its history and references;
+future rewrite tasks must not publish there under this standing workflow.
+The handoff identifies the rewrite origin, not a permanently fixed future source
+HEAD. Do not automatically merge or rebase either branch.
 
 When hosted Git operations are available, verify the intended repository and
 feature branch, inspect the remote for unexpected advancement or divergence,

@@ -59,9 +59,11 @@ Stage 1 is a working timer **engineering slice, not complete MVP/pilot**. Stage 
 completes recording/History; Stage 3 completes frozen Timesheet **and POL-R**;
 Stage 4 stabilizes; Stage 5 pilots the complete reporting-week workflow. Stage 6
 is optional allocations/conveniences, never deferred core reconciliation.
-After independent architecture acceptance, next runtime work is a bounded Stage 1
-read-only implementation plan, then separately approved execution on an authorized
-branch from the accepted architecture commit. This task creates no such branch.
+Stage 0's documentation gate is independently accepted at
+`a24aca706740b7e02cc1f856baa194042785bbcb`. The active rewrite branch is
+`feature/chronicle-rewrite`, created from that commit; the old feature branch is
+preserved as Stage 0 source/history. Stage 1 remains unimplemented: its bounded
+read-only plan requires independent adjudication before runtime execution.
 
 ## Current legacy implementation
 
