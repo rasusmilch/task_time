@@ -12,31 +12,34 @@ Selected functionality is not automatically implemented.
 | --- | --- |
 | Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
 | Staged service capability | Independent projects/tasks, date-only replay, closed timed-correction preparation/registration, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
-| Connected calendar Actual | Main own-task Today/This week and mini Today use mixed accounting at one cutoff; application totals include retained deleted work. Failed calculations remain visibly unavailable until a successful refresh. Exports remain interval-only. |
+| Connected calendar Actual | Main own-task Today/This week and mini Today use mixed accounting at one cutoff; application totals include retained deleted work. Failed calculations remain visibly unavailable until a successful refresh. The modal Timesheet uses mixed frozen reports. |
 | Connected read-only history | Main-panel and recursive task-editor Work History commands share the modal browser, originating-parent return and session-only sorting. Replacement editing remains pending. |
-| Standalone frozen preview and Save | TimesheetPreviewFrame offers explicit This week/Last week/Custom preparation, independent All/Selected task scope including deleted work, and exact read-only frozen text. Draft changes/failures invalidate readiness. TimesheetSaveFrame composes locked same-event registration/materialization retries and protected explicit destinations, with a separate confirmed Overwrite action for stable regular-file content conflicts. Production routing and general recovery UI remain pending. |
-| Production still pending | Production export integration, file-status/recovery UI, remaining replacement editing UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
+| Connected frozen Timesheet | TimesheetPreviewFrame offers explicit This week/Last week/Custom preparation, independent All/Selected task scope including deleted work, and exact read-only frozen text. Draft changes/failures invalidate readiness. TimesheetSaveFrame composes locked same-event registration/materialization retries and protected explicit destinations, with a separate confirmed Overwrite action for stable regular-file content conflicts. One application-owned modal window connects every shipped export entry point and retains the same unfinished Save instance during the session. General recovery UI remains pending. |
+| Production still pending | File-status/recovery UI, weekly reconciliation reminders, remaining replacement editing UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
 
 [Phase 2's bounded evidence and daily-reconciliation service gate](docs/ROADMAP.md#phase-2--pol-r-evidence-and-reconciliation)
 is independently accepted as Complete under serialized dataset ownership;
 capabilities remain staged and production/release qualification remains pending.
 
-Current production retains parent/subtask interfaces, timestamp checkpoints and
-legacy submission markers, alongside the read-only Work History replacement.
+Current production retains parent/subtask interfaces alongside read-only Work History
+and the modal Timesheet. Backend timestamp checkpoints and legacy submission
+markers remain readable, but Timesheet creates neither.
 Retained mutation/accounting services still handle synthetic duration records;
 Work History refuses applicable synthetic work rather than adapting it. There
 is no parallel legacy history interface.
 `save_date_range_timesheet()` still creates an exact-format file only, without
 export-event evidence or POL-R confirmation. Separate snapshot-first operations
 now register frozen decimal evidence and materialize verified copies. They are
-combined only in the standalone component below, not connected to the production
-UI; saving never confirms POL-R entry.
+connected through the production Timesheet; saving never confirms POL-R entry
+or dismisses a reconciliation reminder.
 A [standalone timesheet preview](DESIGN_NOTES.md#frozen-timesheet-preview-standalone)
-now prepares an unregistered frozen candidate without writes. It does not replace
-shipped export routes or unblock dated writers. A
+prepares an unregistered frozen candidate without writes. A
 [standalone Save/retry component](DESIGN_NOTES.md#standalone-frozen-export-saveretry)
-now composes that preview with the existing verified services; it adds no production
-route or restart recovery UI.
+composes that preview with the existing verified services. The
+[owned Timesheet](DESIGN_NOTES.md#application-owned-modal-timesheet) now replaces
+all shipped export routes. Unfinished saves resume in the same component only
+during this application session; exit warns before losing that resumption.
+Fresh openings require Preview. No restart recovery UI or dated writer is activated.
 
 See [repository instructions](AGENTS.md), [current technical design](DESIGN_NOTES.md)
 and the [canonical changelog](CHANGELOG.md) for their respective authority scopes.
@@ -59,11 +62,11 @@ The following describes the current production application.
 - Crash-safe behavior: each state-changing action appends and flushes an event immediately.
 - One-running-task rule: starting a task auto-stops the currently running task.
 - Task Reset commands and export-completion Reset choices are removed. Retained
-  backend reset evidence and interval-only export clipping remain unchanged.
+  backend reset evidence and independently callable interval-only exporters remain unchanged.
 - Main task rows show own Today/This week Actual; mini-mode shows Today from the
   same observation. Application totals include deleted-task work. Failures show
   — inline and retain Start/Stop with normal refresh recovery.
-- Export to human-readable text with totals and audit history.
+- Timesheet previews frozen decimal-hour reports and saves verified copies after evidence registration.
 
 ## Project/task foundation (service only)
 
@@ -74,10 +77,10 @@ optionally belong to a project. Unassigned tasks and duplicate task names are
 valid. Assignment, reassignment, and project renaming never transfer or reset
 recorded time.
 
-This is a staged foundation: project navigation and production daily timesheet
-export controls are **not available yet**. The existing UI, hierarchical exports,
-submission markers, and launcher data path remain in use. Legacy task hierarchy
-is retained for that existing workflow; no historical conversion is performed.
+Project navigation remains staged. Production Timesheet controls now report
+independent task UUIDs, including retained deleted work, without descendant
+expansion or legacy submission/checkpoint effects. The task hierarchy and launcher
+data path remain unchanged; no historical conversion is performed.
 
 The eventual fresh-start project workflow will use a **separate data directory**
 once it is usable. This change does not activate that directory, import historical
@@ -91,8 +94,9 @@ and deletion. These records have no start/stop timestamps. This support is
 not enabled in production time entry yet. The legacy duration-entry UI has been
 removed; replacement duration-entry UI remains pending. The read-only mixed
 accounting API now supplies main/mini calendar Actual over explicit local-date
-windows. Exports/submission readers remain interval-only, so dated writer
-activation remains blocked on their separate integration. No public dated-duration
+windows, and Timesheet prepares mixed frozen reports. Independently callable
+legacy export/submission services remain interval-only. Dated writer activation
+still requires separate approval and satisfaction of the active-reader/UI gate. No public dated-duration
 writer, historical migration, or data-directory cutover is included. See
 [mixed accounting](DESIGN_NOTES.md#mixed-date-window-accounting)
 for selection semantics and the explicit legacy synthetic-duration boundary.
@@ -133,7 +137,7 @@ its editing tools without compatibility fallbacks. Unsupported synthetic work
 fails visibly; no migration or user-file/data-directory cutover occurs.
 Replacement segment editing, creation/deletion, missed-stop tools and audit
 remain pending. Task Reset controls and both export Reset branches are removed;
-backend reset APIs, persisted evidence and interval-only exports are unchanged.
+backend reset APIs, persisted evidence and independently callable interval-only exporters are unchanged.
 Main/mini calendar Actual is connected separately; production POL-R presentation
 and remaining active-reader integration stay pending.
 
@@ -194,7 +198,7 @@ destinations are protected, and cleanup never deletes the final path. Filesystem
 without hard-link support fail clearly without a direct-write fallback. Both use
 explicit inclusive work dates and a fixed aware cutoff;
 neither submits time, creates checkpoints, resets counters, or changes timers.
-These APIs remain separate from the production UI and legacy export workflow.
+These exact-format APIs remain separate from the production frozen Timesheet workflow.
 See the [service workflow](DESIGN_NOTES.md#date-range-timesheet-service-staged).
 
 The separate `prepare_timesheet_export_snapshot()` freezes one calculation as
@@ -329,10 +333,10 @@ Backup settings can be edited in-app via **File → Backup Settings**.
 - **Risky-operation safety backups**:
   - Restore always creates a safety backup first (forced).
   - Other risky operations obey `auto_backup_before_risky_operations`:
-    - checkpoint reopen/void
-    - export
+    - backend checkpoint reopen/void and legacy export APIs (no shipped UI routes)
     - manual interval edit/delete
     - rebuild snapshot from journal
+  - Frozen Timesheet preview/Save does not call legacy pre-export backup hooks.
 - **Restore** restores subtask templates from the selected backup, including `subtask_templates.json`.
 - **Automatic backup on app start**:
   - Controlled by `auto_backup_on_app_start`.
@@ -346,20 +350,30 @@ Backup settings can be edited in-app via **File → Backup Settings**.
 - Archived segments are never rewritten.
 - Full rebuild scans archives + active segment.
 
-## Export format
+## Timesheet and export format
 
-This describes the active legacy exporter. The selected replacement workflow is
-owned by the [product contract](docs/TIMESHEET_REQUIREMENTS.md). Separate export
-evidence registration and verified materialization are staged; production export
-integration and POL-R confirmation UI are not yet implemented.
+Toolbar **Timesheet**, File **Timesheet…**, the reminder banner and the close-reminder
+choice open one application-owned modal window. Timers continue while main/mini
+input is blocked. Explicit Preview resolves This week, Last week or Custom and
+All or independently selected task UUIDs, including deleted work. The scrollable
+report is the complete frozen decimal-hour text; changing drafts requires a fresh
+preview. Save registers that exact evidence before verified file publication.
+Retry preserves identity; Overwrite requires a separate one-call confirmation.
 
-Export is plain text and includes:
+Closing before a Save attempt discards the preview. Closing an unsuccessful Save
+requires confirmation and retains the same hidden instance for session resumption;
+reopening does not retry automatically. Completion permits a fresh next opening.
+Exit warns before losing unfinished session resumption, without undoing evidence
+or files. Save never submits, confirms POL-R, resets/stops timers, deletes tasks
+or marks reminders handled. Explicit Dismiss remains available. Current monthly
+reminder visibility remains temporary; approved weekly reconciliation scheduling
+and POL-R presentation are pending.
 
-- Header with generation timestamp and timezone.
-- Current day/week range (Sunday-start week).
-- Source segments used for export.
-- Overall totals and per-task totals (including notes).
-- Detailed chronological event/interval history, including resets and corrections.
+Independent legacy backend exporters and their audit/checkpoint/submission
+representations remain available to service callers, without a parallel shipped
+export interface or compatibility promise. See the
+[technical contract](docs/EXPORT_EVIDENCE_CONTRACT.md) and
+[owned Timesheet](DESIGN_NOTES.md#application-owned-modal-timesheet).
 
 ## Subtask Templates
 

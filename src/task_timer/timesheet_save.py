@@ -1,4 +1,4 @@
-"""Standalone, single-operation frozen export saving; no production routing."""
+"""Frozen export saving, composed standalone or in the owned Timesheet window."""
 
 from __future__ import annotations
 
@@ -167,6 +167,12 @@ class TimesheetSaveFrame(ttk.Frame):
                 self._update_controls()
             except Exception as exc:
                 self._report(exc)
+
+    def is_busy(self) -> bool:
+        return self._busy
+
+    def has_unfinished_attempt(self) -> bool:
+        return self._attempt is not None and not self._completed
 
     def get_save_attempt(self) -> dict | None:
         """Detached retry inputs only, with no current-file or restart guarantee."""

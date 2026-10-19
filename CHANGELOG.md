@@ -29,14 +29,15 @@ receipts or commits. No release or production qualification is implied below.
   diagnostics. Remove the superseded timeline UI/reader/formatter without a
   compatibility interface, migration or user-file/data-directory cutover.
   Remove shipped task Reset controls and Reset branches from both export
-  completion paths, preserving Start/Stop and selected-export Leave/Delete.
+  completion paths, preserving Start/Stop. Supersede the old full/selected export
+  UI with the frozen Timesheet workflow below.
   Replace main elapsed counters with own-task Today/This week calendar Actual,
   and mini-mode with Today from one coordinated observation. Application totals
   retain deleted-task work; full-week dated amounts preserve exact attribution.
   Failures show unavailable values and inline errors while Start/Stop and normal
   refresh recovery remain usable. Retire superseded display helpers. Backend reset
-  contracts, historical evidence and interval-only export/submission readers are
-  unchanged. Replacement creation/editing/deletion, missed-stop UI, audit, remaining
+  contracts, historical evidence and independently callable interval-only backend
+  export/submission readers are unchanged. Replacement creation/editing/deletion, missed-stop UI, audit, remaining
   active-reader integration and production POL-R presentation remain pending. Stage closed
   genuine-interval correction preparation/registration using existing replacement
   events: no-op saves write nothing, unchanged endpoints retain precision, comments
@@ -70,10 +71,16 @@ receipts or commits. No release or production qualification is implied below.
   stable regular-file conflicts outside the active dataset tree/resolved aliases,
   using staged `os.replace`, bounded target rechecks and complete final verification.
   Retain truthful attempted/known replacement diagnostics without rollback.
-  Compose standalone explicit frozen preview and Save/retry components: independent
-  task selection, locked reviewed candidates, exact-event retries and explicit
-  protected destinations with separate one-call Overwrite confirmation, without
-  production routing or general recovery UI.
+  Connect explicit frozen preview and Save/retry through one application-owned modal
+  Timesheet for toolbar, File, reminder-banner and close-reminder access. Preserve
+  independent task selection, locked reviewed candidates, exact-event retries and
+  protected destinations with separate one-call Overwrite confirmation. Retain the
+  same unfinished Save instance across confirmed closure/reopening only within the
+  session; exit warns before losing resumption, and fresh openings require Preview.
+  Retire legacy full/selected export dialogs, overlap/post-export dispatch and
+  checkpoint-reopening UI. Timesheet creates no legacy submission/checkpoint,
+  task deletion, Reset, confirmation or reminder-dismissal effects. General recovery
+  and weekly reconciliation reminders remain pending.
   Evaluate destination-relative PENDING/READY/MISSING/CONFLICT/UNVERIFIABLE outcomes
   from freshly validated evidence and current file inspection, without writes,
   retained status or publication-history state.
@@ -108,8 +115,10 @@ receipts or commits. No release or production qualification is implied below.
   remain staged; production, platform and release qualification remain pending.
 
 These services are independently callable but not fully connected to the
-production application workflow. Legacy UI/export paths remain active during
-staging; new production date-only duration writers and release cutover are inactive.
+production application workflow. Work History, main/mini Actual and frozen
+Timesheet access are connected; legacy backend export/evidence APIs remain
+independently callable. New production date-only duration writers and release
+cutover are inactive.
 POL-R confirmation/reconciliation UI and weekly summaries, general file-status/recovery UI,
 automatic missing-file recovery, configurable week starts and weekly allocation
 management are not implemented.

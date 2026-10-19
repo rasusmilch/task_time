@@ -162,9 +162,9 @@ New lifecycle events are currently
 exercised through isolated fixtures and internal validation; **there is no new
 public duration writer**. `add_manual_duration`, `edit_duration_interval`, legacy
 synthetic records, real interval mutation, resets, checkpoints, tags, exports and
-submission behavior remain unchanged. Interval-only export/submission consumers
-still omit dated records. Main/mini calendar Actual and Work History now include
-both supported record types. Remaining active-reader integration must be validated
+submission backend behavior remain unchanged. Independently callable interval-only
+export/submission consumers still omit dated records. Main/mini calendar Actual,
+Work History and production frozen Timesheet now include both supported record types. Remaining active-reader integration must be validated
 before the new workflow emits production dated events. Production
 reset/checkpoint consumers remain legacy. The selected
 [date-scoped POL-R workflow](docs/TIMESHEET_REQUIREMENTS.md) does not use an
@@ -256,10 +256,11 @@ endpoint span touches the requested window. The endpoint check detects fabricate
 spillover; it never allocates seconds. An invalid legacy work date also fails
 explicitly. Deleted legacy records, unselected tasks, and legacy records entirely
 outside the window do not contribute. No legacy conversion or event rewriting
-is performed; the old production reporting path continues unchanged.
+is performed; unsupported synthetic work fails visibly in connected readers.
 
-This API persists nothing. Main/mini calendar Actual now consumes it; exports,
-submission/checkpoint rules and production dated writers remain unchanged.
+This API persists nothing. Main/mini calendar Actual and frozen Timesheet preparation
+consume it; independent legacy backend exports, submission/checkpoint rules and
+production dated writers remain unchanged.
 The event logs and their effective projections remain authoritative; snapshots
 remain rebuildable. Remaining reader/writer integration and the separate
 empty-directory cutover are later tasks. Tests use isolated temporary datasets.
@@ -860,8 +861,8 @@ persistence, or template framework is introduced.
 
 Rendering does not read storage, consult service state, write files/events,
 operate timers, or infer submission status. The legacy `build_export_text()`
-and `build_selected_tasks_export_text()` and their service/UI routes remain
-unchanged. This renderer is not activated in the production export menu; new
+and `build_selected_tasks_export_text()` and their backend service routes remain
+unchanged; their former production UI routes are removed. This renderer is not activated in the production export menu; new
 duration writers, submission/checkpoint policies and the separate fresh-start
 data-directory cutover remain separate implementation outcomes.
 
@@ -899,10 +900,10 @@ The report labels its two-place format and rounding rule. No intervals or dated
 records are recalculated, and no report/state/events/files are mutated.
 
 This renderer is independently callable and used by snapshot preparation and the
-standalone frozen preview. Existing generation/save services still use the exact
-renderer. Separate export-snapshot registration is staged
-below; confirmation UI, file-status/recovery UI, production export/UI
-integration, configurable week starts and fresh-directory cutover remain
+frozen preview, now composed by the modal production Timesheet. Independent
+generation/save services still use the exact renderer. Export-snapshot registration
+and materialization below are connected through Save; confirmation UI, general
+file-status/recovery UI, configurable week starts and fresh-directory cutover remain
 unimplemented. The shared Unicode-width and extreme-date accounting limitations
 described above still apply.
 
@@ -948,10 +949,11 @@ invalidating a ready candidate; direct locked refresh/picker callbacks do nothin
 Programmatic draft writes still invalidate readiness. The report remains readable.
 The preview itself has no Save/retry, file dialog,
 modal wrapper, application route, path memory, confirmation or work mutation.
-Existing production exports remain unchanged and dated writers remain blocked
-on remaining active-reader integration. This is a standalone foundation for the
-[Selected target](docs/TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports),
-not the completed Timesheet workflow.
+The owning Save/window components provide production routing separately; dated
+writers remain inactive pending their separately approved active-reader/UI gate. The preview remains independently usable; the
+[Selected target](docs/TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports)
+is composed by Save and the owned modal window below. General recovery and
+POL-R presentation remain separate.
 
 ## Standalone frozen-export Save/retry
 
@@ -990,8 +992,59 @@ instances reject duplicate actions. `get_save_attempt() -> dict | None` returns
 only deep-copied `prepared_event` and `destination` after the first attempt, with
 no clock or I/O. This is an ephemeral current-attempt handoff, not persisted
 recovery, a permanent file-status flag or an eventual Close/new-export policy.
-The component has no production route, general recovery UI, confirmation,
-submission/checkpoint, timer or settings effects. Backend contracts are unchanged.
+`is_busy()` reads the existing action guard; `has_unfinished_attempt()` means an
+attempt exists without known materialization completion. These are computed
+queries, not another operation status. The owned Timesheet window below now
+composes this same component for production. Standalone usage remains supported.
+It has no general recovery UI, confirmation, submission/checkpoint, timer or
+settings effects. Backend contracts are unchanged.
+
+## Application-owned modal Timesheet
+
+`TimesheetWindow(parent, service, *, now_utc, on_disposed)` in `timesheet_window.py`
+constructs a withdrawn Toplevel with `save_frame = TimesheetSaveFrame(...)` and
+Close. It performs no preparation, clock observation or durable operation.
+`show_modal()` presents it transient to the root, rechecks local-grab eligibility
+after visibility processing, takes a local grab and ordinary focus, then uses a
+Tk variable wait ended by withdrawal or destruction. It does not use another
+mainloop or scheduled data refresh. Main/mini input is blocked while timers and
+normal Tk events continue. Calendars retain their own ownership/Apply-only
+behavior; picker Escape does not close Timesheet.
+
+Close/Escape/WM close ignore busy actions. Without an attempt, or after verified
+completion, they dispose the window. For unfinished Save, an owned default-cancel
+confirmation explains session resumption. Confirming releases only the window's
+grab and withdraws the same instance, preserving event/path, report, controls and
+diagnostics. Reopening does not prepare, observe, register or retry. Overwrite
+eligibility is not reusable permission: each action still asks confirmation and
+revalidates through existing services. Recoverable presentation failure retains
+an unfinished instance; fresh/partial failures dispose widgets and report original
+cleanup diagnostics. External/root destruction notifies the application exactly
+once and ends the wait; it does not promise forced-destruction/crash resumption.
+
+`TaskTimerApp.open_timesheet()` is the canonical toolbar/File/reminder opening
+path. `_timesheet_window` and `_timesheet_window_opening` are initialized before
+controls. Ownership is published before presentation and retained on supported
+unfinished withdrawal; identity-checked disposal clears only that instance.
+Duplicate/opening/busy requests do nothing. Return uses the existing bounded
+parent-grab/focus restoration, leaving competing live ownership alone. Inline
+launch diagnostics belong to main/banner presentation and preserve original Tk
+exception diagnostics; Preview/Save errors stay in the usable component.
+
+The normal root-close handler rejects busy/reentrant interruption. An unfinished
+attempt receives an owned default-cancel exit warning before any monthly prompt;
+cancel preserves it, confirm destroys root without retry/rollback/recovery writes.
+The warning distinguishes lost automatic session resumption from preserved
+registered evidence/files. The existing monthly close choice Open Timesheet
+returns to the application afterwards. No opening or Save result handles a
+reminder. Explicit Dismiss remains; weekly scheduling is Selected/pending.
+
+This replaces all shipped full/selected export UI and checkpoint-reopening UI.
+There is no parallel interface, post-export deletion, submission/checkpoint
+creation, Reset or automatic reconciliation. Backend exporters/replay, file-only
+save services and historical evidence remain independently available. Fresh
+windows require Preview at This week/All tasks. No New export, Abandon, persisted
+attempt, restart recovery, migration/cutover or dated-writer activation is added.
 
 ## Immutable export-snapshot registration (staged)
 
@@ -1077,7 +1130,7 @@ rotation metadata plus the in-memory evidence index/event list. Neither changes
 timers, Actual, submissions, checkpoints, selection or legacy save behavior.
 Registration publishes no external report or READY classification. The separate
 materialization operation below verifies frozen copies; POL-R confirmation and
-reconciliation UI and production integration remain future outcomes requiring
+reconciliation UI remain future outcomes requiring
 independent review. Linux fault injection covers append,
 inspection and projection failures; it does not establish concurrent multi-process
 writers, arbitrary journal repair, universal crash atomicity, power-loss durability
@@ -1149,7 +1202,8 @@ Restart, rotation and supported backup/restore retain the snapshot needed to mat
 Every call verifies anew: later external changes/deletion invalidate earlier
 observations. There is no persisted completion flag, file-status history or
 distinction between never-published and subsequently deleted paths. No automatic
-missing-file recovery, dashboard, confirmation, production UI integration or cutover is added.
+missing-file recovery, dashboard, confirmation or cutover is added by this service.
+The modal Timesheet separately composes explicit registration/materialization calls.
 Linux fault injection does not establish Windows/NTFS execution, power-loss
 durability, universal filesystem support or concurrent/hostile-directory safety.
 
@@ -1402,7 +1456,7 @@ no direct-write, rename, replace or overwrite fallback. Linux publication,
 existing-target protection and injected failures are tested; Windows/NTFS
 execution is unavailable in this environment and is not claimed as validated.
 
-Generating is read-only accounting; current saving is file output only and does
+Generating is read-only accounting; this exact-format save is file output only and does
 not persist immutable export-snapshot evidence. The
 [selected saved-export/confirmation requirement](docs/TIMESHEET_REQUIREMENTS.md)
 requires integration with immutable evidence and future POL-R reconciliation UI. The
@@ -1414,9 +1468,10 @@ if matching, and does not perform snapshot-linked postpublication byte verificat
 A saved report is **not submission evidence**. Neither operation appends events, updates
 snapshots, creates backups, changes selection/membership, operates timers, resets
 counters, consults timestamp checkpoints or changes submission flags/coverage.
-Legacy `export_report()`/`export_selected_tasks_report()` and their UI routes
-remain unchanged. No new duration writer or production menu is activated, and
-the separate empty-directory cutover remains deferred. Tests use temporary
+Legacy `export_report()`/`export_selected_tasks_report()` backend APIs remain
+unchanged; their UI routes are replaced by frozen Timesheet. These exact-format
+APIs activate no duration writer or production menu, and the separate empty-directory
+cutover remains deferred. Tests use temporary
 datasets and caller-chosen output files, leaving existing user data untouched.
 
 ## Event schema
@@ -1451,35 +1506,22 @@ ignore these legacy boundaries. Production POL-R reconciliation remains pending.
 - Retained interval-only export readers exclude or clip earlier work at this boundary.
 - Historical events remain visible in exports.
 
-## Export completion and retained reset backend
+## Retained export/reset backend boundary
 
-All shipped full-export routes (toolbar, reminder banner and close reminder)
-use `export_report(..., reset_after=False)`. The file is generated first, then the
-existing `export_checkpoint` is appended. Success still marks the reminder handled,
-refreshes structure/live/reminder presentation and returns True. There is no
-post-export Reset prompt or reset call; cancellation/failure does not proceed to
-completion effects. Configured pre-export backups remain.
+Production export access uses the application-owned modal Timesheet above.
+`TaskTimerApp.export()`/`export_selected_tasks()`, their selected-dialog/result and
+post-export choices, overlap warning presentation, post-export dispatch and
+checkpoint-reopening command are removed. No configured legacy pre-export or
+post-delete backup hook is called by this replacement path; registration and
+materialization retain their existing service behavior. Explicit deletion and
+other risky-operation backup workflows outside exporting remain unchanged.
 
-Selected export retains cancellation, overlap acknowledgement and optional legacy
-submission markers. Overlap warnings display an unbounded lower intersection as
-"Beginning of recorded history" without converting the UTC minimum sentinel to
-local time. Finite intersection boundaries retain local date/minute formatting;
-acknowledgement and overlap calculation are unchanged.
-Its completion dialog offers Leave and Delete only; window
-closure means Leave. Leave preserves running timers and work. Explicit Delete
-still uses its configured risky-operation backup and scoped deletion, may stop
-running deleted tasks, clears affected selection and refreshes structure/live
-values. It is not an incidental export reset. Export and deletion backups remain
-separate configured operations. Neither export flow creates POL-R confirmation.
-
-The backend `export_report(reset_after=True)` contract remains unchanged: its
-report header and checkpoint payload retain the flag, and an explicit backend
-request resets all non-deleted tasks after file/checkpoint creation, stopping
-running tasks through the existing reset path. No UI route supplies that request.
-Historical reset/checkpoint evidence and audit rendering remain intact.
-The [Selected replacement workflow](docs/TIMESHEET_REQUIREMENTS.md) still requires
-separate export evidence and explicit task/day POL-R confirmation; this UI slice
-does not deliver that integration; main/mini calendar display policy is documented above.
+The independently callable backend `export_report(reset_after=True)` contract
+still retains its report header/checkpoint flag and explicit reset behavior.
+Selected backend exports still provide interval/submission semantics and overlap
+calculation. Those APIs, reset/checkpoint/submission replay and historical audit
+rendering are preserved, not a parallel shipped export UI or a compatibility
+promise. Timesheet never calls them, confirms POL-R or marks reminders handled.
 
 ## Time handling
 

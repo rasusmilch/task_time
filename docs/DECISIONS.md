@@ -334,9 +334,10 @@ Custom periods, typed/calendar dates, and All or independently selected task UUI
 Retained deleted work remains reportable. Save publishes the exact frozen preview;
 changing dates or selection requires another preview even after backtracking.
 No automatic submission, confirmation, Reset or post-export deletion is selected.
-The approved first component prepares and displays only an unregistered candidate,
-without Save/retry or production routing. Existing export routes remain until
-replacement is ready. This approval does not activate dated writers or choose
+That approved first component prepared and displayed only an unregistered candidate,
+without Save/retry or production routing. It retained the then-existing export
+routes until replacement was ready; the later modal approval below replaces them.
+This earlier approval did not activate dated writers or choose
 remembered paths, restart policy, configurable weeks or installation cutover.
 
 ### Standalone frozen-export Save/retry
@@ -357,7 +358,8 @@ only a successful materializer return and survives later presentation failure.
 
 The approved standalone component's single-operation instance and deep-copied
 in-memory attempt handoff do not select permanent Timesheet-window lifecycle,
-Close behavior, path memory or restart recovery UI. Production routing, general
+Close behavior, path memory or restart recovery UI. Production routing and Close
+behavior were selected later below, not by this standalone approval. General
 recovery UI, dated writers and installation cutover remain outside this approval.
 
 ### Explicit confirmed frozen-export replacement
@@ -379,8 +381,44 @@ These bounded checks assume trusted directories/serialized ownership and are not
 atomic compare-and-replace or hostile/concurrent-directory protection. Failures
 after replacement retain original diagnostics and do not imply the old file
 survives or the new file is absent. Immutable evidence never changes. No overwrite
-permission is persisted in events or attempt handoffs. Production routing,
-window/reminder integration, dated writers, migration and cutover remain separate.
+permission is persisted in events or attempt handoffs. That unit left production
+routing and window/reminder integration separate; the later approval below selects
+modal session behavior without activating dated writers, migration or cutover.
+
+### Production modal Timesheet and unfinished session attempts
+
+**Status:** current. **Provenance:** later explicit user approval and implementation
+contract for replacing shipped export workflows with the accepted Timesheet components.
+Current owners: [saved exports](TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports)
+and [owned Timesheet](../DESIGN_NOTES.md#application-owned-modal-timesheet).
+
+All shipped export entry points use one application-owned modal Timesheet.
+Main/mini input is blocked while timers and ordinary Tk events continue. Fresh
+openings start This week/All tasks and require explicit Preview. Close before an
+attempt discards the preview; Close after known completion permits a fresh opening.
+An unsuccessful Save may close only after default-cancel confirmation, retaining
+the same withdrawn window/component for this session. Reopening does not prepare,
+retry or reconstruct it. Save/confirmation/path busy guards prevent interruption.
+Exit warns before losing unfinished automatic session resumption and takes
+precedence over the old monthly close prompt. No evidence/files are undone.
+Forced destruction, crashes and restart resumption are not promised. No New export,
+Abandon, persistent attempt or general recovery UI is selected by this unit.
+
+This later approval replaces the full/selected export UI, overlap/post-export
+choices and checkpoint-reopening command without compatibility aliases or parallel
+legacy access. Independently used backend export/replay/evidence contracts remain.
+Save never confirms POL-R, marks a reminder handled, submits, creates a checkpoint,
+deletes a task or operates timers. Opening from the monthly close reminder returns
+to the application, without automatic exit or a claim of Save success.
+
+The same approval selects future reconciliation reminders: check the previous
+week every local day used, including opening after absence and rollover while
+running; check the current week Friday and Monday. Compare per task/day so weekly
+totals cannot cancel differences. Offer Open Timesheet and Dismiss for today;
+saving is not reconciliation. These weekly rules remain pending. Existing monthly
+visibility/settings may remain temporarily, without becoming replacement policy.
+This implementation approval does not activate configurable weeks, dated writers,
+migration or installation cutover. Their existing Selected/Open boundaries remain.
 
 ### Absolute daily external confirmations
 
@@ -537,10 +575,12 @@ It is not evidence that the user had previously approved fabricated intervals.
 [accounting.py](../src/task_timer/accounting.py); current technical owner:
 [Design Notes](../DESIGN_NOTES.md).
 
-The production application still has parent/subtask handling, local-noon synthetic
-manual intervals, timestamp export checkpoints and legacy submission markers.
-Mixed service accounting currently uses Sunday weeks; the file-only save service
-publishes a file without immutable export registration. Source presence does not
+The production application still has parent/subtask handling. Retained backend
+services support synthetic manual intervals, timestamp export checkpoints and
+legacy submission markers; their old UI routes are removed. Mixed accounting
+currently uses Sunday weeks. The separate file-only save service publishes
+without immutable registration; production Timesheet uses snapshot registration
+and verified materialization instead. Source presence does not
 select these as permanent product behavior or approve reuse of legacy submission
 semantics for POL-R. New endpoint-free replay/accounting services are staged;
 they do not make replacement production entry or reconciliation operational.

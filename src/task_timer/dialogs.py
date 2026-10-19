@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, time, timezone
+from datetime import datetime
 from tkinter import BooleanVar, StringVar, Toplevel, messagebox, simpledialog, ttk
 import tkinter as tk
 
@@ -13,7 +12,6 @@ from .models import NOTES_MAX_LENGTH
 from .settings import BackupSettings, UISettings
 from .tag_dialogs import TagSelectionFrame
 from .tags import normalize_tag
-from .time_utils import combine_local_date_time, parse_utc_z, utc_now
 
 if TYPE_CHECKING:
     from .app import TaskTimerService
@@ -264,20 +262,20 @@ class MonthEndCloseReminderDialog:
 
         ttk.Label(
             self.window,
-            text="Today is the last business day of the month.\nHave you entered/exported your time?",
+            text="Today is the last business day of the month.\nReview your timesheet before closing?",
             justify="left",
         ).pack(fill="x", padx=10, pady=(10, 8))
 
         actions = ttk.Frame(self.window)
         actions.pack(fill="x", padx=10, pady=(0, 10))
-        ttk.Button(actions, text="Export Time", command=self._export).pack(side="left")
+        ttk.Button(actions, text="Open Timesheet", command=self._timesheet).pack(side="left")
         ttk.Button(actions, text="Return to App", command=self._return).pack(side="left", padx=6)
         ttk.Button(actions, text="Close Anyway", command=self._close).pack(side="right")
 
         parent.wait_window(self.window)
 
-    def _export(self) -> None:
-        self.choice = "export"
+    def _timesheet(self) -> None:
+        self.choice = "timesheet"
         self.window.destroy()
 
     def _return(self) -> None:
@@ -286,232 +284,6 @@ class MonthEndCloseReminderDialog:
 
     def _close(self) -> None:
         self.choice = "close"
-        self.window.destroy()
-
-
-@dataclass(slots=True)
-class SelectedTaskExportResult:
-    window_start_utc: datetime | None
-    window_end_utc: datetime
-    task_ids: list[str]
-    mark_submitted: bool
-    reason: str
-
-
-class SelectedTaskExportDialog:
-    def __init__(self, parent: Toplevel, service: "TaskTimerService") -> None:
-        self.service = service
-        self.result: SelectedTaskExportResult | None = None
-        self.window = Toplevel(parent)
-        self.window.title("Export Selected Tasks")
-        self.window.transient(parent)
-        self.window.grab_set()
-        self.window.minsize(600, 560)
-        self.window.resizable(True, True)
-
-        self.window_mode_var = StringVar(value="checkpoint")
-        self.mark_submitted_var = BooleanVar(value=True)
-        self.reason_var = StringVar(value="Job closing / entered into Epicor")
-
-        today = datetime.now(service.local_tz).date().isoformat()
-        self.start_date_var = StringVar(value=today)
-        self.end_date_var = StringVar(value=today)
-
-        self._task_vars: dict[str, BooleanVar] = {}
-        self._included_labels: dict[str, ttk.Label] = {}
-        self._child_parent: dict[str, str] = {}
-
-        frame = ttk.Frame(self.window)
-        frame.pack(fill="both", expand=True, padx=8, pady=8)
-
-        ttk.Label(frame, text="Date/window").pack(anchor="w")
-        ttk.Radiobutton(frame, text="Since last export checkpoint", variable=self.window_mode_var, value="checkpoint").pack(anchor="w")
-        ttk.Radiobutton(frame, text="Custom date range", variable=self.window_mode_var, value="custom").pack(anchor="w")
-        dates = ttk.Frame(frame)
-        dates.pack(fill="x", pady=(2, 8))
-        ttk.Label(dates, text="Start date (YYYY-MM-DD)").grid(row=0, column=0, sticky="w")
-        ttk.Entry(dates, textvariable=self.start_date_var).grid(row=0, column=1, sticky="ew", padx=(6, 0))
-        ttk.Label(dates, text="End date (YYYY-MM-DD)").grid(row=1, column=0, sticky="w")
-        ttk.Entry(dates, textvariable=self.end_date_var).grid(row=1, column=1, sticky="ew", padx=(6, 0))
-        dates.grid_columnconfigure(1, weight=1)
-
-        ttk.Label(frame, text="Tasks").pack(anchor="w")
-        ttk.Label(
-            frame,
-            text="Selecting a parent task includes its subtasks. Selecting an individual subtask exports only that subtask.",
-            wraplength=520,
-            justify="left",
-        ).pack(anchor="w", pady=(0, 4))
-
-        content = ttk.Frame(frame)
-        content.pack(fill="both", expand=True)
-        content.grid_columnconfigure(0, weight=1)
-        content.grid_rowconfigure(0, weight=1)
-
-        task_area = ttk.Frame(content)
-        task_area.grid(row=0, column=0, sticky="nsew")
-        task_area.grid_columnconfigure(0, weight=1)
-        task_area.grid_rowconfigure(0, weight=1)
-
-        task_list_frame = ttk.Frame(task_area)
-        task_list_frame.grid(row=0, column=0, sticky="nsew")
-        task_list_frame.grid_columnconfigure(0, weight=1)
-        task_list_frame.grid_rowconfigure(0, weight=1)
-
-        canvas = tk.Canvas(task_list_frame, height=220, width=500, bd=0, borderwidth=0, highlightthickness=0)
-        scroll = ttk.Scrollbar(task_list_frame, orient="vertical", command=canvas.yview)
-        list_frame = ttk.Frame(canvas)
-        list_frame.bind("<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((4, 4), window=list_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scroll.set)
-        canvas.grid(row=0, column=0, sticky="nsew")
-        scroll.grid(row=0, column=1, sticky="ns")
-
-        active_tasks = [t for t in service.state.tasks.values() if not t.is_deleted]
-        roots = sorted([t for t in active_tasks if t.parent_task_id is None], key=lambda t: (t.name.strip().casefold(), t.task_id))
-        children_by_parent = {t.task_id: sorted(service.child_tasks(t.task_id), key=lambda c: (c.name.strip().casefold(), c.task_id)) for t in roots}
-        for task in roots:
-            var = BooleanVar(value=False)
-            self._task_vars[task.task_id] = var
-            parent_cb = ttk.Checkbutton(list_frame, text=f"{task.name} — {task.notes} (includes subtasks)", variable=var, command=lambda tid=task.task_id: self._on_parent_toggle(tid))
-            parent_cb.pack(anchor="w")
-            for child in children_by_parent.get(task.task_id, []):
-                cvar = BooleanVar(value=False)
-                self._task_vars[child.task_id] = cvar
-                self._child_parent[child.task_id] = task.task_id
-                row = ttk.Frame(list_frame)
-                row.pack(fill="x", anchor="w", padx=(18, 0))
-                ttk.Checkbutton(row, text=f"└─ {child.name} — {child.notes}", variable=cvar).pack(side="left", anchor="w")
-                label = ttk.Label(row, text="")
-                label.pack(side="left", padx=(6, 0))
-                self._included_labels[child.task_id] = label
-
-        control_buttons = ttk.Frame(task_area)
-        control_buttons.grid(row=0, column=1, sticky="ne", padx=(10, 0))
-        ttk.Button(control_buttons, text="Select All", command=self.select_all_tasks).pack(fill="x")
-        ttk.Button(control_buttons, text="Clear All", command=self.clear_all_tasks).pack(fill="x", pady=(4, 0))
-
-        self._refresh_included_states()
-
-        options_frame = ttk.Frame(frame)
-        options_frame.pack(fill="x", pady=(8, 0))
-        ttk.Checkbutton(
-            options_frame,
-            text="Mark exported time as already entered into Epicor",
-            variable=self.mark_submitted_var,
-        ).pack(anchor="w", fill="x")
-
-        reason_row = ttk.Frame(options_frame)
-        reason_row.pack(fill="x", pady=(8, 0))
-        ttk.Label(reason_row, text="Reason").pack(side="left")
-        ttk.Entry(reason_row, textvariable=self.reason_var).pack(side="left", fill="x", expand=True, padx=(8, 0))
-
-        actions = ttk.Frame(frame)
-        actions.pack(fill="x", pady=(10, 0))
-        ttk.Button(actions, text="Cancel", command=self.window.destroy).pack(side="right", padx=4)
-        ttk.Button(actions, text="Export Selected", command=self._confirm).pack(side="right")
-
-        parent.wait_window(self.window)
-
-    def select_all_tasks(self) -> None:
-        for var in self._task_vars.values():
-            var.set(True)
-        self._refresh_included_states()
-
-    def clear_all_tasks(self) -> None:
-        for var in self._task_vars.values():
-            var.set(False)
-        self._refresh_included_states()
-
-    def _on_parent_toggle(self, _task_id: str) -> None:
-        self._refresh_included_states()
-
-    def _refresh_included_states(self) -> None:
-        for child_id, parent_id in getattr(self, "_child_parent", {}).items():
-            parent_selected = self._task_vars[parent_id].get()
-            if parent_selected:
-                self._task_vars[child_id].set(True)
-                label = self._included_labels.get(child_id)
-                if label is not None:
-                    label.configure(text="included via parent")
-            else:
-                self._task_vars[child_id].set(False)
-                if child_id in self._included_labels:
-                    self._included_labels[child_id].configure(text="")
-
-    @staticmethod
-    def validate_inputs(*, selected_task_ids: list[str], window_mode: str, start_date_text: str, end_date_text: str, mark_submitted: bool, reason: str, service: "TaskTimerService") -> SelectedTaskExportResult:
-        if not selected_task_ids:
-            raise ValueError("Select at least one task")
-        now = utc_now()
-        if window_mode == "checkpoint":
-            checkpoint = service.find_active_export_checkpoint()
-            start = parse_utc_z(checkpoint["timestamp_utc"]) if checkpoint else None
-            end = now
-        else:
-            start_date = datetime.strptime(start_date_text.strip(), "%Y-%m-%d").date()
-            end_date = datetime.strptime(end_date_text.strip(), "%Y-%m-%d").date()
-            start_local = combine_local_date_time(start_date, time.min, service.local_tz)
-            end_local = combine_local_date_time(end_date, time.max, service.local_tz)
-            start = start_local.astimezone(timezone.utc)
-            end = end_local.astimezone(timezone.utc)
-            if end <= start:
-                raise ValueError("End must be after start")
-        clean_reason = reason.strip()
-        if mark_submitted and not clean_reason:
-            raise ValueError("Reason is required when marking as entered")
-        return SelectedTaskExportResult(window_start_utc=start, window_end_utc=end, task_ids=selected_task_ids, mark_submitted=mark_submitted, reason=clean_reason)
-
-    def _confirm(self) -> None:
-        selected = [task_id for task_id, var in self._task_vars.items() if var.get()]
-        try:
-            self.result = self.validate_inputs(
-                selected_task_ids=selected,
-                window_mode=self.window_mode_var.get(),
-                start_date_text=self.start_date_var.get(),
-                end_date_text=self.end_date_var.get(),
-                mark_submitted=self.mark_submitted_var.get(),
-                reason=self.reason_var.get(),
-                service=self.service,
-            )
-        except Exception as exc:  # noqa: BLE001
-            messagebox.showerror("Export Selected Tasks", str(exc), parent=self.window)
-            return
-        self.window.destroy()
-
-
-class PostSelectedExportActionDialog:
-    def __init__(self, parent: Toplevel) -> None:
-        self.choice = "leave"
-        self.window = Toplevel(parent)
-        self.window.title("Selected Export Complete")
-        self.window.transient(parent)
-        self.window.grab_set()
-        self.window.resizable(False, False)
-        self.window.protocol("WM_DELETE_WINDOW", self._leave)
-
-        frame = ttk.Frame(self.window, padding=10)
-        frame.pack(fill="both", expand=True)
-        ttk.Label(
-            frame,
-            text="The selected task time was exported. What should happen to the selected task(s) now?\n\nDelete/remove will take them out of the active list only. Their time history remains in the journal and can still appear in global exports.",
-            justify="left",
-            wraplength=420,
-        ).pack(fill="x", pady=(0, 10))
-
-        actions = ttk.Frame(frame)
-        actions.pack(fill="x")
-        ttk.Button(actions, text="Leave tasks unchanged", command=self._leave).pack(fill="x", pady=2)
-        ttk.Button(actions, text="Delete/remove selected tasks from active list", command=self._delete).pack(fill="x", pady=2)
-
-        parent.wait_window(self.window)
-
-    def _leave(self) -> None:
-        self.choice = "leave"
-        self.window.destroy()
-
-    def _delete(self) -> None:
-        self.choice = "delete"
         self.window.destroy()
 
 

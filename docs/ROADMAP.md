@@ -20,8 +20,7 @@ Historical rationale, provenance and supersessions belong in
 The selected technical export/confirmation architecture is owned by
 [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); bounded export services
 are staged, including confirmation preparation/registration/replay; confirmation
-UI, reconciliation presentation/weekly summaries and production integration remain
-pending; read-only daily reconciliation calculation is staged.
+UI and reconciliation presentation/weekly summaries remain pending; read-only daily reconciliation calculation is staged.
 
 ## Status and gate rules
 
@@ -57,12 +56,12 @@ below. Source inspection supports their existence; their detailed contracts rema
 | Standalone timed editor | Authoritative loading, precise closed-record editing through minute controls, stale conflict presentation and frozen registration/retry handoff. No production connection or dated/running editing. | [editor contract](../DESIGN_NOTES.md#standalone-timed-interval-correction-dialog-staged) |
 | Timesheet presentation | Independent daily/weekly task rows, informational project subtotals, authoritative scope, duplicate-name references, multiline borders and reversible Unicode escaping protections. Exact and separate decimal renderers are staged; decimal task/day ROUND_HALF_UP cells conserve integer-hundredth rollups. | [exporter.py](../src/task_timer/exporter.py), [exact renderer](../DESIGN_NOTES.md#independent-task-timesheet-renderer-staged), [decimal renderer](../DESIGN_NOTES.md#decimal-hour-timesheet-renderer-staged) |
 | Service reporting | Date-range generation; exact UTF-8 output; same-directory complete staging and atomic no-overwrite hard-link publication, destination protection and staging-only cleanup under documented assumptions. Saves files without immutable export registration. | [service workflow](../DESIGN_NOTES.md#date-range-timesheet-service-staged) |
-| Export evidence | Standalone explicit frozen preview with This week/Last week/Custom and independent task selection, composed standalone Save/retry with frozen event/destination handoff; no production routing or general recovery UI. Frozen decimal snapshot preparation, strict journal-backed registration/replay, detached readers, verified materialization/retry and read-only destination-relative status evaluation. Matching files are reused; ordinary attempts protect conflicts, while explicit confirmed replacement is limited to stable regular-file conflicts outside the active dataset tree. Export APIs do not confirm POL-R; no status/recovery UI. | [snapshot registration](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged), [materialization](../DESIGN_NOTES.md#verified-export-materialization-staged), [file status](../DESIGN_NOTES.md#export-file-status-evaluation-staged) |
+| Export evidence | Production modal Timesheet composes explicit This week/Last week/Custom preview, independent task selection and Save/retry with exact event/destination handoff. Unfinished attempts retain the same component only within the session; fresh openings require Preview. General recovery UI remains pending. Frozen decimal snapshot preparation, strict journal-backed registration/replay, detached readers, verified materialization/retry and read-only destination-relative status evaluation. Matching files are reused; ordinary attempts protect conflicts, while explicit confirmed replacement is limited to stable regular-file conflicts outside the active dataset tree. Export APIs do not confirm POL-R; no status/recovery UI. | [owned Timesheet](../DESIGN_NOTES.md#application-owned-modal-timesheet), [snapshot registration](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged), [materialization](../DESIGN_NOTES.md#verified-export-materialization-staged), [file status](../DESIGN_NOTES.md#export-file-status-evaluation-staged) |
 | Governance baseline | Root instructions, canonical approved POL-R product contract, cumulative changelog and current/target authority separation. | [AGENTS.md](../AGENTS.md), [requirements](TIMESHEET_REQUIREMENTS.md), [CHANGELOG.md](../CHANGELOG.md) |
 | Confirmation evidence | Dedicated immutable batch preparation/registration/replay, prior/stale/duplicate rules, recovery synchronization, frozen-export proposals/selected preparation and an in-memory effective task/day projection. Read-only daily reconciliation is staged; no confirmation/reconciliation UI or weekly summaries. | [confirmation replay](../DESIGN_NOTES.md#immutable-pol-r-confirmation-replay-staged) |
 
 These foundations do **not** constitute a completed production replacement.
-New production date-only writers, remaining replacement editing UI, production export integration,
+New production date-only writers, remaining replacement editing UI, weekly reconciliation reminders,
 general file-status/recovery UI,
 POL-R confirmation/reconciliation UI and weekly summaries, configurable weeks, allocations and release
 cutover remain pending. Existing production legacy behavior is not permanent
@@ -177,9 +176,9 @@ explicit refresh and session sorting. Pure timed-input validation, the standalon
 timed-interval form and closed-interval correction preparation/registration with
 its standalone dialog remain staged. This delivered history slice does not
 activate dated writers or satisfy the active-reader/UI gate below. Task Reset
-UI removal and main/mini calendar Actual are delivered separately; interval-only
-exports still block dated-writer activation, and production POL-R integration
-remains pending.
+UI removal, main/mini calendar Actual and production frozen Timesheet are delivered
+separately. Dated writers still require separate approval and satisfaction of the
+active-reader/UI gate; production POL-R integration remains pending.
 
 **Outcome:** activate genuine date-only creation and correction/deletion, an
 appropriate mixed timeline editor, project/task navigation, project creation and
@@ -196,8 +195,8 @@ and audit/details. Replacement Reset actions/counters are removed from the targe
 task Reset UI commands and both export-completion Reset branches are removed.
 Main task Today/This week and mini Today now use mixed calendar Actual from one
 observation, with own task values and retained deleted work in application totals.
-Backend reset capabilities and interval-only export/submission readers remain
-unchanged; remaining reader and replacement editing integration remain pending.
+Backend reset capabilities and independently callable interval-only export/submission
+readers remain unchanged; replacement editing and writer integration remain pending.
 The standalone browser's caller-supplied week start and application-owned direction
 handoff are available. Both Work History routes use the owned modal opening
 path; configurable-week settings remain pending. No cross-restart
@@ -225,8 +224,9 @@ accounting; representative operator UI workflows are validated.
 ## Phase 4 — Configurable weeks and timesheet UI
 
 **Status:** **APPROVED / NOT IMPLEMENTED** as an integrated workflow; text reporting
-and standalone frozen-candidate preview/Save-retry components are foundations. Production
-Timesheet routing, general recovery and confirmation UI remain pending. These components do not unblock
+and frozen-candidate preview/Save-retry now connect through one production modal
+Timesheet with session-only unfinished-attempt retention. General recovery, weekly
+reconciliation reminders and confirmation UI remain pending. This delivered slice does not unblock
 dated writers or complete any phase gate.
 
 **Outcome:** make the approved reporting and reconciliation workflow usable:

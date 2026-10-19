@@ -27,7 +27,8 @@ decimal-hour, recovery and confirmation technical contracts are owned by
 immutable export-snapshot registration/verified materialization and read-only
 destination-relative status evaluation are implemented/staged. Confirmation-batch
 validation/replay, dedicated preparation/registration and effective projection are
-staged service capabilities; production export integration, general status/recovery
+staged service capabilities; the modal Timesheet now connects frozen preview,
+registration and verified file publication. General status/recovery
 UI, automatic missing-file recovery, confirmation/reconciliation UI and weekly
 reconciliation summaries are not implemented. Read-only daily reconciliation
 calculation is staged. Unrelated Open matters
@@ -78,7 +79,7 @@ events. Replacement Reset actions and resettable counters are removed from the
 Selected workflow; normal history and calendar Actual are independent of legacy
 reset boundaries. Task Reset UI controls and export-completion Reset choices
 are now removed. Main and mini-mode displays now use calendar Actual. Backend
-reset APIs, historical evidence and interval-only export consumers remain; their
+reset APIs, historical evidence and retained interval-only backend export readers remain; their
 presence is not replacement policy or a compatibility commitment. Remaining
 reader and POL-R presentation integration stay separate.
 Real work must remain recordable when allocations are exhausted or unknown.
@@ -211,10 +212,12 @@ a parallel legacy interface or compatibility requirement. Applicable unsupported
 synthetic work remains a visible reader error; no data is converted or omitted.
 This activates read-only browsing only, not replacement editing or installation/
 data-directory cutover. Replacement record-editor integration, audit presentation,
-segment editing/deletion handlers, dated writer activation and remaining export/
-reader integration remain subsequent work. Main/mini calendar Actual is connected.
+segment editing/deletion handlers and dated writer activation remain subsequent
+work. Main/mini calendar Actual and frozen Timesheet are connected; the
+active-reader/UI gate still applies before any writer activation.
 UI Reset actions and both export-completion Reset branches are removed without changing backend
-reset contracts, existing export checkpoints or optional legacy submission markers.
+reset contracts or existing backend checkpoint/submission evidence. The old
+export UI routes are removed; Timesheet creates neither kind of legacy marker.
 
 ## SELECTED — Configurable week convention
 
@@ -316,7 +319,20 @@ is mandatory acceptance behavior, not optional illustration.
 
 **Preview timesheet** displays a frozen candidate of current calculated Actual
 without persistence, submission, confirmation, timer resets or checkpoints.
-The eventual single Timesheet window replaces the shipped export workflows.
+One application-owned modal Timesheet window replaces the shipped export workflows.
+Running timers and normal event processing continue; main/mini controls cannot
+be used through the modal window. Fresh openings start This week/All tasks and
+require explicit Preview. Close before registration discards the preview; Close
+after known Save completion disposes it and permits a fresh opening. Close after
+an unsuccessful Save defaults to staying open; explicit confirmation withdraws
+the same window and retains the exact attempt/controls/report in application
+memory. Reopening resumes that instance without calculation or automatic retry.
+Busy Save/confirmation/file-selection operations cannot be interrupted by
+reentrant close, open or exit callbacks. Exit with an unfinished attempt defaults
+to cancellation and warns that automatic session resumption will be lost;
+registered evidence/files are never undone. This warning takes precedence over
+the existing monthly close prompt. No persistent/restart or forced-destruction
+resumption is selected. Saving does not confirm POL-R or dismiss a reminder.
 Periods are **This week**, **Last week** and **Custom**, initially This week;
 Custom accepts typed dates and calendar pickers. Current weeks use Sunday through
 Saturday; configurable-week support remains separate.
@@ -383,10 +399,13 @@ be reused. Only a returned materialization result
 establishes that save call's completion, not permanent current-file availability.
 No recalculation, submission, checkpoint, confirmation or timer mutation belongs
 in Save. The current component supports one operation per instance and ephemeral
-retry-input handoff; this staging boundary does not decide the eventual window's
-Close/new-export lifecycle or restart recovery UI. Production routing and general
-recovery UI remain pending. Existing export routes remain active; these
-components do not unblock production dated writers.
+retry-input handoff. `TimesheetWindow` now composes it through the application
+owner for toolbar, File menu, reminder-banner and close-reminder access. Supported
+unfinished closure retains that same instance only in this application session.
+The legacy full/selected export dialogs, overlap prompts, post-export dispatch
+and checkpoint-reopening command are removed without a fallback. General recovery
+UI remains pending; no New export/Abandon or restart recovery is supplied.
+Production dated writers remain inactive.
 The separate file-only save service publishes a
 report file but does not register an immutable export-snapshot event. It still
 uses exact HH:MM:SS output and lacks snapshot-linked byte verification/recovery.
@@ -397,9 +416,25 @@ and exact destination bytes, reuses matching files and defaults to no overwrite;
 explicit authorized replacement follows the restrictions above. It does
 not recalculate work or create another event. Standalone status evaluation also
 strictly validates committed evidence and derives the five current file outcomes
-without writes, retained status or remembered alternative paths. Production export
-integration, general status/recovery UI and confirmation UI remain Selected
+without writes, retained status or remembered alternative paths. General
+status/recovery UI and confirmation UI remain Selected
 and not yet implemented.
+
+## SELECTED — Reconciliation reminders
+
+Previous-week reconciliation is checked every local day the application is used,
+including opening after absence and local-date rollover while running. Current
+week is checked Friday and Monday. Reconciliation remains per task/day; opposing
+differences cannot cancel through weekly totals. The banner offers Open Timesheet
+and Dismiss for today. Saving is not reconciliation and cannot dismiss it.
+
+**CURRENT IMPLEMENTATION distinction:** weekly scheduling/reconciliation reminders
+remain pending. Existing monthly visibility, startup notice and settings mechanics
+remain temporarily; Open Timesheet uses the shared owner and explicit Dismiss
+still updates the current monthly settings. Opening, Save success/cancellation/
+failure never marks a reminder handled. The monthly close choice returns to the
+application after Timesheet closes, without automatically exiting or claiming Save
+success. These observations are not replacement weekly-reminder policy.
 
 ## SELECTED — Explicit POL-R confirmation workflow
 
@@ -531,15 +566,15 @@ Source describes what executes, not an alternative product contract. See
 | Project/task foundation | Separate UUID-based service records, optional current project membership and independent task-owned time. |
 | Date-only duration foundation | Separate endpoint-free records with append-only creation/correction/deletion replay and snapshots; new production duration writers are inactive. |
 | Mixed accounting | Read-only explicit local-date windows, real intervals plus effective dated records, derived project/Unassigned/application totals, and fixed Sunday-start weeks. |
-| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting. A standalone browser adds Current week/Custom/All, Apply-only calendar/typed dates, explicit Refresh and local date sorting, with application-session direction handoff. Both shipped Work History commands use one owned modal path with safe originating-parent return. Superseded timeline presentation is removed; replacement editing and audit remain pending. Task Reset controls and export Reset choices are removed; main/mini calendar Actual is connected while backend reset evidence and interval-only exports remain. |
+| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting. A standalone browser adds Current week/Custom/All, Apply-only calendar/typed dates, explicit Refresh and local date sorting, with application-session direction handoff. Both shipped Work History commands use one owned modal path with safe originating-parent return. Superseded timeline presentation is removed; replacement editing and audit remain pending. Task Reset controls and export Reset choices are removed; main/mini calendar Actual is connected while backend reset evidence and independent interval-only backend exporters remain. |
 | Timed input validation | Pure minute-clock candidate/resolution APIs with separate endpoint dates, explicit repeated-time occurrences, gap rejection, UTC ordering and edit-aware restoration of unchanged precision. Consumed by the form and standalone editor; production callers remain unchanged. |
 | Timed input form | Standalone minute-only endpoint fields, canonical dates, timezone/occurrence choices and inline errors using the accepted validators. No stored-record loading, saving or production correction connection; legacy timeline input UI is removed. |
 | Timed corrections | Separate staged preparation/registration of one effective closed genuine interval replacement, preserving unchanged precision, optional comments and retry identities. No-op saves write nothing; stale priors reject. Consumed by the standalone dialog; production editing remains inactive. |
 | Standalone timed editor | Authoritative detached loading, minute controls preserving unchanged precision, stale conflict presentation, optional comments and frozen correction registration/retry. No production callers, creation/deletion or dated/running editing. |
 | Timesheet rendering/generation | Staged independent-task exact and decimal renderers with authoritative scope/timezone metadata, safe calendar slots, reversible escaping and wrapped borders. Decimal output rounds task/day cells once and sums displayed hundredths; service generation still uses exact durations. |
-| Timesheet file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
-| Production application | Legacy parent/subtask UI, exports, timestamp checkpoints and legacy submission markers still active; read-only mixed Work History replaces the legacy timeline; replacement work-entry/editing UI remains pending. Task Reset UI is removed; main task Today/This week and mini Today use mixed calendar Actual with deleted work included in application totals. Backend reset APIs and interval-only exports remain. |
-| Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay, verified materialization and read-only destination-relative five-status evaluation. Exact copies, matching-file reuse, default no-overwrite publication and explicitly confirmed stable-file replacement are staged; materialization/evaluation create no new events or persistent file-status flags. |
+| Separate exact-format file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
+| Production application | Parent/subtask UI and modal frozen Timesheet export access are active; historical checkpoints/submission markers remain readable in backend replay; read-only mixed Work History replaces the legacy timeline; replacement work-entry/editing UI remains pending. Task Reset UI is removed; main task Today/This week and mini Today use mixed calendar Actual with deleted work included in application totals. Backend reset APIs and independently callable interval-only exporters remain; production Timesheet uses mixed accounting. |
+| Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay, verified materialization and read-only destination-relative five-status evaluation. Production Timesheet connects exact copies, matching-file reuse, default no-overwrite publication and explicitly confirmed stable-file replacement; materialization/evaluation create no new events or persistent file-status flags. |
 | POL-R target workflow | Immutable confirmation-batch preparation/registration/replay, frozen-export proposals/selected preparation and latest absolute task/day projection are staged. Read-only daily Actual/Confirmed/Delta/Enter calculation is staged; confirmation/reconciliation UI, weekly summaries and production integration remain unimplemented. Legacy markers are not this contract; export registration is not confirmation or successful file export. |
 | Week configuration and allocations | No selectable week-start setting or selected weekly-allocation management. |
 | Data/installation | Launcher still uses the existing data path; fresh-directory release cutover is inactive. No historical migration implemented. |
@@ -547,7 +582,7 @@ Source describes what executes, not an alternative product contract. See
 Current text `HH:MM:SS[.fraction]` reporting remains available and unchanged;
 two-decimal replacement rendering, separate persistent snapshot registration,
 verified materialization and status evaluation are independently callable and
-staged, without production export integration or a general file-status/recovery UI. Current source
+implemented with production Timesheet integration, without a general file-status/recovery UI. Current source
 Sunday-start handling is not a fixed future policy.
 Backend foundations do not make the redesigned production workflow operational.
 
@@ -570,8 +605,8 @@ not independent external verification. Do not turn these assumptions into policy
 
 ## DEFERRED — Approved implementation work
 
-Future implementation includes configurable week starts, production export
-integration and general file-status/recovery UI, explicit POL-R confirmation/reconciliation UI and weekly summaries,
+Future implementation includes configurable week starts, weekly reconciliation
+reminders and general file-status/recovery UI, explicit POL-R confirmation/reconciliation UI and weekly summaries,
 the low-friction UI, weekly allocation tracking and replacement installation/cutover. Their Selected
 behavior remains binding. Export/confirmation development follows the approved
 technical contract through separately reviewed outcomes; unrelated Open allocation

@@ -648,6 +648,8 @@ def _local_dt(value: str):
 
 def test_close_request_with_reminder_disabled_closes(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
+    app._timesheet_window = None
+    app._timesheet_window_opening = app._exit_in_progress = False
 
     class _Root:
         destroyed = False
@@ -664,6 +666,8 @@ def test_close_request_with_reminder_disabled_closes(monkeypatch) -> None:
 
 def test_close_request_non_reminder_day_closes(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
+    app._timesheet_window = None
+    app._timesheet_window_opening = app._exit_in_progress = False
 
     class _Root:
         destroyed = False
@@ -681,6 +685,8 @@ def test_close_request_non_reminder_day_closes(monkeypatch) -> None:
 
 def test_close_request_reminder_day_return_to_app_cancels_close(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
+    app._timesheet_window = None
+    app._timesheet_window_opening = app._exit_in_progress = False
     events: list[str] = []
 
     class _Root:
@@ -714,6 +720,8 @@ def test_close_request_reminder_day_return_to_app_cancels_close(monkeypatch) -> 
 
 def test_close_request_reminder_day_close_anyway_closes(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
+    app._timesheet_window = None
+    app._timesheet_window_opening = app._exit_in_progress = False
 
     class _Root:
         destroyed = False
@@ -734,8 +742,10 @@ def test_close_request_reminder_day_close_anyway_closes(monkeypatch) -> None:
     assert app.root.destroyed is True
 
 
-def test_close_request_reminder_day_export_invokes_export(monkeypatch) -> None:
+def test_close_request_reminder_day_timesheet_opens_without_exit(monkeypatch) -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
+    app._timesheet_window = None
+    app._timesheet_window_opening = app._exit_in_progress = False
     calls: list[str] = []
 
     class _Root:
@@ -747,94 +757,25 @@ def test_close_request_reminder_day_export_invokes_export(monkeypatch) -> None:
         def deiconify(self):
             calls.append("deiconify")
 
+        def winfo_exists(self):
+            return not self.destroyed
+
         def lift(self):
             calls.append("lift")
 
     class _Dialog:
         def __init__(self, _parent):
-            self.choice = "export"
+            self.choice = "timesheet"
 
     app.root = _Root()
-    app.export = lambda: calls.append("export")
+    app.open_timesheet = lambda: calls.append("timesheet")
     app.ui_settings = UISettings(month_end_reminder_enabled=True, month_end_reminder_show_close_notice=True)
     app._local_today = lambda: _local_dt("2026-04-30 12:00").date()
     monkeypatch.setattr("task_timer.app.is_last_business_day", lambda _d: True)
     monkeypatch.setattr("task_timer.app.MonthEndCloseReminderDialog", _Dialog)
     TaskTimerApp._on_close_request(app)
     assert app.root.destroyed is False
-    assert "export" in calls
-
-
-def _test_build_ui_creates_reminder_banner_and_toolbar_widgets(monkeypatch) -> None:
-    app = TaskTimerApp.__new__(TaskTimerApp)
-
-    class _FakeWidget:
-        def __init__(self, parent=None, **kwargs) -> None:
-            self.parent = parent
-            self.kwargs = kwargs
-            self.packed = False
-            self.pack_calls: list[dict[str, object]] = []
-            self.children: list[_FakeWidget] = []
-            if parent is not None and hasattr(parent, "children"):
-                parent.children.append(self)
-
-        def pack(self, **kwargs) -> None:
-            self.packed = True
-            self.pack_calls.append(kwargs)
-
-        def grid(self, **_kwargs) -> None:
-            return None
-
-        def grid_columnconfigure(self, *_args, **_kwargs) -> None:
-            return None
-
-        def winfo_ismapped(self) -> bool:
-            return self.packed
-
-        def pack_forget(self) -> None:
-            self.packed = False
-
-    class _FakeRoot(_FakeWidget):
-        def configure(self, **_kwargs) -> None:
-            return None
-
-    import task_timer.app as app_module
-
-    monkeypatch.setattr(app_module.tk, "Frame", _FakeWidget)
-    monkeypatch.setattr(app_module.tk, "Label", _FakeWidget)
-    monkeypatch.setattr(app_module.ttk, "Frame", _FakeWidget)
-    monkeypatch.setattr(app_module.ttk, "Button", _FakeWidget)
-    monkeypatch.setattr(app_module.ttk, "Checkbutton", _FakeWidget)
-    monkeypatch.setattr(app_module.ttk, "Label", _FakeWidget)
-    monkeypatch.setattr(app_module.ttk, "Treeview", _FakeWidget)
-    monkeypatch.setattr(app_module.ttk, "Scrollbar", _FakeWidget)
-    app._build_menus = lambda: None
-    app._configure_table_columns = lambda _frame: None
-    app._setup_headers = lambda: None
-    app.root = _FakeRoot()
-    app.sort_alpha_var = object()
-    app.keep_mini_open_var = object()
-    app.daily_var = object()
-    app.weekly_var = object()
-    app.add_task = lambda: None
-    app.export = lambda: True
-    app.open_mini_mode = lambda: None
-    app._on_sort_toggle = lambda: None
-    app._on_keep_mini_open_toggle = lambda: None
-    app._on_reminder_export = lambda: None
-    app._dismiss_month_end_reminder_today = lambda: None
-
-    TaskTimerApp._build_ui(app)
-
-    assert hasattr(app, "reminder_banner")
-    assert app.reminder_banner.winfo_ismapped() is False
-    assert hasattr(app, "toolbar_frame")
-    toolbar_texts = [child.kwargs.get("text") for child in app.toolbar_frame.children]
-    assert "Add Task" in toolbar_texts
-    assert "Export" in toolbar_texts
-    assert "Mini Mode" in toolbar_texts
-    assert "Keep Mini Open" in toolbar_texts
-    assert "Sort A-Z" in toolbar_texts
+    assert "timesheet" in calls
 
 
 def test_delete_task_with_descendants_prompts_and_deletes_tree_once(monkeypatch) -> None:
@@ -1491,133 +1432,6 @@ def test_rename_task_preserves_uuid_history_and_tags(tmp_path) -> None:
     assert service.state.tasks[task_id].tags == {"alpha"}
     assert sum((stop - start).total_seconds() for start, stop in service._windowed_intervals(service.state.tasks[task_id], None, datetime.now(timezone.utc))) >= before
 
-def test_selected_export_menu_item_exists_in_build_menus() -> None:
-    import inspect
-    assert "Export Selected Tasks..." in inspect.getsource(TaskTimerApp._build_menus)
-
-
-def test_selected_export_handler_uses_selected_service_not_normal_export(monkeypatch, tmp_path) -> None:
-    app = TaskTimerApp.__new__(TaskTimerApp)
-    app.root = object()
-    called = {"selected": 0, "normal": 0, "reset": 0, "month": 0, "selected_reset": 0, "selected_delete": 0}
-    app.service = SimpleNamespace(
-        export_selected_tasks_report=lambda *a, **k: called.__setitem__("selected", called["selected"] + 1),
-        reset_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_reset", called["selected_reset"] + 1),
-        delete_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_delete", called["selected_delete"] + 1),
-        export_report=lambda *a, **k: called.__setitem__("normal", called["normal"] + 1),
-        reset_all_non_deleted_tasks=lambda: called.__setitem__("reset", called["reset"] + 1),
-    )
-    app.mark_month_end_reminder_handled_today = lambda: called.__setitem__("month", called["month"] + 1)
-    app.refresh_structure = lambda: None
-    app.refresh_live_values = lambda: None
-
-    import task_timer.app as app_module
-    monkeypatch.setattr(app_module, 'SelectedTaskExportDialog', lambda _root, _service: SimpleNamespace(
-        result=SimpleNamespace(task_ids=["t1"], window_start_utc=None, window_end_utc=_local_dt("2026-01-31 00:00").astimezone(timezone.utc), mark_submitted=False, reason="")
-    ))
-    monkeypatch.setattr(app_module.filedialog, 'asksaveasfilename', lambda **_k: str(tmp_path / "x.txt"))
-    monkeypatch.setattr(app_module, 'PostSelectedExportActionDialog', lambda _root: SimpleNamespace(choice="leave"))
-    monkeypatch.setattr(app_module.messagebox, 'showinfo', lambda *a, **k: None)
-
-    assert TaskTimerApp.export_selected_tasks(app) is True
-    assert called["selected"] == 1
-    assert called["normal"] == 0
-    assert called["reset"] == 0
-    assert called["month"] == 0
-
-
-def test_selected_export_mark_submitted_overlap_cancel_prevents_marker(monkeypatch, tmp_path) -> None:
-    app = TaskTimerApp.__new__(TaskTimerApp)
-    app.root = object()
-    called = {"selected": 0, "selected_reset": 0, "selected_delete": 0}
-    app.service = SimpleNamespace(
-        local_tz=timezone.utc,
-        find_submission_overlaps=lambda *a, **k: [
-            {
-                "task_id": "t1",
-                "task_name": "A",
-                "existing_submission_id": "s1",
-                "overlap_start_utc": datetime(2026, 1, 10, tzinfo=timezone.utc),
-                "overlap_end_utc": datetime(2026, 1, 11, tzinfo=timezone.utc),
-                "existing_reason": "closing",
-            }
-        ],
-        export_selected_tasks_report=lambda *a, **k: called.__setitem__("selected", called["selected"] + 1),
-        reset_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_reset", called["selected_reset"] + 1),
-        delete_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_delete", called["selected_delete"] + 1),
-    )
-    app.refresh_structure = lambda: None
-    app.refresh_live_values = lambda: None
-    import task_timer.app as app_module
-    monkeypatch.setattr(app_module, 'SelectedTaskExportDialog', lambda _root, _service: SimpleNamespace(
-        result=SimpleNamespace(task_ids=["t1"], window_start_utc=None, window_end_utc=datetime(2026, 1, 31, tzinfo=timezone.utc), mark_submitted=True, reason="r")
-    ))
-    monkeypatch.setattr(app_module.messagebox, 'askyesno', lambda *a, **k: False)
-    assert TaskTimerApp.export_selected_tasks(app) is False
-    assert called["selected"] == 0
-
-
-def test_selected_export_mark_submitted_overlap_continue_appends_marker(monkeypatch, tmp_path) -> None:
-    app = TaskTimerApp.__new__(TaskTimerApp)
-    app.root = object()
-    called = {"selected": 0, "selected_reset": 0, "selected_delete": 0}
-    app.service = SimpleNamespace(
-        local_tz=timezone.utc,
-        find_submission_overlaps=lambda *a, **k: [
-            {
-                "task_id": "t1",
-                "task_name": "A",
-                "existing_submission_id": "s1",
-                "overlap_start_utc": datetime(2026, 1, 10, tzinfo=timezone.utc),
-                "overlap_end_utc": datetime(2026, 1, 11, tzinfo=timezone.utc),
-                "existing_reason": "closing",
-            }
-        ],
-        export_selected_tasks_report=lambda *a, **k: called.__setitem__("selected", called["selected"] + 1),
-        reset_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_reset", called["selected_reset"] + 1),
-        delete_selected_tasks=lambda *_a, **_k: called.__setitem__("selected_delete", called["selected_delete"] + 1),
-    )
-    app.refresh_structure = lambda: None
-    app.refresh_live_values = lambda: None
-    import task_timer.app as app_module
-    monkeypatch.setattr(app_module, 'SelectedTaskExportDialog', lambda _root, _service: SimpleNamespace(
-        result=SimpleNamespace(task_ids=["t1"], window_start_utc=None, window_end_utc=datetime(2026, 1, 31, tzinfo=timezone.utc), mark_submitted=True, reason="r")
-    ))
-    monkeypatch.setattr(app_module.messagebox, 'askyesno', lambda *a, **k: True)
-    monkeypatch.setattr(app_module.filedialog, 'asksaveasfilename', lambda **_k: str(tmp_path / "x.txt"))
-    monkeypatch.setattr(app_module, 'PostSelectedExportActionDialog', lambda _root: SimpleNamespace(choice="leave"))
-    monkeypatch.setattr(app_module.messagebox, 'showinfo', lambda *a, **k: None)
-    assert TaskTimerApp.export_selected_tasks(app) is True
-    assert called["selected"] == 1
-
-def test_selected_export_post_action_delete_creates_single_backup_and_deletes_selected(tmp_path, monkeypatch) -> None:
-    app = TaskTimerApp.__new__(TaskTimerApp)
-    app.root = object()
-    calls = {"backup": 0, "reset": None, "delete": None}
-    app.service = SimpleNamespace(
-        local_tz=timezone.utc,
-        find_submission_overlaps=lambda *a, **k: [],
-        export_selected_tasks_report=lambda *a, **k: None,
-        reset_selected_tasks=lambda ids: calls.__setitem__("reset", ids),
-        delete_selected_tasks=lambda ids: calls.__setitem__("delete", ids),
-    )
-    app._create_risky_operation_backup = lambda _reason: calls.__setitem__("backup", calls["backup"] + 1)
-    app.refresh_structure = lambda: None
-    app.refresh_live_values = lambda: None
-
-    import task_timer.app as app_module
-    monkeypatch.setattr(app_module, 'SelectedTaskExportDialog', lambda _root, _service: SimpleNamespace(
-        result=SimpleNamespace(task_ids=["t1"], window_start_utc=None, window_end_utc=datetime(2026, 1, 31, tzinfo=timezone.utc), mark_submitted=False, reason="")
-    ))
-    monkeypatch.setattr(app_module, 'PostSelectedExportActionDialog', lambda _root: SimpleNamespace(choice="delete"))
-    monkeypatch.setattr(app_module.filedialog, 'asksaveasfilename', lambda **_k: str(tmp_path / "x.txt"))
-    monkeypatch.setattr(app_module.messagebox, 'showinfo', lambda *a, **k: None)
-
-    assert TaskTimerApp.export_selected_tasks(app) is True
-    assert calls["backup"] == 1
-    assert calls["reset"] is None
-    assert calls["delete"] == ["t1"]
-
 
 def test_keep_mini_toggle_checked_saves_and_opens_without_minimize() -> None:
     app = TaskTimerApp.__new__(TaskTimerApp)
@@ -1770,7 +1584,6 @@ def test_build_menus_tools_contains_manage_subtask_templates(monkeypatch) -> Non
     import task_timer.app as app_module
     monkeypatch.setattr(app_module.tk, "Menu", _FakeMenu)
     app.root=_Root()
-    app._reopen_last_export_checkpoint=lambda:None
     app._manage_tags=lambda:None
     app._manage_subtask_templates=lambda:None
     app._open_month_end_reminder_settings=lambda:None
@@ -1780,7 +1593,7 @@ def test_build_menus_tools_contains_manage_subtask_templates(monkeypatch) -> Non
     app._open_backup_folder=lambda:None
     app._restore_from_backup=lambda:None
     app._rebuild_snapshot_from_journal=lambda:None
-    app.export_selected_tasks=lambda:None
+    app.open_timesheet=lambda:None
     TaskTimerApp._build_menus(app)
     tools_menu = app.root.menu.cascades["Tools"]
     assert "Manage Subtask Templates" in tools_menu.commands
@@ -2241,36 +2054,6 @@ def test_move_task_service_error_shows_message(tmp_path, monkeypatch) -> None:
     TaskTimerApp._move_task(app, p1)
     assert "two-level subtask limit" in shown["message"]
     assert service.state.tasks[child].parent_task_id == p1
-
-def test_handle_selected_export_post_action_leave_no_changes() -> None:
-    app = TaskTimerApp.__new__(TaskTimerApp)
-    calls = {"backup": 0, "refresh": 0, "reset": 0, "delete": 0}
-    app._create_risky_operation_backup = lambda _r: calls.__setitem__("backup", calls["backup"] + 1)
-    app.refresh_structure = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
-    app.refresh_live_values = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
-    app.service = SimpleNamespace(
-        reset_selected_tasks=lambda _ids: calls.__setitem__("reset", calls["reset"] + 1),
-        delete_selected_tasks=lambda _ids: calls.__setitem__("delete", calls["delete"] + 1),
-    )
-    TaskTimerApp._handle_selected_export_post_action(app, "leave", ["t1"])
-    assert calls == {"backup": 0, "refresh": 0, "reset": 0, "delete": 0}
-
-
-def test_handle_selected_export_post_action_delete_clears_selection_and_refreshes() -> None:
-    app = TaskTimerApp.__new__(TaskTimerApp)
-    calls = {"backup": 0, "refresh": 0}
-    app.selected_task_id = "t1"
-    app.task_tree = SimpleNamespace(selection=lambda: ["t1"], selection_remove=lambda *_ids: None)
-    app._create_risky_operation_backup = lambda _r: calls.__setitem__("backup", calls["backup"] + 1)
-    app.refresh_structure = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
-    app.refresh_live_values = lambda: calls.__setitem__("refresh", calls["refresh"] + 1)
-    app.service = SimpleNamespace(delete_selected_tasks=lambda _ids: ["t1"])
-
-    TaskTimerApp._handle_selected_export_post_action(app, "delete", ["t1"])
-
-    assert calls["backup"] == 1
-    assert calls["refresh"] == 2
-    assert app.selected_task_id is None
 
 
 def test_app_create_risky_operation_backup_delegates_to_service() -> None:

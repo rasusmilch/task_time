@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
-from tkinter import StringVar, Tk, Toplevel, filedialog, messagebox, simpledialog, ttk
+from tkinter import StringVar, Tk, messagebox, simpledialog, ttk
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -35,8 +35,6 @@ from .dialogs import (
     MonthEndCloseReminderDialog,
     MonthEndReminderSettingsDialog,
     MoveTaskDialog,
-    PostSelectedExportActionDialog,
-    SelectedTaskExportDialog,
 )
 from .exporter import (
     build_decimal_timesheet_text, build_export_text, build_selected_tasks_export_text,
@@ -2870,6 +2868,9 @@ class TaskTimerApp:
         self._history_newest_first = True
         self._history_window = None
         self._history_window_opening = False
+        self._timesheet_window = None
+        self._timesheet_window_opening = False
+        self._exit_in_progress = False
         self.root.title("Chronicle")
         self.root.resizable(True, True)
         self.root.minsize(800, 500)
@@ -2997,20 +2998,25 @@ class TaskTimerApp:
         self.reminder_banner = tk.Frame(self.root, bg="#fff4e5", bd=1, relief="solid")
         reminder_label = tk.Label(
             self.reminder_banner,
-            text="Month-end reminder: enter/export your time today.",
+            text="Month-end reminder: review your timesheet today.",
             bg="#fff4e5",
             anchor="w",
         )
         reminder_label.pack(side="left", fill="x", expand=True, padx=(8, 4), pady=4)
-        ttk.Button(self.reminder_banner, text="Export", command=self._on_reminder_export).pack(side="left", padx=4, pady=4)
+        ttk.Button(self.reminder_banner, text="Open Timesheet", command=self._on_reminder_timesheet).pack(side="left", padx=4, pady=4)
         ttk.Button(self.reminder_banner, text="Dismiss", command=self._dismiss_month_end_reminder_today).pack(
             side="left", padx=(0, 8), pady=4
         )
 
+        self.reminder_timesheet_error_var = StringVar()
+        self.reminder_timesheet_error_label = ttk.Label(self.reminder_banner, textvariable=self.reminder_timesheet_error_var)
+        self.timesheet_launch_error_var = StringVar()
+        self.timesheet_launch_error_label = ttk.Label(self.root, textvariable=self.timesheet_launch_error_var)
+
         self.toolbar_frame = ttk.Frame(self.root)
         self.toolbar_frame.pack(fill="x", padx=8, pady=(8, 4))
         ttk.Button(self.toolbar_frame, text="Add Task", command=self.add_task).pack(side="left", padx=(0, 4))
-        ttk.Button(self.toolbar_frame, text="Export", command=self.export).pack(side="left", padx=4)
+        ttk.Button(self.toolbar_frame, text="Timesheet", command=self.open_timesheet).pack(side="left", padx=4)
         ttk.Button(self.toolbar_frame, text="Mini Mode", command=self.open_mini_mode).pack(side="left", padx=4)
         self.keep_mini_open_checkbox = ttk.Checkbutton(
             self.toolbar_frame, text="Keep Mini Open", variable=self.keep_mini_open_var, command=self._on_keep_mini_open_toggle
@@ -3049,14 +3055,12 @@ class TaskTimerApp:
         file_menu.add_command(label="Backup Settings", command=self._open_backup_settings)
         file_menu.add_command(label="Open Data Folder", command=self._open_data_folder)
         file_menu.add_command(label="Open Backup Folder", command=self._open_backup_folder)
-        file_menu.add_command(label="Export Selected Tasks...", command=self.export_selected_tasks)
+        file_menu.add_command(label="Timesheet…", command=self.open_timesheet)
         file_menu.add_command(label="Restore From Backup", command=self._restore_from_backup)
         file_menu.add_command(label="Rebuild Snapshot From Journal", command=self._rebuild_snapshot_from_journal)
         menubar.add_cascade(label="File", menu=file_menu)
 
         tools_menu = tk.Menu(menubar, tearoff=0)
-        tools_menu.add_command(label="Reopen Last Export Checkpoint", command=self._reopen_last_export_checkpoint)
-        tools_menu.add_separator()
         tools_menu.add_command(label="Manage Tags", command=self._manage_tags)
         tools_menu.add_command(label="Manage Subtask Templates", command=self._manage_subtask_templates)
         tools_menu.add_command(label="Month-End Reminder Settings", command=self._open_month_end_reminder_settings)
@@ -3081,82 +3085,73 @@ class TaskTimerApp:
         self.refresh_live_values()
         
 
-    def export(self) -> bool:
-        target = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text", "*.txt")])
-        if not target:
-            return False
-        self.service.export_report(Path(target), reset_after=False)
-        self.mark_month_end_reminder_handled_today()
-        self.refresh_structure()
-        self.refresh_live_values()
-        self._refresh_month_end_reminder_ui()
-        return True
+    def _timesheet_disposed(self, window):
+        if self._timesheet_window is window:
+            self._timesheet_window = None
 
+    def _timesheet_launch_error(self, text):
+        for name in ('timesheet_launch_error', 'reminder_timesheet_error'):
+            variable = getattr(self, name + '_var', None)
+            label = getattr(self, name + '_label', None)
+            if variable is not None and label is not None and self.root.winfo_exists():
+                variable.set(text)
+                if text:
+                    label.pack(fill="x", padx=8)
+                else:
+                    label.pack_forget()
 
-    def export_selected_tasks(self) -> bool:
-        dialog = SelectedTaskExportDialog(self.root, self.service)
-        if not dialog.result:
-            return False
-        if dialog.result.mark_submitted:
-            overlaps = self.service.find_submission_overlaps(
-                dialog.result.task_ids, dialog.result.window_start_utc, dialog.result.window_end_utc
-            )
-            if overlaps:
-                lines = [
-                    "Some selected time may already have been entered in Epicor.",
-                    "",
-                    "Overlaps:",
-                ]
-                for item in overlaps:
-                    if item["overlap_start_utc"] == datetime.min.replace(tzinfo=timezone.utc):
-                        start = "Beginning of recorded history"
-                    else:
-                        start = item["overlap_start_utc"].astimezone(self.service.local_tz).strftime("%Y-%m-%d %I:%M %p")
-                    end = item["overlap_end_utc"].astimezone(self.service.local_tz).strftime("%Y-%m-%d %I:%M %p")
-                    reason = item["existing_reason"] or "n/a"
-                    lines.append(
-                        f'- {item["task_name"]}: {start} to {end} (submission {item["existing_submission_id"]}, reason: {reason})'
-                    )
-                proceed = messagebox.askyesno(
-                    "Possible duplicate Epicor entry",
-                    "\n".join(lines) + "\n\nContinue and Mark Anyway?",
-                )
-                if not proceed:
-                    return False
-        target = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text", "*.txt")])
-        if not target:
-            return False
-        self.service.export_selected_tasks_report(
-            Path(target),
-            dialog.result.task_ids,
-            dialog.result.window_start_utc,
-            dialog.result.window_end_utc,
-            mark_submitted=dialog.result.mark_submitted,
-            reason=dialog.result.reason,
-        )
-
-        post_action = PostSelectedExportActionDialog(self.root).choice
-        self._handle_selected_export_post_action(post_action, dialog.result.task_ids)
-
-        messagebox.showinfo("Export Selected Tasks", "Selected-task export complete.")
-        return True
-
-    def _clear_selection_if_deleted(self, affected_task_ids: set[str]) -> None:
-        current_selected = getattr(self, "selected_task_id", None)
-        if current_selected in affected_task_ids:
-            self.selected_task_id = None
-            if hasattr(self, "task_tree"):
-                self.task_tree.selection_remove(*self.task_tree.selection())
-
-    def _handle_selected_export_post_action(self, action: str, selected_task_ids: list[str]) -> None:
-        if action == "leave":
+    def open_timesheet(self):
+        if self._timesheet_window_opening or self._exit_in_progress:
             return
-        if action == "delete":
-            self._create_risky_operation_backup("before deleting selected exported tasks")
-            affected_ids = set(self.service.delete_selected_tasks(selected_task_ids) or [])
-            self._clear_selection_if_deleted(affected_ids)
-            self.refresh_structure()
-            self.refresh_live_values()
+        owned = self._timesheet_window
+        if owned is not None:
+            if not self._history_widget_exists(owned.window):
+                self._timesheet_disposed(owned)
+                owned = None
+            elif owned.is_presented() or owned.is_busy():
+                return
+        from .timesheet_window import TimesheetWindow
+
+        self._timesheet_window_opening = True
+        primary = None
+        parent, prior_grab, prior_focus = self.root, None, None
+        captured = False
+        try:
+            self._timesheet_launch_error("")
+            prior_grab = parent.grab_current()
+            if prior_grab is not None and (prior_grab is not parent or parent.grab_status() != "local"):
+                raise ValueError("Timesheet cannot replace an unrelated or global grab")
+            prior_focus = parent.focus_get()
+            captured = True
+            if owned is None:
+                owned = TimesheetWindow(parent, self.service, now_utc=utc_now,
+                                        on_disposed=self._timesheet_disposed)
+                self._timesheet_window = owned
+            owned.show_modal()
+            return owned
+        except Exception as exc:
+            primary = exc
+            try:
+                self._timesheet_launch_error(f"Unable to open Timesheet: {exc}")
+            except Exception as presentation:
+                exc.add_note(f"Timesheet launch error presentation also failed: {presentation}")
+        finally:
+            try:
+                if captured:
+                    self._restore_history_modal_parent(parent, prior_grab, prior_focus)
+            except Exception as restoration:
+                if primary is not None:
+                    primary.add_note(f"Timesheet modal return also failed: {restoration}")
+                else:
+                    primary = restoration
+                    try:
+                        self._timesheet_launch_error(f"Unable to return from Timesheet: {restoration}")
+                    except Exception as presentation:
+                        restoration.add_note(f"Timesheet return error presentation also failed: {presentation}")
+            finally:
+                self._timesheet_window_opening = False
+                if primary is not None:
+                    self.root.report_callback_exception(type(primary), primary, primary.__traceback__)
 
     def _on_keep_mini_open_toggle(self) -> None:
         self.ui_settings.keep_mini_open = self.keep_mini_open_var.get()
@@ -3673,25 +3668,6 @@ class TaskTimerApp:
         self._after_state_change()
         messagebox.showinfo("Rebuild complete", "Snapshot rebuilt from journal.")
 
-    def _reopen_last_export_checkpoint(self) -> None:
-        reason = simpledialog.askstring(
-            "Reopen Export Checkpoint",
-            "Reason/comment for reopening the last export checkpoint:",
-        )
-        if reason is None:
-            return
-        if not messagebox.askyesno(
-            "Confirm Reopen",
-            "This will void/reopen the active export checkpoint.\n"
-            "It will not delete old export files and the action is journaled.\nContinue?",
-        ):
-            return
-        try:
-            self.service.void_last_export_checkpoint(reason)
-            messagebox.showinfo("Checkpoint reopened", "The active export checkpoint was reopened.")
-        except Exception as exc:  # noqa: BLE001
-            messagebox.showerror("Reopen failed", str(exc))
-
     @staticmethod
     def _open_folder(path: Path) -> None:
         try:
@@ -3718,9 +3694,8 @@ class TaskTimerApp:
         self.mark_month_end_reminder_handled_today()
         self._refresh_month_end_reminder_ui()
 
-    def _on_reminder_export(self) -> None:
-        self.export()
-        self._refresh_month_end_reminder_ui()
+    def _on_reminder_timesheet(self) -> None:
+        self.open_timesheet()
 
     def _refresh_month_end_reminder_ui(self) -> None:
         if not hasattr(self, "reminder_banner"):
@@ -3753,7 +3728,7 @@ class TaskTimerApp:
         if self._startup_reminder_prompted_date == today_iso:
             return
         self._startup_reminder_prompted_date = today_iso
-        messagebox.showinfo("Month-End Reminder", "Month-end reminder: enter/export your time today.")
+        messagebox.showinfo("Month-End Reminder", "Month-end reminder: review your timesheet today.")
         self.ui_settings.month_end_reminder_last_export_prompted_local_date = today_iso
         self.ui_settings_store.save(self.ui_settings)
         self.root.lift()
@@ -3769,25 +3744,47 @@ class TaskTimerApp:
         self._refresh_month_end_reminder_ui()
 
     def _on_close_request(self) -> None:
-        if (
-            not self.ui_settings.month_end_reminder_enabled
-            or not self.ui_settings.month_end_reminder_show_close_notice
-            or not is_last_business_day(self._local_today())
-        ):
+        owned = self._timesheet_window
+        if (self._exit_in_progress or (owned is not None and owned.is_busy())
+                or (self._timesheet_window_opening and owned is None)):
+            return
+        self._exit_in_progress = True
+        try:
+            if owned is not None and owned.has_unfinished_attempt():
+                if not messagebox.askyesno(
+                    parent=owned.window if owned.is_presented() else self.root,
+                    title="Exit with unfinished Timesheet?", default="no",
+                    message="Exit loses automatic session resumption of this unverified Save attempt. "
+                            "Registered evidence and external files are not deleted or undone. Exit?",
+                ):
+                    return
+                self.root.destroy()
+                return
+            if (not self.ui_settings.month_end_reminder_enabled
+                    or not self.ui_settings.month_end_reminder_show_close_notice
+                    or not is_last_business_day(self._local_today())):
+                self.root.destroy()
+                return
+            dialog = MonthEndCloseReminderDialog(self.root)
+            if dialog.choice == "timesheet":
+                # The close decision has finished; opening now owns its own guard.
+                self._exit_in_progress = False
+                self.open_timesheet()
+                try:
+                    alive = self.root.winfo_exists()
+                except tk.TclError:
+                    alive = False
+                if alive:
+                    self.root.deiconify()
+                return
+            if dialog.choice == "return":
+                self.root.deiconify()
+                self.root.lift()
+                self.root.focus_force()
+                return
             self.root.destroy()
-            return
-        dialog = MonthEndCloseReminderDialog(self.root)
-        if dialog.choice == "return":
-            self.root.deiconify()
-            self.root.lift()
-            self.root.focus_force()
-            return
-        if dialog.choice == "export":
-            self.export()
-            self.root.deiconify()
-            self.root.lift()
-            return
-        self.root.destroy()
+        finally:
+            self._exit_in_progress = False
 
     def _tick(self) -> None:
         try:
