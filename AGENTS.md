@@ -37,9 +37,11 @@ Read the product contract and target architecture before replacement work.
 Stage 0's documentation gate is independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`. The active rewrite workstream is
 `feature/chronicle-rewrite`, originating at that commit. Stage 1 is the next active
-engineering stage and is **not implemented**. Its bounded, source-grounded plan
-requires independent adjudication before runtime execution; execution may use
-substantial coherent slices without unnecessary microtasks. The fresh rewrite
+engineering stage. Its approved Stage 1A connected SQLite timer slice is
+implemented; operational interruption and native Windows qualification remain
+pending, so Stage 1 is not Complete. Subsequent execution remains bounded and
+independently reviewed, using substantial coherent slices without microtasks.
+The fresh rewrite
 requires no legacy JSONL compatibility/import, old internal APIs or duplicate UI
 paths. Existing user files remain protected; no reset, clean or user-data mutation
 is authorized as workflow cleanup.
@@ -78,9 +80,9 @@ represented as tests executed during the present task.
 Source-grounded command examples (select according to applicability):
 
 - Linux regression: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts=''`.
-- Windows source launch: `python .\run_chronicle.py` or `./scripts/run.ps1`.
+- Windows source launch: `python .\run_chronicle.py --data-dir PATH --timezone America/Chicago --create`; reopen with `--data-dir PATH` only.
 - Optional development install: `python -m pip install -e .`.
-- Windows packaging: `./scripts/build.ps1`, optionally `-OneFile`; see BUILDING.
+- Windows onedir packaging: `./scripts/build.ps1`; see BUILDING.
 
 `pyproject.toml` requires Python 3.11+ and configures pytest's `src` import path.
 Use the appropriate existing interpreter/virtual environment. Assess Windows

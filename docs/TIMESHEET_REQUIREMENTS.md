@@ -12,7 +12,7 @@ owns the selected Python + Tkinter/ttk + transactional SQLite design;
 [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md) owns frozen export,
 displayed-Actual decimal, quarter-hour submission and confirmation semantics.
 [ROADMAP.md](ROADMAP.md) owns Stages 0–6.
-[DESIGN_NOTES.md](../DESIGN_NOTES.md) describes the current JSONL implementation,
+[DESIGN_NOTES.md](../DESIGN_NOTES.md) describes retained, unshipped JSONL source,
 not the replacement architecture. Source/tests establish implementation/evidence,
 not product choices. [DECISIONS.md](DECISIONS.md) preserves superseded approvals.
 The user and ChatGPT decide behavior and architecture; Codex implements approved
@@ -20,7 +20,8 @@ outcomes and returns material unresolved choices for adjudication.
 
 Selected does not mean implemented. This documentation selects a clean Tkinter
 rewrite, not a Qt/PySide6 frontend and not incremental JSONL compatibility work.
-No SQLite runtime is delivered by this change.
+Stage 1A now delivers the connected SQLite timer foundation. Recording/History,
+Timesheet and POL-R completeness remain later gates; the foundation is not a pilot.
 
 ## SELECTED — Replacement installation and data boundary
 
@@ -55,9 +56,34 @@ active timer; reopening must not silently lose it. Rendering observes time and
 never records work, guesses missing stops or persists a tick counter.
 
 Unknown POL-R values, external unavailability or exhausted/unknown allocations
-never block Actual recording. Abnormal system-clock changes, sleep and restart
-recovery policy require adjudication before affected Stage 1 code; ordinary
-persistence is not permission to guess those policies.
+never block Actual recording. Start/Stop/Switch capture one aware wall-UTC action
+instant before queueing; worker delay never moves it. Derive running elapsed from
+the persisted effective start and explicit observation, not ticks. Sleep and
+normal exit do not stop a timer. Normal restart/crash restores the same committed
+entry UUID/start without a new Start or fabricated Stop. Forward clock movement
+is not automatically rewritten; impossible/nonpositive Stop/Switch rejects and
+preserves the timer. An observation before its start shows unavailable values and
+a clock/start warning, never zero or negative work.
+
+Correct active start is explicit recovery, not historical editing. The operator
+supplies a date/minute in the dataset IANA zone; gaps reject and repeats require
+first/second choice. Preserve unchanged microsecond precision. Changed start must
+not exceed the accepted correction observation. Require current active UUID and
+version; preserve original, prior and corrected starts, audit observation, optional
+comment and request identity immutably in the same transaction as the receipt.
+An unchanged correction writes nothing. No automatic recovery, timer deletion,
+idle detection or sleep subtraction is selected.
+
+Normal shutdown rejects new submissions, lets accepted operations finish and
+reconciles them without joining a live worker on Tk. When work has finished but
+storage truth remains unverified, offer Retry/Reconcile or Exit despite unresolved
+save, with default-cancel confirmation. Explain possible prior commitment and loss
+of volatile retry inputs. Do not interrupt executing I/O, create a new request,
+rollback evidence or claim an unknown outcome is failed/successful. Finite SQLite
+busy timeouts do not promise recovery from an indefinitely hung OS call.
+
+Mini represents the active task, otherwise the main selected task, otherwise no
+task. It consumes the owner's status/report and cannot create independent Actual.
 
 ## SELECTED — Actual-time records
 
@@ -412,27 +438,24 @@ gates; no automatic external allocation verification is established.
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
 
-The checkout remains Python/Tkinter with authoritative JSONL, replayed Python
-state and derived JSON snapshots, not SQLite. Main/mini mixed Actual, read-only
-modal Work History and frozen Timesheet Preview/Save/retry/confirmed Overwrite
-are connected. The standalone correction dialog is not production-connected;
-its replacement-interval IDs are legacy mechanics, not stable-revision design.
-Date-only replay/accounting and absolute confirmation/proposal/reconciliation
-services are staged; date-only production writers, confirmation/reconciliation
-UI, weekly reminders, configurable weeks and complete replacement workflow are
-not delivered. Legacy reset/export/evidence APIs remain independently callable,
-although shipped Reset and old export UI are removed. Source-specific detail is
-in [Design Notes](../DESIGN_NOTES.md). Earlier Phase 2 service acceptance is
-historical JSONL evidence, not completion of a SQLite stage. The quarter-hour
-policy is not implemented: current confirmation services accept arbitrary integer
-hundredths and the daily calculator still uses Actual-as-Enter. Those source
-observations do not satisfy the new submission contract.
+The sole shipped source/build route uses `src/chronicle`: explicit fresh SQLite
+paths, independent task/project controls, Start/Stop/atomic Switch, immutable timed
+revisions, audited active-start recovery, exact receipts, worker-owned I/O and
+coordinated main/mini Actual. It does not discover or modify the former default
+JSONL directory. The retained `task_timer` package and its tests are unshipped
+historical/semantic evidence, not a parallel runtime or compatibility guarantee.
+
+Stage 1 operational interruption/native Windows qualification remains pending.
+Stage 2 manual timed/dated writers, History/inline historical correction and week
+settings are not shipped. Stage 3 frozen export/confirmation/reconciliation,
+quarter-hour allocation and weekly reminders are not shipped. Retained JSONL
+services do not satisfy those gates. Earlier Phase 2 acceptance remains bounded
+historical evidence. This timer foundation is not complete core/pilot readiness.
 
 ## OPEN — Reserved user/ChatGPT decisions
 
 | Decision | First affected gate |
 | --- | --- |
-| Abnormal clock movement, sleep, persisted timer restart recovery | Stage 1 before affected recording/reopen code. |
 | Dataset-timezone changes and historical date attribution under changes | Stage 1 dataset configuration / Stage 2 accounting, before implementation. Explicit fixed dataset zone is required; change policy is not guessed. |
 | Replacement template semantics | Before optional Stage 6 template implementation. |
 | Exact release paths, installation/cutover and retired-data cleanup | Before affected deployment/Stage 5 fresh pilot setup; startup deletion is unauthorized. |
@@ -458,9 +481,8 @@ external verification. Future external integration needs explicit approval.
 ## DEFERRED — Approved implementation work
 
 Stage 0's authority set is independently accepted at
-`a24aca706740b7e02cc1f856baa194042785bbcb`. SQLite runtime remains unimplemented
-on the authorized `feature/chronicle-rewrite` branch. The bounded Stage 1 read-only
-plan requires independent adjudication before separately authorized execution,
-not another whole-application planning cycle. Only optional expansion is deferred
-beyond the complete core pilot; POL-R is not deferred there. Open policies remain
-reserved before affected implementation.
+`a24aca706740b7e02cc1f856baa194042785bbcb`. The authorized
+`feature/chronicle-rewrite` now contains the approved Stage 1A connected timer
+foundation; operational and native Windows evidence is still required before
+Stage 1 completion. Later recording and mandatory POL-R remain approved,
+unimplemented stages. Open policies stay reserved before their affected work.

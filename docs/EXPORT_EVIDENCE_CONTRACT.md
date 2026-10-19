@@ -14,7 +14,7 @@ implementation or platform qualification.
 **SQLite supersedes the earlier mandatory JSONL envelope, segment manifest,
 physical replay order, fsync/synchronize-journal and Python projection mechanisms.**
 There is one replacement authority, not SQLite alongside a required journal.
-Current source still uses those JSONL mechanisms, documented in
+Retained, unshipped source still uses those JSONL mechanisms, documented in
 [Design Notes](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged).
 They and the accepted old Phase 2 gate are legacy implementation/historical
 evidence only, not replacement instructions. Semantic guarantees below remain
@@ -398,17 +398,18 @@ formula because of that uncertainty, or modify Actual date attribution.
 
 ## Implementation boundaries and remaining decisions
 
-Current JSONL preparation/registration/materialization/status and confirmation
+Retained unshipped JSONL preparation/registration/materialization/status and confirmation
 services are evidence of semantic foundations, **not SQLite implementation**.
 They do not implement the newly selected quarter-hour policy. Their arbitrary
-hundredth confirmations/Actual-as-Enter are current legacy behavior, not the target.
+hundredth confirmations/Actual-as-Enter are retained legacy behavior, not the target.
 Their exact event layouts, replay, synchronization and retained Save-widget
-recovery are superseded target mechanisms; see [current source](../DESIGN_NOTES.md).
+recovery are superseded target mechanisms; see [retained source](../DESIGN_NOTES.md).
 Do not reuse legacy checkpoint/submission markers as absolute POL-R evidence.
 
 The rewrite preserves semantics through SQLite transactions, exact units and
 callback-driven Tk views. Core saved-report recovery is independent of widgets.
-Allocation policy, dataset-timezone changes, abnormal clock/restart rules and
-release paths remain with the [reserved decision gates](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions).
+Stage 1A approved clock/restart and active-start recovery in the
+[recording requirements](TIMESHEET_REQUIREMENTS.md#selected--recording-and-timer-operation).
+Allocation policy, dataset-timezone changes and release paths remain with the [reserved decision gates](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions).
 No migration or new external integration is selected. Windows/NTFS, packaging,
 concurrency and power-loss claims require applicable evidence, not this approval.

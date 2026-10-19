@@ -710,22 +710,47 @@ The approved replacement uses a work date and amount without artificial endpoint
 This rejects a representation for the target, not real timestamps for timed work.
 It is not evidence that the user had previously approved fabricated intervals.
 
-### Still-active legacy mechanisms and staged limits
+### Legacy mechanisms observed at Stage 0
 
-**Status:** implementation-only. **Provenance:** current-source observation in
+**Status:** historical implementation observation; its shipped route is superseded
+by Stage 1A below. **Provenance:** Stage 0 source inspection in
 [app.py](../src/task_timer/app.py), [models.py](../src/task_timer/models.py) and
 [accounting.py](../src/task_timer/accounting.py); current technical owner:
 [Design Notes](../DESIGN_NOTES.md).
 
-The production application still has parent/subtask handling. Retained backend
-services support synthetic manual intervals, timestamp export checkpoints and
-legacy submission markers; their old UI routes are removed. Mixed accounting
-currently uses Sunday weeks. The separate file-only save service publishes
-without immutable registration; production Timesheet uses snapshot registration
-and verified materialization instead. Source presence does not
-select these as permanent product behavior or approve reuse of legacy submission
-semantics for POL-R. New endpoint-free replay/accounting services are staged;
-they do not make replacement production entry or reconciliation operational.
+At that inspection, the JSONL application had parent/subtask handling. Its backend
+services supported synthetic intervals, checkpoints and submission markers;
+their old UI routes were removed. Accounting used Sunday weeks; the separate
+file-only save lacked immutable registration, while Timesheet used registration
+and verified materialization. These facts describe the retained unshipped source,
+not current launcher capabilities or permanent replacement policy. Staged date-only
+and reconciliation services did not complete the replacement. Stage 1A connects
+a different timer-only runtime without importing these services.
+
+### Connected Stage 1A timer and approved recovery policies
+
+**Status:** current. **Provenance:** explicit user task “Chronicle — Stage 1A:
+Connected SQLite Timer Application,” approving execution after the Stage 1 plan.
+This later approval resolves the earlier clock/sleep/restart reservation; it does
+not retroactively attribute these choices to Stage 0.
+
+Capture accepted wall UTC once before queueing and preserve exact microseconds.
+Sleep and ordinary exit leave the timer running; restart/crash restores the same
+committed UUID/effective start, without a new Start or inferred Stop. Do not
+rewrite forward jumps. Reject impossible/nonpositive stops/switches; an observation
+before the start displays a warning/unavailable value. Explicit minute/DST-aware
+active-start correction preserves immutable original/prior/new starts, audit,
+comment and exact request receipt under stale-version protection. No-op writes
+nothing; no automatic timer deletion or historical editor is introduced.
+
+Mini shows active, otherwise selected task, otherwise no task. Main/mini share
+one observation/report. Shutdown drains accepted work without Tk-thread joining.
+Idle-but-unverified storage offers exact Retry/Reconcile or explicit default-cancel
+exit despite possible commitment and volatile retry loss. Executing I/O is never
+silently interrupted. The runtime requires the documented SQLite WAL-reset fix,
+not merely the STRICT feature floor, and uses explicit disposable engineering
+paths. Production cutover and timezone changes remain Open. Stage 1A does not
+complete Stage 1 qualification or later core/POL-R/pilot gates.
 
 ## Open decisions
 
@@ -737,7 +762,6 @@ owner or candidate implementation design.
 
 - Allocation defaults/overrides and their interaction with week-start changes.
 - Exact installation replacement and old-data cutover.
-- Abnormal clock/sleep/persisted-timer restart rules before affected Stage 1 code.
 - Dataset-timezone changes before affected configuration/accounting.
 - Replacement template semantics before optional implementation.
 

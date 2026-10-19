@@ -10,7 +10,7 @@ _SRC_PATH = _REPO_ROOT / "src"
 if str(_SRC_PATH) not in sys.path:
     sys.path.insert(0, str(_SRC_PATH))
 
-from task_timer.main import main
+from chronicle.bootstrap import main
 
 
 if __name__ == "__main__":

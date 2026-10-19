@@ -2,6 +2,7 @@
 """PyInstaller build spec for Chronicle (Windows onedir default)."""
 
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_data_files
 
 try:
     repo_root = Path(SPECPATH).resolve()
@@ -13,12 +14,12 @@ a = Analysis(
     [str(repo_root / "run_chronicle.py")],
     pathex=[str(repo_root / "src")],
     binaries=[],
-    datas=[],
-    hiddenimports=["tkcalendar", "tzlocal"],
+    datas=collect_data_files("tzdata"),
+    hiddenimports=["chronicle.bootstrap"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["__pycache__"],
+    excludes=["__pycache__", "task_timer"],
     noarchive=False,
     optimize=0,
 )

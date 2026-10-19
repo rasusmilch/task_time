@@ -1,42 +1,28 @@
-# Design Notes — current legacy implementation
+# Design Notes — retained JSONL implementation
 
-This owner describes the inspected **Tkinter + JSONL runtime**, including staged
-services and actual limitations. It does not specify the clean rewrite.
-[ARCHITECTURE.md](docs/ARCHITECTURE.md) is the single selected Tkinter/SQLite target
-technical owner; [requirements](docs/TIMESHEET_REQUIREMENTS.md) owns product
-behavior, the [export contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns retained
-frozen-export/absolute-confirmation semantics, and the [roadmap](docs/ROADMAP.md)
-owns rewrite Stages 0–6. See [AGENTS.md](AGENTS.md) for actor/authority rules.
+The shipped launcher/build now targets `src/chronicle`, the Stage 1A SQLite timer.
+[ARCHITECTURE.md](docs/ARCHITECTURE.md) owns its implemented technical boundary;
+[requirements](docs/TIMESHEET_REQUIREMENTS.md), [roadmap](docs/ROADMAP.md) and
+[testing strategy](docs/TESTING_STRATEGY.md) distinguish delivery from pending
+operational/native Windows qualification and later core/POL-R work.
 
-All source contracts below are **legacy/current observations**, not requirements
-to reproduce JSONL in SQLite. Append/replay/manifests/synchronize-journal, derived
-JSON snapshots, replacement-interval UUIDs, constructor waits and same-widget
-unfinished Save retention remain descriptions of code that still executes.
-They are superseded as target architecture by transactional relational records,
-stable work-entry revisions, request receipts, worker-owned I/O, callback-driven
-presentation and saved-report recovery independent of widgets. No SQLite runtime
-is delivered by documenting that choice.
+Everything below describes retained, **unshipped historical `task_timer` source**.
+References to active/production UI, services, paths and tests in those sections
+refer to that former JSONL runtime, not the replacement launcher. Its package is
+not imported or bundled by Chronicle. No compatibility, migration, parallel
+runtime, nested-editor or widget-retained retry requirement follows from it.
+Historical Phase 2 acceptance is not SQLite qualification. The preserved details
+support source/test review and retain earlier chronology; they do not claim that
+History, Timesheet or POL-R is exposed by the new Stage 1A timer.
 
-Current main/mini Actual, read-only Work History and frozen modal Timesheet are
-connected. The timed correction dialog is standalone; date-only production
-writers, confirmation/reconciliation UI, weekly summaries/reminders and selectable
-weeks remain absent. Those are source gaps, not instructions to connect a nested
-editor or global pending-correction slot. The rewrite uses main selection →
-History → inline editor; recursive metadata-editor routing below remains current
-code only. POL-R is core before pilot, not optional later expansion. Old Phase 2
-acceptance remains bounded historical JSONL service evidence, not a SQLite gate.
-
-The newly selected [quarter-hour contract](docs/EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
-is **not implemented here**. Current decimal reports/confirmation cells use integer
-hundredths and the daily service uses Actual-as-Enter; there is no full-week
-upward distribution or frozen quarter-allocation basis. Those legacy fields and
-tests below must not be read as satisfying the new submission/confirmation units.
-Restored source-coverage/default-selection/acknowledgement guarantees carry into
-the SQLite target semantically, not by adopting these event layouts.
+The selected [quarter-hour contract](docs/EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
+remains mandatory for later core completion. Retained JSONL confirmations use
+hundredths/Actual-as-Enter; they do not implement that contract. SQLite recording
+is delivered, while Stage 2/3 and native release qualification are not.
 
 ## Architecture
 
-The app uses an event-sourced model:
+The retained JSONL app uses an event-sourced model:
 
 1. **Append-only active event log** (`active_events.jsonl`) as authoritative current segment.
 2. **Archived immutable segments** under `archives/`.

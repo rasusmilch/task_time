@@ -1,6 +1,4 @@
-param(
-    [switch]$OneFile
-)
+param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -87,7 +85,6 @@ $VenvPath = Join-Path $RepoRoot '.venv'
 $DistPath = Join-Path $RepoRoot 'dist'
 $BuildPath = Join-Path $RepoRoot 'build'
 $SpecPath = Join-Path $RepoRoot 'chronicle.spec'
-$LauncherPath = Join-Path $RepoRoot 'run_chronicle.py'
 $VenvPythonExe = Join-Path $VenvPath 'Scripts\python.exe'
 
 $PythonCommand = Find-PythonCommand
@@ -98,9 +95,7 @@ if (-not (Test-Path $VenvPath)) {
     $NeedsVenvCreate = $true
 }
 elseif (-not (Test-Path $VenvPythonExe)) {
-    Write-Warning "Found broken virtual environment at $VenvPath (missing Scripts\\python.exe). Recreating it."
-    Remove-Item -Recurse -Force $VenvPath
-    $NeedsVenvCreate = $true
+    throw "Existing .venv is not a Windows environment; preserve it and choose a prepared Windows checkout."
 }
 
 if ($NeedsVenvCreate) {
@@ -111,39 +106,25 @@ if (-not (Test-Path $VenvPythonExe)) {
     throw "Could not find Python in venv at $VenvPythonExe"
 }
 
-Write-Host 'Upgrading pip ...'
-& $VenvPythonExe -m pip install --upgrade pip
-
 Write-Host 'Installing build dependencies ...'
-& $VenvPythonExe -m pip install -e . pyinstaller
+& $VenvPythonExe -m pip install -e $RepoRoot 'pyinstaller==6.22.3'
+if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
+& $VenvPythonExe -B -c "from chronicle.sqlite_store import runtime_info; print(runtime_info())"
+if ($LASTEXITCODE -ne 0) { throw 'Unsupported SQLite runtime; build refused.' }
 
-if (Test-Path $BuildPath) {
-    Remove-Item -Recurse -Force $BuildPath
-}
-if (Test-Path $DistPath) {
-    Remove-Item -Recurse -Force $DistPath
+if ((Test-Path $BuildPath) -or (Test-Path $DistPath)) {
+    throw 'Existing build/ or dist/ preserved. Inspect/move them explicitly before building.'
 }
 
 Push-Location $RepoRoot
 try {
-    if ($OneFile) {
-        Write-Host 'Building optional onefile executable ...'
-        & $VenvPythonExe -m PyInstaller --noconfirm --clean --windowed --name 'Chronicle' --paths src --onefile $LauncherPath
-        if ($LASTEXITCODE -ne 0) {
-            throw "PyInstaller onefile build failed with exit code $LASTEXITCODE."
-        }
-
-        $OutputPath = Join-Path $DistPath 'Chronicle.exe'
+    Write-Host 'Building onedir distribution via spec ...'
+    & $VenvPythonExe -m PyInstaller --noconfirm --clean $SpecPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "PyInstaller onedir build failed with exit code $LASTEXITCODE."
     }
-    else {
-        Write-Host 'Building default onedir distribution via spec ...'
-        & $VenvPythonExe -m PyInstaller --noconfirm --clean $SpecPath
-        if ($LASTEXITCODE -ne 0) {
-            throw "PyInstaller onedir build failed with exit code $LASTEXITCODE."
-        }
 
-        $OutputPath = Join-Path $DistPath 'Chronicle'
-    }
+    $OutputPath = Join-Path $DistPath 'Chronicle'
 }
 finally {
     Pop-Location

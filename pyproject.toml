@@ -3,14 +3,20 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "task-timer"
-version = "0.1.0"
-description = "Local event-sourced tkinter task timer"
+name = "chronicle"
+version = "0.2.0"
+description = "Local transactional SQLite Tkinter task timer"
 requires-python = ">=3.11"
 dependencies = [
-    "tkcalendar>=1.6.1",
-    "tzlocal>=5",
+    "tzdata==2026.5",
 ]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "tkcalendar>=1.6.1", "tzlocal>=5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["chronicle*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

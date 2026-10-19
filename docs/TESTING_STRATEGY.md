@@ -7,7 +7,7 @@ architecture, persistence/recovery mechanisms or a new release policy.
 The [product contract](TIMESHEET_REQUIREMENTS.md) owns acceptance semantics;
 the [roadmap](ROADMAP.md) owns sequencing and completion gates;
 [ARCHITECTURE.md](ARCHITECTURE.md) owns the selected Tkinter/SQLite target;
-[Design Notes](../DESIGN_NOTES.md) owns current legacy implementation/limitations. [AGENTS.md](../AGENTS.md) routes repository work;
+[Design Notes](../DESIGN_NOTES.md) owns retained unshipped JSONL source/limitations. [AGENTS.md](../AGENTS.md) routes repository work;
 [README.md](../README.md) describes status; [BUILDING.md](../BUILDING.md) owns
 Windows packaging instructions; [CHANGELOG.md](../CHANGELOG.md) is the sole
 historical change record. Tests are evidence, not independent product authority.
@@ -58,11 +58,33 @@ a full regression. Levels D–F require evidence of interactions/platforms actua
 exercised, with material omissions explicit. Implementation tests and integrated
 qualification remain distinct.
 
-## Current legacy test inventory and limits
+## Connected SQLite timer evidence
+
+The Stage 1A suites below exercise the shipped `chronicle` source with disposable
+SQLite datasets. This inventory describes assertions, not an automatic passing
+result or native qualification; current command outcomes belong in receipts.
+
+| Suite | Exercised boundary |
+| --- | --- |
+| [test_schema.py](../tests/rewrite/test_schema.py) | Real STRICT/FK/CHECK/UUID constraints, profile/version gates, fresh/reopen/refusal, immutable evidence, active/closed guards and pre-COMMIT orphan postcondition. No hostile database guarantee. |
+| [test_services.py](../tests/rewrite/test_services.py) | Independent UUID task/project operations, atomic same-instant Switch/rollback, exact receipt reuse before stale checks, changed-content rejection, bounded busy, failed COMMIT with open transaction, failed rollback/close, independent committed lookup, lost acknowledgement, unverified retry and immutable active-start audit/precision/DST behavior. Injected failures are not universal power-loss evidence. |
+| [test_timekeeping.py](../tests/rewrite/test_timekeeping.py) / [test_accounting.py](../tests/rewrite/test_accounting.py) | Integer microseconds, range/type/canonical-date rejection, bundled IANA rules, gaps/repeats/non-hour transitions, local midnight/week, running cutoff, own/deleted work conservation, sleep/forward elapsed and impossible-observation warnings without refresh writes. No dated writer or quarter-hour implementation. |
+| [test_worker.py](../tests/rewrite/test_worker.py) / [test_bootstrap.py](../tests/rewrite/test_bootstrap.py) | Worker-thread connection lifecycle, exact reconciliation, startup failure, actual separate-process exclusion/ordinary directory aliases, committed active restart and abrupt process exit. Native alias cases skip narrowly where unsupported. Process tests are bounded examples, not hostile/multiwriter qualification. |
+| [test_app.py](../tests/rewrite/test_app.py) | Actual main/mini construction and callbacks with real services/worker; server-delivered X11 task selection/buttons, Start/Switch/Stop, active-start correction, shared totals, slow-worker event delivery, duplicate guards, queued shutdown, default-cancel unverified exit/reconcile, known completion despite numeric failure, read purity and late-result handling. Repeated-interpreter test cleanup is UI-thread-owned; doubles alone do not establish desktop interaction. |
+| [test_packaging.py](../tests/rewrite/test_packaging.py), [test_root_launcher.py](../tests/test_root_launcher.py) | Replacement-only root import, package selection/exclusion and spec tzdata collection. Static/import checks are not a native executable build. |
+
+A usable display is required for `real_tk` cases. Linux Xorg/XTest evidence does
+not establish native Windows, NTFS, suspend/resume or package usability. SQLite
+feature floor 3.37 is distinct from the supported WAL-reset-fixed runtime floor
+3.51.3 (excluding withdrawn 3.52.0); source tests record the actual linked build.
+Operational interruption and native Windows source/onedir evidence remain the
+next Stage 1 slice. Core History, dated writers and Timesheet/POL-R are later work.
+
+## Retained legacy test inventory and limits
 
 The following inventory describes existing test cases and their scope, not
-exhaustive coverage or passing results. These are tests of the current
-Tkinter/JSONL implementation, not SQLite transaction/worker/inline-editor evidence.
+exhaustive coverage or passing results. These are tests of retained, unshipped
+Tkinter/JSONL source, not SQLite transaction/worker/inline-editor evidence.
 Old names containing “replacement” or “staged” do not make them rewrite delivery.
 Retain useful semantic cases, but do not require JSONL replay/synchronization,
 constructor waits or widget-retained retries in the new architecture. Use it to find affected tests and inspect
@@ -107,10 +129,10 @@ their assertions before selecting a run.
 
 Existing fixtures use disposable `tmp_path`, fixed clocks and real service
 composition where applicable. The accepted historical Phase 2 service gate is
-JSONL-only; no test in this inventory completes a SQLite stage. Current production
+JSONL-only; no test in this inventory completes a SQLite stage. Retained JSONL source
 has main/mini Actual, read-only History and frozen Timesheet; dated writers,
 confirmation/reconciliation UI, weekly reminders and selected week settings are
-not active. Current nested-editor modal tests protect code that still runs,
+not active. Retained nested-editor modal tests protect that old source,
 not a requirement to reproduce that navigation in the rewrite. Existing JSONL
 confirmation/proposal/reconciliation suites use arbitrary integer hundredths and
 Actual-as-Enter, not the new quarter-hour policy. Their integrity assertions are
@@ -121,9 +143,9 @@ implementation. Task 1b adds future obligations below, not passing runtime tests
 
 Stage 0's documentation gate is independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`; this supplies no SQLite/runtime evidence.
-The runtime rows below remain future acceptance obligations, **not existing tests
-or passing results**. Stage 1 planning is active on `feature/chronicle-rewrite`;
-runtime execution/validation still requires independent adjudication.
+The rows below are stage acceptance obligations, not automatic passing results.
+Stage 1A implements and tests the connected timer on `feature/chronicle-rewrite`;
+operational/native Windows qualification remains pending, so Stage 1 is not Complete.
 Tests follow the user-selected [architecture](ARCHITECTURE.md) and
 [semantic contract](EXPORT_EVIDENCE_CONTRACT.md); they do not choose stronger
 recovery/platform policy. Integrity tests begin in each slice, not only Stage 4.
@@ -131,7 +153,7 @@ recovery/platform policy. Integrity tests begin in each slice, not only Stage 4.
 | Stage | Applicable evidence |
 | --- | --- |
 | 0 authority | Review complete affected Markdown/current source, all material decisions, current/target separation, incoming relative links/anchors and executable scope. No runtime delivery from documentation. |
-| 1 foundation | Real SQLite recording/reopen, stable task/project IDs, one active timer, atomic Switch at one accepted time, rollback on rejected use cases, exact request reuse before stale checks and changed-content rejection. Verify actual WAL/FULL/foreign-key/constraint behavior, bounded lock failure and truthful commit uncertainty. Early native Windows onedir smoke includes SQLite runtime and offline zone availability. Clock/sleep/restart rules must be adjudicated before dependent assertions. |
+| 1 foundation | Real SQLite recording/reopen, stable task/project IDs, one active timer, atomic Switch at one accepted time, rollback on rejected use cases, exact request reuse before stale checks and changed-content rejection. Verify actual WAL/FULL/foreign-key/constraint behavior, bounded lock failure and truthful commit uncertainty. Early native Windows onedir smoke includes SQLite runtime and offline zone availability. Approved continuous sleep/restart, explicit active-start recovery and uncertain-exit rules now have Stage 1A assertions; native operational qualification remains pending. |
 | 2 recording | Integer-unit mixed accounting, genuine/date-only shape integrity, stable work UUID/revision/current references, correction/deletion history, no-op purity, stale drafts, whole-entry segment editing, precise unchanged endpoints, minute changes, DST/UTC, all week starts, applied periods/unapplied drafts/session sorting and all-reader gate before exposed writers. |
 | 3 Timesheet AND POL-R | Connected frozen preview/full-week quarter-hour suggestions and saved-report recovery; explicit whole/checked/manual absolute quarter confirmations, complete reviewed source, exact acknowledgements, Unknown/zero, stale priors, daily gaps/adjustments/coverage and reminders. External reporting/zero-entry validation before affected official use. No pilot without these. |
 | 4 stabilization | Integrated interruption/commit ambiguity, second-instance refusal, queued shutdown/restore invalidation, real backup/restore, upgrades, storage faults, native Tk and packaged Windows. Earlier slices already test their integrity boundaries. |
@@ -376,21 +398,25 @@ integrity evidence. No arbitrary startup deletion is authorized.
 ## Commands and evidence classification
 
 Current [pyproject.toml](../pyproject.toml) requires Python 3.11+, `src` pytest
-imports and tkcalendar/tzlocal. Inspect the existing environment; do not invent
-new dependency or command workflows. These are source-grounded examples to select
+imports and pinned tzdata; optional test dependencies retain the unshipped JSONL
+suites. Inspect the existing environment; do not invent new dependency or command
+workflows. These are source-grounded examples to select
 proportionally, not universal per-task requirements:
 
-- Current pure/semantic baseline: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts='' tests/test_mixed_accounting.py tests/test_work_entry_inputs.py`.
-- Full current regression: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts=''`.
+- Retained legacy pure/semantic baseline: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts='' tests/test_mixed_accounting.py tests/test_work_entry_inputs.py`.
+- Connected rewrite: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts='' tests/rewrite/`.
+- Real Tk rewrite: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts='' tests/rewrite/ -k real_tk`.
+- Full applicable regression: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts=''`.
 - Syntax only: `.venv/bin/python -B -c "from pathlib import Path; paths=sorted({*Path('src').rglob('*.py'), *Path('tests').rglob('*.py'), *Path('.').glob('*.py')}); [compile(p.read_bytes(), str(p), 'exec') for p in paths]; print(f'{len(paths)} files compiled in memory')"`.
 
 Syntax compilation imports no application and writes no bytecode; it establishes
-no runtime guarantee. New rewrite test filenames/commands follow actual approved
-implementation, not imagined existing suites. A documentation task may request
-an unchanged-runtime baseline or syntax check explicitly; otherwise select them
-proportionally, not automatically. They provide no SQLite/quarter-hour behavior
-evidence. No full regression or desktop launch is needed for a verified Markdown-
-only delta absent another applicable requirement.
+no runtime guarantee. Rewrite commands above target the implemented suites;
+retained JSONL tests are separate predecessor evidence, not a compatibility
+requirement. A documentation task may request an unchanged-runtime baseline or
+syntax check explicitly; otherwise select them proportionally, not automatically.
+Retained legacy checks provide no SQLite/quarter-hour behavior evidence. No full
+regression or desktop launch is needed for a verified Markdown-only delta absent
+another applicable requirement.
 
 Documentation checks cover the complete affected owner set, relative links and
 anchors including incoming links from unedited files, formatting/whitespace,

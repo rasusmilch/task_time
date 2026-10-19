@@ -4,15 +4,16 @@ This owner defines the selected rewrite sequence and completion gates, not
 product or architecture alternatives. Read [requirements](TIMESHEET_REQUIREMENTS.md),
 [target architecture](ARCHITECTURE.md), [export/POL-R contract](EXPORT_EVIDENCE_CONTRACT.md)
 and [testing strategy](TESTING_STRATEGY.md). [Design Notes](../DESIGN_NOTES.md)
-describes current JSONL source; [decisions](DECISIONS.md) retains chronology.
+describes retained unshipped JSONL source; [decisions](DECISIONS.md) retains chronology.
 
 ## Status and gate rules
 
 The active sequence is **Stages 0–6**, superseding the old JSONL Phase 1–6 plan.
 Selected does not mean implemented; old component tests do not complete SQLite
 stages. Stage 0 is independently accepted Complete for documentation only;
-no rewrite runtime stage is Complete. Stage 1 is the active engineering stage,
-not implemented, with its plan requiring independent adjudication before execution.
+no rewrite runtime stage is Complete. Stage 1 is In Progress: its connected
+Stage 1A timer slice is implemented, with operational/native Windows qualification
+still pending and independent review required.
 
 Each stage can contain several substantial, independently reviewed tasks. Do not
 make every helper a staged feature or authorize the whole rewrite in one task.
@@ -31,12 +32,13 @@ The authorized active workstream is `feature/chronicle-rewrite`, created from th
 accepted commit. Preserve `feature/chronicle-projects-timesheets` as the Stage 0
 source/history branch; normal rewrite publication uses the new branch under
 [AGENTS.md](../AGENTS.md). Its origin does not pin the old branch's future HEAD.
-The bounded Stage 1 read-only plan requires independent approval before runtime
-execution; no new whole-app planning cycle or implementation is authorized here.
+The independently reviewed bounded plan led to the explicitly approved Stage 1A
+execution. Subsequent substantial slices remain independently reviewed; this
+status does not authorize Stage 2/3 or resolve reserved release policy.
 
 ## Stage 1 — Working timer foundation
 
-**Active planning / NOT IMPLEMENTED; engineering slice, NOT complete MVP or pilot.**
+**IN PROGRESS — connected Stage 1A implemented; NOT complete MVP or pilot.**
 Fresh SQLite, task/project identities, Start/Stop/Switch, persisted active timer,
 main/mini display, worker bridge and early native Windows onedir smoke. Design
 immutable frozen-export and absolute-confirmation batches/cells/current-reference
@@ -45,8 +47,10 @@ schema and transaction boundaries into the core from the start.
 Gate: real recording/reopen path, atomic Switch at one accepted time, active-timer
 uniqueness, same-request committed-result reuse and truthful failures. Verify
 SQLite WAL/FULL/foreign keys/constraints and UI/worker thread ownership. Integrity
-and failure tests start here. Settle abnormal clock/sleep/restart rules before
-affected code; settle timezone-change policy before affected dataset configuration.
+and failure tests start here. The approved clock/sleep/restart and explicit
+active-start/uncertain-exit policies are in requirements. Operational interruption
+and native Windows source/onedir qualification remain the subsequent slice.
+Timezone-change policy stays reserved; Stage 1A has no zone-changing operation.
 A foundation without POL-R is not core signoff.
 
 ## Stage 2 — Complete core work recording
@@ -146,7 +150,6 @@ or allocation may prevent recording Actual.
 
 | Reserved decision | First affected gate |
 | --- | --- |
-| Abnormal clock/sleep/persisted-timer restart behavior | Stage 1 recording/reopen before affected code. |
 | Dataset timezone changes | Stage 1 configuration / Stage 2 accounting before affected code. |
 | Exact fresh release path, installation/cutover, retired-data cleanup | Before affected deployment and Stage 5 setup; no startup deletion or legacy import. |
 | External redistribution authorization and worked-day zero/omitted-entry treatment | Before affected Stage 3 connected official reporting and Stage 5 pilot; mathematical policy is selected, not reopened. |

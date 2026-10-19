@@ -9,10 +9,10 @@ Codex records them, not alternative architecture. Product behavior belongs to
 semantics and the single full-week quarter-hour algorithm to
 [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); sequence
 to [ROADMAP.md](ROADMAP.md); validation to [TESTING_STRATEGY.md](TESTING_STRATEGY.md).
-[DESIGN_NOTES.md](../DESIGN_NOTES.md) describes current Tkinter/JSONL source.
-SQLite, a worker bridge and inline History editing are **not implemented** by
-this documentation commit. Earlier Qt/PySide6 and nested correction/global
-pending-retry plans are superseded, not fallback implementation instructions.
+[DESIGN_NOTES.md](../DESIGN_NOTES.md) describes retained, unshipped JSONL source.
+Stage 1A implements the connected SQLite timer/worker/main/mini foundation.
+Inline History editing and later Timesheet/POL-R remain unimplemented. Earlier
+Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
 ## Small application and responsibility boundaries
 
@@ -59,11 +59,11 @@ complete behavioral slices follow the roadmap, not optional post-pilot bolt-ons:
 | Dataset metadata | Schema version, explicit IANA timezone and selected week convention. Future upgrades protect new-runtime data; no legacy import. |
 
 Use enforced foreign keys and appropriate STRICT, CHECK and UNIQUE constraints;
-validate bounded integer/date ranges and shapes in services as well. Exact SQL,
-module filenames and supported SQLite runtime floor must be verified by the
-bounded Stage 1 plan; this owner does not invent optional-feature SQL or exact
-runtime/toolkit pins. Frozen exports and confirmation references belong in that
-initial integrity design even before their UI is delivered.
+validate bounded integer/date ranges and shapes in services as well. Stage 1A SQL
+lives in `src/chronicle/sqlite_store.py`; shallow modules and typed use cases live
+in `src/chronicle`. Optional feature tables are not created early. Frozen exports
+and confirmation references belong in that initial integrity design even before
+their UI is delivered.
 
 ## Transactions and exact request reconciliation
 
@@ -108,7 +108,10 @@ view closes. No global one-pending-correction slot or persisted recovery ledger.
 
 ## SQLite profile, backup and restore
 
-Use local-disk WAL with synchronous FULL and enforced foreign keys. Check the
+Use local-disk WAL with synchronous FULL and enforced foreign keys. Stage 1A
+requires SQLite STRICT feature floor 3.37 and a supported WAL-reset-fixed runtime
+3.51.3+ (excluding withdrawn 3.52.0); feature compatibility alone is insufficient.
+Record actual SQLite source ID/compile options and effective profile. Check the
 actual SQLite runtime and effective pragmas/constraints at startup rather than
 assuming requested configuration succeeded. Use bounded lock handling and
 truthful busy/storage errors, not infinite retries or silent profile downgrades.
@@ -197,8 +200,47 @@ pending-event plan into this rewrite.
 Shutdown rejects new submissions, drains or reconciles in-flight requests and
 closes the worker/connection orderly without UI-thread joining a running worker
 or silently terminating it. Keep Tk event delivery alive until completion can be
-reconciled. Abnormal clock/sleep/restart policy needs user/ChatGPT adjudication
-before affected Stage 1 code; do not infer missing stops during repaint/shutdown.
+reconciled. Approved Stage 1A uses accepted wall UTC captured once before queueing;
+sleep/exit never stops work and restart restores the same committed active UUID.
+Impossible observations display unavailable/clock warnings; explicit minute/DST
+active-start correction retains immutable original/prior/new values and receipt.
+Idle unverified outcomes offer exact Retry/Reconcile or default-cancel exceptional
+exit, explaining possible commitment and volatile retry loss. Executing I/O is
+not interrupted. No repaint/shutdown infers missing stops.
+
+## Implemented Stage 1A boundary
+
+`bootstrap` requires explicit data-dir/create/zone arguments. `dataset_lock` holds
+OS ownership before writable open; unknown/nonempty create targets and unknown
+schema versions refuse without data cleanup. `sqlite_store` owns isolation_level=None,
+BEGIN IMMEDIATE/COMMIT/ROLLBACK and checked STRICT schema version 1. Dataset/task/
+project UUIDs, optional membership, timed work identities/current immutable revisions,
+one active row, immutable active-start audits and committed receipts are relational.
+Original start never changes; active effective start/version follows its audit chain.
+Triggers enforce immutable facts/prohibited transitions; a final service lifecycle
+check rejects orphan or simultaneously active/closed identities before COMMIT.
+
+Exact receipt reuse precedes current-version checks. Failed COMMIT checks transaction
+state, attempts rollback/close and isolates the connection. Independent healthy
+committed reads establish receipts; an uncommitted same-connection row cannot prove
+success. Failed rollback/close plus healthy absence remains unverified while that
+transaction may live. Preserve primary/secondary diagnostics. Known completion
+survives later read/render failure. No new request identity is allocated for retry.
+
+`services` exposes explicit task/project/Start/Stop/Switch/correct-active-start/read/
+reconcile operations. `accounting` splits integer elapsed units into local dates;
+main/mini consume one report/cutoff. Unavailable numbers never substitute zero.
+`worker` serializes I/O on one non-daemon thread. `app` owns retained pending request,
+bounded queue drain, read invalidation and orderly shutdown. `mini_mode` delegates
+controls and renders supplied values. Constructors do not wait. Short toolkit
+metadata/confirmation dialogs are owned and guarded; correction uses callback-driven
+local modal presentation. Workers never call Tk. Temporary detached UI state is not
+another datastore. No settings, snapshots, exports or per-tick writes are added.
+
+Future dated revisions/export basis/confirmation batches/cells/current references
+extend schema under protected versioned upgrades, preserving stable identities.
+Stage 1A exposes none of those writers or workflows. Operational interruption,
+backup/restore and native Windows qualification remain later evidence gates.
 
 ## Frozen files and core POL-R
 
@@ -229,15 +271,15 @@ external connection remain separately approved.
 Windows is the native desktop/package qualification target. Start early onedir
 smoke in Stage 1 and integrate native Tk, offline timezone data, SQLite profile,
 publication and backup/restore evidence through stabilization/pilot. Existing
-[BUILDING.md](../BUILDING.md) commands build the current JSONL source, not proof
-of a qualified rewrite. Do not invent performance targets or exact version pins
-without validation. Linux/unit evidence is not Windows, concurrency or universal
+[BUILDING.md](../BUILDING.md) commands now target the replacement runtime, but
+source/spec alignment is not proof of a qualified native Windows executable.
+Do not invent performance targets or exact version pins without validation. Linux/unit evidence is not Windows, concurrency or universal
 power-loss qualification.
 
 Stage 0's documentation is independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`. The authorized
 `feature/chronicle-rewrite` workstream originates there; preserve the old
 `feature/chronicle-projects-timesheets` source/history branch. Stage 1 remains
-unimplemented. Its bounded read-only plan requires independent adjudication
-before runtime execution under [AGENTS.md](../AGENTS.md); accepted architecture
-does not itself authorize code, data-path cutover or resolution of Open policy.
+In Progress: approved Stage 1A is implemented, while operational/native Windows
+qualification remains pending. Later execution requires independent review under
+[AGENTS.md](../AGENTS.md); no data-path cutover or Open policy is authorized here.

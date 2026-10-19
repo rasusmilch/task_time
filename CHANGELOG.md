@@ -6,13 +6,20 @@ receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
-### Selected clean-rewrite direction — documentation, not runtime delivery
+### Clean rewrite — connected timer foundation and selected core
 
 - Select Python + Tkinter/ttk with transactional SQLite as the sole replacement
   authority, superseding earlier Qt/PySide6 planning and JSONL-as-target mechanics.
   Preserve exact work semantics, immutable revisions/evidence, stable work-entry
   UUIDs, atomic request receipts, serialized worker-owned I/O and callback-driven
-  Tk lifecycle with inline History editing. No runtime rewrite is delivered here.
+  Tk lifecycle with future inline History editing. Connect the first SQLite timer
+  slice through the sole source/build route: independent task/project controls,
+  atomic Start/Stop/Switch, persisted active identity, audited explicit active-start
+  recovery and exact same-request reconciliation. Main/mini share calendar Actual;
+  one worker keeps Tk responsive and shutdown preserves approved uncertainty.
+  Sleep/exit never stops timers; restart uses committed state. Use explicit fresh
+  paths, offline tzdata and a WAL-reset-fixed SQLite gate. Operational/native Windows
+  qualification and later recording/Timesheet/POL-R remain pending.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete
@@ -24,25 +31,26 @@ receipts or commits. No release or production qualification is implied below.
   suggestions/context; never redistribute historical confirmations. Restore full
   reviewed source coverage including unchecked cells, positive-default selection
   including already-equal values, and exact selected stale acknowledgements.
-  This changes target authority only; current JSONL behavior is unchanged.
+  These later reporting rules remain selected, not implemented by the timer slice.
+  Retained JSONL source is unshipped; it is not a parallel runtime.
   External redistribution/zero-entry policy needs validation before official
   reporting/pilot. Allocation budgets/conveniences remain optional and separately
   decided.
   Preserve fresh-data scope without migration/compatibility or startup deletion;
-  installation/cutover, clock/restart, timezone changes and template/allocation
-  decisions remain reserved at their first affected gates.
-- Establish one target architecture owner and distinguish the unchanged current
+  installation/cutover, timezone changes and template/allocation decisions remain
+  reserved. Explicit Stage 1A approval resolves clock/restart and uncertain-exit rules.
+- Establish one target architecture owner and distinguish the retained unshipped
   JSONL source, historical bounded Phase 2 acceptance and future SQLite evidence.
-  The next runtime work after independent acceptance is a bounded Stage 1 plan
-  on a separately authorized branch from that accepted architecture commit.
+  Stage 0 is independently accepted; the connected Stage 1A timer runs on the
+  authorized rewrite branch. Stage 1 remains In Progress, not complete core/pilot.
 
 ### Current JSONL workstream capability — retained implementation history
 
-The cumulative entries below describe the existing runtime and earlier approvals.
+The cumulative entries below describe retained JSONL source and earlier approvals.
 Their JSONL envelopes/replay/synchronization, replacement-interval identity,
 retained-widget retry and recursive editor routing are superseded **target
-mechanisms**, not instructions for the clean rewrite. Current source remains
-unchanged and its pending features are not SQLite stage completion.
+mechanisms**, not instructions for the clean rewrite. That old source is unshipped;
+its capabilities/pending features are not SQLite stage completion.
 
 - Separate non-time-bearing project containers from independent UUID-based tasks,
   with optional membership and reassignment that preserves recorded work.
