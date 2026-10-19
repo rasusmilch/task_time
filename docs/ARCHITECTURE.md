@@ -224,7 +224,15 @@ Exact receipt reuse precedes current-version checks. Failed COMMIT checks transa
 state, attempts rollback/close and isolates the connection. Independent healthy
 committed reads establish receipts; an uncommitted same-connection row cannot prove
 success. Failed rollback/close plus healthy absence remains unverified while that
-transaction may live. Preserve primary/secondary diagnostics. Known completion
+transaction may live. Preserve primary/secondary diagnostics, including a failed
+validation-probe close.
+If initialization cleanup fails, a temporary exception handoff lets the worker
+retain the partial store solely for cleanup; it removes that explicit handoff before
+reporting the original error to Tk. Failed close never means stopped or releases
+ownership early. The existing explicit cleanup retry loop remains on the worker.
+The UI retains cleanup failure/Retry even after selection refresh and cannot cancel
+back into mutations once the worker has left its operation loop. No new schema,
+pending registry or automatic recovery loop is introduced. Known completion
 survives later read/render failure. No new request identity is allocated for retry.
 
 `services` exposes explicit task/project/Start/Stop/Switch/correct-active-start/read/
@@ -258,8 +266,19 @@ No settings, snapshots, exports or per-tick writes are added.
 
 Future dated revisions/export basis/confirmation batches/cells/current references
 extend schema under protected versioned upgrades, preserving stable identities.
-Stage 1A exposes none of those writers or workflows. Operational interruption,
-backup/restore and native Windows qualification remain later evidence gates.
+Stage 1A exposes none of those writers or workflows. Stage 1B exercises real SQLite
+process death at transaction/receipt/commit boundaries, atomic Switch, historical
+exact retries, active restart/calendar continuity, ordinary ownership races and
+checkpoint adjacency. These bounded local experiments are not arbitrary power-loss,
+hostile/multiwriter or native Windows evidence. Supported backup/restore/upgrades
+remain Stage 4; native Windows operational/package qualification remains open.
+
+The Windows onedir route uses hashed wheel inputs, an explicit supported runtime
+and checked virtual-environment prefix/inventory. It refuses existing outputs,
+records build provenance, analyzes only Chronicle sources and disables optional
+UPX variation. Every native command is checked; no destructive cleanup or global
+install is used. Artifact/input inspection does not qualify the real executable;
+[BUILDING.md](../BUILDING.md) owns commands and the pending native operator procedure.
 
 ## Frozen files and core POL-R
 
@@ -299,6 +318,8 @@ Stage 0's documentation is independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`. The authorized
 `feature/chronicle-rewrite` workstream originates there; preserve the old
 `feature/chronicle-projects-timesheets` source/history branch. Stage 1 remains
-In Progress: approved Stage 1A is implemented, while operational/native Windows
-qualification remains pending. Later execution requires independent review under
+In Progress: Stage 1A is independently accepted, and Stage 1B supplies bounded
+portable operational evidence/build hardening; required native Windows qualification
+and independent Stage 1 adjudication remain pending. Later execution requires
+independent review under
 [AGENTS.md](../AGENTS.md); no data-path cutover or Open policy is authorized here.

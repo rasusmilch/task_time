@@ -149,13 +149,7 @@ class SQLiteStore:
         elif not self.path.is_file() or self.path.is_symlink():
             raise ValueError("An existing Chronicle SQLite dataset is required")
         else:
-            probe = self._probe()
-            try:
-                self._verify(probe)
-                if timezone is not None and probe.execute("SELECT timezone FROM dataset_meta").fetchone()[0] != timezone:
-                    raise ValueError("Explicit timezone conflicts with this dataset")
-            finally:
-                probe.close()
+            self._validate_existing(timezone)
         try:
             self.lock.acquire()
             if create:
@@ -175,11 +169,7 @@ class SQLiteStore:
                 self.connection.execute("COMMIT")
             else:
                 # Identify before enabling WAL or otherwise writing to an unknown database.
-                probe = self._probe()
-                try:
-                    self._verify(probe)
-                finally:
-                    probe.close()
+                self._validate_existing(timezone)
                 self.connection = self._connect()
                 self._profile()
             self._verify(self.connection)
@@ -197,7 +187,32 @@ class SQLiteStore:
                 self.close()
             except Exception as secondary:
                 primary.add_note(f"Initialization cleanup failed: {secondary!r}")
+                # Constructor failure must not orphan a still-owned connection/lock.
+                # The worker consumes this temporary handoff before delivering diagnostics.
+                primary._chronicle_cleanup_store = self
             raise
+
+    def _validate_existing(self, timezone):
+        probe = self._probe()
+        try:
+            self._verify(probe)
+            if timezone is not None and probe.execute("SELECT timezone FROM dataset_meta").fetchone()[0] != timezone:
+                raise ValueError("Explicit timezone conflicts with this dataset")
+        except BaseException as primary:
+            try:
+                probe.close()
+            except Exception as secondary:
+                primary.add_note(f"Validation probe close failed: {secondary!r}")
+                self._retired = probe
+                primary._chronicle_cleanup_store = self
+            raise
+        else:
+            try:
+                probe.close()
+            except Exception as primary:
+                self._retired = probe
+                primary._chronicle_cleanup_store = self
+                raise  # A failed close is still a real startup failure.
 
     def _connect(self):
         conn = sqlite3.connect(self.path.as_uri() + "?mode=rw", uri=True,

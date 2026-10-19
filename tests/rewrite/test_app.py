@@ -103,13 +103,18 @@ def click(root):
     display = x.XOpenDisplay(None)
     if not display:
         pytest.skip("XTest cannot open the isolated display")
-    def perform(widget, xy=None):
+    def perform(widget, xy=None, *, closes_root=False):
         pump(root, lambda: widget.winfo_ismapped() and widget.winfo_width() > 1)
         xx, yy = xy or (widget.winfo_width() // 2, widget.winfo_height() // 2)
         assert xt.XTestFakeMotionEvent(display, -1, widget.winfo_rootx() + xx, widget.winfo_rooty() + yy, 0)
         assert xt.XTestFakeButtonEvent(display, 1, True, 0)
         assert xt.XTestFakeButtonEvent(display, 1, False, 0)
         x.XSync(display, False)
+        if closes_root:
+            deadline = root.after(6000, root.quit)
+            root.mainloop()  # Successful shutdown may destroy Tk before the normal click check.
+            root.after_cancel(deadline)
+            return
         flag = []
         root.after(40, lambda: flag.append(True))
         pump(root, lambda: flag)
@@ -1165,3 +1170,115 @@ def test_real_tk_correction_verified_commit_keeps_original_warning(connected, ro
     warning = root.test_errors[-1][1]
     assert any('committed receipt verified' in note for note in warning.__notes__)
     assert len(evidence(worker)['active_start_corrections']) == 1
+
+
+def test_real_tk_cleanup_failure_cannot_cancel_back_into_closed_worker(connected, root, monkeypatch, click):
+    from test_bootstrap import child
+    app, worker, clock = connected
+    task = create(app)
+    app.tree.selection_set(task)
+    app.start()
+    pump(root, lambda: app.pending is None and app.state['active'] is not None)
+    entry = app.state['active']['entry_id']
+    original, calls = SQLiteStore.close, []
+    def fail_once(store):
+        calls.append(threading.get_ident())
+        if len(calls) == 1:
+            raise OSError('close still owns dataset')
+        return original(store)
+    monkeypatch.setattr(SQLiteStore, 'close', fail_once)
+    app.request_close()
+    pump(root, lambda: 'Worker cleanup failed' in app.status.cget('text'))
+    assert app.alive and worker.is_alive() and app.closing
+    assert child('from chronicle.sqlite_store import SQLiteStore; import sys; SQLiteStore(sys.argv[1])', worker.directory).returncode != 0
+    app.cancel_close()
+    assert app.closing, 'A cleanup-only worker cannot resume normal mutations'
+    assert not app.stop() and app.pending is None
+    click(app.retry_button, closes_root=True)
+    worker.join(timeout=5)
+    assert not app.alive and not worker.is_alive() and calls == [worker.ident, worker.ident]
+    with _reopen_store(worker) as store:
+        assert store.connection.execute('SELECT entry_id FROM active_timer').fetchone()[0] == entry
+
+
+def test_real_tk_failed_startup_cleanup_retry_is_accessible(root, tmp_path, monkeypatch, click):
+    import chronicle.worker as module
+    original, calls = module.SQLiteStore, []
+    class FailedStartup(original):
+        def _profile(self):
+            super()._profile()
+            raise OSError('startup configuration failed')
+        def close(self):
+            calls.append(threading.get_ident())
+            if len(calls) < 3:
+                raise OSError('startup connection still owned')
+            return super().close()
+    monkeypatch.setattr(module, 'SQLiteStore', FailedStartup)
+    worker = DatabaseWorker(tmp_path / 'partial', create=True, timezone='UTC')
+    app = ChronicleApp(root, worker)
+    worker.start()
+    try:
+        pump(root, lambda: app._cleanup_failed)
+        assert app.alive and not app.ready and worker.is_alive()
+        app._selection_changed()
+        assert app.retry_button.winfo_manager() and not app.can_mutate()
+        click(app.retry_button)
+        pump(root, lambda: app._worker_stopped)
+        assert not app._cleanup_failed and app.alive
+        app.request_close()
+        assert not app.alive
+    finally:
+        worker.requests.put(Message('shutdown'))
+        worker.join(timeout=8)
+        assert not worker.is_alive()
+    assert calls == [worker.ident] * 3
+    assert 'Initialization cleanup failed' in str(root.test_errors[0][1].__notes__)
+
+
+def test_real_tk_forced_root_destruction_still_drains_accepted_io(connected, root, monkeypatch):
+    app, worker, clock = connected
+    task = create(app)
+    app.tree.selection_set(task)
+    gate, entered = threading.Event(), threading.Event()
+    original = TimerService.execute
+    def slow(service, request):
+        entered.set()
+        assert gate.wait(5)
+        return original(service, request)
+    monkeypatch.setattr(TimerService, 'execute', slow)
+    try:
+        assert app.start()
+        frozen = app.pending
+        pump(root, entered.is_set)
+        root.destroy()
+        assert not app.alive and app.pending is frozen
+    finally:
+        gate.set()
+    worker.join(timeout=8)  # Test verification only, not the application's Tk thread lifecycle.
+    assert not worker.is_alive()
+    with _reopen_store(worker) as store:
+        service = TimerService(store)
+        assert service.reconcile_request(frozen).status == 'committed'
+        assert service.read_current_state(cutoff_utc_us=NOW)['active']['entry_id'] == frozen.args()['entry_id']
+        assert store.connection.execute('SELECT count(*) FROM work_revisions').fetchone()[0] == 0
+
+
+def test_real_tk_result_callback_failure_keeps_commit_and_drain_alive(connected, root, monkeypatch):
+    app, worker, clock = connected
+    task = create(app)
+    app.tree.selection_set(task)
+    original, failed = app._controls, []
+    def fail_once():
+        if app.pending is None and app.status.cget('text') == 'Saved.' and not failed:
+            failed.append(True)
+            raise ValueError('completion presentation callback failed')
+        return original()
+    monkeypatch.setattr(app, '_controls', fail_once)
+    assert app.start()
+    frozen = app.pending
+    pump(root, lambda: app.state['active'] is not None and app.pending is None)
+    assert failed and 'Saved.' in app.status.cget('text')
+    assert any(str(args[1]) == 'completion presentation callback failed' for args in root.test_errors)
+    assert app.state['active']['entry_id'] == frozen.args()['entry_id']
+    assert app._drain_id is not None and app._tick_id is not None
+    assert len(evidence(worker)['work_entries']) == 1

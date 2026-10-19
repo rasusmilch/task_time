@@ -60,7 +60,7 @@ qualification remain distinct.
 
 ## Connected SQLite timer evidence
 
-The Stage 1A suites below exercise the shipped `chronicle` source with disposable
+The Stage 1A/1B suites below exercise the shipped `chronicle` source with disposable
 SQLite datasets. This inventory describes assertions, not an automatic passing
 result or native qualification; current command outcomes belong in receipts.
 
@@ -70,15 +70,21 @@ result or native qualification; current command outcomes belong in receipts.
 | [test_services.py](../tests/rewrite/test_services.py) | Independent UUID task/project operations, atomic same-instant Switch/rollback, exact receipt reuse before stale checks, changed-content rejection, bounded busy, failed COMMIT with open transaction, failed rollback/close, independent committed lookup, lost acknowledgement, unverified retry and immutable active-start audit/precision/DST behavior. Injected failures are not universal power-loss evidence. |
 | [test_timekeeping.py](../tests/rewrite/test_timekeeping.py) / [test_accounting.py](../tests/rewrite/test_accounting.py) | Integer microseconds, range/type/canonical-date rejection, bundled IANA rules, gaps/repeats/non-hour transitions, local midnight/week, running cutoff, own/deleted work conservation, sleep/forward elapsed and impossible-observation warnings without refresh writes. No dated writer or quarter-hour implementation. |
 | [test_worker.py](../tests/rewrite/test_worker.py) / [test_bootstrap.py](../tests/rewrite/test_bootstrap.py) | Worker-thread connection lifecycle, exact reconciliation, startup failure, actual separate-process exclusion/ordinary directory aliases, committed active restart and abrupt process exit. Native alias cases skip narrowly where unsupported. Process tests are bounded examples, not hostile/multiwriter qualification. |
-| [test_app.py](../tests/rewrite/test_app.py) | Actual main/mini construction and callbacks with real services/worker; server-delivered X11 task selection/buttons, Start/Switch/Stop, active-start correction, shared totals, slow-worker event delivery, duplicate guards and queued shutdown. Correction cases retain exact drafts/occurrences across real service validation, stale conflict, injected COMMIT rollback and pre-execution unavailability; queued work locks Close/fields, unchanged writes nothing, and unverified editor-local retries retain the same Request through absence/committed lookup. Dispatch tokens reject duplicate completions; unexpected view destruction retains owner evidence. Server-delivered keyboard/mouse cases cover rejection-to-success, repeated selection, blocked main/mini, Escape, editor Retry and the actual toolkit default-No exceptional-exit warning. WM Close is separately exercised through its registered handler. Known completion survives numeric/cleanup failure; cancellation/confirmed exit, read purity and late-result handling remain covered. Repeated-interpreter test cleanup is UI-thread-owned; doubles alone do not establish desktop interaction. |
+| [test_app.py](../tests/rewrite/test_app.py) | Actual main/mini construction and callbacks with real services/worker; server-delivered X11 task selection/buttons, Start/Switch/Stop, active-start correction, shared totals, slow-worker event delivery, duplicate guards and queued shutdown. Correction cases retain exact drafts/occurrences across real service validation, stale conflict, injected COMMIT rollback and pre-execution unavailability; queued work locks Close/fields, unchanged writes nothing, and unverified editor-local retries retain the same Request through absence/committed lookup. Dispatch tokens reject duplicate completions; unexpected view destruction retains owner evidence. Server-delivered keyboard/mouse cases cover rejection-to-success, repeated selection, blocked main/mini, Escape, editor Retry and the actual toolkit default-No exceptional-exit warning. WM Close is separately exercised through its registered handler. Known completion survives numeric/cleanup failure; cancellation/confirmed exit, read purity and late-result handling remain covered. Additional connected cleanup cases use server input for retry, retain lock ownership after failure, prohibit cancel-back-to-editing once cleanup started, and deliver failed-constructor cleanup to the owning worker. Worker exceptions/queued reads/shutdown are separately covered in test_worker.py. Repeated-interpreter test cleanup is UI-thread-owned; doubles alone do not establish desktop interaction. |
+| [test_interruptions.py](../tests/rewrite/test_interruptions.py) | Separate disposable children killed at before-BEGIN, acquired transaction, partial work facts, receipt-before-COMMIT, after-COMMIT/before-ack and pre-refresh boundaries for Start/Stop/Switch/correction. Independent reopen checks all facts, exact request reuse after newer work, no partial Switch/orphans, active-owner/reopen crashes, checkpoint adjacency, interrupted initialization and accepted-work shutdown. Pipe barriers/bounded waits replace sleep-only timing. Adjacent FULL checkpoint calls do not establish interruption inside SQLite page flushing or universal power-loss safety. |
+| [test_operational_lifecycle.py](../tests/rewrite/test_operational_lifecycle.py) | Persisted midnight/week/DST and simulated sleep continuity, repeated corrections/reopen/Stop, no startup/tick writes, separate-process create/owner races and crash release, late unknown-file preservation, partial/profile/schema/header/version refusal and primary validation plus cleanup diagnostics. Native POSIX permission cases skip only where unavailable; they do not establish Windows ACL/NTFS behavior. Read-only WAL probes may create SQLite sidecars while preserving existing authoritative bytes. |
+| [test_windows_build.py](../tests/rewrite/test_windows_build.py) | Executed preflight prefix/runtime and package-inventory guards, exclusive provenance and hash-lock shape; PowerShell/spec wiring is static only. Actual Windows wheels were separately resolved/hash-checked, not executed by these tests. Native PowerShell parsing, command exit codes, Windows locking, onedir launch and loaded toolkit/SQLite resources remain qualification work in BUILDING. |
 | [test_packaging.py](../tests/rewrite/test_packaging.py), [test_root_launcher.py](../tests/test_root_launcher.py) | Replacement-only root import, package selection/exclusion and spec tzdata collection. Static/import checks are not a native executable build. |
 
 A usable display is required for `real_tk` cases. Linux Xorg/XTest evidence does
 not establish native Windows, NTFS, suspend/resume or package usability. SQLite
 feature floor 3.37 is distinct from the supported WAL-reset-fixed runtime floor
 3.51.3 (excluding withdrawn 3.52.0); source tests record the actual linked build.
-Operational interruption and native Windows source/onedir evidence remain the
-next Stage 1 slice. Core History, dated writers and Timesheet/POL-R are later work.
+Stage 1A is independently accepted. Stage 1B supplies bounded local operational
+experiments and build hardening; native Windows source/NTFS/Tk/PowerShell/onedir
+and actual suspend/resume evidence remain open. Full Stage 1 completion requires
+that evidence and independent adjudication. Core History, dated writers and
+Timesheet/POL-R are later work.
 
 ## Retained legacy test inventory and limits
 
@@ -144,8 +150,9 @@ implementation. Task 1b adds future obligations below, not passing runtime tests
 Stage 0's documentation gate is independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`; this supplies no SQLite/runtime evidence.
 The rows below are stage acceptance obligations, not automatic passing results.
-Stage 1A implements and tests the connected timer on `feature/chronicle-rewrite`;
-operational/native Windows qualification remains pending, so Stage 1 is not Complete.
+Stage 1A is independently accepted on `feature/chronicle-rewrite`. Stage 1B extends
+portable process/cleanup evidence and controlled build inputs; native operational
+and packaged qualification remains pending, so Stage 1 is not Complete.
 Tests follow the user-selected [architecture](ARCHITECTURE.md) and
 [semantic contract](EXPORT_EVIDENCE_CONTRACT.md); they do not choose stronger
 recovery/platform policy. Integrity tests begin in each slice, not only Stage 4.

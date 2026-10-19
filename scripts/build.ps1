@@ -1,138 +1,64 @@
-param()
+param(
+    [string]$Python = $env:PYTHON
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Test-PythonCommand {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Executable,
-
-        [string[]]$Arguments = @()
-    )
-
-    try {
-        & $Executable @Arguments -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)" | Out-Null
-        return ($LASTEXITCODE -eq 0)
-    }
-    catch {
-        return $false
-    }
-}
-
-function Find-PythonCommand {
-    if ($env:PYTHON) {
-        if (Test-PythonCommand -Executable $env:PYTHON) {
-            return @{
-                Executable = $env:PYTHON
-                BaseArgs   = @()
-                Display    = $env:PYTHON
-            }
-        }
-
-        Write-Warning "Ignoring PYTHON='$($env:PYTHON)' because it is not a working Python 3.11+ executable."
-    }
-
-    $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
-    if ($pythonCmd -and (Test-PythonCommand -Executable $pythonCmd.Source)) {
-        return @{
-            Executable = $pythonCmd.Source
-            BaseArgs   = @()
-            Display    = $pythonCmd.Source
-        }
-    }
-
-    $pyCmd = Get-Command py -ErrorAction SilentlyContinue
-    if ($pyCmd) {
-        if (Test-PythonCommand -Executable $pyCmd.Source -Arguments @('-3.11')) {
-            return @{
-                Executable = $pyCmd.Source
-                BaseArgs   = @('-3.11')
-                Display    = "$($pyCmd.Source) -3.11"
-            }
-        }
-
-        if (Test-PythonCommand -Executable $pyCmd.Source -Arguments @('-3')) {
-            return @{
-                Executable = $pyCmd.Source
-                BaseArgs   = @('-3')
-                Display    = "$($pyCmd.Source) -3"
-            }
-        }
-    }
-
-    throw 'Could not find a usable Python 3.11+ interpreter. Install Python 3.11 or newer and ensure it is available via $env:PYTHON, `python` on PATH, or `py` launcher on PATH.'
-}
-
-function New-VirtualEnvironment {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$VenvPath,
-
-        [Parameter(Mandatory = $true)]
-        [hashtable]$PythonCommand
-    )
-
-    Write-Host "Creating virtual environment at $VenvPath ..."
-    & $PythonCommand.Executable @($PythonCommand.BaseArgs + @('-m', 'venv', $VenvPath))
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to create virtual environment at $VenvPath using '$($PythonCommand.Display)'."
-    }
-}
-
-$RepoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+if ($env:OS -ne 'Windows_NT') { throw 'Build on native Windows; no cross-build qualification.' }
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $VenvPath = Join-Path $RepoRoot '.venv'
-$DistPath = Join-Path $RepoRoot 'dist'
+$VenvPython = Join-Path $VenvPath 'Scripts\python.exe'
 $BuildPath = Join-Path $RepoRoot 'build'
+$DistPath = Join-Path $RepoRoot 'dist'
 $SpecPath = Join-Path $RepoRoot 'chronicle.spec'
-$VenvPythonExe = Join-Path $VenvPath 'Scripts\python.exe'
+$LockPath = Join-Path $RepoRoot 'requirements\windows-build.lock'
+$Preflight = Join-Path $PSScriptRoot 'build_environment.py'
 
-$PythonCommand = Find-PythonCommand
-Write-Host "Using Python: $($PythonCommand.Display)"
-
-$NeedsVenvCreate = $false
-if (-not (Test-Path $VenvPath)) {
-    $NeedsVenvCreate = $true
+# Refuse before installing anything. Preserve every existing output and environment.
+if ((Test-Path -LiteralPath $BuildPath) -or (Test-Path -LiteralPath $DistPath)) {
+    throw 'Existing build/ or dist/ preserved. Use a fresh isolated checkout or inspect/move outputs explicitly.'
 }
-elseif (-not (Test-Path $VenvPythonExe)) {
-    throw "Existing .venv is not a Windows environment; preserve it and choose a prepared Windows checkout."
+if (Test-Path -LiteralPath $VenvPath) {
+    if (-not (Test-Path -LiteralPath $VenvPython -PathType Leaf)) {
+        throw 'Existing .venv is incompatible. Preserve it and use a fresh Windows checkout.'
+    }
 }
-
-if ($NeedsVenvCreate) {
-    New-VirtualEnvironment -VenvPath $VenvPath -PythonCommand $PythonCommand
-}
-
-if (-not (Test-Path $VenvPythonExe)) {
-    throw "Could not find Python in venv at $VenvPythonExe"
-}
-
-Write-Host 'Installing build dependencies ...'
-& $VenvPythonExe -m pip install -e $RepoRoot 'pyinstaller==6.22.3'
-if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
-& $VenvPythonExe -B -c "from chronicle.sqlite_store import runtime_info; print(runtime_info())"
-if ($LASTEXITCODE -ne 0) { throw 'Unsupported SQLite runtime; build refused.' }
-
-if ((Test-Path $BuildPath) -or (Test-Path $DistPath)) {
-    throw 'Existing build/ or dist/ preserved. Inspect/move them explicitly before building.'
+else {
+    if (-not $Python) {
+        $command = Get-Command python -ErrorAction Stop
+        $Python = $command.Source
+    }
+    # Explicit interpreter choices never silently fall back to an older Python.
+    & $Python -I -B -c "import sys,sqlite3,struct,platform; assert sys.platform=='win32' and platform.python_implementation()=='CPython' and (3,11)<=sys.version_info<(3,16) and struct.calcsize('P')==8 and platform.machine().lower() in ('amd64','x86_64'); v=sqlite3.sqlite_version_info; assert v>=(3,51,3) and v!=(3,52,0), 'Unsupported SQLite WAL-reset runtime'"
+    if ($LASTEXITCODE -ne 0) { throw 'Selected interpreter/runtime preflight failed; no environment created.' }
+    & $Python -I -B -m venv $VenvPath
+    if ($LASTEXITCODE -ne 0) { throw 'Virtual environment creation failed; inspect the partial environment.' }
 }
 
+# Verify prefix before pip: a misplaced/system interpreter must never receive installs.
+& $VenvPython -I -B $Preflight --venv $VenvPath
+if ($LASTEXITCODE -ne 0) { throw 'Environment preflight failed; nothing installed.' }
+& $VenvPython -I -B -m pip --isolated install --no-user --require-hashes --only-binary=:all: -r $LockPath
+if ($LASTEXITCODE -ne 0) { throw 'Locked dependency installation failed.' }
+# The spec analyzes this checkout's src/ directly. Do not run a project build
+# here: setuptools could populate build/ before our isolated work directory exists.
+& $VenvPython -I -B -m pip --isolated check
+if ($LASTEXITCODE -ne 0) { throw 'Dependency consistency check failed.' }
+
+New-Item -ItemType Directory -Path $BuildPath -ErrorAction Stop | Out-Null
+$Record = Join-Path $BuildPath 'environment.json'
+& $VenvPython -I -B $Preflight --venv $VenvPath --record $Record
+if ($LASTEXITCODE -ne 0) { throw 'Build input verification failed; build refused.' }
 Push-Location $RepoRoot
 try {
-    Write-Host 'Building onedir distribution via spec ...'
-    & $VenvPythonExe -m PyInstaller --noconfirm --clean $SpecPath
-    if ($LASTEXITCODE -ne 0) {
-        throw "PyInstaller onedir build failed with exit code $LASTEXITCODE."
-    }
-
-    $OutputPath = Join-Path $DistPath 'Chronicle'
+    # No --clean, --noconfirm or UPX-dependent variation. Never erase prior artifacts.
+    & $VenvPython -I -B -m PyInstaller --workpath $BuildPath --distpath $DistPath $SpecPath
+    if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed with exit code $LASTEXITCODE." }
 }
-finally {
-    Pop-Location
-}
-
-if (-not (Test-Path $OutputPath)) {
-    throw "Build succeeded but expected output was not found at $OutputPath"
-}
-
-Write-Host ''
-Write-Host "Build complete. Output: $OutputPath"
+finally { Pop-Location }
+$Artifact = Join-Path $DistPath 'Chronicle\Chronicle.exe'
+if (-not (Test-Path -LiteralPath $Artifact -PathType Leaf)) { throw "Expected executable missing: $Artifact" }
+Write-Host "Build complete: $Artifact"
+Write-Host "Build inputs/runtime: $Record"
+Write-Host 'Native operator/package qualification is still required; see BUILDING.md.'

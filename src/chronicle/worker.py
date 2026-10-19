@@ -49,6 +49,10 @@ class DatabaseWorker(Thread):
                     value = Outcome("unverified" if message.kind in ("mutate", "reconcile") else "unavailable", error=exc)
                 self.results.put(Message(message.kind, message.token, value))
         except Exception as exc:
+            partial = getattr(exc, "_chronicle_cleanup_store", None)
+            if partial is not None:
+                store = partial
+                del exc._chronicle_cleanup_store  # Keep the explicit cleanup handoff worker-private.
             self.results.put(Message("startup_failed", value=exc))
         finally:
             if store is not None:

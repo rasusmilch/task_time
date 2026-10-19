@@ -766,6 +766,18 @@ cannot discard owner-held evidence; later presentation failure cannot undo verif
 completion. This is a bounded timer repair, not Stage 1 operational acceptance,
 Stage 2 History editing or Stage 3 POL-R delivery.
 
+### Stage 1A acceptance and bounded operational qualification
+
+**Status:** current. **Provenance:** explicit user task “Chronicle — Stage 1B:
+Operational Reliability and Native Windows Qualification.” The user independently
+accepts Stage 1A at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968` for its bounded
+implementation, and authorizes operational tests/repairs and controlled Windows
+build engineering even when native Windows is unavailable. Missing native source,
+NTFS, Tk, PowerShell and packaged evidence stays an incomplete Stage 1 gate;
+Linux process kills, clock gaps and hash/static checks do not replace it. Stage 4
+still owns full backup/restore/upgrades; no Stage 2/3 delivery, new recovery authority,
+release approval or production cutover is implied.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

@@ -34,9 +34,13 @@ storage outcomes are not reported as failed writes. Shutdown drains accepted wor
 an idle unverified operation offers Retry/Reconcile or default-cancel exceptional
 exit explaining possible commitment and loss of volatile retry inputs.
 
-Stage 1 remains **In Progress**, not complete MVP/pilot: operational interruption
-and native Windows source/onedir qualification remain the next slice. Stage 0 was
-independently accepted at `a24aca706740b7e02cc1f856baa194042785bbcb`. Active work is
+Stage 1A is independently accepted at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`.
+Stage 1B adds killed-process transaction/reopen tests, separate-process ownership,
+startup/cleanup diagnostics and controlled Windows build inputs. Failed startup
+cleanup remains worker-owned until closure; cleanup-only shutdown cannot resume
+normal mutations. Stage 1 remains **In Progress**, not complete MVP/pilot: native
+Windows source/NTFS/Tk/onedir and actual suspend/resume qualification are pending.
+Stage 0 was independently accepted at `a24aca706740b7e02cc1f856baa194042785bbcb`. Active work is
 `feature/chronicle-rewrite`; the old feature branch/history is preserved.
 
 ## Run from source (repo root)
@@ -69,9 +73,9 @@ never creates a database accidentally. Nothing discovers/imports/deletes the old
 
 SQLite is worker-owned, explicit-transaction, WAL/FULL/foreign-key/STRICT. Runtime
 checks require both STRICT support and a build containing the WAL-reset fix:
-3.51.3 or later, excluding withdrawn 3.52.0. This run exercises Python 3.12.14 /
-SQLite 3.53.1 on Linux, not native Windows qualification. Offline IANA rules come
-from pinned bundled `tzdata`; the dataset zone cannot be changed by this UI.
+3.51.3 or later, excluding withdrawn 3.52.0. The available operational tests exercise
+Python 3.12.14 / SQLite 3.53.1 on Linux, not native Windows qualification or universal
+power-loss safety. Offline IANA rules come from pinned bundled `tzdata`; the dataset zone cannot be changed by this UI.
 
 Do not copy only the main file of a live WAL database as a backup. Supported backup,
 restore and upgrade workflows belong to later operational/stabilization work;

@@ -12,8 +12,10 @@ The active sequence is **Stages 0–6**, superseding the old JSONL Phase 1–6 p
 Selected does not mean implemented; old component tests do not complete SQLite
 stages. Stage 0 is independently accepted Complete for documentation only;
 no rewrite runtime stage is Complete. Stage 1 is In Progress: its connected
-Stage 1A timer slice is implemented, with operational/native Windows qualification
-still pending and independent review required.
+Stage 1A timer slice is independently accepted at
+`897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`. Stage 1B supplies bounded portable
+operational tests and controlled Windows build inputs; native qualification and
+independent Stage 1 acceptance remain pending.
 
 Each stage can contain several substantial, independently reviewed tasks. Do not
 make every helper a staged feature or authorize the whole rewrite in one task.
@@ -38,10 +40,11 @@ status does not authorize Stage 2/3 or resolve reserved release policy.
 
 ## Stage 1 — Working timer foundation
 
-**IN PROGRESS — connected Stage 1A implemented; NOT complete MVP or pilot.**
-Fresh SQLite, task/project identities, Start/Stop/Switch, persisted active timer,
-main/mini display, worker bridge and early native Windows onedir smoke. Design
-immutable frozen-export and absolute-confirmation batches/cells/current-reference
+**IN PROGRESS — Stage 1A accepted; Stage 1B portable evidence/build hardening delivered,
+native qualification pending; NOT complete MVP or pilot.**
+The full gate includes fresh SQLite, task/project identities, Start/Stop/Switch,
+persisted active timer, main/mini display, worker bridge and early native Windows
+onedir smoke. Design immutable frozen-export and absolute-confirmation batches/cells/current-reference
 schema and transaction boundaries into the core from the start.
 
 Gate: real recording/reopen path, atomic Switch at one accepted time, active-timer
@@ -51,8 +54,13 @@ and failure tests start here. The approved clock/sleep/restart and explicit
 active-start/uncertain-exit policies are in requirements. Active-start editor
 completion now follows matching asynchronous results, retains rejected drafts and
 exposes exact reconciliation/exceptional exit within the modal editor. This repair
-does not complete Stage 1. Operational interruption and native Windows source/onedir
-qualification remain the subsequent slice.
+does not complete Stage 1. Stage 1B tests process interruption, committed receipt
+reuse, ownership/startup refusal and explicit cleanup retry; it repairs primary
+validation diagnostics and ownership retention through failed startup cleanup.
+Windows input hashes/preflight/provenance and a safe onedir procedure are available.
+Actual Windows source, NTFS locking, Tk input, PowerShell/build/executable and
+suspend/resume evidence remain unverified. Bounded Linux experiments cannot close
+that gate, and independent ChatGPT adjudication is required for Stage 1 completion.
 Timezone-change policy stays reserved; Stage 1A has no zone-changing operation.
 A foundation without POL-R is not core signoff.
 

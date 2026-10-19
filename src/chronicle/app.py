@@ -53,6 +53,7 @@ class ChronicleApp:
         self._drain_id = self._tick_id = None
         self._shutdown_sent = False
         self._worker_stopped = False
+        self._cleanup_failed = False
         self._build()
         root.protocol("WM_DELETE_WINDOW", self.request_close)
         root.bind("<Destroy>", self._destroyed, add="+")
@@ -116,7 +117,7 @@ class ChronicleApp:
         owns_editor = (origin is not None and origin is self._correction
                        and self.editor is origin.window and origin.phase == "editing")
         return (self.alive and self.ready and not self.closing and self.pending is None
-                and not self.executing and (self.editor is None or owns_editor))
+                and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor))
 
     def selected_task_id(self):
         if not self.alive:
@@ -149,11 +150,14 @@ class ChronicleApp:
             if name == "Switch":
                 allowed &= task is not None and active is not None and task["task_id"] != active["task_id"]
             button.configure(state="normal" if allowed else "disabled")
-        if self.pending is not None and not self.executing:
+        if (self.pending is not None or self._cleanup_failed) and not self.executing:
             self.retry_button.pack(side="left", padx=3)
-            if self.closing:
+            if self.closing and self.pending is not None:
                 self.exit_button.pack(side="left", padx=3)
                 self.cancel_close_button.pack(side="left", padx=3)
+            else:
+                self.exit_button.pack_forget()
+                self.cancel_close_button.pack_forget()
         else:
             for widget in (self.retry_button, self.exit_button, self.cancel_close_button):
                 widget.pack_forget()
@@ -586,11 +590,13 @@ class ChronicleApp:
                 self.refresh()
         elif message.kind == "shutdown_failed":
             self._shutdown_sent = False
+            self._cleanup_failed = True
             self.status.configure(text=f"Worker cleanup failed: {message.value}")
             self._diagnose(message.value)
-            self.retry_button.pack(side="left", padx=3)
+            self._controls()
         elif message.kind == "stopped":
             self._worker_stopped = True
+            self._cleanup_failed = False
             self.ready = False
             if self.closing:
                 self.root.destroy()
@@ -637,7 +643,7 @@ class ChronicleApp:
         self._tick_id = self.root.after(1000, self._tick)
 
     def retry(self):
-        if self.alive and self.closing and not self.executing and self.pending is None and not self._shutdown_sent:
+        if self.alive and (self.closing or self._cleanup_failed) and not self.executing and self.pending is None and not self._shutdown_sent:
             self.retry_button.pack_forget()
             self._advance_close()
             return True
@@ -694,10 +700,13 @@ class ChronicleApp:
             self.root.destroy()
         elif not self._shutdown_sent:
             self._shutdown_sent = True
+            self._cleanup_failed = False
             self.worker.requests.put(Message("shutdown"))
 
     def cancel_close(self):
-        if not self.executing and not self._shutdown_sent:
+        # Only unresolved work can cancel before shutdown starts. A worker awaiting
+        # cleanup retry has already left its operation loop and cannot resume edits.
+        if self.closing and self.pending is not None and not self.executing and not self._shutdown_sent:
             self.closing = False
             self._controls()
 
