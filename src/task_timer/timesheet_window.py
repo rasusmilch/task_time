@@ -67,6 +67,32 @@ class TimesheetWindow:
             self._cleanup_failure(exc)
             raise
 
+    @staticmethod
+    def _widget_exists(widget):
+        # A reused Tcl path must not revive a saved Python widget reference.
+        if widget.master is not None and widget.master.children.get(widget._name) is not widget:
+            return False
+        return bool(widget.tk.call("namespace", "which", "-command", widget._w))
+
+    def restore_modal(self, focus_widget=None):
+        """Return ownership after an owned dialog, without presenting or loading."""
+        if (not self.is_presented() or self.is_busy()
+                or not self._widget_exists(self._parent) or not self._widget_exists(self.window)
+                or not self.window.winfo_viewable()):
+            return False
+        current = self.window.grab_current()
+        if current is not None:
+            if current is not self.window or current.grab_status() != 'local':
+                return False  # Leave competing local/global ownership and focus alone.
+        else:
+            self.window.grab_set()
+        target = self.window
+        if (focus_widget is not None and self._widget_exists(focus_widget)
+                and focus_widget.winfo_toplevel() is self.window):
+            target = focus_widget
+        target.focus_set()
+        return True
+
     def _release_grab(self):
         if self.window.grab_current() is self.window:
             self.window.grab_release()

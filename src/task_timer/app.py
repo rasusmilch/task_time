@@ -3749,8 +3749,22 @@ class TaskTimerApp:
                 or (self._timesheet_window_opening and owned is None)):
             return
         self._exit_in_progress = True
+        restore, prior_focus, primary = None, None, None
+        competing_grab = False
         try:
+            if (owned is not None and owned.is_presented()
+                    and self._history_widget_exists(owned.window)):
+                if not owned.window.winfo_viewable():
+                    return  # Presentation is still processing visibility, not waiting modally.
+                restore = owned
+                current = owned.window.grab_current()
+                competing_grab = current is not None and (
+                    current is not owned.window or current.grab_status() != "local")
+                if not competing_grab:
+                    prior_focus = owned.window.focus_get()
             if owned is not None and owned.has_unfinished_attempt():
+                if competing_grab:
+                    return  # An exit warning may not replace a competing modal owner.
                 if not messagebox.askyesno(
                     parent=owned.window if owned.is_presented() else self.root,
                     title="Exit with unfinished Timesheet?", default="no",
@@ -3758,14 +3772,27 @@ class TaskTimerApp:
                             "Registered evidence and external files are not deleted or undone. Exit?",
                 ):
                     return
+                restore = None
                 self.root.destroy()
                 return
             if (not self.ui_settings.month_end_reminder_enabled
                     or not self.ui_settings.month_end_reminder_show_close_notice
                     or not is_last_business_day(self._local_today())):
+                restore = None
                 self.root.destroy()
                 return
+            if competing_grab:
+                return  # Do not steal ownership to present the monthly reminder.
             dialog = MonthEndCloseReminderDialog(self.root)
+            if restore is not None:
+                if not self._history_widget_exists(self.root):
+                    return
+                if dialog.choice in ("return", "timesheet"):
+                    if (self._timesheet_window is restore and restore.is_presented()
+                            and self._history_widget_exists(restore.window)):
+                        return  # The existing instance is restored in finally, not reopened.
+                    if self.root.grab_current() is not None:
+                        return  # Do not focus/open through a competing modal owner.
             if dialog.choice == "timesheet":
                 # The close decision has finished; opening now owns its own guard.
                 self._exit_in_progress = False
@@ -3782,9 +3809,23 @@ class TaskTimerApp:
                 self.root.lift()
                 self.root.focus_force()
                 return
+            restore = None
             self.root.destroy()
+        except Exception as exc:
+            primary = exc
         finally:
-            self._exit_in_progress = False
+            try:
+                if restore is not None and self._timesheet_window is restore:
+                    restore.restore_modal(prior_focus)
+            except Exception as restoration:
+                if primary is None:
+                    primary = restoration
+                else:
+                    primary.add_note(f"Timesheet modal restoration also failed: {restoration}")
+            finally:
+                self._exit_in_progress = False
+                if primary is not None:
+                    self.root.report_callback_exception(type(primary), primary, primary.__traceback__)
 
     def _tick(self) -> None:
         try:

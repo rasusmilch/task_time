@@ -1036,8 +1036,26 @@ attempt receives an owned default-cancel exit warning before any monthly prompt;
 cancel preserves it, confirm destroys root without retry/rollback/recovery writes.
 The warning distinguishes lost automatic session resumption from preserved
 registered evidence/files. The existing monthly close choice Open Timesheet
-returns to the application afterwards. No opening or Save result handles a
-reminder. Explicit Dismiss remains; weekly scheduling is Selected/pending.
+returns to the application afterwards. If Timesheet is already presented, both
+Return to App and Open Timesheet instead keep that same instance and restore its
+modal ownership after the reminder releases its grab, before or after verified
+Save. They do not present it again or touch preview/Save state. Close Anyway
+performs normal root destruction without reacquiring a grab.
+
+`TimesheetWindow.restore_modal(focus_widget=None)` performs this bounded return:
+require a live, presented, viewable, nonbusy instance; acquire a local grab only
+when no grab exists, and avoid reacquiring its already-correct local grab. A
+competing local/global grab is left alone, including its focus. Restore ordinary
+focus to a surviving captured Timesheet child, otherwise the Timesheet itself.
+Exact Python-widget identity plus Tcl-command liveness prevents reused paths from
+reviving stale windows/focus targets. Destroyed/withdrawn instances are not grabbed.
+The application holds its exit guard through restoration, rejects visibility-time
+reentry and competing grabs before opening a reminder, and restores presented
+ownership after cancelling the unfinished-attempt exit warning too. Unexpected
+reminder/restoration failures retain their original exception/traceback through
+Tk diagnostics; a secondary restoration failure is attached to the primary error.
+No opening or Save result handles a reminder. Explicit Dismiss remains; weekly
+scheduling is Selected/pending.
 
 This replaces all shipped full/selected export UI and checkpoint-reopening UI.
 There is no parallel interface, post-export deletion, submission/checkpoint

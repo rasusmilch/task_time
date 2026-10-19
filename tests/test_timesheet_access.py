@@ -430,3 +430,442 @@ def test_real_tk_close_reminder_opens_timesheet_and_returns_without_exit(
     tk_root.after_cancel(job)
     if errors or failures: raise (errors + failures)[0]
     assert tk_root.winfo_exists() and owner._timesheet_window is None and capture(s) == before
+
+
+@pytest.fixture
+def monthly_dialog(controls, monkeypatch):
+    """Actual reminder controls/grab; isolate only Tk construction and waiting."""
+    owner = controls
+    owner.ui_settings.month_end_reminder_enabled = True
+    owner.ui_settings.month_end_reminder_show_close_notice = True
+    owner._local_today = lambda: date(2026, 10, 30)
+    monkeypatch.setattr(dialogs, 'Toplevel', Shell)
+    monkeypatch.setattr(Shell, 'resizable', lambda *args: None, raising=False)
+    seen, actions = [], []
+    def wait(window):
+        seen.append(window)
+        assert Window.grabbed is window
+        actions[-1](window)
+    owner.root.wait_window = wait
+    return owner, actions, seen
+
+
+def reminder_button(window, text):
+    for widget in window.widgets:
+        if widget.options.get('text') == text:
+            return widget
+        result = reminder_button(widget, text)
+        if result is not None:
+            return result
+
+
+@pytest.mark.parametrize('completed', [False, True], ids=['preview', 'saved'])
+@pytest.mark.parametrize('choice', ['Return to App', 'Open Timesheet', 'Close Anyway'])
+def test_presented_timesheet_monthly_round_trip_preserves_modal_and_frozen_state(
+        setup, monthly_dialog, monkeypatch, tmp_path, completed, choice):
+    s, task, *_ = setup
+    dated(s, task, MON, 119.9)
+    s.start_task(task)
+    owner, actions, reminders = monthly_dialog
+    root_focus = []
+    owner.root.focus_force = lambda: root_focus.append('root focus override')
+    owner.root.lift = lambda: None
+    target = tmp_path / 'saved.txt'
+    dialog(monkeypatch, str(target))
+    def inspect(_window):
+        wrapper, frame = owner._timesheet_window, owner._timesheet_window.save_frame
+        frame.preview.scope_buttons['Selected tasks'].invoke()
+        frame.preview.task_buttons[task].invoke()
+        candidate = ready(frame)
+        if completed:
+            assert frame.save() and frame.saved_path == target
+        before = capture(s)
+        report = frame.preview.report.get()
+        fields = tuple(v.get() for v in (frame.preview.period_var, frame.preview.scope_var,
+                                        frame.preview.start_var, frame.preview.end_var,
+                                        *frame.preview.task_vars.values()))
+        def choose(reminder):
+            assert owner._exit_in_progress
+            owner._on_close_request()
+            assert owner.open_timesheet() is None and len(reminders) == 1
+            reminder_button(reminder, choice).invoke()
+        actions.append(choose)
+        with monkeypatch.context() as m:
+            def forbidden(*args, **kwargs): pytest.fail('Reminder rebuilt or recalculated Timesheet')
+            m.setattr(windows, 'TimesheetWindow', forbidden)
+            m.setattr(wrapper, 'show_modal', forbidden)
+            for name in ('prepare_timesheet_export_snapshot', 'register_prepared_timesheet_export',
+                         'materialize_timesheet_export'):
+                m.setattr(s, name, forbidden)
+            m.setattr(UISettingsStore, 'save', forbidden)
+            owner._on_close_request()
+        assert capture(s) == before and not owner._exit_in_progress
+        assert wrapper.save_frame is frame and frame.preview.get_prepared_export() == candidate
+        assert frame.preview.report.get() == report
+        assert tuple(v.get() for v in (frame.preview.period_var, frame.preview.scope_var,
+                                      frame.preview.start_var, frame.preview.end_var,
+                                      *frame.preview.task_vars.values())) == fields
+        if completed:
+            assert target.read_bytes() == candidate['payload']['report_text'].encode('utf-8')
+            assert not frame.has_unfinished_attempt()
+        if choice == 'Close Anyway':
+            assert not owner.root.exists and wrapper._destroyed and owner._timesheet_window is None
+        else:
+            assert owner._timesheet_window is wrapper and wrapper.is_presented()
+            assert Window.grabbed is wrapper.window
+            assert wrapper.window.grab_status() == 'local' and root_focus == []
+            assert owner.root.tk.focus is wrapper.window
+            assert wrapper.close() and owner._timesheet_window is None
+    Shell.action = inspect
+    owner.open_timesheet()
+    assert owner.diagnostics == []
+    assert not owner._timesheet_window_opening
+    if choice != 'Close Anyway':
+        Shell.action = lambda window: owner._timesheet_window.close()
+        fresh = owner.open_timesheet()
+        assert fresh.save_frame.get_save_attempt() is None
+        assert fresh.save_frame.preview.get_prepared_export() is None
+
+
+@pytest.mark.parametrize('kind', ['local', 'global'])
+@pytest.mark.parametrize('when', ['before', 'during'])
+def test_monthly_return_never_displaces_competing_grab(monthly_dialog, monkeypatch, kind, when):
+    from test_history_modal_return import Focus
+    owner, actions, seen = monthly_dialog
+    competitors = []
+    def inspect(window):
+        wrapper = owner._timesheet_window
+        competitor = Shell(owner.root); competitor.status = kind
+        focus = Focus(competitor)
+        competitors.append(competitor)
+        def occupy():
+            competitor.grab_set(); focus.focus_set()
+        if when == 'before': occupy()
+        else:
+            def choose(reminder):
+                occupy()
+                reminder_button(reminder, 'Return to App').invoke()
+            actions.append(choose)
+        owner._on_close_request()
+        assert len(seen) == int(when == 'during')
+        assert Window.grabbed is competitor and owner.root.tk.focus is focus
+        assert not owner._exit_in_progress and owner._timesheet_window is wrapper
+        wrapper.close()
+    Shell.action = inspect
+    owner.open_timesheet()
+    assert owner.diagnostics == [] and not owner._timesheet_window_opening
+    assert Window.grabbed is competitors[0]
+    competitors[0].destroy()
+
+
+@pytest.mark.parametrize('change', ['destroy-window', 'destroy-root', 'dead-focus', 'reused-focus'])
+def test_monthly_return_handles_invalidation_and_focus_identity(monthly_dialog, monkeypatch, change):
+    from test_history_modal_return import Focus
+    owner, actions, _ = monthly_dialog
+    owner.root.lift = owner.root.focus_force = lambda: None
+    def inspect(window):
+        wrapper = owner._timesheet_window
+        focus = Focus(window); focus.focus_set()
+        count = window.acquisitions
+        def choose(reminder):
+            if change == 'destroy-window': window.destroy()
+            elif change == 'destroy-root': owner.root.destroy(); return
+            elif change == 'dead-focus': focus.exists = False
+            else: Focus(window)  # Same Tcl name; saved Python widget is stale.
+            reminder_button(reminder, 'Return to App').invoke()
+        actions.append(choose)
+        owner._on_close_request()
+        if change.startswith('destroy'):
+            assert owner._timesheet_window is None and window.acquisitions == count
+        else:
+            assert Window.grabbed is window and owner.root.tk.focus is window
+            assert focus.focuses == 1  # Only the explicit pre-reminder focus.
+            wrapper.close()
+    Shell.action = inspect
+    owner.open_timesheet()
+    assert owner.diagnostics == [] and not owner._exit_in_progress
+
+
+@pytest.mark.parametrize('primary_failure', [False, True])
+def test_monthly_restoration_failure_reports_original_and_releases_guards(
+        monthly_dialog, monkeypatch, primary_failure):
+    owner, actions, _ = monthly_dialog
+    original = RuntimeError('Reminder wait failed')
+    restoration = OSError('Local grab restoration failed')
+    def inspect(window):
+        wrapper = owner._timesheet_window
+        def choose(reminder):
+            reminder_button(reminder, 'Return to App').invoke()
+            if primary_failure: raise original
+        actions.append(choose)
+        with monkeypatch.context() as m:
+            def fail(): raise restoration
+            m.setattr(window, 'grab_set', fail)
+            owner._on_close_request()
+        error = original if primary_failure else restoration
+        assert owner.diagnostics[-1][1] is error
+        assert owner.diagnostics[-1][2] is error.__traceback__
+        if primary_failure:
+            assert 'Local grab restoration failed' in '\n'.join(error.__notes__)
+        assert Window.grabbed is None and not owner._exit_in_progress
+        wrapper.close()
+    Shell.action = inspect
+    owner.open_timesheet()
+    assert len(owner.diagnostics) == 1 and not owner._timesheet_window_opening
+
+
+def test_restore_modal_is_guarded_and_avoids_redundant_acquisition(monthly_dialog, monkeypatch):
+    owner, actions, _ = monthly_dialog
+    def inspect(window):
+        wrapper = owner._timesheet_window
+        before = window.acquisitions
+        assert wrapper.restore_modal() and window.acquisitions == before
+        window.grab_release()
+        with monkeypatch.context() as m:
+            m.setattr(wrapper.save_frame, '_busy', True)
+            assert not wrapper.restore_modal() and Window.grabbed is None
+        # A global grab, including on the same window, is never replaced.
+        window.grab_set(); window.status = 'global'
+        assert not wrapper.restore_modal() and window.acquisitions == before + 1
+        window.status = 'local'
+        def choose(reminder): reminder_button(reminder, 'Open Timesheet').invoke()
+        actions.append(choose)
+        acquire = window.grab_set
+        def guarded_acquire():
+            assert owner._exit_in_progress and owner.open_timesheet() is None
+            owner._on_close_request()
+            acquire()
+        monkeypatch.setattr(window, 'grab_set', guarded_acquire)
+        owner._on_close_request()
+        assert Window.grabbed is window and window.acquisitions == before + 2
+        wrapper.close()
+        assert not wrapper.restore_modal()
+    Shell.action = inspect
+    owner.open_timesheet()
+    assert owner.diagnostics == []
+
+
+def test_monthly_close_during_visibility_transition_does_not_stack_dialogs(owner, monkeypatch):
+    def visible(window):
+        owner._on_close_request()
+        assert not owner._exit_in_progress and Window.grabbed is None
+        window.visible = True
+    monkeypatch.setattr(Shell, 'winfo_viewable', lambda self: False)
+    monkeypatch.setattr(Shell, 'wait_visibility', visible)
+    monkeypatch.setattr(app_module, 'MonthEndCloseReminderDialog', lambda *a: pytest.fail('Transition opened reminder'))
+    owner.open_timesheet()
+    assert owner.diagnostics == [] and owner._timesheet_window is None
+
+
+@pytest.mark.parametrize('withdrawn', [False, True])
+def test_unfinished_exit_cancel_restores_presented_only_without_monthly_prompt(
+        owner, setup, monkeypatch, tmp_path, withdrawn):
+    s, *_ = setup
+    target = tmp_path / 'conflict.txt'; target.write_bytes(b'Keep')
+    dialog(monkeypatch, str(target))
+    monkeypatch.setattr(app_module, 'MonthEndCloseReminderDialog', lambda *a: pytest.fail('Stacked monthly prompt'))
+    def inspect(window):
+        frame = owner._timesheet_window.save_frame
+        ready(frame); assert not frame.save()
+        monkeypatch.setattr(windows.messagebox, 'askyesno', lambda **kw: True)
+        owner._timesheet_window.close() if withdrawn else None
+        if not withdrawn:
+            verify()
+            monkeypatch.setattr(windows.messagebox, 'askyesno', lambda **kw: True)
+            owner._timesheet_window.close()
+    def verify():
+        wrapper = owner._timesheet_window
+        attempt, before = wrapper.save_frame.get_save_attempt(), capture(s)
+        def cancel(**kw):
+            assert kw['default'] == 'no'
+            assert owner.open_timesheet() is None
+            owner._on_close_request()
+            if Window.grabbed is wrapper.window:
+                wrapper.window.grab_release()  # Model a dialog returning without restoring grab.
+            return False
+        monkeypatch.setattr(app_module.messagebox, 'askyesno', cancel)
+        owner._on_close_request()
+        assert Window.grabbed is (None if withdrawn else wrapper.window)
+        assert wrapper.save_frame.get_save_attempt() == attempt and capture(s) == before
+        assert not owner._exit_in_progress
+    Shell.action = inspect
+    owner.open_timesheet()
+    assert owner.diagnostics == []
+    if withdrawn: verify()
+    assert not owner._timesheet_window.restore_modal()
+
+
+def real_monthly_choice(root, owner, pointer, choice):
+    """Bound the nested real reminder wait, including cleanup if routing fails."""
+    failures, jobs = [], []
+    active = True
+    def prompt():
+        return next((w for w in root.winfo_children()
+                     if isinstance(w, tk.Toplevel) and w.title() == 'Month-End Reminder'), None)
+    def choose():
+        if not active: return
+        reminder = prompt()
+        if reminder is None:
+            jobs.append(root.after(10, choose))
+            return
+        try:
+            reminder.geometry('+20+180')
+            root.update()
+            assert root.grab_current() is reminder
+            owner._on_close_request()
+            assert owner.open_timesheet() is None
+            pointer.click(real_button(reminder, choice))
+        except BaseException as exc:
+            failures.append(exc)
+            if owner._history_widget_exists(reminder): reminder.destroy()
+    def timeout():
+        failures.append(AssertionError('Monthly reminder interaction timed out'))
+        reminder = prompt()
+        if reminder is not None: reminder.destroy()
+    jobs.append(root.after(20, choose))
+    jobs.append(root.after(2500, timeout))
+    try:
+        root.tk.call(root.protocol('WM_DELETE_WINDOW'))
+    finally:
+        active = False
+        for job in jobs: root.after_cancel(job)
+    if failures: raise failures[0]
+
+
+@pytest.mark.parametrize('completed', [False, True], ids=['preview', 'saved'])
+@pytest.mark.parametrize('shutdown', [False, True], ids=['return-and-open', 'close-anyway'])
+def test_real_tk_presented_timesheet_monthly_modal_return_before_and_after_save(
+        setup, desktop, tk_root, pointer, monkeypatch, tmp_path, completed, shutdown):
+    s, task, *_ = setup
+    dated(s, task, MON, 119.9)
+    s.start_task(task)
+    owner = desktop
+    owner.ui_settings.month_end_reminder_show_close_notice = True
+    owner.ui_settings.keep_mini_open = True
+    owner.open_mini_mode()
+    owner.mini_mode_window.window.geometry('300x130+20+780')
+    owner.task_tree.selection_set(task); owner.selected_task_id = task; owner._refresh_selected_task_panel()
+    target = tmp_path / 'saved.txt'
+    dialog(monkeypatch, str(target))
+    calls = []
+    for name in ('prepare_timesheet_export_snapshot', 'register_prepared_timesheet_export',
+                 'materialize_timesheet_export'):
+        original = getattr(s, name)
+        def observe(*args, _name=name, _original=original, **kw):
+            calls.append(_name)
+            return _original(*args, **kw)
+        monkeypatch.setattr(s, name, observe)
+    def inspect(wrapper):
+        frame, preview = wrapper.save_frame, wrapper.save_frame.preview
+        pointer.click(preview.scope_buttons['Selected tasks'])
+        pointer.click(preview.task_buttons[task])
+        pointer.click(preview.period_buttons['Last week'])
+        pointer.click(preview.preview_button)
+        candidate = preview.get_prepared_export()
+        assert candidate is not None
+        if completed:
+            pointer.click(frame.save_button)
+            assert frame.saved_path == target and not frame.has_unfinished_attempt()
+        before, operations = capture(s), list(calls)
+        report = preview.report.get('1.0', 'end-1c')
+        fields = tuple(v.get() for v in (preview.period_var, preview.scope_var, preview.start_var,
+                                        preview.end_var, *preview.task_vars.values()))
+        grabs = []
+        acquire = wrapper.window.grab_set
+        def record_grab():
+            assert owner._history_widget_exists(wrapper.window)
+            grabs.append(True); acquire()
+        monkeypatch.setattr(wrapper.window, 'grab_set', record_grab)
+        if shutdown:
+            real_monthly_choice(tk_root, owner, pointer, 'Close Anyway')
+            assert owner._timesheet_window is None and wrapper._destroyed and grabs == []
+        else:
+            for choice in ('Return to App', 'Open Timesheet'):
+                # Ordinary focus may be absent under the window manager; that
+                # case must return to the Timesheet itself rather than root.
+                pointer.click(preview.report)
+                saved_focus = tk_root.focus_get()
+                expected_focus = (saved_focus if saved_focus is not None
+                                  and saved_focus.winfo_toplevel() is wrapper.window else wrapper.window)
+                real_monthly_choice(tk_root, owner, pointer, choice)
+                assert owner._timesheet_window is wrapper and wrapper.save_frame is frame
+                assert wrapper.is_presented() and tk_root.grab_current() is wrapper.window
+                assert wrapper.window.grab_status() == 'local'
+                # This assertion uses the isolated xfwm4 window manager; grab/input
+                # checks below are separate server-delivered interaction evidence.
+                assert tk_root.focus_get() is expected_focus
+                pointer.click(owner.selected_toggle_btn)
+                pointer.click(owner.mini_mode_window.toggle_btn)
+                assert s.state.running_task_id == task and s.state.tasks[task].is_running
+                assert calls == operations and capture(s) == before
+                assert preview.get_prepared_export() == candidate
+                assert preview.report.get('1.0', 'end-1c') == report
+                assert tuple(v.get() for v in (preview.period_var, preview.scope_var, preview.start_var,
+                                              preview.end_var, *preview.task_vars.values())) == fields
+                assert not owner._exit_in_progress
+            assert len(grabs) == 2
+            if not completed:
+                pointer.click(preview.period_buttons['Custom'])
+                preview.start_var.set(str(MON))
+                pointer.click(preview.picker_buttons['Start'])
+                popup = next(iter(preview._pickers)); popup.focus_set(); tk_root.update()
+                pointer.escape()
+                assert not preview._pickers and tk_root.grab_current() is wrapper.window
+            pointer.click(wrapper.close_button)
+            assert wrapper._destroyed and owner._timesheet_window is None
+        assert calls == operations and capture(s) == before
+        if completed:
+            assert target.read_bytes() == candidate['payload']['report_text'].encode('utf-8')
+            assert frame.saved_path == target and len(exports(s)) == 1
+        else:
+            assert not target.exists() and exports(s) == []
+    failures, job = drive_modal(tk_root, owner, inspect)
+    pointer.click(real_button(owner.toolbar_frame, 'Timesheet'))
+    tk_root.after_cancel(job)
+    if failures: raise failures[0]
+    assert not owner._timesheet_window_opening
+    if not shutdown:
+        def fresh(wrapper):
+            assert wrapper.save_frame.preview.get_prepared_export() is None
+            assert wrapper.save_frame.get_save_attempt() is None
+            pointer.click(wrapper.close_button)
+        failures, job = drive_modal(tk_root, owner, fresh)
+        pointer.click(real_button(owner.toolbar_frame, 'Timesheet'))
+        tk_root.after_cancel(job)
+        assert failures == []
+
+
+@pytest.mark.parametrize('invalid', ['withdrawn', 'stale-window', 'dead-parent'])
+def test_restore_modal_rejects_nonpresentable_identity(monthly_dialog, monkeypatch, invalid):
+    owner, *_ = monthly_dialog
+    def inspect(window):
+        wrapper = owner._timesheet_window
+        window.grab_release()
+        count = window.acquisitions
+        with monkeypatch.context() as m:
+            if invalid == 'withdrawn': window.withdraw()
+            elif invalid == 'stale-window': m.setitem(window.master.children, window._name, object())
+            else: m.setattr(owner.root, 'exists', False)
+            assert not wrapper.restore_modal() and Window.grabbed is None
+            assert window.acquisitions == count
+        wrapper.close()
+    Shell.action = inspect
+    owner.open_timesheet()
+    assert owner.diagnostics == []
+
+
+@pytest.mark.parametrize('kind', ['local', 'global'])
+def test_nonreminder_exit_preserves_shutdown_with_presented_timesheet(monthly_dialog, kind):
+    owner, actions, seen = monthly_dialog
+    owner.ui_settings.month_end_reminder_enabled = False
+    def inspect(window):
+        wrapper = owner._timesheet_window
+        competitor = Shell(owner.root); competitor.status = kind; competitor.grab_set()
+        acquired = window.acquisitions
+        owner._on_close_request()
+        assert not owner.root.exists and wrapper._destroyed
+        assert owner._timesheet_window is None and seen == []
+        assert window.acquisitions == acquired
+    Shell.action = inspect
+    owner.open_timesheet()
+    assert owner.diagnostics == [] and not owner._exit_in_progress
