@@ -2,7 +2,13 @@
 
 import argparse
 from pathlib import Path
-import tkinter as tk
+
+try:
+    import tkinter as tk
+except ModuleNotFoundError as exc:
+    if exc.name not in ("tkinter", "_tkinter"):
+        raise
+    raise RuntimeError("Chronicle requires Python with Tcl/Tk (tkinter); install a Tk-enabled Python distribution") from exc
 
 from .app import ChronicleApp
 from .worker import DatabaseWorker

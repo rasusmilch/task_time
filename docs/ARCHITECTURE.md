@@ -28,7 +28,7 @@ Use shallow modules, splitting actual responsibilities rather than layers per cl
 | Bootstrap | Runtime checks, selected fresh dataset, worker startup and Tk root. |
 | Plain records, time and accounting | Typed values and pure calculations; import neither Tkinter nor sqlite3. |
 | Explicit use-case services | Complete recording/edit/export/confirmation requests and transaction results through a narrow storage adapter. |
-| SQLite adapter | Connection/profile, relational reads/writes, constraints, transactions, request lookup and upgrades. No widget access. |
+| SQLite adapter | Built-in sqlite3 connection/profile, relational reads/writes, constraints, transactions and request lookup; future protected upgrades. No widget access. |
 | Reports, files and backups | Frozen report rendering, protected publication/verification and supported database backup/restore. |
 | Tk views and small controllers | Drafts, detached display rows, explicit requests, completion/error presentation and owned-window lifecycle. No SQL. |
 
@@ -108,30 +108,40 @@ view closes. No global one-pending-correction slot or persisted recovery ledger.
 
 ## SQLite profile, backup and restore
 
-Use local-disk WAL with synchronous FULL and enforced foreign keys. Stage 1A
-requires SQLite STRICT feature floor 3.37 and a supported WAL-reset-fixed runtime
-3.51.3+ (excluding withdrawn 3.52.0); feature compatibility alone is insufficient.
-Record actual SQLite source ID/compile options and effective profile. Check the
-actual SQLite runtime and effective pragmas/constraints at startup rather than
-assuming requested configuration succeeded. Use bounded lock handling and
-truthful busy/storage errors, not infinite retries or silent profile downgrades.
-One worker owns its connection; do not set `check_same_thread=False` to share it.
-No universal power-loss, hostile filesystem or multi-process guarantee follows
-from WAL/FULL or fixture tests.
+Use Python's built-in **sqlite3**, local-disk **DELETE** rollback journaling,
+**synchronous=EXTRA (3)** and **foreign_keys=ON (1)**. SQLite **3.37.0+** is required
+for STRICT tables; no WAL-reset-specific floor or excluded later release applies.
+Check `sqlite3.sqlite_version_info`, reporting actual/minimum on rejection. Python
+version alone proves no linked SQLite version. No alternative driver, custom DLL
+or database abstraction is selected.
 
-Use SQLite's supported backup API to obtain a consistent backup, including
-committed WAL contents. Never copy only a live WAL database's main file. Validate
-backup independently and test restore before relying on it. Restore runs under
-serialized ownership, protects current new-runtime data, validates the candidate
-and invalidates prior dataset session/results/callbacks before reuse. Versioned
-schema upgrades require protected backups and rollback/refusal evidence where
-applicable. This is future rewritten-data protection, not migration of old JSONL.
-Exact release paths and retired-data cleanup remain Open.
+Establish and read back the profile outside transactions, before initialization or
+ordinary mutations; reject settings that do not match. Existing unsupported
+journal profiles refuse before writable configuration, without conversion. Record
+Python/SQLite versions, available source ID, compile options and actual profile;
+the GUI reports those effective settings. See SQLite's [PRAGMA reference](https://sqlite.org/pragma.html#pragma_journal_mode)
+and [EXTRA semantics](https://sqlite.org/pragma.html#pragma_synchronous).
+Keep a finite busy timeout, explicit `isolation_level=None`, BEGIN IMMEDIATE,
+COMMIT/ROLLBACK, and one serialized worker-owned connection. Do not set
+`check_same_thread=False`. Local locks and fixture tests establish no universal
+power-loss, hostile-filesystem or concurrent-writer guarantee.
+
+New databases start in DELETE mode. A rollback journal may exist during a write;
+orderly DELETE commit removes it. Never delete journals/sidecars as application
+cleanup. Development datasets are disposable, but incompatible/damaged/unknown
+files are refused, not recreated, repaired or converted. No production SQLite
+datasets exist and no migration/compatibility workflow is needed. Schema stays 1.
+
+Future Stage 4 backup/restore uses SQLite's supported consistent backup API,
+independent validation and serialized ownership. A live main-file copy is not a
+supported backup. Restore protects current new-runtime data and invalidates old
+sessions/results/callbacks. Future protected rewritten-data upgrades are distinct
+from this development simplification; exact release paths/cutover remain Open.
 
 ## Time and one accounting implementation
 
 Persist UTC instants and durations as **integer microseconds**, civil work dates
-separately, and an explicit dataset IANA timezone. Bundle offline tzdata for
+separately, and an explicit dataset IANA timezone. Install pinned offline tzdata for
 Windows; do not depend on network lookup or opaque abbreviations for calendar
 rules. Validate supported conversion/range boundaries, DST gaps/repeats and
 positive UTC spans. Dataset-timezone change policy remains Open before affected
@@ -269,16 +279,18 @@ extend schema under protected versioned upgrades, preserving stable identities.
 Stage 1A exposes none of those writers or workflows. Stage 1B exercises real SQLite
 process death at transaction/receipt/commit boundaries, atomic Switch, historical
 exact retries, active restart/calendar continuity, ordinary ownership races and
-checkpoint adjacency. These bounded local experiments are not arbitrary power-loss,
+rollback-journal pre-COMMIT and post-cleanup boundaries. These bounded local
+experiments are not arbitrary power-loss,
 hostile/multiwriter or native Windows evidence. Supported backup/restore/upgrades
-remain Stage 4; native Windows operational/package qualification remains open.
+remain Stage 4; native Windows source operation remains a deployment qualification.
 
-The Windows onedir route uses hashed wheel inputs, an explicit supported runtime
-and checked virtual-environment prefix/inventory. It refuses existing outputs,
-records build provenance, analyzes only Chronicle sources and disables optional
-UPX variation. Every native command is checked; no destructive cleanup or global
-install is used. Artifact/input inspection does not qualify the real executable;
-[BUILDING.md](../BUILDING.md) owns commands and the pending native operator procedure.
+The supported deployment is ordinary Python 3.11+ source execution through
+`run_chronicle.py` → `chronicle.bootstrap.main`, without task_timer fallback.
+The launcher resolves src directly. Install only `tzdata==2026.5` through ordinary
+pip within available permissions; stdlib supplies sqlite3, Tkinter/ttk and the
+worker queues/threading. Missing Tk/rules fail actionably, never auto-download.
+No executable builder or project build is required. [RUNNING.md](../RUNNING.md)
+is the single source-running guide; `scripts/run.ps1` is a thin optional launcher.
 
 ## Frozen files and core POL-R
 
@@ -306,20 +318,19 @@ external connection remain separately approved.
 
 ## Deployment and next boundary
 
-Windows is the native desktop/package qualification target. Start early onedir
-smoke in Stage 1 and integrate native Tk, offline timezone data, SQLite profile,
-publication and backup/restore evidence through stabilization/pilot. Existing
-[BUILDING.md](../BUILDING.md) commands now target the replacement runtime, but
-source/spec alignment is not proof of a qualified native Windows executable.
-Do not invent performance targets or exact version pins without validation. Linux/unit evidence is not Windows, concurrency or universal
-power-loss qualification.
+Windows native Python source operation is the deployment qualification target.
+Validate actual bundled SQLite/Tk, offline rules, NTFS ownership, timer persistence,
+main/mini, active-start correction, modal input/focus and normal reopen before real
+use or complete core pilot. No executable build is required. Stage 1 functional
+acceptance is independently adjudicated after relevant tests; absent work-computer
+access does not permanently block Stage 2. Later core and Stage 4/5 integration
+still require applicable native evidence. Linux/unit results are not Windows,
+concurrency, hardware power-loss or release qualification.
 
 Stage 0's documentation is independently accepted at
-`a24aca706740b7e02cc1f856baa194042785bbcb`. The authorized
-`feature/chronicle-rewrite` workstream originates there; preserve the old
-`feature/chronicle-projects-timesheets` source/history branch. Stage 1 remains
-In Progress: Stage 1A is independently accepted, and Stage 1B supplies bounded
-portable operational evidence/build hardening; required native Windows qualification
-and independent Stage 1 adjudication remain pending. Later execution requires
-independent review under
-[AGENTS.md](../AGENTS.md); no data-path cutover or Open policy is authorized here.
+`a24aca706740b7e02cc1f856baa194042785bbcb`. The active
+`feature/chronicle-rewrite` originates there; preserve the historical
+`feature/chronicle-projects-timesheets` branch. Stage 1A and Stage 1B portable
+reliability are accepted. Stage 1 remains In Progress pending independent
+functional adjudication; subsequent work remains independently reviewed under
+[AGENTS.md](../AGENTS.md), without data-path cutover or resolution of Open policy.

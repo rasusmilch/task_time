@@ -1282,3 +1282,13 @@ def test_real_tk_result_callback_failure_keeps_commit_and_drain_alive(connected,
     assert app.state['active']['entry_id'] == frozen.args()['entry_id']
     assert app._drain_id is not None and app._tick_id is not None
     assert len(evidence(worker)['work_entries']) == 1
+
+
+def test_real_tk_reports_effective_sqlite_profile(connected, root):
+    app, worker, clock = connected
+    assert app.runtime['journal_mode'] == 'delete'
+    assert app.runtime['synchronous'] == 3 and app.runtime['foreign_keys'] == 1
+    assert app.runtime['python'] and app.runtime['sqlite'] and app.runtime['source_id']
+    status = app.status.cget('text')
+    assert 'DELETE' in status and 'synchronous=3 (EXTRA)' in status and 'foreign_keys=1' in status
+    assert not root.test_errors

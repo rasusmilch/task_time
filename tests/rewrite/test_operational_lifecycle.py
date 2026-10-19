@@ -263,7 +263,7 @@ def test_native_readonly_database_refuses_mutation_and_releases_lock(tmp_path):
     before = path.read_bytes()
     path.chmod(0o400)
     try:
-        readonly = SQLiteStore(directory)  # SQLite may open a valid WAL dataset read-only.
+        readonly = SQLiteStore(directory)  # SQLite may open a valid dataset read-only.
         try:
             result = TimerService(readonly).create_project(uid(), 'Refused', request_id=uid(), action_utc_us=NOW)
             assert result.status in ('unavailable', 'rolled_back') and isinstance(result.error, sqlite3.OperationalError)

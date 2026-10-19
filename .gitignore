@@ -5,13 +5,13 @@ __pycache__/
 # Local virtual environment
 .venv/
 
-# PyInstaller/build outputs
+# Local generated outputs (preserve existing artifacts)
 build/
 dist/
 *.pyo
 *.pyd
 
-# Local packaging artifacts
+# Local archives and package metadata
 *.zip
 src/task_timer.egg-info/*
 *.diff

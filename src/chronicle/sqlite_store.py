@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 import sqlite3
 from uuid import uuid4
@@ -122,11 +123,10 @@ def schema_statements():
 def runtime_info() -> dict:
     version = sqlite3.sqlite_version_info
     if version < (3, 37, 0):
-        raise RuntimeError("SQLite 3.37+ is required for STRICT tables")
-    if version < (3, 51, 3) or version == (3, 52, 0):
-        raise RuntimeError("SQLite build is not supported: require the WAL-reset fix (3.51.3+; not withdrawn 3.52.0)")
-    return {"sqlite": sqlite3.sqlite_version, "feature_floor": "3.37.0",
-            "supported_floor": "3.51.3"}
+        actual = ".".join(map(str, version))
+        raise RuntimeError(f"SQLite {actual} is unsupported; require SQLite 3.37.0+ for STRICT tables")
+    return {"python": sys.version, "sqlite": sqlite3.sqlite_version,
+            "feature_floor": "3.37.0", "supported_floor": "3.37.0"}
 
 
 class SQLiteStore:
@@ -168,7 +168,7 @@ class SQLiteStore:
                 self.connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self.connection.execute("COMMIT")
             else:
-                # Identify before enabling WAL or otherwise writing to an unknown database.
+                # Identify before configuring or otherwise writing to an unknown database.
                 self._validate_existing(timezone)
                 self.connection = self._connect()
                 self._profile()
@@ -181,7 +181,7 @@ class SQLiteStore:
             self.zone = load_zone(self.timezone)
             self.info = {**runtime_info(), "compile_options": [r[0] for r in self.connection.execute("PRAGMA compile_options")],
                          "source_id": self.connection.execute("SELECT sqlite_source_id()").fetchone()[0],
-                         "journal_mode": "wal", "synchronous": 2, "foreign_keys": 1}
+                         **self._profile_values()}
         except BaseException as primary:
             try:
                 self.close()
@@ -196,6 +196,9 @@ class SQLiteStore:
         probe = self._probe()
         try:
             self._verify(probe)
+            # Refuse unsupported development profiles; never convert an existing dataset.
+            if probe.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
+                raise ValueError("Unsupported dataset journal mode; DELETE is required; no automatic conversion")
             if timezone is not None and probe.execute("SELECT timezone FROM dataset_meta").fetchone()[0] != timezone:
                 raise ValueError("Explicit timezone conflicts with this dataset")
         except BaseException as primary:
@@ -228,15 +231,19 @@ class SQLiteStore:
 
     def _profile(self):
         c = self.connection
+        if c.in_transaction:
+            raise RuntimeError("SQLite profile cannot be configured inside a transaction")
         c.execute(f"PRAGMA busy_timeout={BUSY_MS}")
-        c.execute("PRAGMA journal_mode=WAL")
-        c.execute("PRAGMA synchronous=FULL")
+        c.execute("PRAGMA journal_mode=DELETE")
+        c.execute("PRAGMA synchronous=EXTRA")
         c.execute("PRAGMA foreign_keys=ON")
-        actual = (c.execute("PRAGMA journal_mode").fetchone()[0],
-                  c.execute("PRAGMA synchronous").fetchone()[0],
-                  c.execute("PRAGMA foreign_keys").fetchone()[0])
-        if actual != ("wal", 2, 1):
+        actual = self._profile_values()
+        if actual != {"journal_mode": "delete", "synchronous": 3, "foreign_keys": 1}:
             raise RuntimeError(f"Unsupported SQLite profile: {actual}")
+
+    def _profile_values(self):
+        return {name: self.connection.execute(f"PRAGMA {name}").fetchone()[0]
+                for name in ("journal_mode", "synchronous", "foreign_keys")}
 
     @staticmethod
     def _verify(c):

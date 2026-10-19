@@ -546,7 +546,8 @@ means agreement with the latest confirmation, not a verified POL-R query.
 ### Tkinter transactional rewrite and core POL-R before pilot
 
 **Status:** current for Tkinter/SQLite/core scope; its daily-Actual-as-Enter clause
-is superseded below. At Task 1b this documentation was pending final independent
+is superseded below. Its WAL/FULL profile is superseded by Stage 1C below.
+At Task 1b this documentation was pending final independent
 acceptance. Stage 0 was subsequently independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`, as explicitly supplied with the branch
 bootstrap instructions; that accepts the documentation gate, not SQLite runtime.
@@ -568,9 +569,10 @@ Select one local SQLite authority, relational current facts plus immutable typed
 work revisions/export/absolute-confirmation evidence, stable work-entry UUIDs,
 expected revisions and atomic committed request receipts. Exact request reuse
 returns committed results before stale checks; changed content under the same ID
-fails. Unchanged edits write no revision/artificial receipt. WAL/FULL/foreign keys,
-constraints, supported backups, exact integer microseconds, explicit IANA/offline
-tzdata and future rewritten-data upgrade protection are selected.
+fails. Unchanged edits write no revision/artificial receipt. This approval selected
+WAL/FULL/foreign keys, constraints, supported backups, exact integer microseconds,
+explicit IANA/offline tzdata and future rewritten-data upgrade protection; Stage 1C
+below supersedes WAL/FULL only.
 
 This supersedes JSONL-as-target envelopes/manifests/replay/synchronization,
 replacement-interval UUIDs, Python authoritative projections/JSON snapshots and
@@ -747,9 +749,10 @@ Mini shows active, otherwise selected task, otherwise no task. Main/mini share
 one observation/report. Shutdown drains accepted work without Tk-thread joining.
 Idle-but-unverified storage offers exact Retry/Reconcile or explicit default-cancel
 exit despite possible commitment and volatile retry loss. Executing I/O is never
-silently interrupted. The runtime requires the documented SQLite WAL-reset fix,
-not merely the STRICT feature floor, and uses explicit disposable engineering
-paths. Production cutover and timezone changes remain Open. Stage 1A does not
+silently interrupted. This approval then required the documented SQLite WAL-reset
+fix beyond the STRICT feature floor, with explicit disposable engineering paths.
+Stage 1C below supersedes only that runtime/profile requirement. Production cutover
+and timezone changes remain Open. Stage 1A does not
 complete Stage 1 qualification or later core/POL-R/pilot gates.
 
 ### Asynchronous active-start completion and draft preservation
@@ -772,11 +775,43 @@ Stage 2 History editing or Stage 3 POL-R delivery.
 Operational Reliability and Native Windows Qualification.” The user independently
 accepts Stage 1A at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968` for its bounded
 implementation, and authorizes operational tests/repairs and controlled Windows
-build engineering even when native Windows is unavailable. Missing native source,
-NTFS, Tk, PowerShell and packaged evidence stays an incomplete Stage 1 gate;
-Linux process kills, clock gaps and hash/static checks do not replace it. Stage 4
+build engineering even when native Windows is unavailable. At this approval,
+missing native source/NTFS/Tk/PowerShell and packaged evidence remained a Stage 1
+gate; Linux experiments did not replace it. Stage 1C below supersedes the packaged
+requirement and separates functional acceptance from native source-deployment
+qualification, while preserving this chronology. Stage 4
 still owns full backup/restore/upgrades; no Stage 2/3 delivery, new recovery authority,
 release approval or production cutover is implied.
+
+### Stage 1C — Standard sqlite3 and Python-source deployment
+
+**Status:** current. **Provenance:** explicit user-approved execution task
+“Chronicle — Stage 1C: Standard SQLite and Python-Source Deployment Simplification.”
+The project is under development; no production Chronicle SQLite databases exist.
+The user judges the former WAL-reset runtime restriction and packaged Windows
+executable assumptions unnecessarily restrictive for this single-user timer.
+
+Use built-in sqlite3 exclusively, DELETE rollback journaling, synchronous EXTRA
+and foreign keys, checked before transactions. SQLite 3.37.0+ is the STRICT floor;
+remove the extra 3.51.3 floor and 3.52.0 exclusion. Preserve explicit transactions,
+immutable evidence/receipts, uncertainty handling and one serialized worker.
+Development databases are disposable; no migration/conversion/compatibility
+machinery is required, and unknown files/databases must never be deleted or
+recreated automatically. This supersedes earlier profile/version clauses only.
+
+Run ordinary Python source through the existing Chronicle launcher, with pinned
+tzdata installed through pip within available IT permissions. No custom SQLite
+provider, DLL replacement, administrator/compiler requirement, executable builder
+or editable project build is needed. Prior executable-build preparation is
+superseded, not retroactively unapproved. Earlier audit and POL-R decisions stand.
+
+Stage 0 is accepted; Stage 1A connected timer and Stage 1B portable reliability
+are accepted (the latter at `1e84a043c1c055aced9b8c4b000ef766bbf6d178`). Stage 1
+may receive independent functional acceptance after this simplification and its
+relevant checks. Actual native Windows source operation remains required before
+real deployment/complete core pilot, without permanently blocking Stage 2 work
+because the eventual work computer is unavailable. Stage 2/3 remain unimplemented;
+POL-R stays mandatory before complete core pilot. Release paths/cutover remain Open.
 
 ## Open decisions
 

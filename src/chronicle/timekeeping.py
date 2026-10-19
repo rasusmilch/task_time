@@ -43,7 +43,10 @@ def load_zone(key: str) -> ZoneInfo:
         # Always use the packaged rules, including on hosts with a system TZPATH.
         with files("tzdata.zoneinfo").joinpath(*key.split("/")).open("rb") as source:
             return ZoneInfo.from_file(source, key=key)
-    except (OSError, ValueError, ModuleNotFoundError) as exc:
+    except ModuleNotFoundError as exc:
+        raise ValueError("Offline IANA rules require tzdata; install with: "
+                         "python -m pip install --only-binary=:all: tzdata==2026.5") from exc
+    except (OSError, ValueError) as exc:
         raise ValueError(f"Offline IANA timezone unavailable: {key}") from exc
 
 

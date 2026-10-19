@@ -1,4 +1,4 @@
-"""Root launcher for Chronicle development and packaging."""
+"""Root launcher for Chronicle direct Python source execution."""
 
 from __future__ import annotations
 

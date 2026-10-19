@@ -38,8 +38,12 @@ Stage 0's documentation gate is independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`. The active rewrite workstream is
 `feature/chronicle-rewrite`, originating at that commit. Stage 1 is the next active
 engineering stage. Its approved Stage 1A connected SQLite timer slice is
-implemented; operational interruption and native Windows qualification remain
-pending, so Stage 1 is not Complete. Subsequent execution remains bounded and
+implemented and accepted. Stage 1B portable reliability is accepted at
+`1e84a043c1c055aced9b8c4b000ef766bbf6d178`. Stage 1C selects built-in sqlite3,
+DELETE/EXTRA/foreign keys and direct Python source execution. Stage 1 functional
+completion awaits independent adjudication; native Windows source evidence is
+required before deployment/pilot, not an executable-build or Stage 2 blocker.
+Subsequent execution remains bounded and
 independently reviewed, using substantial coherent slices without microtasks.
 The fresh rewrite
 requires no legacy JSONL compatibility/import, old internal APIs or duplicate UI
@@ -61,7 +65,7 @@ legacy behavior as permanent replacement-product policy.
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Historical product/architecture decision evidence, rationale, provenance and supersessions. |
 | [docs/EXPORT_EVIDENCE_CONTRACT.md](docs/EXPORT_EVIDENCE_CONTRACT.md) | Selected precision domains, single weekly quarter-hour algorithm, frozen export/file rules and complete confirmation-integrity semantics; not legacy JSONL machinery. |
 | [DESIGN_NOTES.md](DESIGN_NOTES.md) | Actual legacy service/event/storage contracts and limitations; not target rewrite instructions. |
-| [BUILDING.md](BUILDING.md) | Actual Windows launch/build scripts and separately selected rewrite qualification obligations. |
+| [RUNNING.md](RUNNING.md) | Python-source setup, minimal pip dependency and native source qualification boundaries. |
 | [pyproject.toml](pyproject.toml) | Python requirement, package dependencies and pytest configuration. |
 | [CHANGELOG.md](CHANGELOG.md) | Sole canonical cumulative project-change history. |
 
@@ -81,13 +85,13 @@ Source-grounded command examples (select according to applicability):
 
 - Linux regression: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts=''`.
 - Windows source launch: `python .\run_chronicle.py --data-dir PATH --timezone America/Chicago --create`; reopen with `--data-dir PATH` only.
-- Optional development install: `python -m pip install -e .`.
-- Windows onedir packaging: `./scripts/build.ps1`; see BUILDING.
+- Runtime dependency: `python -m pip install --only-binary=:all: tzdata==2026.5`.
+- Source setup and optional virtual environment: see [RUNNING.md](RUNNING.md); no project build is required.
 
 `pyproject.toml` requires Python 3.11+ and configures pytest's `src` import path.
 Use the appropriate existing interpreter/virtual environment. Assess Windows
 validation availability for each execution. Linux results do not establish
-Windows GUI, NTFS, PowerShell or packaging correctness; do not invent CI/release
+Windows GUI, NTFS or source-deployment correctness; do not invent CI/release
 checks. Runtime tests must use isolated temporary datasets and protect existing
 user data. Documentation-only changes ordinarily need focused documentation
 checks; executable changes need applicable behavioral/regression

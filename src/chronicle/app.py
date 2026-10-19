@@ -536,7 +536,10 @@ class ChronicleApp:
             self.dataset_id, self.timezone = message.value["dataset_id"], message.value["timezone"]
             self.zone = message.value["zone"]
             self.runtime = message.value["runtime"]
-            self.status.configure(text=f"SQLite {self.runtime['sqlite']} — WAL / FULL / foreign keys")
+            self.status.configure(text=(f"SQLite {self.runtime['sqlite']} — "
+                                        f"{self.runtime['journal_mode'].upper()} / "
+                                        f"synchronous={self.runtime['synchronous']} (EXTRA) / "
+                                        f"foreign_keys={self.runtime['foreign_keys']}"))
             self._controls()
             self.refresh()
         elif message.kind == "startup_failed":

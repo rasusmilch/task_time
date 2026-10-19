@@ -16,7 +16,7 @@ explicit absolute POL-R reconciliation**. SQLite is the sole replacement authori
 | [Decisions](docs/DECISIONS.md) | Approval chronology and supersessions. |
 | [Repository instructions](AGENTS.md) / [Changelog](CHANGELOG.md) | Governance and sole cumulative change history. |
 
-The shipped source/build route now runs `src/chronicle`. Stage 1A connects fresh
+The shipped source route now runs `src/chronicle`. Stage 1A connects fresh
 SQLite datasets, task/project creation and renaming, independent reassignment,
 Start/Stop/atomic Switch, persisted active timers and audited active-start recovery.
 Main shows own-task Today/This week; mini shows active or selected task Today.
@@ -35,20 +35,24 @@ an idle unverified operation offers Retry/Reconcile or default-cancel exceptiona
 exit explaining possible commitment and loss of volatile retry inputs.
 
 Stage 1A is independently accepted at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`.
-Stage 1B adds killed-process transaction/reopen tests, separate-process ownership,
-startup/cleanup diagnostics and controlled Windows build inputs. Failed startup
-cleanup remains worker-owned until closure; cleanup-only shutdown cannot resume
-normal mutations. Stage 1 remains **In Progress**, not complete MVP/pilot: native
-Windows source/NTFS/Tk/onedir and actual suspend/resume qualification are pending.
+Stage 1B portable interruption/ownership and cleanup work is independently accepted
+at `1e84a043c1c055aced9b8c4b000ef766bbf6d178`. Stage 1C simplifies the runtime to
+standard sqlite3 DELETE/EXTRA and direct Python execution, retiring executable
+build tooling. Stage 1 remains **In Progress** pending independent functional
+adjudication, not complete MVP/pilot. Native Windows source/NTFS/Tk and actual
+suspend/resume evidence remain deployment/pilot qualifications; they do not
+permanently block later Stage 2 development.
 Stage 0 was independently accepted at `a24aca706740b7e02cc1f856baa194042785bbcb`. Active work is
 `feature/chronicle-rewrite`; the old feature branch/history is preserved.
 
 ## Run from source (repo root)
 
-Install the declared dependency into a supported Python 3.11+ environment:
+Use Python 3.11+ with built-in SQLite 3.37.0+ and Tcl/Tk. Check the actual modules,
+then install the sole external runtime dependency in a permitted environment:
 
 ```powershell
-python -m pip install -e .
+python -c "import sys,sqlite3,tkinter; print(sys.version); print(sqlite3.sqlite_version); print(tkinter.TkVersion)"
+python -m pip install --only-binary=:all: tzdata==2026.5
 python .\run_chronicle.py --data-dir C:\Chronicle-test\fresh --timezone America/Chicago --create
 ```
 
@@ -58,28 +62,33 @@ Reopen the same dataset without creating it:
 python .\run_chronicle.py --data-dir C:\Chronicle-test\fresh
 ```
 
-The root launcher supplies the src path. Module execution is `python -m chronicle`
-after installation. The PowerShell helper accepts `-DataDir`, `-Timezone` and
+The root launcher supplies the src path; no editable install, wheel build or
+compiler is required. The PowerShell helper accepts `-DataDir`, `-Timezone` and
 `-Create`. No implicit data directory or legacy-runtime fallback exists.
 
 ## Data layout
 
-An explicitly selected local directory contains `chronicle.sqlite3`, SQLite's
-WAL/SHM sidecars when applicable, and `.chronicle.lock`. Lock existence is not
-ownership. A live OS-held lock excludes a second application owner. Create refuses
+An explicitly selected local directory contains `chronicle.sqlite3`,
+`.chronicle.lock` and SQLite's temporary rollback journal during writes. Lock
+existence is not ownership. A live OS-held lock excludes a second application owner. Create refuses
 unknown nonempty or partial directories; open refuses unsupported datasets and
 never creates a database accidentally. Nothing discovers/imports/deletes the old
 `~/.task_timer_data` directory. Exact production paths/cutover remain Open.
 
-SQLite is worker-owned, explicit-transaction, WAL/FULL/foreign-key/STRICT. Runtime
-checks require both STRICT support and a build containing the WAL-reset fix:
-3.51.3 or later, excluding withdrawn 3.52.0. The available operational tests exercise
-Python 3.12.14 / SQLite 3.53.1 on Linux, not native Windows qualification or universal
-power-loss safety. Offline IANA rules come from pinned bundled `tzdata`; the dataset zone cannot be changed by this UI.
+SQLite is the standard Python `sqlite3` module, worker-owned and explicitly
+transactional: **DELETE / synchronous=EXTRA (3) / foreign_keys=ON (1)**, with STRICT
+tables requiring SQLite 3.37.0+. Startup verifies effective settings and records
+Python/SQLite versions, source ID and compile options. The obsolete WAL-reset
+version restriction is removed. Old development profiles refuse without automatic
+conversion or deletion; no production SQLite migration is needed. Offline IANA
+rules come from `tzdata==2026.5`; the dataset zone cannot be changed by this UI.
 
-Do not copy only the main file of a live WAL database as a backup. Supported backup,
-restore and upgrade workflows belong to later operational/stabilization work;
-Stage 1A refuses unknown schema versions rather than attempting upgrades.
+Do not copy a live database as a backup. Supported backup/restore and future
+rewritten-data upgrades belong to Stage 4; unknown schemas refuse rather than
+being reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
+source launch, troubleshooting and native Windows source validation. Initial pip
+installation needs internet or an approved local wheel source and available IT
+permission; ordinary Chronicle operation is offline and never installs packages.
 
 ## Selected core and sequence
 
@@ -108,8 +117,8 @@ the replacement or included in its package. Its bounded Phase 2 acceptance remai
 historical, not SQLite qualification or a compatibility promise. Detailed former
 source contracts remain in Design Notes; they are not current launcher instructions.
 
-## Windows executable packaging
+## Qualification
 
-See [BUILDING.md](BUILDING.md) for the aligned replacement onedir route and explicit
-engineering data arguments. Native Windows/NTFS, PowerShell, packaged execution,
-power-loss and release qualification are not established by Linux tests.
+No executable bundle or builder is part of the supported workflow. Linux tests do
+not establish native Windows/NTFS, actual suspend/resume, hardware power-loss or
+release qualification. Final paths/cutover remain Open; the full core is not complete.

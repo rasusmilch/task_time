@@ -13,9 +13,12 @@ Selected does not mean implemented; old component tests do not complete SQLite
 stages. Stage 0 is independently accepted Complete for documentation only;
 no rewrite runtime stage is Complete. Stage 1 is In Progress: its connected
 Stage 1A timer slice is independently accepted at
-`897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`. Stage 1B supplies bounded portable
-operational tests and controlled Windows build inputs; native qualification and
-independent Stage 1 acceptance remain pending.
+`897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`. Stage 1B portable reliability is
+independently accepted at
+`1e84a043c1c055aced9b8c4b000ef766bbf6d178`; its executable-build preparation is
+superseded by Stage 1C's standard sqlite3 DELETE/EXTRA and source-only deployment.
+Stage 1 functional acceptance remains independent. Native Windows source operation
+is required before deployment/pilot, not an unavailable executable-build gate.
 
 Each stage can contain several substantial, independently reviewed tasks. Do not
 make every helper a staged feature or authorize the whole rewrite in one task.
@@ -40,16 +43,17 @@ status does not authorize Stage 2/3 or resolve reserved release policy.
 
 ## Stage 1 — Working timer foundation
 
-**IN PROGRESS — Stage 1A accepted; Stage 1B portable evidence/build hardening delivered,
-native qualification pending; NOT complete MVP or pilot.**
-The full gate includes fresh SQLite, task/project identities, Start/Stop/Switch,
-persisted active timer, main/mini display, worker bridge and early native Windows
-onedir smoke. Design immutable frozen-export and absolute-confirmation batches/cells/current-reference
+**IN PROGRESS — Stage 1A and Stage 1B portable reliability accepted; Stage 1C
+simplification delivered for independent functional adjudication; NOT complete MVP or pilot.**
+The functional gate includes fresh SQLite, task/project identities, Start/Stop/Switch,
+persisted active timer, main/mini display, worker bridge and direct source startup.
+Design immutable frozen-export and absolute-confirmation batches/cells/current-reference
 schema and transaction boundaries into the core from the start.
 
 Gate: real recording/reopen path, atomic Switch at one accepted time, active-timer
 uniqueness, same-request committed-result reuse and truthful failures. Verify
-SQLite WAL/FULL/foreign keys/constraints and UI/worker thread ownership. Integrity
+built-in SQLite DELETE/EXTRA/foreign keys/STRICT constraints (SQLite 3.37.0+) and
+UI/worker thread ownership. Integrity
 and failure tests start here. The approved clock/sleep/restart and explicit
 active-start/uncertain-exit policies are in requirements. Active-start editor
 completion now follows matching asynchronous results, retains rejected drafts and
@@ -57,10 +61,14 @@ exposes exact reconciliation/exceptional exit within the modal editor. This repa
 does not complete Stage 1. Stage 1B tests process interruption, committed receipt
 reuse, ownership/startup refusal and explicit cleanup retry; it repairs primary
 validation diagnostics and ownership retention through failed startup cleanup.
-Windows input hashes/preflight/provenance and a safe onedir procedure are available.
-Actual Windows source, NTFS locking, Tk input, PowerShell/build/executable and
-suspend/resume evidence remain unverified. Bounded Linux experiments cannot close
-that gate, and independent ChatGPT adjudication is required for Stage 1 completion.
+Source launch requires no compiler, project build or executable bundle; pinned
+tzdata installs through ordinary permitted pip. Stage 1C removes the obsolete
+WAL-specific version floor and executable tooling, retaining transactions and
+immutable receipts/evidence. Independent ChatGPT review may accept Stage 1
+functionality after its relevant tests pass. Actual Windows Python/SQLite/Tk,
+NTFS locking, GUI input, exceptions, offline zones, close/reopen and suspend/resume
+remain source-deployment qualification before real use/pilot. Linux evidence does
+not replace it; lack of the eventual work computer is not a permanent Stage 2 blocker.
 Timezone-change policy stays reserved; Stage 1A has no zone-changing operation.
 A foundation without POL-R is not core signoff.
 
@@ -119,7 +127,7 @@ protection and separately confirmed overwrite both need connected evidence.
 
 **Selected / not implemented.** Interruption/restart, storage faults, second-instance
 refusal, supported SQLite backup/independent restore validation, protected schema
-upgrades, queued response/shutdown behavior, native Tk and packaged Windows.
+upgrades, queued response/shutdown behavior, native Tk and Windows source operation.
 Exercise timer → frozen export → absolute confirmation → correction → reconciliation.
 
 Gate: complete core integrity, recovery and restore demonstrated, no data-loss
@@ -143,7 +151,7 @@ and zero-entry treatment must be validated; correct mathematics alone is not
 employer/customer compliance evidence. **No core signoff when
 POL-R reconciliation/confirmation/reminders are absent.** Optional allocations
 are not a pilot gate. Independent review and actual platform evidence are required;
-passing tests or a successful package alone are not release approval.
+passing tests or a source-launch smoke alone are not release approval.
 
 ## Stage 6 — Optional expansion
 

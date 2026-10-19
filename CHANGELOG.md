@@ -13,20 +13,23 @@ receipts or commits. No release or production qualification is implied below.
   Preserve exact work semantics, immutable revisions/evidence, stable work-entry
   UUIDs, atomic request receipts, serialized worker-owned I/O and callback-driven
   Tk lifecycle with future inline History editing. Connect the first SQLite timer
-  slice through the sole source/build route: independent task/project controls,
+  slice through the sole source route: independent task/project controls,
   atomic Start/Stop/Switch, persisted active identity, audited explicit active-start
   recovery with asynchronous draft retention and editor-local exact-request
   reconciliation/exceptional exit; queue acceptance is never Save completion.
   Main/mini share calendar Actual;
   one worker keeps Tk responsive and shutdown preserves approved uncertainty.
   Sleep/exit never stops timers; restart uses committed state. Use explicit fresh
-  paths, offline tzdata and a WAL-reset-fixed SQLite gate. Exercise process-death
-  recovery at transaction/receipt/commit boundaries, active restart and exclusive
+  paths and offline tzdata. Use built-in sqlite3 with verified DELETE journaling,
+  synchronous EXTRA, foreign keys and the SQLite 3.37.0 STRICT floor. Exercise
+  process-death recovery at transaction/receipt/commit boundaries, active restart and exclusive
   dataset ownership; preserve primary startup diagnostics and worker-held cleanup
   through failures, with accessible retry and no return to abandoned mutations.
-  Control Windows onedir inputs with wheel hashes, runtime/venv checks, build
-  provenance and non-destructive scripts. Native Windows/actual suspend qualification
-  and later recording/Timesheet/POL-R remain pending.
+  Run directly from Python source with a minimal pip-installed runtime dependency;
+  retire executable-build tooling and the obsolete WAL-specific version pin.
+  Preserve unsupported datasets without conversion/deletion. Independent Stage 1
+  functional review, native Windows source/actual suspend qualification and later
+  recording/Timesheet/POL-R remain pending.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete

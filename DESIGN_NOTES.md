@@ -1,21 +1,24 @@
 # Design Notes — retained JSONL implementation
 
-The shipped launcher/build targets `src/chronicle`, the independently accepted
-Stage 1A SQLite timer. Stage 1B adds bounded portable interruption/ownership and
-cleanup evidence plus controlled Windows build inputs; native qualification is
-still pending. These changes do not qualify the retained JSONL implementation.
+The shipped source launcher targets `src/chronicle`, the independently accepted
+Stage 1A SQLite timer. Stage 1B portable interruption/ownership and cleanup
+reliability is accepted. Stage 1C uses built-in sqlite3 DELETE/EXTRA/foreign keys
+with STRICT (SQLite 3.37.0+) and direct Python source execution; the executable
+build path is retired. Stage 1 functional review and native source-deployment
+qualification are distinct; the latter remains pending before real use/pilot.
+These changes do not qualify the retained JSONL implementation.
 Its active-start recovery retains the modal draft through asynchronous failure and
 offers exact-request reconciliation within that editor; queue acceptance is not Save
 completion. This is separate from the historical closed-interval editor below.
 [ARCHITECTURE.md](docs/ARCHITECTURE.md) owns its implemented technical boundary;
 [requirements](docs/TIMESHEET_REQUIREMENTS.md), [roadmap](docs/ROADMAP.md) and
 [testing strategy](docs/TESTING_STRATEGY.md) distinguish delivery from pending
-operational/native Windows qualification and later core/POL-R work.
+independent functional/native Windows source qualification and later core/POL-R work.
 
 Everything below describes retained, **unshipped historical `task_timer` source**.
 References to active/production UI, services, paths and tests in those sections
 refer to that former JSONL runtime, not the replacement launcher. Its package is
-not imported or bundled by Chronicle. No compatibility, migration, parallel
+not imported by Chronicle. No compatibility, migration, parallel
 runtime, nested-editor or widget-retained retry requirement follows from it.
 Historical Phase 2 acceptance is not SQLite qualification. The preserved details
 support source/test review and retain earlier chronology; they do not claim that

@@ -235,3 +235,24 @@ def test_active_correction_gap_repeat_future_and_multiple_audits(service, task, 
     assert row["version"] == 3
     audits = list(store.connection.execute("SELECT * FROM active_start_corrections ORDER BY version"))
     assert audits[1]["prior_start_utc_us"] == audits[0]["corrected_start_utc_us"]
+
+
+def test_rollback_journal_commit_busy_cannot_publish_own_receipt(service, store, task, make_request):
+    frozen = make_request("start_timer", task_id=task, entry_id=uid(), expected_task_version=1)
+    # A real shared reader lets BEGIN IMMEDIATE/write proceed but blocks COMMIT.
+    reader = store._probe()
+    reader.execute("BEGIN")
+    reader.execute("SELECT * FROM tasks").fetchall()
+    try:
+        result = service.execute(frozen)
+        assert result.status == "rolled_back"
+        assert isinstance(result.error, sqlite3.OperationalError)
+        assert "locked" in str(result.error)
+        assert store.connection is None
+        assert service.reconcile_request(frozen).status == "absent"
+        assert not (store.directory / (store.path.name + "-journal")).exists()
+    finally:
+        reader.close()
+    assert service.execute(frozen).status == "committed"
+    assert service.execute(frozen).result == service.reconcile_request(frozen).result
+    assert store.connection.execute("SELECT count(*) FROM active_timer").fetchone()[0] == 1

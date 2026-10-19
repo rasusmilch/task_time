@@ -60,19 +60,27 @@ class Observed:
     def __init__(self, inner): self.inner = inner
     def __getattr__(self, name): return getattr(self.inner, name)
     def execute(self, sql, *args):
+        if phase == 'commit_ready' and sql == 'COMMIT':
+            from pathlib import Path
+            assert Path(str(store.path) + '-journal').is_file()
+            barrier()  # Journal written, immediately before SQLite's commit operation.
         result = self.inner.execute(sql, *args)
+        if phase == 'committed' and sql == 'COMMIT':
+            from pathlib import Path
+            assert not Path(str(store.path) + '-journal').exists()
         facts = sql.startswith(('INSERT INTO work_', 'INSERT INTO active_', 'UPDATE active_', 'DELETE FROM active_'))
         if ((phase == 'begin' and sql == 'BEGIN IMMEDIATE') or
             (phase == 'facts' and facts) or
             (phase == 'receipt' and sql.startswith('INSERT INTO committed_requests')) or
-            (phase == 'committed' and sql == 'COMMIT')):
+            (phase == 'committed' and sql == 'COMMIT') or
+            (phase == 'refresh' and sql.startswith('SELECT * FROM tasks ORDER'))):
             barrier()
         return result
 store.connection = Observed(store.connection)
 if phase == 'before': barrier()
 result = service.execute(request)
 assert result.status == 'committed', result
-if phase == 'refresh': barrier()
+if phase == 'refresh': service.read_current_state(cutoff_utc_us=request.action_utc_us)
 store.close()
 '''
 
@@ -95,7 +103,7 @@ def rows(store):
 
 
 @pytest.mark.parametrize('operation', ['start_timer', 'stop_timer', 'switch_timer', 'correct_active_start'])
-@pytest.mark.parametrize('phase', ['before', 'begin', 'facts', 'receipt', 'committed', 'refresh'])
+@pytest.mark.parametrize('phase', ['before', 'begin', 'facts', 'receipt', 'commit_ready', 'committed', 'refresh'])
 def test_process_interruption_atomic_facts_and_exact_receipt(tmp_path, operation, phase):
     directory = tmp_path / 'interruption'
     store = SQLiteStore(directory, create=True, timezone='America/Chicago')
@@ -123,7 +131,7 @@ def test_process_interruption_atomic_facts_and_exact_receipt(tmp_path, operation
     try:
         service = TimerService(reopened)
         assert reopened.connection.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
-        assert reopened.connection.execute('PRAGMA journal_mode').fetchone()[0] == 'wal'
+        assert reopened.connection.execute('PRAGMA journal_mode').fetchone()[0] == 'delete'
         committed = phase in ('committed', 'refresh')
         evidence = service.reconcile_request(frozen)
         assert evidence.status == ('committed' if committed else 'absent')
@@ -161,8 +169,8 @@ def test_process_interruption_atomic_facts_and_exact_receipt(tmp_path, operation
         reopened.close()
 
 
-@pytest.mark.parametrize('phase', ['checkpoint_before', 'checkpoint_after', 'ordinary', 'reopen'])
-def test_active_owner_crash_and_checkpoint_adjacency(tmp_path, phase):
+@pytest.mark.parametrize('phase', ['ordinary', 'reopen'])
+def test_active_owner_crash_and_repeated_reopen(tmp_path, phase):
     directory = tmp_path / 'active'
     store = SQLiteStore(directory, create=True, timezone='America/Chicago')
     service = TimerService(store)
@@ -175,13 +183,10 @@ def test_active_owner_crash_and_checkpoint_adjacency(tmp_path, phase):
 from chronicle.sqlite_store import SQLiteStore
 import sys
 store = SQLiteStore(sys.argv[1])
-if sys.argv[2] == 'checkpoint_after':
-    assert store.connection.execute('PRAGMA wal_checkpoint(FULL)').fetchone()[0] == 0
 if sys.argv[2] == 'ordinary':
     from chronicle.services import TimerService
     assert TimerService(store).read_current_state(cutoff_utc_us=int(sys.argv[3]))['active'] is not None
 print('BARRIER', flush=True); sys.stdin.readline()
-if sys.argv[2] == 'checkpoint_before': store.connection.execute('PRAGMA wal_checkpoint(FULL)')
 '''
     with paused_child(code, directory, phase, NOW):
         pass
@@ -227,8 +232,7 @@ SQLiteStore(sys.argv[1], create=True, timezone='UTC')
         with pytest.raises((ValueError, sqlite3.DatabaseError)):
             SQLiteStore(directory, create=create, timezone='UTC' if create else None)
     assert all((directory / name).read_bytes() == data for name, data in before.items())
-    # A SQLite WAL read may create its sidecars, but cannot rewrite the main file.
-    assert {p.name for p in directory.iterdir()} - before.keys() <= {'chronicle.sqlite3-wal', 'chronicle.sqlite3-shm'}
+    assert {p.name for p in directory.iterdir()} == before.keys()
 
 
 @pytest.mark.parametrize('committed', [False, True])

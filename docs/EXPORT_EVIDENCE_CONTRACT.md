@@ -411,5 +411,5 @@ callback-driven Tk views. Core saved-report recovery is independent of widgets.
 Stage 1A approved clock/restart and active-start recovery in the
 [recording requirements](TIMESHEET_REQUIREMENTS.md#selected--recording-and-timer-operation).
 Allocation policy, dataset-timezone changes and release paths remain with the [reserved decision gates](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions).
-No migration or new external integration is selected. Windows/NTFS, packaging,
+No migration or new external integration is selected. Windows Python-source/Tk/NTFS,
 concurrency and power-loss claims require applicable evidence, not this approval.

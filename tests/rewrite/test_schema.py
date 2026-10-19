@@ -2,15 +2,16 @@ import sqlite3
 
 import pytest
 
-from chronicle.sqlite_store import DATABASE, SQLiteStore, runtime_info
+from chronicle.sqlite_store import BUSY_MS, DATABASE, SQLiteStore, runtime_info
 from conftest import NOW, uid
 
 
 def test_fresh_profile_and_reopen(store):
     c = store.connection
     assert c.isolation_level is None
-    assert c.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
-    assert c.execute("PRAGMA synchronous").fetchone()[0] == 2
+    assert c.execute("PRAGMA busy_timeout").fetchone()[0] == BUSY_MS
+    assert c.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+    assert c.execute("PRAGMA synchronous").fetchone()[0] == 3
     assert c.execute("PRAGMA foreign_keys").fetchone()[0] == 1
     dataset = store.dataset_id
     directory = store.directory
@@ -19,6 +20,17 @@ def test_fresh_profile_and_reopen(store):
     try:
         assert reopened.dataset_id == dataset
         assert reopened.timezone == "America/Chicago"
+        assert reopened.connection.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+        assert reopened.connection.execute("PRAGMA synchronous").fetchone()[0] == 3
+        assert reopened.connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        assert reopened.info["journal_mode"] == "delete"
+        assert reopened.info["synchronous"] == 3 and reopened.info["foreign_keys"] == 1
+        assert reopened.info["python"] and reopened.info["source_id"]
+        assert reopened.info["sqlite"] == sqlite3.sqlite_version
+        assert reopened.info["compile_options"]
+        assert not (directory / (DATABASE + "-journal")).exists()
+        assert not (directory / (DATABASE + "-wal")).exists()
+        assert not (directory / (DATABASE + "-shm")).exists()
     finally:
         reopened.close()
 
@@ -42,11 +54,42 @@ def test_noncreating_open_and_invalid_zone(tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.parametrize("version,expected", [((3, 36, 0), "STRICT"), ((3, 51, 2), "WAL-reset"), ((3, 52, 0), "WAL-reset")])
-def test_runtime_floor_and_withdrawn_release(monkeypatch, version, expected):
-    monkeypatch.setattr(sqlite3, "sqlite_version_info", version)
-    with pytest.raises(RuntimeError, match=expected):
+def test_runtime_rejects_old_strict_version_with_actual_and_minimum(monkeypatch):
+    monkeypatch.setattr(sqlite3, "sqlite_version_info", (3, 36, 9))
+    with pytest.raises(RuntimeError, match=r"3\.36\.9.*3\.37\.0.*STRICT"):
         runtime_info()
+
+
+@pytest.mark.parametrize("version", [(3, 37, 0), (3, 40, 1), (3, 51, 2), (3, 52, 0)])
+def test_runtime_version_gate_accepts_strict_floor_and_later(monkeypatch, version):
+    # Only the gate is simulated. Real STRICT/profile behavior uses the linked runtime.
+    monkeypatch.setattr(sqlite3, "sqlite_version_info", version)
+    assert runtime_info()["supported_floor"] == "3.37.0"
+
+
+@pytest.mark.parametrize("setting,value", [("journal_mode", "memory"), ("synchronous", 2), ("foreign_keys", 0)])
+def test_profile_rejects_unfulfilled_settings(store, setting, value):
+    real = store.connection
+    class RefusedSetting:
+        def __getattr__(self, name): return getattr(real, name)
+        def execute(self, sql, *args):
+            if sql == f"PRAGMA {setting}":
+                class Result:
+                    def fetchone(self): return (value,)
+                return Result()
+            return real.execute(sql, *args)
+    store.connection = RefusedSetting()
+    with pytest.raises(RuntimeError, match="Unsupported SQLite profile"):
+        store._profile()
+
+
+def test_profile_never_reconfigures_inside_transaction(store):
+    store.connection.execute("BEGIN IMMEDIATE")
+    try:
+        with pytest.raises(RuntimeError, match="transaction"):
+            store._profile()
+    finally:
+        store.connection.execute("ROLLBACK")
 
 
 def test_direct_strict_check_unique_fk_guards(store, task, service):
@@ -121,3 +164,26 @@ def test_both_active_closed_and_orphan_direct_sql_are_refused_on_open(store, ser
     store.close()
     with pytest.raises(ValueError, match="lifecycle"):
         SQLiteStore(directory)
+
+
+def test_existing_unsupported_journal_profile_is_refused_without_conversion(store, monkeypatch):
+    directory = store.directory
+    store.close()
+    before = {p.name: p.read_bytes() for p in directory.iterdir()}
+    original = SQLiteStore._probe
+    class UnsupportedProfile:
+        def __init__(self, inner): self.inner = inner
+        def __getattr__(self, name): return getattr(self.inner, name)
+        def execute(self, sql, *args):
+            if sql == "PRAGMA journal_mode":
+                class Result:
+                    def fetchone(self): return ("wal",)
+                return Result()
+            return self.inner.execute(sql, *args)
+    monkeypatch.setattr(SQLiteStore, "_probe", lambda self: UnsupportedProfile(original(self)))
+    def forbidden(self):
+        pytest.fail("Unsupported profile must be rejected before writable connection/profile changes")
+    monkeypatch.setattr(SQLiteStore, "_connect", forbidden)
+    with pytest.raises(ValueError, match="no automatic conversion"):
+        SQLiteStore(directory)
+    assert {p.name: p.read_bytes() for p in directory.iterdir()} == before

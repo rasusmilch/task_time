@@ -8,8 +8,8 @@ The [product contract](TIMESHEET_REQUIREMENTS.md) owns acceptance semantics;
 the [roadmap](ROADMAP.md) owns sequencing and completion gates;
 [ARCHITECTURE.md](ARCHITECTURE.md) owns the selected Tkinter/SQLite target;
 [Design Notes](../DESIGN_NOTES.md) owns retained unshipped JSONL source/limitations. [AGENTS.md](../AGENTS.md) routes repository work;
-[README.md](../README.md) describes status; [BUILDING.md](../BUILDING.md) owns
-Windows packaging instructions; [CHANGELOG.md](../CHANGELOG.md) is the sole
+[README.md](../README.md) describes status; [RUNNING.md](../RUNNING.md) owns
+Python-source setup and native deployment checks; [CHANGELOG.md](../CHANGELOG.md) is the sole
 historical change record. Tests are evidence, not independent product authority.
 An expectation below does not establish an existing test or a passing result.
 Export/confirmation tests follow the selected
@@ -50,8 +50,8 @@ These levels describe applicability, not a compulsory sequence for every task.
 | B — Affected regression | Required where neighboring behavior can change. Select existing tests from source dependencies, not a repeated unrelated checklist. |
 | C — Full Python regression | Required for significant integration boundaries and shared accounting, persistence, recovery, application-state or cross-component changes where focused tests cannot establish regression safety; also required for final integrated validation. |
 | D — Application integration | Exercise interacting components and applicable operator workflows: timers, manual work, projects, exports, confirmations and restoration. Mocked service/UI tests alone do not prove real desktop interaction. |
-| E — Windows/platform | Exercise actual Windows UI, filesystem, PowerShell, packaging and installation guarantees where applicable. Linux results cannot establish them independently. |
-| F — Release qualification | Apply the roadmap's final gates: integrated workflow evidence, actual Windows execution, packaging, approved installation/data protection and independent integrated review. Unit tests alone do not qualify a release. |
+| E — Windows/platform | Exercise actual Windows Python-source/Tk, filesystem and installation guarantees where applicable. Linux results cannot establish them independently. |
+| F — Release qualification | Apply the roadmap's final gates: integrated workflow evidence, actual Windows source execution, approved installation/data protection and independent integrated review. Unit tests alone do not qualify a release. |
 
 For Levels A–C, state which suite ran and its actual result; a focused run is not
 a full regression. Levels D–F require evidence of interactions/platforms actually
@@ -60,31 +60,31 @@ qualification remain distinct.
 
 ## Connected SQLite timer evidence
 
-The Stage 1A/1B suites below exercise the shipped `chronicle` source with disposable
+The Stage 1A/1B/1C suites below exercise the shipped `chronicle` source with disposable
 SQLite datasets. This inventory describes assertions, not an automatic passing
 result or native qualification; current command outcomes belong in receipts.
 
 | Suite | Exercised boundary |
 | --- | --- |
-| [test_schema.py](../tests/rewrite/test_schema.py) | Real STRICT/FK/CHECK/UUID constraints, profile/version gates, fresh/reopen/refusal, immutable evidence, active/closed guards and pre-COMMIT orphan postcondition. No hostile database guarantee. |
-| [test_services.py](../tests/rewrite/test_services.py) | Independent UUID task/project operations, atomic same-instant Switch/rollback, exact receipt reuse before stale checks, changed-content rejection, bounded busy, failed COMMIT with open transaction, failed rollback/close, independent committed lookup, lost acknowledgement, unverified retry and immutable active-start audit/precision/DST behavior. Injected failures are not universal power-loss evidence. |
+| [test_schema.py](../tests/rewrite/test_schema.py) | Real DELETE/EXTRA(3)/FK(1), STRICT/CHECK/UUID constraints, readback rejection and transaction-order guards, fresh/reopen/refusal, immutable evidence, active/closed guards and pre-COMMIT orphan postcondition. Version-floor mocks test only gate eligibility, not a substituted SQLite library; real feature tests use the actual linked runtime. Unsupported development journal profiles refuse before writable configuration, without conversion. No hostile database guarantee. |
+| [test_services.py](../tests/rewrite/test_services.py) | Independent UUID task/project operations, atomic same-instant Switch/rollback, exact receipt reuse before stale checks, changed-content rejection, bounded busy including a real shared-reader-blocked rollback-journal COMMIT, failed COMMIT with open transaction, failed rollback/close, independent committed lookup, lost acknowledgement, unverified retry and immutable active-start audit/precision/DST behavior. Injected failures are not universal power-loss evidence. |
 | [test_timekeeping.py](../tests/rewrite/test_timekeeping.py) / [test_accounting.py](../tests/rewrite/test_accounting.py) | Integer microseconds, range/type/canonical-date rejection, bundled IANA rules, gaps/repeats/non-hour transitions, local midnight/week, running cutoff, own/deleted work conservation, sleep/forward elapsed and impossible-observation warnings without refresh writes. No dated writer or quarter-hour implementation. |
 | [test_worker.py](../tests/rewrite/test_worker.py) / [test_bootstrap.py](../tests/rewrite/test_bootstrap.py) | Worker-thread connection lifecycle, exact reconciliation, startup failure, actual separate-process exclusion/ordinary directory aliases, committed active restart and abrupt process exit. Native alias cases skip narrowly where unsupported. Process tests are bounded examples, not hostile/multiwriter qualification. |
 | [test_app.py](../tests/rewrite/test_app.py) | Actual main/mini construction and callbacks with real services/worker; server-delivered X11 task selection/buttons, Start/Switch/Stop, active-start correction, shared totals, slow-worker event delivery, duplicate guards and queued shutdown. Correction cases retain exact drafts/occurrences across real service validation, stale conflict, injected COMMIT rollback and pre-execution unavailability; queued work locks Close/fields, unchanged writes nothing, and unverified editor-local retries retain the same Request through absence/committed lookup. Dispatch tokens reject duplicate completions; unexpected view destruction retains owner evidence. Server-delivered keyboard/mouse cases cover rejection-to-success, repeated selection, blocked main/mini, Escape, editor Retry and the actual toolkit default-No exceptional-exit warning. WM Close is separately exercised through its registered handler. Known completion survives numeric/cleanup failure; cancellation/confirmed exit, read purity and late-result handling remain covered. Additional connected cleanup cases use server input for retry, retain lock ownership after failure, prohibit cancel-back-to-editing once cleanup started, and deliver failed-constructor cleanup to the owning worker. Worker exceptions/queued reads/shutdown are separately covered in test_worker.py. Repeated-interpreter test cleanup is UI-thread-owned; doubles alone do not establish desktop interaction. |
-| [test_interruptions.py](../tests/rewrite/test_interruptions.py) | Separate disposable children killed at before-BEGIN, acquired transaction, partial work facts, receipt-before-COMMIT, after-COMMIT/before-ack and pre-refresh boundaries for Start/Stop/Switch/correction. Independent reopen checks all facts, exact request reuse after newer work, no partial Switch/orphans, active-owner/reopen crashes, checkpoint adjacency, interrupted initialization and accepted-work shutdown. Pipe barriers/bounded waits replace sleep-only timing. Adjacent FULL checkpoint calls do not establish interruption inside SQLite page flushing or universal power-loss safety. |
-| [test_operational_lifecycle.py](../tests/rewrite/test_operational_lifecycle.py) | Persisted midnight/week/DST and simulated sleep continuity, repeated corrections/reopen/Stop, no startup/tick writes, separate-process create/owner races and crash release, late unknown-file preservation, partial/profile/schema/header/version refusal and primary validation plus cleanup diagnostics. Native POSIX permission cases skip only where unavailable; they do not establish Windows ACL/NTFS behavior. Read-only WAL probes may create SQLite sidecars while preserving existing authoritative bytes. |
-| [test_windows_build.py](../tests/rewrite/test_windows_build.py) | Executed preflight prefix/runtime and package-inventory guards, exclusive provenance and hash-lock shape; PowerShell/spec wiring is static only. Actual Windows wheels were separately resolved/hash-checked, not executed by these tests. Native PowerShell parsing, command exit codes, Windows locking, onedir launch and loaded toolkit/SQLite resources remain qualification work in BUILDING. |
-| [test_packaging.py](../tests/rewrite/test_packaging.py), [test_root_launcher.py](../tests/test_root_launcher.py) | Replacement-only root import, package selection/exclusion and spec tzdata collection. Static/import checks are not a native executable build. |
+| [test_interruptions.py](../tests/rewrite/test_interruptions.py) | Separate disposable children killed at before-BEGIN, acquired transaction, partial work facts, receipt-before-COMMIT, after-COMMIT/before-ack and inside a subsequent read transaction for Start/Stop/Switch/correction. Independent reopen checks all facts, exact request reuse after newer work, no partial Switch/orphans, active-owner/reopen crashes, written rollback journal immediately before COMMIT and removed journal after COMMIT, interrupted initialization with existing rollback-journal preservation, and accepted-work shutdown. Pipe barriers/bounded waits replace sleep-only timing. The barriers surround SQLite COMMIT; they do not interrupt its internal journal unlink/page flush or establish universal hardware power-loss safety. |
+| [test_operational_lifecycle.py](../tests/rewrite/test_operational_lifecycle.py) | Persisted midnight/week/DST and simulated sleep continuity, repeated corrections/reopen/Stop, no startup/tick writes, separate-process create/owner races and crash release, late unknown-file preservation, partial/profile/schema/header/version refusal and primary validation plus cleanup diagnostics. Native POSIX permission cases skip only where unavailable; they do not establish Windows ACL/NTFS behavior. |
+| [test_source_runtime.py](../tests/rewrite/test_source_runtime.py), [test_root_launcher.py](../tests/test_root_launcher.py) | Replacement-only root import and src resolution without project installation; forbidden legacy/alternative-provider/builder imports, minimal pinned runtime dependency, builtin sqlite3 identity, offline IANA loading and actionable missing Tk/tzdata errors. These are source-runtime tests, not native Windows qualification. |
 
 A usable display is required for `real_tk` cases. Linux Xorg/XTest evidence does
-not establish native Windows, NTFS, suspend/resume or package usability. SQLite
-feature floor 3.37 is distinct from the supported WAL-reset-fixed runtime floor
-3.51.3 (excluding withdrawn 3.52.0); source tests record the actual linked build.
-Stage 1A is independently accepted. Stage 1B supplies bounded local operational
-experiments and build hardening; native Windows source/NTFS/Tk/PowerShell/onedir
-and actual suspend/resume evidence remain open. Full Stage 1 completion requires
-that evidence and independent adjudication. Core History, dated writers and
-Timesheet/POL-R are later work.
+not establish native Windows/NTFS or actual suspend/resume. The actual Python,
+SQLite source/compile options and DELETE/EXTRA/FK settings are recorded; the GUI
+profile is exercised separately. SQLite 3.37.0+ is the only runtime version floor.
+Stage 1A and Stage 1B portable reliability are independently accepted. Stage 1C
+simplifies the profile/source deployment and retires executable-build assertions.
+Stage 1 functional completion requires independent adjudication of relevant
+engineering evidence. Native Windows source/NTFS/Tk and actual suspend/resume
+remain deployment/pilot evidence, not an executable-build requirement or permanent
+Stage 2 blocker. Core History, dated writers and Timesheet/POL-R are later work.
 
 ## Retained legacy test inventory and limits
 
@@ -150,9 +150,10 @@ implementation. Task 1b adds future obligations below, not passing runtime tests
 Stage 0's documentation gate is independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`; this supplies no SQLite/runtime evidence.
 The rows below are stage acceptance obligations, not automatic passing results.
-Stage 1A is independently accepted on `feature/chronicle-rewrite`. Stage 1B extends
-portable process/cleanup evidence and controlled build inputs; native operational
-and packaged qualification remains pending, so Stage 1 is not Complete.
+Stage 1A and Stage 1B portable reliability are independently accepted on
+`feature/chronicle-rewrite`. Stage 1C uses standard sqlite3 DELETE/EXTRA and direct
+source execution. Independent Stage 1 functional review remains distinct from
+pending native Windows source-deployment/pilot qualification.
 Tests follow the user-selected [architecture](ARCHITECTURE.md) and
 [semantic contract](EXPORT_EVIDENCE_CONTRACT.md); they do not choose stronger
 recovery/platform policy. Integrity tests begin in each slice, not only Stage 4.
@@ -160,10 +161,10 @@ recovery/platform policy. Integrity tests begin in each slice, not only Stage 4.
 | Stage | Applicable evidence |
 | --- | --- |
 | 0 authority | Review complete affected Markdown/current source, all material decisions, current/target separation, incoming relative links/anchors and executable scope. No runtime delivery from documentation. |
-| 1 foundation | Real SQLite recording/reopen, stable task/project IDs, one active timer, atomic Switch at one accepted time, rollback on rejected use cases, exact request reuse before stale checks and changed-content rejection. Verify actual WAL/FULL/foreign-key/constraint behavior, bounded lock failure and truthful commit uncertainty. Early native Windows onedir smoke includes SQLite runtime and offline zone availability. Approved continuous sleep/restart, explicit active-start recovery and uncertain-exit rules now have Stage 1A assertions; native operational qualification remains pending. |
+| 1 foundation | Real SQLite recording/reopen, stable task/project IDs, one active timer, atomic Switch at one accepted time, rollback on rejected use cases, exact request reuse before stale checks and changed-content rejection. Verify actual DELETE/EXTRA/foreign-key/STRICT behavior, bounded lock failure and truthful commit uncertainty. Source startup includes the actual built-in SQLite runtime and offline zone availability. Native Windows source evidence is required before deployment/pilot, not as an executable gate. Approved continuous sleep/restart, explicit active-start recovery and uncertain-exit rules now have Stage 1A assertions; native operational qualification remains pending. |
 | 2 recording | Integer-unit mixed accounting, genuine/date-only shape integrity, stable work UUID/revision/current references, correction/deletion history, no-op purity, stale drafts, whole-entry segment editing, precise unchanged endpoints, minute changes, DST/UTC, all week starts, applied periods/unapplied drafts/session sorting and all-reader gate before exposed writers. |
 | 3 Timesheet AND POL-R | Connected frozen preview/full-week quarter-hour suggestions and saved-report recovery; explicit whole/checked/manual absolute quarter confirmations, complete reviewed source, exact acknowledgements, Unknown/zero, stale priors, daily gaps/adjustments/coverage and reminders. External reporting/zero-entry validation before affected official use. No pilot without these. |
-| 4 stabilization | Integrated interruption/commit ambiguity, second-instance refusal, queued shutdown/restore invalidation, real backup/restore, upgrades, storage faults, native Tk and packaged Windows. Earlier slices already test their integrity boundaries. |
+| 4 stabilization | Integrated interruption/commit ambiguity, second-instance refusal, queued shutdown/restore invalidation, real backup/restore, upgrades, storage faults, native Tk and Windows source operation. Earlier slices already test their integrity boundaries. |
 | 5 complete core pilot | Fresh representative reporting week: timer/manual/correction, full/partial frozen quarter-hour exports, whole/checked/manual/zero/Unknown confirmation, explained rounding, daily allocation agreement/coverage, reminders and restore without workarounds. External redistribution and zero-entry treatment validated; independent review/native evidence, not a timer-only pilot. |
 | 6 optional | Only adjudicated allocation/convenience/external integration outcomes. No optional limit blocks Actual; core POL-R is already complete. |
 
@@ -209,7 +210,7 @@ slot, new request ID or visible widget/file as authority for uncertain results.
 
 Verify one worker owns its connection and database/file I/O, no arbitrary sharing
 or `check_same_thread=False`, and bounded lock handling. Test supported SQLite
-backup captures committed WAL contents, independently validates, restores and
+backup captures committed facts consistently, independently validates, restores and
 reopens all work/export/confirmation history. Do not test a live main-file copy
 as a valid backup. Protect future rewritten-data schema upgrades and reject
 unsupported versions truthfully. No legacy import/compatibility fixture obligation.
@@ -379,19 +380,21 @@ unsuitable target safe.
 
 ## Windows desktop and release qualification
 
-Native Windows is required for applicable desktop, filesystem, PowerShell and
-packaged qualification. Early Stage 1 onedir smoke starts this evidence, not final
-qualification. Test actual SQLite profile/runtime, bundled offline timezone rules,
-main/mini controls, inline History, Timesheet/POL-R confirmation, reminders,
-publication/overwrite, backup/restore and queued shutdown. A package that starts
-but omits core POL-R is not a qualified pilot.
+Native Windows source operation is required before actual deployment/complete core
+pilot: actual Python/built-in SQLite/Tk, offline IANA rules, writable NTFS ownership,
+persisted timers, main/mini, active-start correction, modal input/focus, exceptions
+and ordinary close/reopen. Actual suspend/resume needs native evidence. Later
+inline History, Timesheet/POL-R, reminders, publication and backup/restore require
+native validation when delivered. A source launch without core POL-R is not a
+qualified complete pilot. There is no executable-package qualification requirement.
 
-Inspect [BUILDING.md](../BUILDING.md), [build.ps1](../scripts/build.ps1),
-[run.ps1](../scripts/run.ps1) and metadata before selecting commands. Current
-scripts build JSONL source and install dependencies/remove build outputs; do not
-run them as a documentation check. Linux Tk results do not establish Windows Tk,
-NTFS, packaging or installation. Source and packaged checks are distinct. No
-release/merge approval follows from a successful build/test run alone.
+Inspect [RUNNING.md](../RUNNING.md), [run.ps1](../scripts/run.ps1) and metadata before
+selecting commands. The source launcher needs only a permitted Python environment
+with Tk/sqlite and pip-installed tzdata, not an editable build. No automatic
+installation, builder or output cleanup is part of launch. Linux tests cannot
+establish Windows Tk/NTFS or deployment permission. Missing work-computer access
+does not permanently block Stage 2 development. No release/merge approval follows
+from successful tests or source startup alone.
 
 ## User-data protection
 

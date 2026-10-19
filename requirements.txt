@@ -1,2 +1,2 @@
-tkcalendar>=1.6.1
-tzlocal>=5
+# Direct-source runtime; retained legacy test dependencies are in pyproject.toml [test].
+tzdata==2026.5

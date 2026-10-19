@@ -28,7 +28,7 @@ Timesheet and POL-R completeness remain later gates; the foundation is not a pil
 One local desktop application operates one selected dataset with one serialized
 application writer. The replacement starts with fresh data. No historical import,
 migration, old schema/API support, automatic old-data discovery, dual-write or
-parallel legacy runtime is required. Replacement packaging ships one runtime.
+parallel legacy runtime is required. Direct Python source execution selects one runtime.
 Temporary old source during development creates no compatibility obligation.
 
 Existing files must remain protected during development. Absence of a release
@@ -455,9 +455,15 @@ coordinated main/mini Actual. It does not discover or modify the former default
 JSONL directory. The retained `task_timer` package and its tests are unshipped
 historical/semantic evidence, not a parallel runtime or compatibility guarantee.
 
-Stage 1A is independently accepted. Stage 1B adds bounded portable interruption,
-ownership/cleanup tests and controlled Windows build inputs; native operational
-and package qualification remains pending, so Stage 1 is not Complete.
+Stage 1A is independently accepted. Stage 1B portable interruption/ownership and
+cleanup reliability is independently accepted at `1e84a043c1c055aced9b8c4b000ef766bbf6d178`.
+Stage 1C selects built-in sqlite3, DELETE/EXTRA/foreign keys, SQLite 3.37.0+ STRICT
+and direct Python execution with pinned pip-installable tzdata. No production
+SQLite databases exist; development datasets are disposable without automatic
+conversion/deletion. Executable-build and WAL-reset version requirements are
+superseded. Stage 1 functional acceptance awaits independent review; native
+Windows source evidence remains required before deployment/pilot, not as a
+permanent Stage 2 development blocker.
 Stage 2 manual timed/dated writers, History/inline historical correction and week
 settings are not shipped. Stage 3 frozen export/confirmation/reconciliation,
 quarter-hour allocation and weekly reminders are not shipped. Retained JSONL
@@ -496,6 +502,8 @@ Stage 0's authority set is independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`. The authorized
 `feature/chronicle-rewrite` now contains the approved Stage 1A connected timer
 foundation, independently accepted at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`.
-Stage 1B portable engineering does not replace required native Windows evidence
-or independent Stage 1 completion adjudication. Later recording and mandatory POL-R
+Stage 1B portable reliability is accepted. Stage 1C source/runtime simplification
+requires independent Stage 1 functional adjudication; native Windows source
+qualification is separate and remains required before real deployment/pilot.
+Later recording and mandatory POL-R
 remain approved, unimplemented stages. Open policies stay reserved before their affected work.
