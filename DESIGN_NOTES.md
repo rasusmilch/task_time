@@ -26,6 +26,14 @@ History → inline editor; recursive metadata-editor routing below remains curre
 code only. POL-R is core before pilot, not optional later expansion. Old Phase 2
 acceptance remains bounded historical JSONL service evidence, not a SQLite gate.
 
+The newly selected [quarter-hour contract](docs/EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
+is **not implemented here**. Current decimal reports/confirmation cells use integer
+hundredths and the daily service uses Actual-as-Enter; there is no full-week
+upward distribution or frozen quarter-allocation basis. Those legacy fields and
+tests below must not be read as satisfying the new submission/confirmation units.
+Restored source-coverage/default-selection/acknowledgement guarantees carry into
+the SQLite target semantically, not by adopting these event layouts.
+
 ## Architecture
 
 The app uses an event-sourced model:
@@ -1273,7 +1281,8 @@ directories, real concurrent writers or power-loss behavior.
 effective `(task_id, ISO work_date)` mapping. Each value contains only
 `confirmed_hundredths` and `batch_event_id`; missing keys mean Unknown while zero
 remains an entry. The [semantic owner](docs/EXPORT_EVIDENCE_CONTRACT.md#absolute-confirmation-batches)
-retains absolute batch rules; the schema below describes current JSONL only.
+retains absolute batch integrity with target quarter-hour units; the arbitrary
+hundredth schema below describes current JSONL only, not the new policy.
 
 Confirmation envelopes use the supported schema, canonical UUID and UTC audit
 seconds ending in `Z`. `local_timezone` is audit metadata: exactly a nonempty
@@ -1419,7 +1428,8 @@ change after later work or confirmations. No Confirmed/Delta aggregate balances,
 weekly reconciliation, formatting, presentation/UI or production integration is
 implemented. The response/freshness boundary above describes current source;
 the [semantic contract](docs/EXPORT_EVIDENCE_CONTRACT.md#displayed-reconciliation)
-owns retained Actual/Confirmed/Delta/Enter rules, not this legacy API shape.
+owns revised Actual/Suggested/Confirmed/Delta/gap rules, not this legacy
+Actual-as-Enter API shape or arbitrary hundredth confirmation units.
 
 ## Date-range timesheet service (staged)
 

@@ -21,7 +21,9 @@ requirements take precedence for present selected behavior; decision history
 does not replace current authority or close Open matters.
 [docs/EXPORT_EVIDENCE_CONTRACT.md](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the
 selected frozen-export, decimal-hour, materialization/recovery and absolute
-POL-R batch semantics. ARCHITECTURE owns SQLite transactions; former JSONL
+POL-R batch semantics and the single full-week quarter-hour allocation algorithm.
+Exact Actual/display hundredths are distinct from POL-R quarter units.
+ARCHITECTURE owns SQLite transactions; former JSONL
 envelope/replay/synchronization mechanics are legacy, not replacement requirements.
 Approval does not mean implementation. POL-R confirmation, reconciliation,
 summaries and reminders are core before pilot, not optional expansion.
@@ -49,7 +51,7 @@ legacy behavior as permanent replacement-product policy.
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Active rewrite Stages 0–6, priorities, gates and reserved decisions; old JSONL Phase 2 acceptance is historical. |
 | [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) | Proportional validation scope, evidence requirements and release-qualification boundaries. |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Historical product/architecture decision evidence, rationale, provenance and supersessions. |
-| [docs/EXPORT_EVIDENCE_CONTRACT.md](docs/EXPORT_EVIDENCE_CONTRACT.md) | Selected frozen export, decimal, file verification/recovery and absolute confirmation semantics; not legacy JSONL machinery. |
+| [docs/EXPORT_EVIDENCE_CONTRACT.md](docs/EXPORT_EVIDENCE_CONTRACT.md) | Selected precision domains, single weekly quarter-hour algorithm, frozen export/file rules and complete confirmation-integrity semantics; not legacy JSONL machinery. |
 | [DESIGN_NOTES.md](DESIGN_NOTES.md) | Actual legacy service/event/storage contracts and limitations; not target rewrite instructions. |
 | [BUILDING.md](BUILDING.md) | Actual Windows launch/build scripts and separately selected rewrite qualification obligations. |
 | [pyproject.toml](pyproject.toml) | Python requirement, package dependencies and pytest configuration. |

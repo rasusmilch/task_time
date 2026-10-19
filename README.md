@@ -33,14 +33,27 @@ installation/cutover and cleanup remain Open.
   (Sunday initially), mixed History and inline whole-entry editing.
 - Explicit frozen This week/Last week/Custom preview, independent task selection
   including retained deleted work, exact saved bytes and same-report recovery.
-- Whole/checked/manual absolute POL-R confirmation, explicit zero versus Unknown,
-  stale-prior rejection, daily Actual/Confirmed/Delta/Enter, weekly summaries and
-  required reminders. Save never confirms, resets timers or dismisses reminders.
+- Per-task full-week upward quarter-hour suggestions, deterministic worked-date
+  distribution and no carryover; partial Custom reports retain the complete basis.
+  Whole/checked/manual absolute quarter-hour confirmation, explicit zero/Unknown,
+  full source integrity, exact stale acknowledgements, daily reconciliation,
+  weekly summaries and required reminders. Save never confirms, resets timers or
+  dismisses reminders.
 
-Mandatory: Actual 5.00, Confirmed 3.00 → Delta +2.00, Enter 5.00. Confirm 5.00 →
-Delta 0.00. Correct Actual to 2.50 against 3.00 → Delta -0.50, Enter 2.50, with old
-exports/confirmations unchanged. Unknown gives Unverified Delta; Enter is whole
-current Actual. Displayed hundredths round task/day once; rollups sum cells.
+Keep exact Actual, displayed Actual hundredths and POL-R quarter units distinct.
+Enter/Suggested POL-R is the valid daily allocation, **not arbitrary daily Actual**.
+Daily Delta remains displayed Actual minus known Confirmed; suggested-entry gap
+compares allocation with confirmation. Explain the exact weekly upward adjustment
+without adding work. Unknown is not zero; an unconfirmed zero-suggestion worked
+day is not automatically reconciled. See the single
+[algorithm and examples](docs/EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation).
+
+Compatible mandatory cases remain: Actual 5.00, Confirmed 3.00 → Daily Delta +2.00,
+Suggested 5.00; explicit confirmation 5.00 gives gap 0.00. Correct Actual to 2.50
+against 3.00 → Daily Delta -0.50, Suggested 2.50. Old evidence never changes.
+Employer/customer redistribution approval and external zero-entry treatment need
+validation before affected Stage 3 official reporting/pilot. The calculation is
+user-approved, not independently established external compliance.
 
 Stage 1 is a working timer **engineering slice, not complete MVP/pilot**. Stage 2
 completes recording/History; Stage 3 completes frozen Timesheet **and POL-R**;
@@ -83,7 +96,9 @@ monthly reminders and widget-retained retries are **not target mechanisms**.
 The rewrite uses integer microseconds, stable revisions, SQLite request receipts,
 callback-driven presentation, inline editing and saved-report recovery independent
 of a widget. Recursive metadata-editor History routing is superseded as target
-navigation; current source is unchanged by this documentation.
+navigation; current source is unchanged by this documentation. Weekly quarter-hour
+allocation is not implemented: legacy confirmations use arbitrary integer
+hundredths and the staged daily service still uses Actual-as-Enter.
 
 ## Run from source (repo root)
 

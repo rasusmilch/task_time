@@ -66,16 +66,33 @@ Stage 3 POL-R workflow and is not pilot-ready.
 **Selected / not implemented in the rewrite.** Explicit This week/Last week/Custom
 preview, independent All/Selected tasks, frozen export commit, protected text
 publication and saved-report recovery; explicit whole/checked/manual absolute
-confirmation, defer/later review, daily Actual/Confirmed/Delta/Enter, Unknown/zero,
-stale-prior safety, weekly summaries and required reminder scheduling.
+quarter-hour confirmation, defer/later review, daily Actual/Suggested/Confirmed,
+Daily Delta, suggested-entry gap, exact weekly adjustment, Unknown/zero,
+stale-prior safety, weekly summaries and required reminder scheduling. Use the
+single [full-week allocation contract](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation),
+including partial Custom and provisional current weeks, not daily Actual rounding
+as submission input. This is core submission distribution, not optional budgets.
 
 Gate: exact reviewed bytes and immutable evidence; registration before publication;
-retry without recalculation/widget authority; partial/unchecked/explicit-zero and
-defer scenarios; mandatory 5.00/3.00/+2.00/5.00 then 5.00 confirmation/zero Delta;
-2.50/3.00/-0.50/2.50 correction with old evidence intact. Current Actual remains
-independent. Previous week checked every application-used local day including
+retry without recalculation/widget authority; exact weekly ceiling/largest-remainder
+examples C–G, earlier-date ties, no zero-work allocation/carryover, full-week frozen
+basis and scoped cells. Export-linked confirmation uses frozen suggested quarters:
+positive defaults include already-equal values, zeros are explicit, complete
+reviewed source includes unchecked cells, and acknowledgements exactly match selected stale conflicts.
+Fresh selected-prior changes reject the whole batch; unchecked newer confirmations
+need not invalidate checked selection. Partial/zero/defer and compatible A/B
+5.00/3.00/+2.00/5.00 and 2.50/3.00/-0.50/2.50 cases retain immutable evidence.
+Corrections may reallocate other dates, not historical confirmations. Current
+Actual remains exact and independent. Explain rounding without hiding Unknown,
+daily allocation mismatch or incomplete coverage behind equal weekly totals.
+Previous week checked every application-used local day including
 restart/rollover, current week Friday/Monday, explicit Dismiss today. No automatic
 confirmation, Reset, timer operation or reminder dismissal on Save/open.
+
+External employer/customer authorization for redistribution and worked-day 0.00
+versus omitted/no-entry behavior require validation before the affected connected
+official reporting workflow/pilot. Do not mark an unconfirmed zero-suggestion day
+reconciled or reopen the approved formula because that boundary is unverified.
 
 These are mandatory core outcomes, not Stage 6 additions. Ordinary default
 protection and separately confirmed overwrite both need connected evidence.
@@ -97,10 +114,15 @@ broader than isolated unit success.
 
 **Selected / not started.** Use a deliberately fresh dataset for daily main/mini
 timing, manual work/corrections, frozen exports, whole/partial/zero/manual POL-R
-confirmation, Unknown, daily/weekly reconciliation, reminders and restore.
+quarter-hour confirmation, Unknown, daily/weekly reconciliation, reminders and
+restore. Exercise full/partial-week reporting, provisional suggestions and their
+changes after correction, explained upward adjustment, daily allocation agreement
+and confirmation coverage, including worked dates with zero suggestion.
 
 Gate: representative reporting-week end-to-end workflow without counting errors
-or UI workarounds, on the qualified native deployment. **No core signoff when
+or UI workarounds, on the qualified native deployment. External redistribution
+and zero-entry treatment must be validated; correct mathematics alone is not
+employer/customer compliance evidence. **No core signoff when
 POL-R reconciliation/confirmation/reminders are absent.** Optional allocations
 are not a pilot gate. Independent review and actual platform evidence are required;
 passing tests or a successful package alone are not release approval.
@@ -124,6 +146,7 @@ or allocation may prevent recording Actual.
 | Abnormal clock/sleep/persisted-timer restart behavior | Stage 1 recording/reopen before affected code. |
 | Dataset timezone changes | Stage 1 configuration / Stage 2 accounting before affected code. |
 | Exact fresh release path, installation/cutover, retired-data cleanup | Before affected deployment and Stage 5 setup; no startup deletion or legacy import. |
+| External redistribution authorization and worked-day zero/omitted-entry treatment | Before affected Stage 3 connected official reporting and Stage 5 pilot; mathematical policy is selected, not reopened. |
 | Replacement template semantics | Before optional Stage 6 work. |
 | Allocation controls, defaults/overrides and week-change effects | Before optional Stage 6 work. |
 

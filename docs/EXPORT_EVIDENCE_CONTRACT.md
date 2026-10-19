@@ -3,7 +3,9 @@
 ## Authority and availability
 
 This owner specifies selected frozen report, decimal, publication/verification,
-absolute confirmation and reconciliation semantics. [ARCHITECTURE.md](ARCHITECTURE.md)
+absolute confirmation and reconciliation semantics, including the selected
+weekly quarter-hour submission policy. The full allocation algorithm lives only
+in this owner; other documents reference it. [ARCHITECTURE.md](ARCHITECTURE.md)
 owns replacement SQLite schema/transaction/thread boundaries;
 [TIMESHEET_REQUIREMENTS.md](TIMESHEET_REQUIREMENTS.md) owns product behavior;
 [ROADMAP.md](ROADMAP.md) sequences core delivery before pilot. Approval is not
@@ -39,7 +41,8 @@ a committed request receipt in the same transaction. Preserve:
 | Calendar | Explicit IANA report timezone and selected week-start weekday (Monday=0, Sunday=6). |
 | Scope | All/explicit UUID selection, original request and deleted-task inclusion. Preserve any supported task/project/Unassigned request rather than infer it later. |
 | Identity/labels | Task UUIDs, historical names and current-at-export project UUID/group labels; duplicate names remain distinct. |
-| Cells | Task/day full-precision integer duration and displayed integer hundredths. |
+| In-scope cells | Exact task/day Actual microseconds, displayed Actual hundredths and suggested POL-R integer quarter counts. Actual and suggestion are visibly separate. |
+| Full-week basis | For every included task/week intersecting the report, all seven civil dates with exact reviewed daily Actual and computed suggestions, cutoff, timezone and week convention, sufficient to prove/reproduce allocation without later Actual. Context outside report dates is not an extra report/confirmation cell. |
 | Report | Complete exact text/UTF-8 bytes and SHA-256 digest. |
 | Destination | Original preferred destination if supplied; alternative publication paths do not mutate evidence. |
 
@@ -50,17 +53,24 @@ separate action from nonpersistent preview preparation.
 
 ## Decimal-hour representation
 
-Exports and POL-R-facing values have exactly two decimal places. Work remains
-exact in integer microseconds. One hundredth of an hour is 36 seconds:
-`hundredths = ROUND_HALF_UP(duration_microseconds / 36_000_000)` using exact
-integer/decimal arithmetic, not binary-float accumulation/rounding.
+Keep three precision domains separate:
 
-Round each task/day **once**. Weekly/project/overall displayed rollups sum those
-hundredths, not independently rounded raw aggregates. Project subtotals are
-non-additive. Do not add exported hundredths back to Actual. Positive underlying
-work rounding to 0.00 remains nonzero and is not automatically confirmed zero.
+| Domain | Authoritative or derived representation |
+| --- | --- |
+| Actual | Exact nonnegative integer microseconds from genuine intervals or declared date-only amounts. Original work dates/instants/revisions never change because of POL-R rounding. |
+| Displayed Actual | Completed-minute HH:MM where selected, or task/day ROUND_HALF_UP integer hundredths of an hour. Displayed Actual rollups sum these task/day hundredths. |
+| POL-R submission/confirmation | Nonnegative integer **quarter-hour units**, displayed with two decimal places. Five quarters display 1.25. Do not store arbitrary hundredths as confirmed POL-R. |
 
-| Work | Decimal hours |
+One quarter is 15 minutes = 900 seconds = **900,000,000 microseconds** =
+25 decimal-hour hundredths. Actual display conversion remains
+`actual_hundredths = ROUND_HALF_UP(actual_microseconds / 36_000_000)`.
+Use exact integer/decimal arithmetic, never binary floating point for work,
+submission or rounding. Round displayed Actual task/day once; sum those cells for
+its weekly/project/overall display, without independently rounding raw aggregates
+or adding project subtotals again. That display rounding is **not** input to the
+weekly submission calculation. Neither rounded display nor submission adds Actual.
+
+| Work | Displayed Actual hours (not necessarily valid POL-R input) |
 | --- | --- |
 | 3 hours | 3.00 |
 | 3 hours 15 minutes | 3.25 |
@@ -69,10 +79,89 @@ work rounding to 0.00 remains nonzero and is not automatically confirmed zero.
 | 45 minutes | 0.75 |
 | 1 minute | 0.02 |
 
+Manual decimal entry must resolve exactly to a nonnegative integer quarter count;
+reject non-quarter values rather than round them into a confirmation. Validate
+integer units/types (excluding bool/float) and supported bounds. Displayed Actual
+hundredths and submission quarter counts are different quantities, not aliases.
+
+## Full-week quarter-hour allocation
+
+This is the single complete algorithm owner. For each task and each complete
+seven-date local calendar week, use the report's selected week-start convention,
+explicit accounting cutoff and dataset IANA timezone. Let `Q = 900_000_000`
+microseconds and `a[d]` be exact nonnegative Actual microseconds for each date.
+Validate date representability and integer/intermediate/result bounds first;
+never clip a required week or overflow a stored duration/conversion.
+
+1. Set `W = sum(a[d])` over all seven dates.
+2. Set `weekly_target_quarters = (W + Q - 1) // Q`, the **upward ceiling**.
+   Zero work yields zero; any positive sub-quarter week yields one; an exact
+   quarter multiple remains exact. Do not use nearest rounding, daily ceilings,
+   displayed Actual decimals, project totals or application totals as its basis.
+3. For each date set `base[d] = a[d] // Q`, `remainder[d] = a[d] % Q` and
+   `suggested_quarters[d] = base[d]`.
+4. Set `extra = weekly_target_quarters - sum(base[d])`.
+5. Eligible dates have **positive remainder**. Order them by descending exact
+   remainder, then ascending local civil date. Add exactly one quarter to each
+   of the first `extra` dates. No date gets a second extra quarter in this pass.
+
+Proof of sufficiency: write `R = sum(remainder[d])` and let `m` be the number of
+positive remainders. Then `extra = ceil(R / Q)`. If `m = 0`, `R = extra = 0`.
+Otherwise `0 < R < m * Q`, so `1 <= extra <= m`. There are always enough eligible
+dates. Zero-work dates have zero base/remainder and never receive an allocation.
+
+Every suggestion is a nonnegative integer quarter count; their sum is exactly the
+weekly target. The exact adjustment `weekly_target_quarters * Q - W` is nonnegative
+and less than Q (15 minutes). It is not work. Allocation depends only on that
+task's exact week and deterministic tie order, never iteration order or floats.
+No quarters/remainders transfer between tasks or weeks; no persistent carryover
+bank, rounding balance, synthetic work entry or derived-total ledger is created.
+
+### Report scope, partial weeks and provisional work
+
+For This week, Last week or inclusive Custom, calculate the **full seven-day basis**
+for every selected task/week intersecting the requested dates, using the same
+explicit cutoff. Allocate all seven dates, then expose only the requested dates
+and task scope as report/confirmable cells. Multiple weeks are independent.
+Never recompute a separate target from a displayed partial-week subset. Visible
+suggestions need not sum to the full-week target; label scope truthfully rather
+than report that expected difference as an error. Never silently publish/confirm
+out-of-scope task/day cells. Retained full-week source context is immutable proof,
+not permission to extend the reviewed scope or a second current Actual counter.
+
+Timed contributions are capped by the cutoff; existing whole-date attribution,
+including later declared dates within the week, still applies. Do not predict
+future stops. Current-week suggestions are provisional: more work, dated entries
+or corrections can change the target/ranking. Explicit fresh Preview recalculates;
+an already committed export, its suggestions and older confirmations never change.
+A frozen proposal may still be reviewed/confirmed under the expected-prior/stale
+rules below; subsequent Actual alone does not rewrite or invalidate its evidence.
+
+### Mandatory allocation examples
+
+Each row is one task in a Sunday-start week (the initial convention); other
+dates have zero Actual. POL-R values below display integer quarters, not displayed
+Actual rounding inputs. Other week-start choices use their actual seven-date groups.
+
+| Case | Monday Actual | Tuesday Actual | Exact weekly Actual | Weekly target hours | Suggested Mon / Tue | Exact upward adjustment |
+| --- | --- | --- | --- | --- | --- | --- |
+| C — exact total | 1:08 | 1:07 | 2:15 | 2.25 | 1.25 / 1.00 | 0 minutes |
+| D — upward | 1:08 | 1:08 | 2:16 | 2.50 | 1.25 / 1.25 | +14 minutes |
+| E — no carryover | 1:10 | 0:20 | 1:30 | 1.50 | 1.25 / 0.25 | 0 minutes |
+| F — small tie | 0:03 | 0:03 | 0:06 | 0.25 | 0.25 / 0.00 | +9 minutes |
+| G — exact quarters | 0:15 | 0:30 | 0:45 | 0.75 | 0.25 / 0.50 | 0 minutes |
+
+In F, the earlier date wins the equal remainder; Tuesday Unknown stays Unknown.
+In C, a Tuesday-only Custom view still suggests 1.00 using the full week, not an
+independent Tuesday ceiling. E creates no carryover to the next week.
+
 ## Snapshot-first creation and publication
 
-1. Explicit Preview captures one cutoff and calculates the selected work once.
-2. Prepare consistent detached cells/text/context and a stable candidate identity.
+1. Explicit Preview captures one cutoff, calculating selected work with the full
+   intersecting-week context required by the allocation contract.
+2. Prepare consistent detached Actual/suggestion cells, full-week basis, text,
+   scope/context and a stable candidate identity. Show Actual and suggested POL-R
+   separately; no later recalculation belongs in Save.
 3. Changed drafts invalidate readiness; Save requires the reviewed current candidate.
 4. Commit the exact snapshot/cells/request receipt atomically in SQLite, with
    validation and authoritative same-request reconciliation.
@@ -161,72 +250,158 @@ SQLite owner, not archived journal replay or derived snapshot precedence.
 ## Absolute confirmation batches
 
 Use immutable relational confirmation batch/cell evidence, not the old JSONL
-event envelope. One operation has a stable batch/request identity and audit instant. Its nonempty
-selected task/day cells retain:
+event envelope. One operation has a stable batch/request identity and audit instant.
+Its nonempty selected task/day cells retain:
 
-- Task UUID and canonical civil work date.
-- Nonnegative integer absolute confirmed hundredths (not bool/float).
-- Optional source export UUID; export-linked amount equals its frozen cell.
-- Expected prior confirmation identity, or absent for Unknown.
-- Cell-specific stale-export acknowledgement where required.
+- Canonical task UUID and canonical civil work date.
+- Nonnegative **integer absolute quarter count**, excluding bool/float.
+- Optional source export UUID; an export-linked count equals its frozen suggested
+  POL-R quarter count, never its displayed Actual hundredths or current allocation.
+- Expected prior confirmation identity, absent only when that cell is Unknown.
+- Cell-specific stale-export acknowledgement exactly where required below.
 
-Duplicate task/day keys reject. Manual confirmation needs no source export and
-may differ from current Actual/export. Unknown is absent evidence; explicit zero
-is a known value with identity. Keep immutable prior history and relational
-current references; do not persist independent additive balances or Delta.
-A source records frozen provenance, not independently verified external POL-R.
-When workflow relies on a report copy, verify current file bytes; historical
-confirmation validity does not depend on that file remaining available.
+Duplicate keys, invalid dates/identities/units/source relationships reject. Manual
+confirmation needs no export, may differ from Actual/suggestion/export, and must
+still be quarter-constrained with fresh current-prior validation. No source means
+no source-export stale acknowledgement. Unknown is absent evidence; explicit zero
+is known with identity. Do not reinterpret old arbitrary Actual decimals as valid
+quarter-hour confirmations. No legacy schema/import compatibility is required.
+
+Keep immutable prior history and current references, not additive balances or a
+persisted Delta/rounding ledger. A source proves frozen provenance, not independent
+POL-R verification. When workflow relies on a report copy, verify its current
+bytes; historical confirmation does not depend on that file remaining available.
+
+## Reviewed source integrity and default selection
+
+An export-linked proposal is a detached reviewed value, not new authority.
+Validate the complete applicable **in-scope frozen source coverage**, including
+unchecked/zero cells, against authoritative SQLite evidence. Require exact source
+identity, scope/relevant association, canonical task UUID/date, historical task
+name and frozen **suggested quarter count** for every source row. Full-week context
+outside report dates does not become selectable coverage. Never derive source
+cells from widgets, parsed report text, current names or recalculated Actual.
+
+Require unique rows in canonical task-UUID then ISO-date order. Reject missing,
+extra, substituted, duplicated, reordered-as-new-evidence or tampered source rows,
+including unchecked ones. Validate reviewed prior shape: known prior amount and
+identity are both present; Unknown has neither; counts are valid quarter integers
+and stale classifications are actual booleans. Do not silently repair a proposal.
+
+Whole-report default selection is **every in-scope frozen suggestion > 0**,
+including positive amounts already numerically equal to current Confirmed POL-R.
+Do not select by positive raw work or displayed Actual hundredths. Zero suggestions
+are never default-selected, even on positive-work dates. Explicit checked selection
+means exactly those genuine canonical source keys, including zero if specifically
+selected. Reject malformed/duplicate/unknown keys; an empty effective selection is
+an error, never All. Selected input order does not change canonical source/batch
+order. Unchecked confirmations remain untouched.
+
+Newer confirmations on unchecked cells need not invalidate checked selection,
+provided all frozen source coverage is exact and reviewed fields retain valid
+shape. Every **selected** prior identity, amount and stale classification must
+still match fresh authoritative evidence inside the committing transaction.
 
 ## Whole-batch validation, concurrency and stale exports
 
-Within one transaction validate all selected identities, values, source cells,
-reviewed priors and acknowledgements **before** committing the batch/current
-references/receipt. Reject the whole stale/invalid batch; no partial confirmation.
-Unchecked cells and earlier evidence remain untouched. Latest references follow
-committed database ordering, not audit-clock sorting or physical JSONL metadata.
+For a new request, one SQLite transaction validates applicable complete immutable
+source coverage, selected keys/units, reviewed priors and exact acknowledgements before
+committing immutable batch/cells, current references and request receipt. One
+invalid/stale selected cell rejects the **whole batch**, changing no subset.
+Use committed SQLite ordering/current references, never old physical JSONL read
+sequences, UUID order or audit-clock sorting, to establish source precedence.
 
-If a source export predates a newer differing current confirmation, identify the
-specific conflicting cell and require acknowledgement bound to that reviewed
-prior. A changed prior rejects even after acknowledgement; it is not blanket
-permission to overwrite subsequent evidence. Equal source/current values require
-no extra manual entry, but intervening equal-value confirmation still changes the
-reviewed prior. Full and checked workflows use the same rule.
+A source-export stale conflict exists exactly when a selected cell has a source,
+its current confirmation is newer than that export, and its confirmed quarter
+count differs from the frozen proposed count. Acknowledgement keys must equal
+**exactly** the selected conflict keys. Reject missing, extra, duplicate,
+unselected or nonconflicting acknowledgements, blanket acknowledgement, and any
+acknowledgement bound to a changed reviewed prior. Bind consent to the selected
+task/day, frozen proposed count and reviewed prior identity. No acknowledgement
+may be inferred merely from a displayed conflict flag.
 
-Proposals use frozen export amounts/names and latest reviewed priors, never
-recalculated Actual. Ordinary applicable bulk selection does not automatically
-confirm zero; explicit checked zero is allowed. Empty selection is not All.
-Deferral writes nothing; later review obtains fresh priors. Exact batch request
-reuse cannot reapply old values after newer confirmations. Manual confirmation
-records what the user reports externally, not backend verification. No confirmation
-changes Actual, active timer or frozen exports.
+Manual confirmations and equal-value source proposals have no source-export
+acknowledgement requirement. They still require current-prior checks. Even an
+intervening equal-value confirmation changes identity and invalidates a reviewed
+proposal; acknowledgement never bypasses a changed prior. Reject the whole batch
+and require renewed review, without silently refreshing priors or retaining a
+valid subset. Whole and checked selection use the same rules.
+
+Exact committed request reuse returns the original result **before** stale-prior
+checks and cannot reapply old confirmations after newer batches. Different content
+under one request identity fails closed; canonical request comparison cannot
+launder reordered/tampered evidence into a new request under that identity.
+Retain exact request/identity through uncertainty, not a newly generated proposal.
+Deferral writes nothing; later review obtains fresh priors. No confirmation adds
+Actual, changes a timer, rewrites an export or automatically updates POL-R.
 
 ## Displayed reconciliation
 
 | Field | Derived rule |
 | --- | --- |
-| Actual | Current exact task/day work rounded once to integer hundredths. |
-| Confirmed POL-R | Latest absolute confirmed hundredths or Unknown. |
-| Delta | Actual hundredths minus known Confirmed; otherwise Unverified. |
-| Enter in POL-R | Whole current Actual hundredths, never Delta. |
+| Actual | Exact task/day recorded work; HH:MM and displayed Actual hundredths follow their existing conventions. |
+| Suggested POL-R / Enter in POL-R | Current task/day quarter-hour allocation from its full task/week, an absolute replacement value rather than Delta. |
+| Confirmed POL-R | Latest explicitly confirmed absolute quarter count or Unknown; its decimal display converts quarters to hundredths exactly. |
+| Daily Delta | Displayed Actual hundredths minus `25 * confirmed_quarters`; Unknown gives Unverified. |
+| Suggested-entry gap | `suggested_quarters - confirmed_quarters`, formatted in compatible units; Unknown is unresolved, never assumed zero. |
+| Weekly rounding adjustment | Exact full-week target duration minus exact full-week Actual; show accurately in minutes/seconds or exact compatible units, not a rounded visible-subset difference. |
 
-Mandatory: frozen 3.00, another 2.00 work, confirm 3.00 →
-**5.00 / 3.00 / +2.00 / 5.00**. Confirm 5.00 → Delta 0.00.
-Correct Actual to 2.50 against 3.00 → **2.50 / 3.00 / -0.50 / 2.50**.
-Keep older exports/confirmations unchanged. Zero-work dates may have known positive
-confirmation and negative Delta. Underlying positive work rounded to zero remains
-precise. Project rows are informational, never extra cells/work.
+The nonnegative full-week upward adjustment is less than 15 minutes per task and
+is **not additional Actual**. Daily Actual-minus-Confirmed Delta can legitimately
+be nonzero when Confirmed matches the approved allocation. Conversely, equal
+weekly totals do not reconcile mismatching daily allocations. Distinguish Unknown/
+not confirmed, suggestion matches confirmation, known allocation mismatch,
+incomplete review/confirmation coverage, explained weekly upward adjustment and
+stale proposals after later work/correction/confirmation. Do not collapse these
+into numeric Delta or a weekly net. No independent persisted differences/ledger.
 
-Daily and weekly presentation must not hide Unknown/disagreement through opposing
-weekly deltas. Required previous-week/application-used-day and current-Friday/
-Monday reminders compare task/day truth; explicit Dismiss today is separate from
-opening/Save. No external outage blocks Actual. Complete this core Stage 3 workflow
-before pilot; it is not optional Stage 6 scope.
+A positive-work day may receive a zero suggestion. That does not mean no work,
+known zero, or complete reconciliation. Never auto-confirm it or default Unknown
+to zero. Explicit zero remains possible through reviewed confirmation. External
+zero-entry versus omitted/no-entry behavior needs validation before affected
+Stage 3 connected official reporting and pilot. Until resolved, an unconfirmed
+zero-suggestion date is not fully reconciled solely because its suggestion is zero.
+
+### Compatible mandatory confirmation examples
+
+A: frozen suggestion 3.00, then 2.00 more work on that date →
+**Actual 5.00 / Confirmed 3.00 / Daily Delta +2.00 / Suggested 5.00**.
+After explicit confirmation of 5.00, Confirmed is 5.00 and suggested-entry gap is
+0.00 (Daily Delta also 0.00). B: correct Actual to 2.50 against Confirmed 3.00 →
+**Daily Delta -0.50 / Suggested 2.50**. Old exports/confirmations stay unchanged.
+These exact-quarter compatible cases do not prove arbitrary Actual decimals are
+valid POL-R inputs or that Enter always equals displayed daily Actual.
+
+Correction/deletion recalculates current suggestions from effective work; it may
+change other dates' suggestions in the same task/week as target/ranking changes.
+Preserve historical frozen allocations and confirmation identities/values. Show
+new mismatches and require explicit review/confirmation, never automatically
+redistribute confirmations or create synthetic work/cross-week carryover. Older
+frozen reports remain confirmable only with their frozen suggestions and the
+reviewed-prior/stale protections above.
+
+Daily/weekly summaries and required previous-week/application-used-day plus
+current-Friday/Monday reminders retain cell-level Unknown, coverage and allocation
+mismatches even when weekly sums agree. Open/Save never dismisses or confirms.
+External unavailability does not block Actual. This is mandatory core Stage 3
+before pilot, not optional allocation-budget Stage 6 work.
+
+## External-policy validation boundary
+
+POL-R's 0.25-hour daily restriction is accepted **user-provided context**. The user
+approved Chronicle's weekly ceiling/distribution calculation. Employer/customer
+authorization to redistribute hours across days, and external treatment of 0.00
+on a worked day, are **not independently verified**. Validate those boundaries
+before affected Stage 3 connected official reporting/pilot use. Do not claim
+external compliance, synchronize/query POL-R automatically, reopen the approved
+formula because of that uncertainty, or modify Actual date attribution.
 
 ## Implementation boundaries and remaining decisions
 
 Current JSONL preparation/registration/materialization/status and confirmation
 services are evidence of semantic foundations, **not SQLite implementation**.
+They do not implement the newly selected quarter-hour policy. Their arbitrary
+hundredth confirmations/Actual-as-Enter are current legacy behavior, not the target.
 Their exact event layouts, replay, synchronization and retained Save-widget
 recovery are superseded target mechanisms; see [current source](../DESIGN_NOTES.md).
 Do not reuse legacy checkpoint/submission markers as absolute POL-R evidence.

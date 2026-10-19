@@ -16,7 +16,18 @@ receipts or commits. No release or production qualification is implied below.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete
-  core pilot. Allocations/conveniences remain optional and separately decided.
+  core pilot. Separate exact Actual/display hundredths from selected POL-R integer
+  quarter-hour units: round each task's full week upward, distribute by largest
+  remainder/earlier-date ties, retain full basis for partial reports and carry no
+  residual across weeks. Enter is the suggested allocation, with separate Daily
+  Delta, suggested-entry gap and explained weekly adjustment. Freeze original
+  suggestions/context; never redistribute historical confirmations. Restore full
+  reviewed source coverage including unchecked cells, positive-default selection
+  including already-equal values, and exact selected stale acknowledgements.
+  This changes target authority only; current JSONL behavior is unchanged.
+  External redistribution/zero-entry policy needs validation before official
+  reporting/pilot. Allocation budgets/conveniences remain optional and separately
+  decided.
   Preserve fresh-data scope without migration/compatibility or startup deletion;
   installation/cutover, clock/restart, timezone changes and template/allocation
   decisions remain reserved at their first affected gates.

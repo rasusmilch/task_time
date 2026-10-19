@@ -10,7 +10,8 @@ core pilot signoff; allocations are optional expansion.
 This document owns user-selected behavior. [ARCHITECTURE.md](ARCHITECTURE.md)
 owns the selected Python + Tkinter/ttk + transactional SQLite design;
 [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md) owns frozen export,
-decimal and confirmation semantics. [ROADMAP.md](ROADMAP.md) owns Stages 0–6.
+displayed-Actual decimal, quarter-hour submission and confirmation semantics.
+[ROADMAP.md](ROADMAP.md) owns Stages 0–6.
 [DESIGN_NOTES.md](../DESIGN_NOTES.md) describes the current JSONL implementation,
 not the replacement architecture. Source/tests establish implementation/evidence,
 not product choices. [DECISIONS.md](DECISIONS.md) preserves superseded approvals.
@@ -177,7 +178,7 @@ allocation override effects remain reserved for optional expansion.
 | --- | --- |
 | Actual | Current genuine/date-only work by task UUID and local date. |
 | Exported | Immutable snapshot of a reviewed Timesheet's values, labels and context. |
-| Confirmed POL-R | Latest explicitly user-confirmed absolute external task/day value. |
+| Confirmed POL-R | Latest explicitly user-confirmed absolute external task/day value in integer quarter-hour units, or Unknown. |
 
 Export and confirmation never add Actual. No automatic POL-R synchronization or
 independent backend verification is selected. User confirmation records reported
@@ -185,32 +186,90 @@ external content, not an independently verified query.
 
 ## SELECTED — Decimal-hour replacement output
 
-Exports and POL-R fields show exactly two places. Keep underlying work exact in
-integer microseconds. Round each task/day once with ROUND_HALF_UP to integer
-hundredths of an hour; sum those cells for weekly/project/overall displayed
-rollups. Never independently round raw aggregates for those rollups or add
-project subtotals as additional work. Positive work rounding to 0.00 remains
-nonzero internally and is not automatically confirmed as zero. See the
-[decimal contract](EXPORT_EVIDENCE_CONTRACT.md#decimal-hour-representation).
+Keep exact Actual, displayed Actual and POL-R submission distinct. Exact Actual
+retains integer microseconds, genuine instants and declared civil dates. Displayed
+Actual uses the existing completed-minute HH:MM or two-place decimal convention:
+ROUND_HALF_UP once per task/day to integer hundredths; displayed Actual rollups
+sum those cells rather than independently round raw aggregates. This is display
+only, not input to submission rounding. Project subtotals are not additional work.
+
+Proposed and manually/export-confirmed POL-R values must instead be nonnegative
+integer **quarter-hour units**, displayed as multiples of 0.25. Reject invalid
+non-quarter confirmation input, rather than round it into evidence. Positive work
+or a zero suggestion never automatically creates a zero confirmation. See the
+[precision contract](EXPORT_EVIDENCE_CONTRACT.md#decimal-hour-representation).
+
+## SELECTED — Weekly POL-R suggestions
+
+For each task independently, always round its exact complete-week Actual **up**
+to a quarter-hour total. Distribute that total over worked dates by largest exact
+remainder, breaking ties by earlier work date. Zero-work dates receive nothing;
+no date receives more than one additional quarter in the remainder pass. There
+is no cross-task/cross-week transfer or carried remainder. Never modify Actual,
+work dates/revisions or fabricate work to represent the upward adjustment.
+
+Use the selected week-start convention, dataset IANA zone and one explicit
+accounting cutoff. This week, Last week and arbitrary inclusive Custom views
+always calculate the full seven-day basis for every intersecting task/week, then
+show only requested dates/tasks. Partial views need not sum to the complete-week
+target; do not recompute from a subset or expose out-of-scope confirmation cells.
+Freeze sufficient full-week context to prove the reviewed distribution later.
+
+Current-week suggestions are provisional. Further work, later declared dated
+amounts or correction may change target/ranking, including suggestions on other
+dates of that task/week. Timed work remains cutoff-capped; existing future-dated
+amount semantics remain binding. No predicted stop or automatic POL-R adjustment.
+The exact algorithm, proof and mandatory examples have one
+[technical owner](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation).
 
 ## SELECTED — Daily reconciliation
 
-Show Actual, Confirmed POL-R, Delta and Enter in POL-R per task/day. Unknown is
-not confirmed zero. Unknown Confirmed gives **Unverified** Delta. When known,
-Delta is signed displayed Actual hundredths minus confirmed hundredths; Enter
-is **whole current Actual**, never Delta or an additive increment. Zero Delta
-means agreement with user confirmation, not independent external verification.
-Weekly summaries preserve cell-level Unknown/disagreement even when signed
-differences cancel. Recording Actual is independent of reconciliation availability.
+Show distinct task/day values:
+
+- **Actual:** exact recorded work with its existing HH:MM/decimal display.
+- **Suggested POL-R / Enter in POL-R:** the current full-week allocation for that
+  date, an absolute quarter-hour replacement value, not arbitrary daily Actual
+  decimals and not Delta.
+- **Confirmed POL-R:** latest explicitly confirmed absolute quarter-hour value,
+  or Unknown; known zero retains confirmation identity.
+- **Daily Delta:** displayed Actual hundredths minus the confirmed quarter amount
+  converted exactly to hundredths when known; otherwise Unverified. Keep this
+  diagnostic, but do not treat every nonzero Actual-minus-Confirmed value as an
+  allocation mismatch.
+- **Suggested-entry gap:** suggested minus known confirmed amount; Unknown stays
+  unresolved, never an invented zero prior.
+- **Weekly rounding adjustment:** exact complete-week target duration minus exact
+  weekly Actual, accurately expressed in minutes/seconds or compatible exact units.
+  It is nonnegative and less than 15 minutes per task/week, not extra work.
+
+Distinguish Unknown/not confirmed, matching suggestion/confirmation, known daily
+allocation mismatch, incomplete review/confirmation coverage, explained upward
+rounding and stale proposals after subsequent work/correction/confirmation.
+Matching weekly totals cannot hide daily mismatches; nonzero Daily Delta may be
+explained when Confirmed matches the approved allocation. Do not persist separate
+Delta, suggestion or rounding-balance counters. See the
+[reconciliation contract](EXPORT_EVIDENCE_CONTRACT.md#displayed-reconciliation).
+
+A worked day may receive 0.00 Suggested POL-R without becoming zero Actual.
+Never auto-confirm zero or mark an Unknown cell fully reconciled solely because
+its suggestion is zero. Explicit checked/manual zero remains supported. External
+zero-entry versus omitted/no-entry treatment requires validation before affected
+Stage 3 connected official reporting and pilot; it does not reopen the formula.
 
 ## SELECTED — Mandatory 3:00 → 5:00 contractual behavior test
 
-Save a 3.00 export, record 2.00 more, then confirm the frozen 3.00 was entered:
-**Actual 5.00 / Confirmed 3.00 / Delta +2.00 / Enter 5.00**. Confirm the external
-cell at 5.00: Delta becomes 0.00. Earlier export/confirmation stays unchanged.
-Correct Actual to 2.50 against Confirmed 3.00: **Delta -0.50 / Enter 2.50**.
-These are mandatory, not illustrative alternatives. No Reset or extra additive
-2.00 entry is needed.
+Retain compatible cases A and B: save a 3.00 suggestion, record 2.00 more, confirm
+frozen 3.00 → **Actual 5.00 / Confirmed 3.00 / Daily Delta +2.00 / Suggested 5.00**.
+Explicitly confirm 5.00 → suggested-entry gap 0.00 (Daily Delta also 0.00).
+Correct Actual to 2.50 against Confirmed 3.00 → **Daily Delta -0.50 / Suggested 2.50**.
+Earlier exports/confirmations remain unchanged. These exact-quarter cases do not
+make arbitrary displayed Actual decimals valid POL-R inputs.
+
+Also mandatory are [cases C–G](EXPORT_EVIDENCE_CONTRACT.md#mandatory-allocation-examples):
+exact weekly distribution, upward adjustment, no carryover, small positive work
+with an earlier-date tie and a zero suggestion, and exact-quarter work.
+They and partial-Custom/full-week behavior constrain later tests; they are not
+claims of implemented SQLite allocation.
 
 ## SELECTED — Preview and saved exports
 
@@ -227,8 +286,10 @@ without evidence/file writes. Changed dates/scope/checks invalidate Save readine
 immediately, even after changing back. Keep old report labeled as previous.
 Preparation/render failure invalidates readiness and reports the original error;
 valid empty All differs from invalid empty Selected. Show applied dates/cutoff,
-not unapplied drafts. Save publishes exactly the reviewed candidate, without
-recalculation. Later work, rename or regrouping does not change it.
+not unapplied drafts. Show exact/displayed Actual and suggested POL-R separately.
+The candidate retains full-week allocation context, computed quarter counts and
+reviewed scope. Save publishes exactly that candidate, without recalculation.
+Later work, rename or regrouping does not change it.
 
 Commit the immutable snapshot in SQLite before file publication. Unknown commit
 outcome cannot authorize publication; reconcile the same request/identity against
@@ -249,41 +310,69 @@ the current retained-window implementation is not the target recovery mechanism.
 
 ## SELECTED — Explicit POL-R confirmation workflow
 
-Offer confirmation of the whole applicable saved export, checked task/day cells,
-deferral with later review, and manual absolute confirmation without an export.
-Propose **frozen** export values, not recalculated Actual. Do not require retyping
-all cells or a free-text reason for ordinary bulk confirmation. Unchecked cells
-retain prior evidence; do not automatically confirm zero. Explicit zero is valid.
-Manual values may differ from Actual/export and must show resulting Delta.
+Offer whole applicable saved-export, checked task/day, defer/later review and
+manual absolute confirmation without an export. Source-linked proposals use the
+report's **frozen suggested quarters**, never current recalculated Actual or its
+old daily decimal representation. Manual amounts may differ from suggestions,
+but must be valid quarters; show resulting Daily Delta and suggested-entry gap.
+
+Default-select every in-scope frozen suggestion greater than zero, **including
+positive values already equal to current confirmation**. Never default-select
+zero, even on a worked date. Explicit selection means exactly checked source
+cells, including zero if selected. Empty selection is not All; unchecked cells
+retain their previous state. Ordinary bulk confirmation requires neither retyping
+all cells nor a free-text reason per cell.
 
 ## SELECTED — Confirmation evidence and batch integrity
 
-One reviewed batch validates/commits atomically, with immutable history and current
-cell references. Reject stale reviewed priors; never silently replace newer
-confirmations. A source export older than a newer differing confirmation requires
-cell-specific acknowledgement bound to the reviewed prior. Acknowledgement does
-not bypass a changed prior. Equal proposed/current values need no extra manual
-entry; even an intervening equal-value confirmation changes the prior identity.
-Rejected batches change no subset. Deferral writes nothing. Confirmations never
-change Actual, timers or exports. See the [technical contract](EXPORT_EVIDENCE_CONTRACT.md#absolute-confirmation-batches).
+Retain complete reviewed in-scope frozen source coverage, including unchecked
+cells: exact source identity/scope/association, canonical task UUID/date, historical
+name and suggested quarter count. Reject partial, substituted, tampered or
+reordered-as-new-evidence proposals. Selection/acknowledgement keys must be genuine
+canonical source keys. Unrelated newer unchecked confirmations need not invalidate
+checked selection when source coverage remains exact.
+
+One transaction freshly validates all selected priors, amounts and stale conflict
+classifications and commits the whole immutable batch/current references/receipt.
+A source older than a newer differing confirmation requires cell-specific
+acknowledgement **exactly** for selected conflicts. Reject missing, extra, duplicate,
+unselected, nonconflicting, blanket or changed-prior acknowledgements. Bind consent
+to task/day, frozen amount and reviewed prior identity. Even intervening equal-value
+confirmation changes identity and rejects stale review. Manual confirmation has
+no source-export acknowledgement, but still checks current prior. Do not refresh
+reviewed priors silently or apply a valid subset.
+
+Exact committed request reuse returns its prior result before stale checks,
+without reapplying old values over newer batches; different content under one ID
+fails closed. Deferral writes nothing. No confirmation changes Actual/timers or
+exports. The [technical contract](EXPORT_EVIDENCE_CONTRACT.md#reviewed-source-integrity-and-default-selection)
+owns the precise selection, coverage and acknowledgement rules; JSONL mechanics
+remain superseded, not prerequisites.
 
 ## SELECTED — Corrections and stale exports
 
-Correcting Actual remains permitted after export/confirmation. Recalculate current
-Actual/Delta/Enter, retain all older evidence and permit a new explicit absolute
-confirmation after the external cell is updated. Never rewrite old export bytes
-or silently roll a newer confirmation back to an old export.
+Correcting/deleting Actual remains permitted after export/confirmation. Recalculate
+current suggestions from effective exact work, including changed allocations on
+other dates of that same task/week. Retain original frozen weekly context,
+suggestions, saved bytes, confirmations and identities. Show new mismatches and
+require explicit review/subsequent absolute confirmation; never silently revise
+or redistribute confirmed POL-R values, create synthetic work or carry to a new week.
+Older sources may be confirmed only using frozen suggestions with complete source,
+reviewed-prior and stale-acknowledgement safeguards. Do not reinterpret historical
+Actual decimals as new valid quarter-hour evidence.
 
 ## SELECTED — Incomplete current workdays
 
 Preview/export/confirmation need no formal day closure. Distinguish running
-observation from a recorded stop. Later work changes Actual/Delta, not previous
-confirmation; no automatic resubmission, Reset or timer interruption occurs.
+observation from a recorded stop. Later work can change Actual, current weekly
+suggestions and gaps, not previous confirmation or committed exports; no automatic
+resubmission, Reset or timer interruption occurs.
 
 ## SELECTED — Low-friction primary workflow
 
-Show cells needing attention, copyable whole replacement amounts, signed known
-Delta and visible Unknown. Support bulk/checked confirmation, defer/review and
+Show cells needing attention, copyable absolute quarter-hour suggestions, signed
+Daily Delta, suggested-entry gaps, explained weekly adjustment and visible Unknown.
+Support bulk/checked confirmation, defer/review and
 manual correction without duplicating a second manual timesheet. Recording and
 reconciliation are both core; neither allocations nor an unavailable external
 system may block Actual.
@@ -292,8 +381,10 @@ system may block Actual.
 
 Check the previous week every local day the application is used, including
 opening after absence and date rollover while running. Check current week on
-Friday and Monday. Use per-task/day truth, never a weekly net that hides opposing
-differences. Banner actions are Open Timesheet and explicit Dismiss for today.
+Friday and Monday. Use task/day allocation agreement and review/confirmation
+coverage, not a weekly net that hides opposing mismatches or unexplained Unknown.
+Daily Actual-minus-Confirmed rounding differences alone do not establish an
+allocation mismatch. Banner actions are Open Timesheet and explicit Dismiss for today.
 Opening or saving does not dismiss or confirm. Required reminders and daily/weekly
 reconciliation are complete before pilot; current monthly prompts are legacy,
 not the selected replacement schedule.
@@ -314,7 +405,7 @@ gates; no automatic external allocation verification is established.
 | --- | --- |
 | Tasks, optional project grouping, Start/Stop/Switch, main/mini | Core Stage 1 foundation; not a complete MVP/pilot. |
 | Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
-| Frozen exports, saved-report recovery, absolute confirmation, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot. |
+| Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
 | Subtask templates | Existing legacy convenience; replacement semantics Open before any optional implementation. No silent carryover of hierarchy/duplicate-name rules. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
@@ -332,7 +423,10 @@ UI, weekly reminders, configurable weeks and complete replacement workflow are
 not delivered. Legacy reset/export/evidence APIs remain independently callable,
 although shipped Reset and old export UI are removed. Source-specific detail is
 in [Design Notes](../DESIGN_NOTES.md). Earlier Phase 2 service acceptance is
-historical JSONL evidence, not completion of a SQLite stage.
+historical JSONL evidence, not completion of a SQLite stage. The quarter-hour
+policy is not implemented: current confirmation services accept arbitrary integer
+hundredths and the daily calculator still uses Actual-as-Enter. Those source
+observations do not satisfy the new submission contract.
 
 ## OPEN — Reserved user/ChatGPT decisions
 
@@ -349,8 +443,16 @@ the affected work; they do not block this authority reconciliation.
 
 ## UNVERIFIED EXTERNAL BEHAVIOR — POL-R backend
 
-External allotment administration/enforcement and direct backend behavior are
-not independently established. User-entered confirmations/allocations are not
+The 0.25-hour daily input restriction is accepted user-provided context and the
+user approved Chronicle's calculation. Employer/customer authorization for weekly
+redistribution and external zero-entry versus omitted/no-entry treatment on a
+worked zero-suggestion day are not independently verified. Validate them before
+affected Stage 3 connected official reporting and Stage 5 pilot; do not claim
+external compliance or reopen the approved mathematical policy. Unconfirmed zero
+suggestions remain unresolved pending that external boundary.
+
+External allotment administration/enforcement and other direct backend behavior
+are not independently established. User-entered confirmations/allocations are not
 external verification. Future external integration needs explicit approval.
 
 ## DEFERRED — Approved implementation work

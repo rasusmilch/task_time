@@ -111,7 +111,11 @@ JSONL-only; no test in this inventory completes a SQLite stage. Current producti
 has main/mini Actual, read-only History and frozen Timesheet; dated writers,
 confirmation/reconciliation UI, weekly reminders and selected week settings are
 not active. Current nested-editor modal tests protect code that still runs,
-not a requirement to reproduce that navigation in the rewrite.
+not a requirement to reproduce that navigation in the rewrite. Existing JSONL
+confirmation/proposal/reconciliation suites use arbitrary integer hundredths and
+Actual-as-Enter, not the new quarter-hour policy. Their integrity assertions are
+useful predecessor evidence; they do not establish SQLite or weekly-allocation
+implementation. Task 1b adds future obligations below, not passing runtime tests.
 
 ## Rewrite evidence by stage
 
@@ -125,9 +129,9 @@ recovery/platform policy. Integrity tests begin in each slice, not only Stage 4.
 | 0 authority | Review complete affected Markdown/current source, all material decisions, current/target separation, incoming relative links/anchors and executable scope. No runtime delivery from documentation. |
 | 1 foundation | Real SQLite recording/reopen, stable task/project IDs, one active timer, atomic Switch at one accepted time, rollback on rejected use cases, exact request reuse before stale checks and changed-content rejection. Verify actual WAL/FULL/foreign-key/constraint behavior, bounded lock failure and truthful commit uncertainty. Early native Windows onedir smoke includes SQLite runtime and offline zone availability. Clock/sleep/restart rules must be adjudicated before dependent assertions. |
 | 2 recording | Integer-unit mixed accounting, genuine/date-only shape integrity, stable work UUID/revision/current references, correction/deletion history, no-op purity, stale drafts, whole-entry segment editing, precise unchanged endpoints, minute changes, DST/UTC, all week starts, applied periods/unapplied drafts/session sorting and all-reader gate before exposed writers. |
-| 3 Timesheet AND POL-R | Connected frozen Preview/Save/saved-report recovery and explicit whole/checked/manual absolute confirmation, Unknown/zero, stale priors, daily/weekly reconciliation and required reminders. No pilot without these. |
+| 3 Timesheet AND POL-R | Connected frozen preview/full-week quarter-hour suggestions and saved-report recovery; explicit whole/checked/manual absolute quarter confirmations, complete reviewed source, exact acknowledgements, Unknown/zero, stale priors, daily gaps/adjustments/coverage and reminders. External reporting/zero-entry validation before affected official use. No pilot without these. |
 | 4 stabilization | Integrated interruption/commit ambiguity, second-instance refusal, queued shutdown/restore invalidation, real backup/restore, upgrades, storage faults, native Tk and packaged Windows. Earlier slices already test their integrity boundaries. |
-| 5 complete core pilot | Deliberately fresh dataset, representative reporting week of timer/manual/correction/export/whole-partial-zero-Unknown confirmation/reconciliation/reminder/restore, without UI workarounds or counting errors. Independent review and native evidence; not a timer-only pilot. |
+| 5 complete core pilot | Fresh representative reporting week: timer/manual/correction, full/partial frozen quarter-hour exports, whole/checked/manual/zero/Unknown confirmation, explained rounding, daily allocation agreement/coverage, reminders and restore without workarounds. External redistribution and zero-entry treatment validated; independent review/native evidence, not a timer-only pilot. |
 | 6 optional | Only adjudicated allocation/convenience/external integration outcomes. No optional limit blocks Actual; core POL-R is already complete. |
 
 ## Accounting and revision guarantees
@@ -212,36 +216,108 @@ clock/restart or dataset-timezone-change behavior.
 
 ## Frozen exports and core POL-R workflow
 
-Test complete structured cells and exact UTF-8 text/digest from one preview
-calculation, explicit periods/independent task selection and deleted work.
-Draft changes invalidate readiness, including after changing back; valid empty
-All differs from invalid empty Selected. Save never recalculates. Commit frozen
-snapshot/cells/receipt before publication and fail closed when commit is uncertain.
-Recovery reads committed saved reports without requiring a retained widget.
+These are **future tests**, not tests written/run by this documentation task.
+Follow the single [precision/allocation owner](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
+without duplicating accounting or approving policy through assertions.
 
-Test HALF_UP ties and precise input units, two places, cell-rounding once and
-rollup conservation. Preserve readable complete names, duplicate UUID labels,
-Unicode escaping and safe partial-week layout. Nonzero rounded 0.00 is not
-implicitly confirmed zero.
+### Exact weekly submission and scoped evidence
 
-Exercise actual whole/checked/manual absolute confirmation and defer/later review:
-unchecked cells untouched, zero explicit, Unknown not zero, expected prior checks
-and cell-specific stale-export acknowledgement. An intervening equal-value prior
-still invalidates reviewed identity; reject the entire batch. Exact old request
-reuse cannot reapply earlier values. No confirmation adds Actual or mutates timers,
-snapshots of exported facts or saved text.
+- Keep integer-microsecond Actual, displayed Actual hundredths and suggested/
+  confirmed quarter counts distinct. Verify Actual HALF_UP ties and cell-summed
+  displayed rollups independently of weekly submission. No floats or daily decimal
+  rounding feed the target. Invalid negative/bool/float/overflow inputs reject;
+  manual non-quarter decimals cannot silently become valid confirmation.
+- Exercise mandatory C–G with independent expected outputs: exact weekly total,
+  upward +14-minute adjustment, no carryover, small equal remainder with earlier
+  date winning, and exact quarters. Zero week yields zero; positive sub-minute
+  work can yield one quarter, but zero-work dates never receive it. Check allocation
+  conservation, no more than one remainder extra per date, deterministic ties and
+  integer precision/range boundaries, including target/converted-unit bounds.
+- Check all seven week starts, UTC/local date differences, midnight/DST and non-hour
+  transitions using existing work attribution. Validate one explicit observation,
+  running cutoff and existing future-dated amounts without predicting a stop.
+- Multiple tasks receive independent ceilings; project membership/other tasks
+  cannot change a task's distribution. No cross-week transfer or retained residual.
+- This week/Last week and inclusive Custom always use full intersecting weeks.
+  Tuesday-only case C still shows 1.00, not a Tuesday-only ceiling. A Custom range
+  crossing two weeks computes them independently; visible subsets need not sum
+  to full targets. Never publish/confirm out-of-scope cells, even though frozen
+  proof retains their contextual basis. Reject unrepresentable expanded boundaries.
+- More work in an incomplete week may change suggestions. Correction/deletion may
+  reorder remainders and change other dates of that task/week. Fresh preview updates
+  current suggestions; old export context/cells/text/digest and all prior confirmed
+  values/identities remain unchanged. Show resulting mismatches, not automatic
+  confirmation redistribution, new work or cross-week carryover.
 
-Mandatory connected examples: 5.00 Actual / 3.00 Confirmed / +2.00 Delta / 5.00
-Enter, then confirm 5.00 for 0.00 Delta; correct Actual to 2.50 against 3.00 for
--0.50 Delta / 2.50 Enter. Preserve earlier exports/confirmations, including manual
-values without an export, positive confirmed/zero-work dates and Unknown giving
-Unverified Delta. Zero Delta is user-reported agreement, not backend verification.
+Check complete exact/displayed Actual, suggested quarters, full-week source basis,
+cutoff, timezone/week convention, scope and historical labels from the reviewed
+candidate. Display Actual and suggestion separately. Save never recalculates;
+commit snapshot/cells/receipt before publication; reconcile uncertain commitment
+before publishing. Recover a saved report without its old widget or current Actual.
+Retain readable names, duplicate UUIDs, Unicode escaping, safe partial-week layout,
+draft invalidation/backtracking, valid empty All versus invalid empty Selected.
 
-Test weekly summaries with opposing differences and Unknown so a net zero cannot
-hide cells needing review. Required reminders: previous week every used local day
-including restart/rollover/absence, current week Friday/Monday, explicit Dismiss
-for today. Opening/Save does not confirm or dismiss. External unavailability does
-not block Actual. These tests are mandatory core before Stage 5, not Stage 6 scope.
+### Restored confirmation integrity
+
+Use actual SQLite services/transactions when implemented, not independent mock
+selection logic. Inspect useful predecessor cases in
+[test_polr_confirmation_proposals.py](../tests/test_polr_confirmation_proposals.py),
+without inheriting JSONL mechanics or arbitrary hundredth inputs as target policy.
+
+- Whole-report default is every positive **frozen suggestion**, including already-
+  equal confirmed values. Positive Actual with zero suggestion is not default-
+  selected. Explicit checked zero is allowed; explicit empty never means All.
+  Unchecked cells retain Unknown or prior absolute confirmation unchanged.
+- Validate complete canonical source identity/scope/association and every frozen
+  task UUID/date/name/suggested-quarter row, **including unchecked rows**. Reject
+  missing, extra, duplicate, substituted, reordered or tampered coverage. Context
+  outside report scope is not selectable. Reject malformed/foreign/duplicate keys.
+- Acknowledgements must be exactly the selected newer-differing-source conflicts.
+  Reject missing, extra, duplicate, unselected, nonconflicting and blanket consent,
+  including malformed types. Bind consent to task/day, frozen count and reviewed
+  prior identity; no automatic consent from a proposal flag. Manual confirmation
+  requires no source-export acknowledgement but checks current prior.
+- Revalidate selected prior identity/amount/stale classification in the committing
+  transaction. An intervening equal-value confirmation is stale review. Reject the
+  entire batch, not a subset. Unrelated newer **unchecked** confirmations need not
+  invalidate checked selection when complete immutable source remains exact.
+- Confirm older exports from frozen **suggested quarters**, not current Actual or
+  legacy Actual decimals. Test source precedence by committed SQLite ordering,
+  not audit timestamps/UUID/physical JSONL order. Deferral/later review writes
+  nothing until explicit confirmation and renews prior review.
+- Batch/cells/current references/receipt commit atomically. Exact old-request reuse
+  returns its committed result before stale checks without reapplying old values
+  after newer confirmations; changed contents under one identity fail closed.
+  Unknown commit retains the exact request. No immutable export/work/timer/file
+  changes result from confirmation; no added work or automatic external update.
+
+### Reconciliation, coverage and operator evidence
+
+Retain compatible cases A/B: 5.00 Actual / 3.00 Confirmed / Daily Delta +2.00 /
+Suggested 5.00, then explicitly confirm 5.00 for suggested-entry gap 0.00; correct
+Actual to 2.50 against 3.00 for Daily Delta -0.50 / Suggested 2.50. These do not
+validate arbitrary decimal POL-R entries. Unknown gives Unverified Daily Delta
+and unresolved gap, never zero. Explicit zero retains identity.
+
+Test expected nonzero Actual-minus-Confirmed differences when quarter allocation
+matches confirmation, known allocation mismatch despite equal weekly totals,
+incomplete review/confirmation coverage, explained exact weekly adjustment and
+stale current proposals. Full-week adjustment must not be inferred from partial
+visible totals. No persisted Delta/rounding balance. Case F's worked Tuesday with
+0.00 suggestion stays Unknown until explicit valid review; no automatic zero or
+claim of complete reconciliation. External zero/omitted-entry behavior needs
+validation before affected Stage 3 official workflow and pilot. Simulated external
+interaction/math tests do not establish employer/customer redistribution approval.
+
+Real-Tk future workflow evidence must distinguish Actual/Suggested/Confirmed,
+Daily Delta/gap/adjustment/coverage and frozen versus current proposals. Exercise
+whole/checked/manual confirmation, zero, defer/review, stale errors, fresh preview
+and correction-induced changes through actual controls, with exact retry/no false
+success. Doubles do not establish native operator interaction. Required reminders
+check previous week every used local day including restart/rollover/absence and
+current week Friday/Monday; don't hide daily mismatch/Unknown in a weekly net.
+Open/Save never confirms/dismisses; external unavailability does not block Actual.
+These are mandatory Stage 3/core pilot gates, not optional allocation budgets.
 
 ## File publication and cross-resource failures
 
@@ -306,10 +382,11 @@ proportionally, not universal per-task requirements:
 
 Syntax compilation imports no application and writes no bytecode; it establishes
 no runtime guarantee. New rewrite test filenames/commands follow actual approved
-implementation, not imagined existing suites. For the Stage 0 Markdown outcome,
-the task specifically requests the unchanged-runtime focused baseline and syntax
-check when available; no full regression or desktop launch is needed for verified
-Markdown-only scope. This does not become blanket future policy.
+implementation, not imagined existing suites. A documentation task may request
+an unchanged-runtime baseline or syntax check explicitly; otherwise select them
+proportionally, not automatically. They provide no SQLite/quarter-hour behavior
+evidence. No full regression or desktop launch is needed for a verified Markdown-
+only delta absent another applicable requirement.
 
 Documentation checks cover the complete affected owner set, relative links and
 anchors including incoming links from unedited files, formatting/whitespace,

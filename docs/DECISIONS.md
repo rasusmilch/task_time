@@ -16,6 +16,9 @@ frozen-export, decimal, verification/recovery and absolute batch semantics.
 The later Tkinter/SQLite entry below supersedes JSONL technical mechanisms,
 constructor/modal sequencing, nested correction and retained-widget recovery
 where earlier approvals selected them; it does not rewrite their provenance.
+The later quarter-hour entry below supersedes daily-Actual-as-Enter and arbitrary
+hundredth POL-R units while restoring existing confirmation-integrity guarantees.
+It does not supersede exact Actual, frozen evidence or explicit confirmation.
 
 The user and ChatGPT approve product/architecture choices. Codex records and
 implements approved work; recording a choice does not make Codex its approver.
@@ -436,7 +439,9 @@ migration or installation cutover. Their existing Selected/Open boundaries remai
 
 ### Absolute daily external confirmations
 
-**Status:** current. **Provenance:** explicit user confirmation of daily
+**Status:** current for absolute confirmation/Unknown/Daily Delta; Enter-as-daily-
+Actual is superseded by the later quarter-hour policy. Compatible examples remain.
+**Provenance:** explicit user confirmation of daily
 replacement-cell semantics and the mandatory example; current owners:
 [daily reconciliation](TIMESHEET_REQUIREMENTS.md#selected--daily-reconciliation)
 and [contractual example](TIMESHEET_REQUIREMENTS.md#selected--mandatory-300--500-contractual-behavior-test).
@@ -480,7 +485,9 @@ transaction. The separately rejected file-first proposal is recorded below.
 
 ### Decimal-hour replacement reporting
 
-**Status:** current. **Provenance:** explicit user requirement for decimal-hour
+**Status:** current for displayed Actual; arbitrary hundredth POL-R submission/
+confirmation units are superseded by the later quarter-hour decision.
+**Provenance:** explicit user requirement for decimal-hour
 replacement output; ChatGPT selected two places, ROUND_HALF_UP, integer hundredths
 and displayed-cell rollups under that approval. Technical owner:
 [decimal representation](EXPORT_EVIDENCE_CONTRACT.md#decimal-hour-representation);
@@ -538,7 +545,10 @@ means agreement with the latest confirmation, not a verified POL-R query.
 
 ### Tkinter transactional rewrite and core POL-R before pilot
 
-**Status:** current. **Provenance:** explicit user instructions titled “Reconcile
+**Status:** current for Tkinter/SQLite/core scope; its daily-Actual-as-Enter clause
+is superseded below. Task 1a documentation remains pending final independent
+acceptance; this entry records direction, not final GO.
+**Provenance:** explicit user instructions titled “Reconcile
 Chronicle's Tkinter rewrite requirements, architecture and roadmap,” including
 the user's correction that POL-R reconciliation is an absolute core requirement.
 No unsupported decision date is inferred from a commit or source snapshot.
@@ -582,7 +592,8 @@ Monday reminders. All must be complete before core pilot. The earlier proposed
 Stage 6 POL-R deferral is expressly rejected; Stage 1 timer foundation is an
 engineering slice, not complete MVP/pilot. Allocations/conveniences are optional
 Stage 6 after reserved decisions, superseding the earlier Open first-release
-allocation-inclusion question. Enter is whole current Actual, never Delta; mandatory
+allocation-inclusion question. At that approval, Enter was whole current Actual,
+never Delta (now superseded by weekly allocation); mandatory
 5.00/3.00/+2.00/5.00, then zero Delta at 5.00, and corrected 2.50/-0.50 examples remain.
 
 Fresh rewrite requires no legacy migration/import, old schema/API support,
@@ -596,6 +607,56 @@ acceptance, a separately authorized runtime branch originates at that accepted
 commit. Next runtime work is a bounded Stage 1 read-only implementation plan,
 not another whole-app planning cycle. No branch or runtime is created by this
 Markdown-only reconciliation.
+
+### Quarter-hour submission and restored confirmation integrity
+
+**Status:** current. **Provenance:** later explicit user clarification that POL-R
+accepts daily inputs only in 0.25-hour multiples, followed by user approval of
+Chronicle's per-task weekly upward rounding, largest-remainder distribution,
+earlier-date ties, no zero-work allocation and no cross-week carryover, as supplied
+in the Task 1b instructions. No unsupported decision date or independent external
+compliance approval is inferred. Owners: [requirements](TIMESHEET_REQUIREMENTS.md#selected--weekly-pol-r-suggestions),
+[single algorithm/precision contract](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation),
+[architecture](ARCHITECTURE.md) and [core gates](ROADMAP.md#stage-3--core-frozen-timesheet-and-pol-r-reconciliation).
+
+Separate exact integer-microsecond Actual, its existing HALF_UP task/day display
+hundredths, and proposed/confirmed integer quarter-hour POL-R units. The chosen
+weekly calculation uses full seven-date task/week Actual at one explicit cutoff,
+not daily/weekly displayed decimals. Partial Custom reports retain the full basis
+but expose/confirm only selected cells; current-week suggestions are provisional.
+A fresh calculation can reallocate other dates after correction, never historical
+Actual dates, frozen suggestions or confirmed values. No rounding/carryover ledger,
+additional work, worker or datastore is selected.
+
+This supersedes the earlier rule that Enter always equals independently rounded
+daily Actual: Enter is the current quarter-hour suggestion. Retain Daily Delta as
+Actual-display minus known Confirmed, and distinguish suggested-entry gap, exact
+weekly upward adjustment, daily allocation mismatch, incomplete coverage, Unknown
+and stale review. Zero suggestion on a worked day is not known zero or complete
+reconciliation. Existing 3.00/5.00 and 2.50 examples remain compatible; mandatory
+C–G in the technical owner exercise the broader policy rather than silently
+reinterpreting old Actual decimals as quarter-hour inputs.
+
+Task 1a consolidation weakened **previously approved** confirmation guarantees.
+This task restores them from the predecessor at
+`b65c16084ba60ff82178166bcbbd8cca4d51f9c6`, specifically its whole-batch/stale-export
+and staged proposal/selection sections; it does not invent a new historical
+approval or reinstate JSONL mechanisms. Restore positive-default selection even
+when already equal, exact cell-specific acknowledgement keys with fresh selected
+priors, and complete reviewed frozen source coverage including unchecked cells.
+Adapt their amount source to frozen suggested quarters and their authority/order
+to SQLite transactions/current references. Unrelated unchecked confirmation changes
+need not invalidate valid checked review; changed selected prior rejects the whole
+batch. Exact committed request reuse cannot roll back newer confirmations.
+
+The external daily restriction is accepted user context. Employer/customer
+redistribution authorization and worked-day 0.00 versus omitted/no-entry treatment
+remain independently unverified, to validate before affected Stage 3 official
+reporting/pilot. They do not reopen the approved math or permit auto-confirmed zero.
+Core POL-R still precedes Stage 5; optional budgets, unrelated Open decisions,
+Tkinter/SQLite, immutable evidence and fresh-data/no-compatibility scope remain.
+This is documentation reconciliation, not allocation/SQLite implementation or a
+runtime validation result.
 
 ## Material corrections, supersession and legacy evidence
 
@@ -685,7 +746,9 @@ Formerly Open export/confirmation/decimal semantic questions were resolved by
 the approved technical owner; their JSONL storage/recovery mechanisms are now
 superseded by the later SQLite transaction approval, with provenance
 recorded above. This history defines no alternate schema or recovery authority.
-POL-R allotment administration/enforcement remains an
+Redistribution authorization and worked-day zero-entry treatment also need
+external validation before affected Stage 3 reporting/pilot, without reopening
+the approved formula. POL-R allotment administration/enforcement remains an
 [Unverified external fact](TIMESHEET_REQUIREMENTS.md#unverified-external-behavior--pol-r-backend),
 not a resolved decision.
 

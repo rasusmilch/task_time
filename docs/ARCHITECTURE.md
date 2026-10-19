@@ -6,7 +6,8 @@ This is the single selected target technical owner for the clean Python +
 **Tkinter/ttk + transactional SQLite** rewrite. The user supplied these decisions;
 Codex records them, not alternative architecture. Product behavior belongs to
 [TIMESHEET_REQUIREMENTS.md](TIMESHEET_REQUIREMENTS.md); frozen export/POL-R
-semantics to [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); sequence
+semantics and the single full-week quarter-hour algorithm to
+[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); sequence
 to [ROADMAP.md](ROADMAP.md); validation to [TESTING_STRATEGY.md](TESTING_STRATEGY.md).
 [DESIGN_NOTES.md](../DESIGN_NOTES.md) describes current Tkinter/JSONL source.
 SQLite, a worker bridge and inline History editing are **not implemented** by
@@ -51,8 +52,8 @@ complete behavioral slices follow the roadmap, not optional post-pilot bolt-ons:
 | Date-only work | Stable entry UUID, task UUID, civil work date and integer duration; no synthetic endpoints. Distinct shape and constraints. |
 | Work revisions | Immutable typed prior/new revision facts, audit time, optional comment, ownership and deletion evidence. Current reference changes atomically with revision. |
 | Active timer | Persisted task/start with database-enforced at-most-one active timer. Switch closes and opens atomically at the same accepted action instant. |
-| Frozen exports/cells | Immutable export identity, context, exact UTF-8 text/digest and full-precision task/day amounts plus displayed hundredths. Relational cells support confirmation without parsing text. |
-| Absolute confirmation batches/cells | Immutable batch identity/audit/source and selected task/day absolute hundredths, reviewed prior identity and applicable acknowledgement. One batch is atomic. |
+| Frozen exports/cells | Immutable export identity/scope/labels, exact UTF-8 text/digest, exact task/day Actual and displayed hundredths, suggested quarter counts and sufficient reviewed full-week basis/context. In-scope relational cells support confirmation without parsing text; out-of-scope basis is not extra selectable coverage. |
+| Absolute confirmation batches/cells | Immutable batch identity/audit/source and selected task/day absolute integer quarter counts, reviewed prior identity and exact cell-specific acknowledgement. One batch is atomic. No arbitrary hundredth confirmations. |
 | Current confirmed references | Each known task/day points to its latest committed immutable confirmation cell/batch; absence means Unknown, an explicit zero row means known zero. No additive confirmed balance. |
 | Committed request receipts | Unique request identity, strictly comparable request content and committed result, atomically tied to the use case. Not file-availability state. |
 | Dataset metadata | Schema version, explicit IANA timezone and selected week convention. Future upgrades protect new-runtime data; no legacy import. |
@@ -82,11 +83,18 @@ Identity comparison must preserve relevant value/type distinctions; an ID alone
 or matching visible text is not authorization. Stable entry UUID plus expected
 revision replaces the old replacement-interval/tombstone identity mechanism.
 
-Frozen export commitment atomically records the reviewed context, exact text,
-digest, cells and request receipt before any external publication. It never adds
+Frozen export commitment atomically records reviewed full-week allocation basis,
+scoped Actual/display/suggested-quarter cells, context/labels, exact text/digest and
+request receipt before external publication. It freezes enough source to reproduce
+allocation without later Actual or unnecessary aggregate caches. It never adds
 work. Confirmation atomically validates every selected task/day against reviewed
-prior references, appends immutable batch/cells, updates current confirmed
-references and records its receipt. Unchecked cells do not change. Transaction
+prior references, applicable complete frozen source coverage including unchecked
+cells, exact acknowledgement keys and quarter units. It appends immutable batch/
+cells, updates current confirmed references and records its receipt. Unchecked
+cells do not change; newer unchecked confirmations need not invalidate an otherwise
+valid checked selection. Positive frozen defaults include already-equal values;
+zeros are explicit only. The [confirmation contract](EXPORT_EVIDENCE_CONTRACT.md#reviewed-source-integrity-and-default-selection)
+owns the detailed guards; do not infer consent from a UI stale flag. Transaction
 commit order/current references, not wall-clock audit sorting, establishes the
 latest confirmation. Source-export precedence and cell-specific stale checks
 must be transactionally established without physical journal read sequences.
@@ -135,10 +143,22 @@ selected weekday (Sunday initially), not fixed 168-hour UTC spans.
 
 Main/mini share a coordinated cutoff; each task shows its own work and application
 totals include retained deleted-task work. Current project grouping is derived,
-non-additive. POL-R conversion rounds each task/day once to integer hundredths;
-rollups sum those cells. Actual is independent of frozen exports/confirmations.
-Confirmed is latest absolute evidence or Unknown; Delta is displayed Actual minus
-known Confirmed, otherwise Unverified; Enter is whole current Actual.
+non-additive. Displayed Actual rounds each task/day once to integer hundredths;
+its rollups sum those cells. **Submission is a distinct pure calculation** over
+exact full-task/week work, yielding suggested quarter counts with no carryover.
+The single [algorithm/proof owner](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
+defines weekly upward rounding, largest remainders, earlier-date ties and partial
+Custom/provisional-week rules. Implement later in plain domain/application logic,
+not widgets, SQL formatting or another accounting implementation.
+
+Confirmed is latest absolute quarter-unit evidence or Unknown. Daily Delta uses
+displayed Actual hundredths minus converted Confirmed; Enter/Suggested POL-R is
+the valid quarter-hour allocation, not daily Actual or Delta. Derive suggested-entry
+gap and exact weekly rounding adjustment separately. Unknown is not zero; expected
+rounding differences do not by themselves establish allocation mismatch. A current
+correction may change other dates' suggestions within its task/week, never older
+frozen allocations or confirmations. No rounding ledger, carryover bank, cached
+suggestion authority or new timed/dated work represents the adjustment.
 
 ## Tk thread and worker bridge
 
@@ -191,11 +211,18 @@ widgets. Never delete/roll back a final file to pretend commit/publication faile
 No stored READY flag, file registry or publication-history ledger is required.
 
 Core schema, services and UI must support whole applicable export confirmation,
-checked cells, explicit zero, defer/review and manual absolute confirmation with
-stale-prior rejection and immutable history. Daily/weekly reconciliation and the
+checked cells, explicit zero, defer/review and manual absolute quarter-hour
+confirmation with full source integrity, exact stale acknowledgements, fresh
+selected-prior rejection and immutable history. Daily/weekly reconciliation and the
 selected previous-week/current-Friday-and-Monday reminders are core Stage 3,
 mandatory before pilot. Unknown or unavailable POL-R never blocks Actual.
-Allocations and any future external connection are optional, separately approved.
+Weekly submission distribution is core, distinct from optional allocation budgets.
+Employer/customer redistribution authorization and the external representation of
+worked days receiving zero suggestion need validation before affected Stage 3
+connected official reporting/pilot. This is not independent compliance approval
+or permission to reopen the selected formula. No extra worker, scheduler, datastore
+or persistence service is justified. Optional budget allocations and any future
+external connection remain separately approved.
 
 ## Deployment and next boundary
 
