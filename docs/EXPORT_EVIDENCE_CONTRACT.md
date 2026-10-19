@@ -1,128 +1,66 @@
-# Chronicle approved export evidence and decimal-hour contract
+# Chronicle export evidence and absolute POL-R contract
 
 ## Authority and availability
 
-This is the single authority for the **approved** technical
-contract covering export snapshots, decimal representation, file materialization,
-verification/recovery, POL-R confirmation events and batch integrity. The user
-approved the architectural direction; ChatGPT selected the concrete contracts
-below under that direction. Codex records them without selecting an alternative.
-
+This owner specifies selected frozen report, decimal, publication/verification,
+absolute confirmation and reconciliation semantics. [ARCHITECTURE.md](ARCHITECTURE.md)
+owns replacement SQLite schema/transaction/thread boundaries;
 [TIMESHEET_REQUIREMENTS.md](TIMESHEET_REQUIREMENTS.md) owns product behavior;
-[DECISIONS.md](DECISIONS.md) records provenance and rejection/supersession history;
-[DESIGN_NOTES.md](../DESIGN_NOTES.md) describes current source;
-[ROADMAP.md](ROADMAP.md) owns sequencing and gates; and
-[TESTING_STRATEGY.md](TESTING_STRATEGY.md) owns validation applicability.
+[ROADMAP.md](ROADMAP.md) sequences core delivery before pilot. Approval is not
+implementation or platform qualification.
 
-Mixed accounting supplies main/mini calendar Actual. Exact HH:MM:SS rendering
-and safe file-only saving remain separate staged reporting services. Pure decimal
-replacement rendering is also implemented/staged:
-`build_decimal_timesheet_text()` and reusable `seconds_to_decimal_hundredths()`
-apply the cell-rounding and displayed-rollup rules below without persistence.
-The existing generation/save services still use the exact renderer. Separate
-export-snapshot preparation, durable registration, detached lookup and journal
-replay are implemented/staged; registration publishes no external report file.
-A standalone frozen preview now uses that preparation API without registration,
-file output, Save/retry or production routing. It displays the exact candidate
-text and invalidates readiness on draft changes/failure. The event and
-registration contracts below are unchanged. A separate standalone Save/retry
-component now composes the preview with those existing services, retaining one
-exact event and explicit destination through uncertainty. The application-owned
-modal Timesheet now composes these components for all shipped export routes,
-retaining the same unfinished window/attempt only in application memory. General
-recovery UI remains pending; its in-memory completion/path handoff is not
-persisted file status or a restart guarantee.
-Verified materialization from committed evidence is also staged: exact-byte/digest
-checking, matching-file reuse, default exclusive no-overwrite publication and
-explicitly authorized replacement are available
-through a separate service operation. Standalone read-only destination-relative
-file-status evaluation is also implemented/staged. Strict immutable confirmation
-batch validation/replay, detached preparation and dedicated durable registration
-with an in-memory effective projection are staged. Read-only daily POL-R
-reconciliation calculation and frozen-export proposal/selection preparation are
-also staged. Confirmation/reconciliation UI, weekly
-reconciliation summaries, automatic missing-file recovery and general
-file-status/recovery UI are not implemented.
-Approval is not proof of Windows/NTFS
-compatibility or power-loss safety. See the
-[current registration mechanism](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged)
-and [materialization](../DESIGN_NOTES.md#verified-export-materialization-staged).
+**SQLite supersedes the earlier mandatory JSONL envelope, segment manifest,
+physical replay order, fsync/synchronize-journal and Python projection mechanisms.**
+There is one replacement authority, not SQLite alongside a required journal.
+Current source still uses those JSONL mechanisms, documented in
+[Design Notes](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged).
+They and the accepted old Phase 2 gate are legacy implementation/historical
+evidence only, not replacement instructions. Semantic guarantees below remain
+binding; old API/event field layouts are not backward-compatibility requirements.
 
 ## One authoritative export snapshot
 
-Use the existing append-only Chronicle event journal as the sole authoritative
-persistent store for export evidence, with no second database. One export is an
-immutable journal-backed snapshot and zero or more externally materialized copies
-whose bytes can be verified against it. An external text file is a reproducible
-representation, not independent timekeeping truth.
+One committed immutable SQLite snapshot is export truth; zero or more external
+files are reproducible copies. Neither export nor confirmation adds Actual.
+Freeze the exact reviewed values, context and text before external publication.
+Later work, correction, deletion, rename, project movement or week-setting change
+cannot rewrite saved evidence. Retry/recovery reads that snapshot, not current
+accounting or a retained widget. A registered report remains recoverable even
+with no currently verified external copy.
 
-Regeneration uses the frozen snapshot without recalculating work. Later work,
-corrections, renames, project moves or week-setting changes never modify it.
-Frozen values are evidence, not another authoritative Actual counter. A valid
-snapshot without a currently verified file remains recoverable registered
-evidence. That broad concept is distinct from the specific PENDING status below.
-This export snapshot is distinct from the existing rebuildable application state
-snapshot.
+## Export identity and contents
 
-## Export event identity and contents
-
-Select `timesheet_export_snapshot_created`, using the existing event envelope:
-
-```text
-schema_version
-event_id
-timestamp_utc
-local_timezone
-task_id
-event_type
-payload
-```
-
-`task_id = "__app__"`; the envelope `event_id` is the stable export identity.
-Use UUIDs consistent with existing journal validation conventions. Audit and
-cutoff values are UTC-aware; work dates are ISO calendar dates. The payload must
-preserve the following facts:
+Use one stable export UUID and immutable typed relational evidence/cells, with
+a committed request receipt in the same transaction. Preserve:
 
 | Fact | Required frozen content |
 | --- | --- |
-| Date window | Inclusive start/end work dates. |
-| Cutoff | One fixed UTC accounting cutoff. |
-| Timezone | Report timezone identifier. |
-| Week convention | Weekday 0–6, Monday = 0, Sunday = 6. |
-| Scope | Complete or selected reporting scope. |
-| Original request | Original selection parameters, including complete selection, task/project UUIDs and Unassigned inclusion. |
-| Historical eligibility | Deleted-task inclusion policy. |
-| Identity and labels | Task/project identities and relevant display information at export time, including original task names and project grouping. Duplicate names remain legal. |
-| Task/day values | Records keyed by task UUID and work date, retaining full-precision accounting seconds and frozen integer decimal hundredths. |
-| Report | Complete exact report text, encoded as UTF-8 for materialization. |
-| Integrity | SHA-256 digest of the report's UTF-8 bytes. |
-| Preferred destination | Original preferred output path, if selected. |
+| Dates and cutoff | Inclusive civil start/end dates, one UTC accounting observation. |
+| Calendar | Explicit IANA report timezone and selected week-start weekday (Monday=0, Sunday=6). |
+| Scope | All/explicit UUID selection, original request and deleted-task inclusion. Preserve any supported task/project/Unassigned request rather than infer it later. |
+| Identity/labels | Task UUIDs, historical names and current-at-export project UUID/group labels; duplicate names remain distinct. |
+| Cells | Task/day full-precision integer duration and displayed integer hundredths. |
+| Report | Complete exact text/UTF-8 bytes and SHA-256 digest. |
+| Destination | Original preferred destination if supplied; alternative publication paths do not mutate evidence. |
 
-Generate structured cells and report text from the same calculation during one
-preparation. Validate their consistency before registration. Exact text is
-retained so future renderer changes cannot alter old report bytes; structured
-cells are retained so confirmation never requires parsing a human-readable table.
+Structured cells and text come from one calculation and are validated together.
+Keep exact text so renderer changes cannot alter old bytes; never parse a human
+report to reconstruct confirmation values. Immutable snapshot commitment is a
+separate action from nonpersistent preview preparation.
 
 ## Decimal-hour representation
 
-Replacement timesheets and POL-R-facing values use **exactly two decimal places**.
-Retain full-precision Actual seconds without rounding. External cell values are
-integer hundredths of an hour; one hundredth is 36 seconds:
+Exports and POL-R-facing values have exactly two decimal places. Work remains
+exact in integer microseconds. One hundredth of an hour is 36 seconds:
+`hundredths = ROUND_HALF_UP(duration_microseconds / 36_000_000)` using exact
+integer/decimal arithmetic, not binary-float accumulation/rounding.
 
-```text
-hundredths = ROUND_HALF_UP(actual_seconds / 36)
-3.25 hours = 325 hundredths
-```
+Round each task/day **once**. Weekly/project/overall displayed rollups sum those
+hundredths, not independently rounded raw aggregates. Project subtotals are
+non-additive. Do not add exported hundredths back to Actual. Positive underlying
+work rounding to 0.00 remains nonzero and is not automatically confirmed zero.
 
-Conversion is deterministic, without binary-float rounding artifacts at the
-presentation boundary. Round each task/day cell once. Weekly, project and overall
-displayed totals sum those already-rounded displayed task/day cells. Do not
-independently round aggregate raw seconds to obtain displayed rollups. Visible
-totals therefore reconcile with POL-R entry values, even when they differ from
-independently rounded raw aggregates. Project subtotals remain informational and
-non-additive; do not count them again in application totals.
-
-| Actual amount | Display |
+| Work | Decimal hours |
 | --- | --- |
 | 3 hours | 3.00 |
 | 3 hours 15 minutes | 3.25 |
@@ -131,498 +69,171 @@ non-additive; do not count them again in application totals.
 | 45 minutes | 0.75 |
 | 1 minute | 0.02 |
 
-Never add rounded export values back into Actual. Nonzero work rounding to 0.00
-remains nonzero internally and must not automatically be confirmed as zero.
-Legacy exporters retain their existing behavior during staging; the current
-exact HH:MM:SS renderer is not changed merely by approving this contract.
-
 ## Snapshot-first creation and publication
 
-Preserve this operation order:
+1. Explicit Preview captures one cutoff and calculates the selected work once.
+2. Prepare consistent detached cells/text/context and a stable candidate identity.
+3. Changed drafts invalidate readiness; Save requires the reviewed current candidate.
+4. Commit the exact snapshot/cells/request receipt atomically in SQLite, with
+   validation and authoritative same-request reconciliation.
+5. Only after registration is verified, materialize its exact frozen bytes.
+6. Verify complete final bytes and digest before reporting successful Save.
 
-1. Capture one fixed accounting cutoff.
-2. Calculate the requested date-window Actual once.
-3. Produce frozen structured task/day records.
-4. Produce frozen decimal-hour report text.
-5. Validate internal snapshot consistency.
-6. Generate the stable export event identity.
-7. Append and durably flush the immutable export event.
-8. Verify authoritative event registration.
-9. Only then begin external file publication.
-10. Materialize the exact frozen text.
-11. Verify external bytes against the snapshot.
-12. Report successful export only after verification.
-
-Do not publish when registration is absent or uncertain. File-first publication
-followed by attempted evidence creation is rejected. Existing safe-publication
-protections remain mandatory; a file/evidence disagreement is never successful
-export.
+Registration uncertainty prohibits publication. Reconcile the same request/export
+identity; never generate a second event because a response was lost. Commit is
+not rolled back or relabeled failed by later file/UI failure. Saving is not
+confirmation, reminder dismissal, submission, checkpoint, deletion or timer Reset.
 
 ## Materialization and byte verification
 
-Require a valid committed snapshot. Use private same-directory temporary staging
-and exact UTF-8 bytes from that snapshot. Complete the write, flush/fsync and close
-before absent-target exclusive no-overwrite hard-link publication (`os.link`),
-preserving the existing safe staging approach on supported filesystems. Then compare the complete
-actual destination bytes with frozen UTF-8 content. SHA-256 is an additional
-integrity check, not an alternative authority or substitute for the complete
-byte comparison.
+Read valid committed SQLite evidence, not cached UI status. Default attempts
+reuse a completely inspected matching regular file without rewriting; reject
+conflicting/unsuitable objects; absent destinations use exclusive no-overwrite
+publication. Keep complete private same-directory staging: write frozen bytes,
+flush/fsync, successfully close and verify ownership before publication. Existing
+hard-link exclusive publication on supported filesystems is the current bounded
+mechanism; no unsafe direct-write fallback is authorized.
 
-`materialize_timesheet_export(export_id, destination=None, *, overwrite=False)`
-requires an actual boolean. By default, matching complete regular files are reused
-without rewriting, conflicting files are rejected, and absent destinations use
-exclusive creation. Ordinary Save/Retry never inherits overwrite permission.
+Only a verified stable regular-file content conflict can offer explicit Overwrite.
+Use an owned default-cancel confirmation naming the exact destination; permission
+is for **one call**, not a field in immutable evidence or reusable retry permission.
+Ordinary Retry and alternate paths never inherit it. Matching files are still
+reused; initially absent destinations still use exclusive creation.
 
-With explicit `overwrite=True`, only a completely inspected, stable regular-file
-content conflict may be replaced. Directories, symlinks, other unsupported objects,
-incomplete/unstable reads and inspection failures cannot authorize replacement.
-Replacement within the active dataset tree, including aliases resolving into it,
-is prohibited before replacement staging. Ordinary materialization restrictions
-are unchanged. `ExportFileContentConflict` is a narrow `FileExistsError`-compatible
-signal for the content case; broader type conflicts and arbitrary
-`FileExistsError` exceptions do not authorize the UI's Overwrite action. Current
-file-status classification remains unchanged.
+Reject directories, symlinks, unsupported objects, unstable/incomplete reads and
+inspection failures as replacement authorization. Protect the active dataset tree,
+including resolved aliases, before replacement staging. Use complete owned staging
+then `os.replace()`, never unlink first, truncate or write directly to target.
+Recheck the target's regular-file type, identity, size, modification/change metadata
+against its stable observation immediately before replacement. Detected changes
+abort without replacing the newly observed target. Verify complete final bytes
+and digest before success.
 
-Reuse complete private same-directory staging, flush/fsync, successful close and
-ownership verification. Immediately before `os.replace()`, recheck the target's
-regular-file type, device/inode identity, size, modification and change timestamps
-against the stable inspection. Detected change or disappearance aborts without
-replacing the newly observed target. Never unlink first, truncate or directly
-write the destination. An initially absent destination still uses `os.link`, even
-when overwrite was requested. Matching copies are never rewritten.
+These bounded checks assume trusted directories and serialized ownership; they
+are **not atomic compare-and-replace**, arbitrary hostile/concurrent-directory
+protection, universal filesystem support or power-loss proof. Different platforms'
+timestamp semantics must not be assumed identical. Narrow typed content-conflict
+signaling distinguishes eligible conflict from arbitrary FileExistsError or
+unsuitable-object failures; no message-text classification.
 
-These are bounded checks under trusted-directory/serialized-ownership assumptions,
-not atomic compare-and-replace or immunity to arbitrary concurrent/hostile changes.
-Verify full final bytes/digest after replacement. Distinguish replacement attempted,
-known replacement and verified success. A failure after replacement does not prove
-the old file survives or the new file is absent. `os.replace()` consumes staging;
-cleanup must never delete or roll back the final destination. Preserve original
-exceptions, traceback chains and notes. Missing files may be retried. External
-file changes never alter the immutable snapshot.
-
-Staging cleanup never targets the requested final destination. Preserve the
-existing cleanup/error reporting and unsupported-filesystem protections; no
-unsafe direct-write or replacement fallback is authorized. Explicit replacement
-is a separate authorized branch, never a fallback for failed exclusive creation.
-Do not undo publication to recover from staging cleanup failure.
-
-Reverify the relevant file when displaying current materialization status or
-relying on that file for export-based confirmation. Old verification is not proof
-that a copy remains unchanged forever. No arbitrary hostile-directory immunity,
-universal filesystem support or guaranteed power-loss durability is claimed.
+Distinguish attempted replacement, known publication and verified success.
+An error after publication does not prove the old file survives or new file is
+absent. Preserve original traceback/notes. Cleanup removes only owned staging;
+`os.replace` may consume its path. Never delete/roll back final output to hide an
+uncertain outcome. A later explicit retry reuses frozen bytes and can recognize a
+matching copy without rewriting. Database and filesystem are separate resources.
 
 ## Derived pending and recovery outcomes
 
-These five Selected outcomes define current-observation status evaluation. The
-standalone service evaluator is implemented/staged; general status/recovery UI
-is not implemented. One immutable journal-backed export may have zero or more
-independently verifiable external copies. Status is derived
-for the particular destination evaluated, not stored as a global lifecycle
-attribute of the export identity.
-
-First establish a valid committed snapshot through authoritative journal
-validation. Missing, malformed, conflicting or otherwise unverifiable journal
-evidence must fail closed, not become PENDING, MISSING or another file-status
-result. Existing journal integrity requirements remain binding.
-
-Evaluate an explicit destination when supplied; otherwise use the snapshot's
-immutable `preferred_destination`, if present. An alternative destination does
-not modify the snapshot. If neither destination is available, derive PENDING.
+Validate committed evidence first; invalid/unknown registration is not a file
+status. Evaluate an explicit destination, otherwise a frozen preferred path.
+Status is a current observation for that destination, not global persisted state:
 
 | Outcome | Meaning |
 | --- | --- |
-| PENDING | A valid committed snapshot exists, but neither an explicit destination nor an original preferred destination is available for evaluation. This does not assert that file creation was attempted. |
-| READY | A valid committed snapshot exists and the selected destination currently contains a suitable regular file whose complete bytes match the frozen UTF-8 report and whose SHA-256 agrees with the frozen digest. Verification succeeded for this destination at the time of the check. |
-| MISSING | A valid committed snapshot exists and a destination is selected, but no file currently exists there. This establishes no publication history. |
-| CONFLICT | The selected destination exists but its bytes differ, its digest disagrees, or its object type is unsuitable. Directories, symlinks (including dangling links) and other unsuitable objects are not matching report files. |
-| UNVERIFIABLE | A destination is selected, but current contents or file status cannot safely be established, for example because of access failure, interrupted verification or other inspection uncertainty. |
+| PENDING | Valid snapshot but no explicit/preferred destination for evaluation. No attempted write implied. |
+| READY | Suitable regular file currently matches complete bytes and digest. |
+| MISSING | Selected destination currently absent; no publication history inferred. |
+| CONFLICT | Selected object/bytes are unsuitable or disagree. Only stable regular-file content conflict can authorize confirmed overwrite. |
+| UNVERIFIABLE | Inspection cannot safely establish current contents/status. |
 
-Only READY establishes a currently verified copy at the evaluated destination.
-It is not permanent proof that the file remains unchanged; an unreadable file
-cannot be READY merely because an earlier check succeeded. Every current-status
-check reevaluates the selected destination.
+Reevaluate rather than retain READY as permanent proof. Restart/saved-report
+recovery uses SQLite evidence and a chosen destination, not stored publication
+history or an assumed remembered alternate path. Missing does not prove prior
+publication or deletion. File failure leaves committed evidence for same-report
+retry; a deliberate later export has a new identity/cutoff. No file registry,
+publication ledger, durable READY state, automatic recovery writer or separate
+authority is selected.
 
-After restart, reconstruct the export from the journal and reevaluate the
-destination selected under the same rules. Registration alone proves no earlier
-publication. A previously used alternative destination is not automatically
-remembered merely because it was verified in an earlier session.
+## Transaction interruption and idempotency
 
-An absent selected file may never have been created, may reflect failed
-publication, or may have been published and subsequently deleted. These histories
-are intentionally indistinguishable from the same current observable state.
-MISSING does not prove previous publication or deletion.
+Follow [atomic request rules](ARCHITECTURE.md#transactions-and-exact-request-reconciliation).
+Exact committed request reuse returns its original result before stale checks;
+changed content under that ID fails. Mutation/evidence/current reference/receipt
+commit atomically. Unknown commit outcome requires database reconciliation of the
+same request, not a new identity or JSONL synchronization. A post-commit refresh
+failure changes neither committed evidence nor newer current confirmations.
 
-Recoverable registered evidence is broader than uppercase PENDING. MISSING,
-CONFLICT and UNVERIFIABLE can still retain valid immutable evidence for safe
-retry or materialization elsewhere. Retry reuses the export identity and frozen
-contents without recalculation or another snapshot for the same
-operation. Ordinary retry is non-overwriting; explicit replacement requires a new
-user confirmation for that call only, after a stable content conflict. Neither
-permission nor stored file status belongs in the immutable event or retry handoff.
-Matching-file reuse and complete byte/digest verification remain required. Changing the output path never changes the snapshot or its original
-preferred path, and no file outcome implies POL-R confirmation. A deliberate
-later new export is a new identity and frozen cutoff.
+Reject invalid evidence; do not repair it silently or infer success from UI/file
+visibility. New-runtime backup/restore and schema upgrade protection follow the
+SQLite owner, not archived journal replay or derived snapshot precedence.
 
-The journal and current filesystem inspection suffice for this observable-state
-model. Do not add a persisted completion flag, publication-history event,
-external-file registry, second authoritative database, durable READY/MISSING
-state machine, stored file-status cache, separate recovery ledger or automatic
-file-recovery subsystem. Historical publication tracking would require a
-separately approved product requirement; it is not authorized by these outcomes.
+## Absolute confirmation batches
 
-## Journal interruption and export idempotency
+Use immutable relational confirmation batch/cell evidence, not the old JSONL
+event envelope. One operation has a stable batch/request identity and audit instant. Its nonempty
+selected task/day cells retain:
 
-Current initialization creates journal files only for nonexistent or genuinely
-empty data directories. Nonempty datasets missing an authoritative root journal
-component are refused before replacement or other initialization writes. Surviving
-export evidence is preserved for explicit diagnosis/restoration; derived snapshots
-do not authorize reconstructing missing journals. This is distinct from strict
-content validation and is not automatic journal recovery.
+- Task UUID and canonical civil work date.
+- Nonnegative integer absolute confirmed hundredths (not bool/float).
+- Optional source export UUID; export-linked amount equals its frozen cell.
+- Expected prior confirmation identity, or absent for Unknown.
+- Cell-specific stale-export acknowledgement where required.
 
-Keep the export operation identity stable across retries. Before retrying ambiguous
-registration, inspect the authoritative journal for that identity:
-
-- A complete valid event exists: reuse it only after successful synchronization,
-  strict revalidation and complete evidence installation.
-- It is demonstrably absent and the journal is healthy: registration may be
-  retried with the original identity.
-- The journal is malformed/partially written or registration cannot be established:
-  fail closed; do not publish an external report.
-
-Exact existing-identity reuse and recovery after an append exception call the
-existing `EventStorage.synchronize_journal()` operation described in the
-[shared synchronization contract](#staged-confirmation-preparation-and-registration).
-Revalidate the returned complete journal, both export and confirmation projections,
-and the exact frozen export identity/content before installation and return.
-Do not append on either reuse path or rerender previously registered evidence.
-New absent identities retain candidate consistency validation before one append;
-ordinary first-time append success retains its flush and strict verification
-without unconditional additional synchronization.
-
-Healthy demonstrated absence after append failure preserves the original error
-with unchanged-candidate retry context. Partial, malformed, conflicting or
-unreadable evidence fails closed before synchronization, without repair or another
-append. Synchronization-open/fsync/close/revalidation failure reports registration
-unestablished or uncertain and installs no evidence. Preserve the original append
-failure as diagnostic context when later inspection or synchronization fails.
-Repeated failures cannot establish success merely from readable complete bytes.
-Installation failure retains committed evidence for unchanged-event retry; prepare
-complete projections before installation and preserve later effective confirmations
-when reusing an older export. No Actual/timer rebuild, snapshot save, automatic
-backup or external publication is part of registration. Serialized ownership and
-existing filesystem assumptions remain binding; this is no general durability or
-multi-process transaction guarantee.
-
-Do not silently truncate/rewrite earlier valid records or create a second export
-event merely because storage or derived-snapshot persistence returned an error.
-If registration succeeded but the derived state snapshot failed, authoritative
-journal replay takes precedence. Restart reconstructs valid registered evidence;
-file status still requires destination evaluation under the rules above.
-Exactly-once effective export identity is required: duplicate event identities
-must not duplicate export evidence. This contract does not itself implement or
-authorize unrelated general journal-recovery changes.
-
-## Confirmation event structure
-
-Select `polr_confirmation_batch_recorded` in the existing application-scoped
-envelope with `task_id = "__app__"`. One operation produces one event containing
-the whole validated batch; its envelope `event_id` identifies that batch.
-The persisted envelope has exactly `schema_version`, `event_id`, `timestamp_utc`,
-`local_timezone`, `task_id`, `event_type` and `payload`. Require the current schema
-version, a canonical event UUID and canonical UTC audit seconds with a `Z` suffix.
-No extra envelope fields are permitted.
-
-`local_timezone` is preserved audit metadata, not a timezone-rule lookup key.
-Require exactly `str`, nonempty and not whitespace-only, with no leading/trailing
-whitespace, valid UTF-8 encoding, and no NUL, C0/C1 control characters or DEL.
-Preserve the original value without normalization or replacement. Accept
-labels such as `America/Chicago`, `UTC`, `UTC-05:00`, `UTC+05:30`, `CDT` and
-otherwise well-formed opaque system labels, even if an installed database cannot
-resolve them. Validation/replay requires no `ZoneInfo` resolution, IANA database
-membership, network access or additional persisted identifier.
-
-The label does not verify geographic existence or timezone rules. Canonical
-`timestamp_utc` and the cell's recorded `work_date` remain the temporal evidence;
-replay does not use the label for conversion, day attribution, DST, Actual
-calculation, frozen export amounts or ordering. This metadata acceptance does not
-authorize unverified labels for calendar calculations or alter existing timezone
-arithmetic. Offline Windows timezone-data bundling remains a separate release
-qualification concern, not an additional dependency of confirmation validation.
-
-The payload has exactly `cells`, a nonempty array. Each cell has exactly:
-
-| Field | Contract |
-| --- | --- |
-| `task_id` | Canonical UUID with task-creation evidence preceding this batch. Later rename, reassignment or deletion does not invalidate historical identity. |
-| `work_date` | Canonical ISO `YYYY-MM-DD` calendar date. |
-| `confirmed_hundredths` | Nonnegative integer absolute external task/day total; booleans and floats are invalid. |
-| `source_export_id` | Canonical export-event UUID or null for manual confirmation. |
-| `expected_prior_confirmation_id` | Canonical latest effective confirmation-batch UUID for this task/day, or null when Unknown. |
-| `stale_export_acknowledged` | Boolean, true exactly when the applicable cell-specific stale-export conflict exists. |
-
-Cell array order is unrestricted, but duplicate task/day keys are invalid. Add
-no status flags, counters, per-cell timestamps, source classifications or versions.
-
-The event timestamp is confirmation audit time. Unknown means absence of
-confirmation evidence, never a numeric zero sentinel; explicit zero is valid.
-Manual confirmation needs no export. Export-linked confirmation refers to a valid
-committed export preceding the batch in physical journal order. Its task/day must
-exist in that export and its confirmed amount must equal the frozen
-`decimal_hundredths`, never current recalculated Actual. Replay neither regenerates
-the report nor inspects an external file. An intentionally different amount is
-manual confirmation with a null source, without claiming frozen export provenance.
+Duplicate task/day keys reject. Manual confirmation needs no source export and
+may differ from current Actual/export. Unknown is absent evidence; explicit zero
+is a known value with identity. Keep immutable prior history and relational
+current references; do not persist independent additive balances or Delta.
+A source records frozen provenance, not independently verified external POL-R.
+When workflow relies on a report copy, verify current file bytes; historical
+confirmation validity does not depend on that file remaining available.
 
 ## Whole-batch validation, concurrency and stale exports
 
-Validate every selected entry before append. Reject invalid task identities or
-dates, duplicate task/day keys, invalid/negative amounts, invalid export references,
-inconsistent expected prior identities and unacknowledged stale-export conflicts.
-A rejected batch neither appends a partial event nor partially changes effective
-confirmation state. Commit the whole valid batch as one journal event.
+Within one transaction validate all selected identities, values, source cells,
+reviewed priors and acknowledgements **before** committing the batch/current
+references/receipt. Reject the whole stale/invalid batch; no partial confirmation.
+Unchecked cells and earlier evidence remain untouched. Latest references follow
+committed database ordering, not audit-clock sorting or physical JSONL metadata.
 
-Latest effective confirmation follows journal replay order. Earlier evidence
-remains immutable. Each new confirmation replaces an absolute external cell
-total; it adds no work. Optimistically check prior confirmation identity: if it
-changes between UI proposal and commitment, reject the outdated proposal and
-require refreshed review.
+If a source export predates a newer differing current confirmation, identify the
+specific conflicting cell and require acknowledgement bound to that reviewed
+prior. A changed prior rejects even after acknowledgement; it is not blanket
+permission to overwrite subsequent evidence. Equal source/current values require
+no extra manual entry, but intervening equal-value confirmation still changes the
+reviewed prior. Full and checked workflows use the same rule.
 
-Replay uses original physical order from read-sequence metadata, with input list
-position for events without that metadata, never UUID or audit-timestamp order.
-For each incoming cell the expected prior is null only when no effective entry
-exists; otherwise it must equal the batch identity last confirming that cell.
-Validate every cell against the pre-batch projection before replacing any entry.
-
-Compare source export creation with the latest effective confirmation for that
-cell. A stale conflict exists exactly when the source is non-null, the latest
-effective confirmation occurs after that export's first registered occurrence,
-and the latest confirmed amount differs from the proposed frozen amount. Require
-acknowledgement true for that conflict and false in every other case, including
-manual confirmations and equal-value proposals. It remains bound to the correct
-observed prior confirmation identity.
-Acknowledging one conflict does not authorize unrelated replacements. Full-export
-and checked-cell confirmation use the same rules. Do not auto-confirm displayed
-0.00 cells; explicit zero remains possible. No batch changes timers, Actual
-records or exported snapshots.
-
-An identical repeated batch identity is one effective occurrence and cannot
-reapply old values after intervening confirmations. Compare event content
-structurally and strictly, retaining numeric-type and array-order distinctions.
-Different content under the same identity, or an identity shared with another
-event type in either journal position, fails closed. Malformed evidence is never
-skipped, repaired or rewritten.
-
-The derived mapping is keyed by `(task_id, work_date)`, with values containing
-only `confirmed_hundredths` and `batch_event_id`. Absence means Unknown; explicit
-zero retains an entry. It lives only in memory, is rebuilt from archived/active
-journal evidence, and mutable reader results are detached. Do not put it in the
-derived application snapshot or another persisted store.
-
-### Staged confirmation preparation and registration
-
-`TaskTimerService.prepare_polr_confirmation_batch(cells, *, batch_id=None)`
-accepts a nonempty list of explicit six-field cell dictionaries, preserves their
-order and deep-copies them. It generates a canonical batch UUID if omitted,
-captures UTC audit seconds once and preserves the service timezone metadata.
-It strictly validates authoritative evidence and the candidate as the next
-physical occurrence, without writes, projection changes, accounting, rendering,
-selection expansion or automatic zero-cell selection. Reviewed prior identities
-and acknowledgements come from the caller; preparation never refreshes them.
-
-`register_prepared_polr_confirmation_batch(prepared_event)` deep-copies and
-validates the frozen event, then strictly rereads the journal. Check identity
-before prospective new-event validation: reuse exact valid committed evidence at
-its original occurrence, reject changed content/cross-type collisions, or validate
-all cells against the current pre-batch projection before appending one event.
-A new candidate follows all physical read sequences regardless of audit time.
-Even an equal-value intervening confirmation changes the required prior identity;
-reject the entire superseded proposal without mutation. Unrelated cells need not
-invalidate it. Preserve ID, timestamp, cell order, priors and acknowledgements on
-retry; never manufacture acknowledgement or retain just a valid subset.
-
-The supported boundary is synchronous serialized use through one service owning
-the dataset. Fresh reads are not a thread-safe or multi-process compare-and-append
-guarantee. Production integration must enforce writer ownership separately.
-
-After append require the exact valid event in a strict journal read; a silent
-no-op cannot succeed. After an append exception, healthy demonstrated absence
-preserves the original error with retry context. Exact valid visible evidence
-requires successful synchronization before reuse. Conflicting, partial, malformed
-or unreadable evidence fails closed, without another append or repair.
-
-Existing-identity reuse and recovery after append exceptions use the bounded
-`EventStorage.synchronize_journal()` operation: strictly validate manifest and
-journal, open each manifest-indexed segment, active segment and manifest with
-existing-file writable binary access (`r+b`), without creation, truncation or
-append. Write no content through those handles; fsync each and close successfully,
-then strictly reread. Denied writable access fails closed without changing file
-permissions or falling back to read-only access.
-Revalidate complete export/confirmation projections after synchronization. A failed
-fsync, close or inspection cannot establish durable success merely because bytes
-are visible. No unrelated files are synchronized. No new state, repair authority,
-directory-sync or universal power-loss guarantee is implied.
-
-Compute complete replacement evidence projections before installation; return the
-batch UUID only after valid authoritative registration and successful installation.
-An installation failure retains committed evidence for unchanged-candidate retry.
-Reuse after newer batches installs the latest complete projection and cannot
-reapply the old batch over them. Do not rebuild Actual/timer state, save a derived
-snapshot, create automatic backups, change submissions/checkpoints or publish files.
-Pre-append rejection changes no files or projections; failure after writing may
-leave complete or partial evidence. Whole-batch integrity is logical event/replay
-integrity, not guaranteed filesystem rollback.
-
-A source export establishes frozen-cell provenance, not current file readiness or
-independent POL-R verification. This low-level writer does not inspect report
-copies. A later workflow relying on a report file must still verify that file
-currently under the [materialization boundary](#materialization-and-byte-verification).
-Historical replay and recovery remain file-independent.
-
-Export registration shares this synchronization-before-success requirement for
-exact identity reuse and append-exception recovery. Ordinary successful new appends
-retain their existing flush and verification sequence without extra synchronization;
-see [export idempotency](#journal-interruption-and-export-idempotency).
-
-### Staged export proposals and selected preparation
-
-`TaskTimerService.propose_export_polr_confirmation(export_id)` strictly reads and
-validates archived/active journal evidence, resolving the committed source and
-latest confirmations without cached readers, Actual calculation, rendering,
-external-file verification, a clock or UUID capture. Return a detached dictionary
-with exactly `source_export_id` and `cells`. Include every frozen task/day cell,
-including zero, in task UUID then ISO date order; empty task coverage yields `[]`.
-Each row has exactly `task_id`, `work_date`, `task_name`, `proposed_hundredths`,
-`prior_confirmed_hundredths`, `expected_prior_confirmation_id` and
-`requires_stale_acknowledgement`. Names and proposed amounts are frozen export
-values. Prior amount/identity are both `None` for Unknown; known zero retains its
-identity. The shared replay/proposal stale predicate uses first physical export
-and effective-batch occurrences: latest confirmation after export and differing
-amount requires acknowledgement. Audit times and identical duplicate occurrences
-do not move those positions. No occurrence index is persisted.
-
-`prepare_export_polr_confirmation_batch(proposal, *, selected_cells=None,
-acknowledged_cells=(), batch_id=None)` treats the proposal as a reviewed detached
-value. Validate exact fields/types, canonical UUIDs/dates, nonnegative integer
-amounts excluding booleans/floats, consistently known/Unknown prior pairs, boolean
-stale flags and duplicate-free canonical row order. Freshly read and validate the
-journal again. Require complete source coverage and exact frozen keys, names and
-amounts for every row, including unchecked rows.
-
-Default selection (`None`) is every proposed amount greater than zero, including
-positive cells already equal to known confirmation. Never automatically select
-0.00, even when underlying seconds were positive. Explicit selection means exactly
-those keys, including zero if requested. Selection and acknowledgements accept
-only list/tuple collections of `(task UUID, canonical ISO work-date string)`
-two-tuples. Reject malformed collections, duplicates and absent keys. Empty
-effective selection raises before event preparation. Output canonical proposal
-order regardless of selection-input order; unchecked cells are omitted, not reset.
-
-Acknowledgement keys must exactly equal the selected rows requiring it. Reject
-missing, extra, duplicate, unselected or nonconflicting acknowledgements and any
-blanket boolean. Do not infer acknowledgement from the proposal flag. For selected
-rows, reviewed prior identity, amount and stale classification must still match
-fresh evidence; even an equal-value identity change rejects the entire operation.
-Unselected confirmation changes need not invalidate selection; their reviewed
-fields must still have valid shape and their source data must remain exact.
-Acknowledgement binds the selected key, frozen amount and unchanged reviewed prior.
-
-Construct only the existing six persisted cell fields and delegate to
-`prepare_polr_confirmation_batch(cells, batch_id=batch_id)`, retaining its fresh
-validation and UUID/audit/timezone preparation. Return its detached event without
-append. Registration remains a separate explicit call. Retain and retry that exact
-prepared event for ambiguous registration; creating another proposal/event is not
-recovery. A later selected prior change remains subject to registration rejection.
-
-Both operations are nonpersistent under existing synchronous serialized ownership:
-no append, synchronization, projection/cache installation, backup, materialization,
-Actual/timer or submission/checkpoint changes. No proposal UUID, timestamp, version,
-token, draft registry, schema, snapshot data or locking is introduced. Deferral
-writes nothing; reopening creates a new proposal requiring renewed review.
-Source identity proves frozen provenance, not file readiness or independent POL-R
-verification; a later workflow relying on a report copy still requires current
-file verification. Acknowledgement presentation, dialogs, manual-confirmation UI,
-production integration, weekly summaries and cutover remain separate outcomes.
+Proposals use frozen export amounts/names and latest reviewed priors, never
+recalculated Actual. Ordinary applicable bulk selection does not automatically
+confirm zero; explicit checked zero is allowed. Empty selection is not All.
+Deferral writes nothing; later review obtains fresh priors. Exact batch request
+reuse cannot reapply old values after newer confirmations. Manual confirmation
+records what the user reports externally, not backend verification. No confirmation
+changes Actual, active timer or frozen exports.
 
 ## Displayed reconciliation
 
-For each task UUID and work date, render integer hundredths with two places:
-
-| Field | Rule |
+| Field | Derived rule |
 | --- | --- |
-| Actual | Current recorded seconds converted to displayed hundredths; full precision remains in underlying accounting. |
-| Confirmed | Latest effective confirmed hundredths, or Unknown. |
-| Delta | Displayed Actual hundredths minus Confirmed hundredths when known; otherwise Unverified. |
-| Enter in POL-R | Current displayed Actual hundredths, the complete replacement value. |
+| Actual | Current exact task/day work rounded once to integer hundredths. |
+| Confirmed POL-R | Latest absolute confirmed hundredths or Unknown. |
+| Delta | Actual hundredths minus known Confirmed; otherwise Unverified. |
+| Enter in POL-R | Whole current Actual hundredths, never Delta. |
 
-Do not calculate numeric Delta from Unknown. Zero Delta means agreement with
-the latest user confirmation, not independent POL-R verification.
+Mandatory: frozen 3.00, another 2.00 work, confirm 3.00 →
+**5.00 / 3.00 / +2.00 / 5.00**. Confirm 5.00 → Delta 0.00.
+Correct Actual to 2.50 against 3.00 → **2.50 / 3.00 / -0.50 / 2.50**.
+Keep older exports/confirmations unchanged. Zero-work dates may have known positive
+confirmation and negative Delta. Underlying positive work rounded to zero remains
+precise. Project rows are informational, never extra cells/work.
 
-Mandatory decimal example: frozen export 3.00; more work 2.00; current Actual 5.00;
-Confirmed 3.00; Delta +2.00; Enter 5.00. After confirming the external cell at 5.00,
-Delta is 0.00. Negative correction: Actual 2.50; Confirmed 3.00; Delta -0.50;
-Enter 2.50. These represent the already-approved 3:00 → 5:00 and 2:30 correction
-cases without changing their underlying Actual-time semantics.
-
-### Staged daily calculation
-
-`TaskTimerService.calculate_polr_reconciliation()` accepts exactly the arguments
-and defaults of `calculate_date_window()`: inclusive start/end dates, one required
-keyword-only `cutoff_utc`, and the existing task/project/Unassigned/deleted selection.
-Read the archived/active journal strictly once and use `collect_polr_confirmations()`
-for validated latest evidence; cached confirmations cannot authorize results.
-Invalid or unreadable evidence fails closed even for an empty selection. Calculate
-Actual once through the existing service operation, forwarding the request unchanged.
-
-Return a detached dictionary with exactly `actual` and `cells`. `actual` preserves
-the calculated date-window report unchanged, including full-precision seconds,
-labels, current membership and raw aggregates. `cells` is keyed by
-`(task UUID, canonical ISO work-date string)` and contains exactly one cell per
-included task per date in the inclusive report window. Absent sparse Actual daily
-buckets mean zero; do not expand scope to other confirmed tasks or dates.
-
-Each cell contains exactly `actual_hundredths`, `confirmed_hundredths`,
-`delta_hundredths`, `enter_hundredths` and `batch_event_id`. Convert full-precision
-task/day seconds with the existing HALF_UP converter once. Confirmed and batch ID
-come from latest valid evidence or are both `None` when Unknown. Delta is Actual
-hundredths minus Confirmed when known, otherwise `None` (Unverified). Enter always
-equals Actual hundredths, never Delta. Explicit confirmed zero retains integer
-zero and its batch identity. A positive confirmation on a selected zero-work date
-therefore yields negative Delta and zero Enter. Nonzero work that rounds to zero
-remains unchanged in `actual`. Project metadata is informational, not extra cells.
-
-Use current service Actual state under synchronous serialized dataset ownership;
-this is neither foreign-writer synchronization nor an atomic multi-process snapshot.
-The cutoff caps timed work under existing accounting; it is not historical as-of
-replay and does not filter confirmations by audit timestamp. Latest confirmation
-still follows physical journal order. Reevaluate on every call without installing
-projections, refreshing caches, syncing files, writing events/snapshots, backing up,
-rendering or materializing files, consulting another clock, or changing timers,
-Actual, submissions/checkpoints or settings. Earlier results remain detached.
-
-Only daily numeric cells are implemented: no Confirmed/Delta aggregates,
-partial-known balances, weekly reconciliation, display formatting or production
-integration. Future displayed rollups must follow the selected cell-summing rules.
+Daily and weekly presentation must not hide Unknown/disagreement through opposing
+weekly deltas. Required previous-week/application-used-day and current-Friday/
+Monday reminders compare task/day truth; explicit Dismiss today is separate from
+opening/Save. No external outage blocks Actual. Complete this core Stage 3 workflow
+before pilot; it is not optional Stage 6 scope.
 
 ## Implementation boundaries and remaining decisions
 
-Implement this contract through separately reviewed outcomes after independent
-acceptance. Pure decimal-hour rendering and immutable export-snapshot registration
-are implemented/staged as separate outcomes. Preparation creates no records/files;
-registration appends only the frozen export event and verifies the journal.
-Separate verified file materialization and read-only five-status evaluation are
-implemented/staged without new events, recalculation or persisted completion
-state. Confirmation validation, immutable batch replay, effective projection
-and dedicated confirmation preparation/registration are also implemented/staged.
-Generic service append rejects confirmation events in favor of the dedicated API.
-Read-only daily reconciliation and frozen-export proposal/selection preparation
-are also staged. Independent review is
-required before further integration. Confirmation/reconciliation presentation,
-weekly reconciliation summaries, production integration, general file-status/recovery
-UI, automatic missing-file recovery, general journal repair, migration and installation cutover remain
-unimplemented. Architectural documentation does not activate them.
+Current JSONL preparation/registration/materialization/status and confirmation
+services are evidence of semantic foundations, **not SQLite implementation**.
+Their exact event layouts, replay, synchronization and retained Save-widget
+recovery are superseded target mechanisms; see [current source](../DESIGN_NOTES.md).
+Do not reuse legacy checkpoint/submission markers as absolute POL-R evidence.
 
-Do not reuse legacy submission markers/checkpoints as this POL-R model. Add no
-second database, shadow authoritative export file or independently maintained
-Delta counter. Allocation controls/recurrence/overrides and week-change behavior,
-first-release allocation inclusion and installation/data cutover remain Open.
-POL-R backend allocation administration remains Unverified. Windows/NTFS execution
-requires actual platform validation; approval supplies no power-loss guarantee.
+The rewrite preserves semantics through SQLite transactions, exact units and
+callback-driven Tk views. Core saved-report recovery is independent of widgets.
+Allocation policy, dataset-timezone changes, abnormal clock/restart rules and
+release paths remain with the [reserved decision gates](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions).
+No migration or new external integration is selected. Windows/NTFS, packaging,
+concurrency and power-loss claims require applicable evidence, not this approval.

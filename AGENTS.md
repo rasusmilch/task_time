@@ -5,11 +5,13 @@
 User-approved behavior is authoritative for desired product requirements.
 [docs/TIMESHEET_REQUIREMENTS.md](docs/TIMESHEET_REQUIREMENTS.md) owns the selected
 replacement/POL-R contract. Source establishes what currently executes;
-[DESIGN_NOTES.md](DESIGN_NOTES.md) describes inspected architecture and limitations.
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) owns the selected Tkinter/SQLite
+rewrite architecture; [DESIGN_NOTES.md](DESIGN_NOTES.md) describes inspected
+legacy Tkinter/JSONL implementation and limitations.
 [README.md](README.md) provides overview/status. Tests and execution receipts are
 evidence, not product authority.
-[docs/ROADMAP.md](docs/ROADMAP.md) owns development phases, priorities,
-dependencies, phase completion criteria and deferred implementation work; it
+[docs/ROADMAP.md](docs/ROADMAP.md) owns rewrite Stages 0–6, priorities,
+dependencies, completion criteria and deferred implementation work; it
 does not replace requirements or technical design authority.
 [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) owns validation applicability,
 test evidence and release-qualification boundaries.
@@ -18,14 +20,21 @@ decision evidence, rationale, provenance and supersessions. Current-state
 requirements take precedence for present selected behavior; decision history
 does not replace current authority or close Open matters.
 [docs/EXPORT_EVIDENCE_CONTRACT.md](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the
-approved technical export-snapshot, decimal-hour, materialization/recovery and
-POL-R confirmation-batch contracts. Approval does not mean implementation.
+selected frozen-export, decimal-hour, materialization/recovery and absolute
+POL-R batch semantics. ARCHITECTURE owns SQLite transactions; former JSONL
+envelope/replay/synchronization mechanics are legacy, not replacement requirements.
+Approval does not mean implementation. POL-R confirmation, reconciliation,
+summaries and reminders are core before pilot, not optional expansion.
 
 The user and ChatGPT approve product behavior and architecture. Codex implements
 approved tasks and reports constraints; it must not independently decide
 requirements, policies, schemas, workflows or previously Open matters. Return an
 unresolved material design choice for user/ChatGPT adjudication.
 
+Read the product contract and target architecture before replacement work.
+After independent architecture acceptance, the next runtime action is a bounded
+Stage 1 read-only implementation plan on a separately authorized branch from
+that accepted commit; do not create it during documentation reconciliation.
 Read the product contract before POL-R-related work. Selected does not mean
 implemented. Do not claim target functionality is active or treat superseded
 legacy behavior as permanent replacement-product policy.
@@ -36,12 +45,13 @@ legacy behavior as permanent replacement-product policy.
 | --- | --- |
 | [README.md](README.md) | Overview, actual status and navigation. |
 | [docs/TIMESHEET_REQUIREMENTS.md](docs/TIMESHEET_REQUIREMENTS.md) | Selected target behavior and Open/Unverified/Deferred boundaries. |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Current development phases, priorities, dependencies, completion gates and deferred work. |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Selected Tkinter/SQLite rewrite, responsibilities, atomic requests, worker/Tk lifecycle, time, files and backups. |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Active rewrite Stages 0–6, priorities, gates and reserved decisions; old JSONL Phase 2 acceptance is historical. |
 | [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) | Proportional validation scope, evidence requirements and release-qualification boundaries. |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Historical product/architecture decision evidence, rationale, provenance and supersessions. |
-| [docs/EXPORT_EVIDENCE_CONTRACT.md](docs/EXPORT_EVIDENCE_CONTRACT.md) | Approved export evidence, decimal representation, verification/recovery and confirmation technical contracts. |
-| [DESIGN_NOTES.md](DESIGN_NOTES.md) | Current service/event/storage contracts and verified limitations. |
-| [BUILDING.md](BUILDING.md) | Existing Windows launch, packaging and distribution instructions. |
+| [docs/EXPORT_EVIDENCE_CONTRACT.md](docs/EXPORT_EVIDENCE_CONTRACT.md) | Selected frozen export, decimal, file verification/recovery and absolute confirmation semantics; not legacy JSONL machinery. |
+| [DESIGN_NOTES.md](DESIGN_NOTES.md) | Actual legacy service/event/storage contracts and limitations; not target rewrite instructions. |
+| [BUILDING.md](BUILDING.md) | Actual Windows launch/build scripts and separately selected rewrite qualification obligations. |
 | [pyproject.toml](pyproject.toml) | Python requirement, package dependencies and pytest configuration. |
 | [CHANGELOG.md](CHANGELOG.md) | Sole canonical cumulative project-change history. |
 

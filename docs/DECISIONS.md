@@ -6,12 +6,16 @@ This document is **HISTORICAL EVIDENCE**: established decisions, their provenanc
 design purpose, corrections and unresolved questions. It is not current-state
 product authority. The [product contract](TIMESHEET_REQUIREMENTS.md) states what
 Chronicle is currently required to do; readers need not reconstruct that from
-this history. [Design Notes](../DESIGN_NOTES.md) describes implementation,
+this history. [ARCHITECTURE.md](ARCHITECTURE.md) owns the current selected rewrite;
+[Design Notes](../DESIGN_NOTES.md) describes legacy implementation,
 [ROADMAP.md](ROADMAP.md) owns sequencing/gates, and
 [TESTING_STRATEGY.md](TESTING_STRATEGY.md) owns validation. Historical project
 changes belong to [CHANGELOG.md](../CHANGELOG.md).
 The approved [export evidence contract](EXPORT_EVIDENCE_CONTRACT.md) owns the
-technical event, decimal, verification/recovery and batch rules recorded below.
+frozen-export, decimal, verification/recovery and absolute batch semantics.
+The later Tkinter/SQLite entry below supersedes JSONL technical mechanisms,
+constructor/modal sequencing, nested correction and retained-widget recovery
+where earlier approvals selected them; it does not rewrite their provenance.
 
 The user and ChatGPT approve product/architecture choices. Codex records and
 implements approved work; recording a choice does not make Codex its approver.
@@ -139,9 +143,11 @@ do not establish delivery of the replacement editor, writer or display.
 
 ### Closed timed corrections and unchanged recorded precision
 
-**Status:** current. **Provenance:** explicit user-approved behavior and ChatGPT
-architecture adjudication supplied with the staged timed-correction instructions;
-current owner: [Actual-time records](TIMESHEET_REQUIREMENTS.md#selected--actual-time-records).
+**Status:** current for behavior; replacement-interval/journal mechanism superseded by
+the later Tkinter/SQLite decision. **Provenance:** explicit user-approved behavior and
+ChatGPT architecture adjudication supplied with the staged timed-correction
+instructions; current owner: [Actual-time
+records](TIMESHEET_REQUIREMENTS.md#selected--actual-time-records).
 
 Unchanged saves write no event. Changing one endpoint preserves the other;
 comments are optional and attach to actual time corrections, not standalone
@@ -152,7 +158,7 @@ These Selected rules differ from legacy required-reason and endpoint handling;
 they neither change the active legacy mutators nor establish an earlier approved
 replacement-editing policy.
 
-The selected mechanism reuses `interval_edited` and its replacement identity.
+At that approval, the selected mechanism reused `interval_edited` and its replacement identity.
 A detached prepared event retains both identities through uncertain appends;
 authoritative replay and journal synchronization establish registration before
 projection installation. No revision token, operation store or new event/schema
@@ -229,10 +235,11 @@ browser interactions, Phase 3 dependencies and Open matters are unchanged.
 
 ### Modal owned history browsing
 
-**Status:** current. **Provenance:** explicit user approval supplied with the
-staged application-owned modal history-window instructions, after session
-direction and window planning review; current owner:
-[mixed history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
+**Status:** current for modality/task binding; blocking window-wait mechanism superseded
+for the rewrite. **Provenance:** explicit user approval supplied with the staged
+application-owned modal history-window instructions, after session direction and window
+planning review; current owner: [mixed
+history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
 
 History blocks main-application interaction until closed, stays attached to its
 original task, and supplies browsing controls and Close without main-window
@@ -250,10 +257,11 @@ production-wide enforcement; editor/audit and other Phase 3 work remain separate
 
 ### Originating-parent history return prerequisite
 
-**Status:** current. **Provenance:** later explicit architecture adjudication
-supplied with the originating-parent/modal-return implementation instructions,
-after production-access planning. Technical owner:
-[owned history window](../DESIGN_NOTES.md#owned-modal-history-window).
+**Status:** historical/current legacy implementation; target return principles retained
+with callback-driven presentation. **Provenance:** later explicit architecture
+adjudication supplied with the originating-parent/modal-return implementation
+instructions, after production-access planning. Technical owner: [owned history
+window](../DESIGN_NOTES.md#owned-modal-history-window).
 
 The application owner selects and validates the live originating top-level and
 captures its local grab and focus. The history shell owns its own widgets/grab
@@ -273,10 +281,11 @@ is approved or needed. Earlier modal/session approvals retain their chronology.
 
 ### Replacement Work History access
 
-**Status:** current. **Provenance:** explicit user approval supplied with the
-replacement Work History integration instructions, after acceptance of the
-originating-parent prerequisite. Current owner:
-[mixed history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
+**Status:** historical/current legacy routing; recursive metadata-editor route
+superseded as target navigation. **Provenance:** explicit user approval supplied with
+the replacement Work History integration instructions, after acceptance of the
+originating-parent prerequisite. Current owner: [mixed
+history](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history).
 
 Both former Edit Timeline commands become Work History, using the application
 owner and each originating top-level, including recursive task editors. The
@@ -307,10 +316,12 @@ Fixed Sunday calculations are current implementation, not permanent target polic
 
 ### Separate Actual, Exported and Confirmed POL-R evidence
 
-**Status:** current. **Provenance:** explicit user confirmation; current owners:
-[three-record distinction](TIMESHEET_REQUIREMENTS.md#selected--actual-exported-and-confirmed-pol-r-are-distinct),
+**Status:** current for semantic separation; mandatory event-backed storage superseded
+by SQLite. **Provenance:** explicit user confirmation; current owners: [three-record
+distinction](TIMESHEET_REQUIREMENTS.md#selected--actual-exported-and-confirmed-pol-r-are-distinct),
 [saved exports](TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports) and
-[evidence integrity](TIMESHEET_REQUIREMENTS.md#selected--confirmation-evidence-and-batch-integrity).
+[evidence
+integrity](TIMESHEET_REQUIREMENTS.md#selected--confirmation-evidence-and-batch-integrity).
 
 Actual is derived work; Exported freezes the task/day amounts and reporting
 context of a saved timesheet; Confirmed POL-R records absolute external totals
@@ -342,9 +353,10 @@ remembered paths, restart policy, configurable weeks or installation cutover.
 
 ### Standalone frozen-export Save/retry
 
-**Status:** current. **Provenance:** later explicit user approval supplied with
-the standalone saving/retry implementation instructions. This extends the earlier
-preview-only component approval without changing its historical boundary.
+**Status:** current for frozen saving; event-registration and instance-retention
+mechanics superseded for the rewrite. **Provenance:** later explicit user approval
+supplied with the standalone saving/retry implementation instructions. This extends the
+earlier preview-only component approval without changing its historical boundary.
 
 Compose the accepted preview with existing registration and verified
 materialization services. Save publishes the reviewed event unchanged, with an
@@ -387,10 +399,12 @@ modal session behavior without activating dated writers, migration or cutover.
 
 ### Production modal Timesheet and unfinished session attempts
 
-**Status:** current. **Provenance:** later explicit user approval and implementation
-contract for replacing shipped export workflows with the accepted Timesheet components.
-Current owners: [saved exports](TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports)
-and [owned Timesheet](../DESIGN_NOTES.md#application-owned-modal-timesheet).
+**Status:** current for modal/frozen behavior; widget-retained attempt recovery
+superseded for the rewrite. **Provenance:** later explicit user approval and
+implementation contract for replacing shipped export workflows with the accepted
+Timesheet components. Current owners: [saved
+exports](TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports) and [owned
+Timesheet](../DESIGN_NOTES.md#application-owned-modal-timesheet).
 
 All shipped export entry points use one application-owned modal Timesheet.
 Main/mini input is blocked while timers and ordinary Tk events continue. Fresh
@@ -445,17 +459,19 @@ and, for the correction, 2.50 and -0.50.
 
 ### Authoritative snapshot-first publication and recoverable exports
 
-**Status:** current. **Provenance:** explicit user approval of one authoritative
-immutable snapshot registered before external publication, reproducible verified
-copies, recoverable pending exports and then no overwrite. The blanket
-no-overwrite clause is superseded by the later explicit-overwrite approval;
-default protection and immutable evidence remain. ChatGPT selected the
-concrete event identities, contents, registration/retry, verification and batch
-contracts under that user-approved direction. Technical owner:
-[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); product owner:
-[saved exports](TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports).
+**Status:** current for snapshot-first semantics; journal authority superseded by
+SQLite. **Provenance:** explicit user approval of one authoritative immutable snapshot
+registered before external publication, reproducible verified copies, recoverable
+pending exports and then no overwrite. The blanket no-overwrite clause is superseded by
+the later explicit-overwrite approval; default protection and immutable evidence remain.
+ChatGPT selected the concrete event identities, contents, registration/retry,
+verification and batch contracts under that user-approved direction. Technical owner:
+[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); product owner: [saved
+exports](TIMESHEET_REQUIREMENTS.md#selected--preview-and-saved-exports).
 
-The journal holds export truth before file materialization. A failed file write
+At that approval, the journal held export truth before file materialization.
+SQLite now owns replacement evidence; snapshot-first semantics remain binding.
+A failed file write
 leaves reusable evidence rather than an apparent successful export without a
 matching authoritative record. Retry uses the same frozen work and identity;
 success requires verified bytes. This resolves the earlier Open consistency and
@@ -505,7 +521,9 @@ zero; recurring defaults, specific overrides and manual adjustments are approved
 future behavior. Remaining allocation and projected remaining after Actual are
 estimates, separate from outstanding unconfirmed time. Insufficiency may warn but
 never blocks timers or discards work. Implementation is Deferred; configuration
-details and first-release inclusion remain open. POL-R backend administration
+details remain open. First-release inclusion was reserved then; the later rewrite
+decision explicitly places allocations outside the complete core pilot.
+POL-R backend administration
 and enforcement remain Unverified, not an external authorization guarantee.
 
 ### Manual external integration boundary
@@ -517,6 +535,67 @@ Chronicle assists the user in entering and correcting POL-R values; it does not
 connect or synchronize automatically. User confirmation records what the user
 believes is present, not independent external verification. Zero Delta therefore
 means agreement with the latest confirmation, not a verified POL-R query.
+
+### Tkinter transactional rewrite and core POL-R before pilot
+
+**Status:** current. **Provenance:** explicit user instructions titled “Reconcile
+Chronicle's Tkinter rewrite requirements, architecture and roadmap,” including
+the user's correction that POL-R reconciliation is an absolute core requirement.
+No unsupported decision date is inferred from a commit or source snapshot.
+Current owners: [requirements](TIMESHEET_REQUIREMENTS.md),
+[target architecture](ARCHITECTURE.md), [export contract](EXPORT_EVIDENCE_CONTRACT.md)
+and [Stages 0–6](ROADMAP.md).
+
+Python + Tkinter/ttk remains final. The user explicitly supersedes the preceding
+Qt/PySide6 clean-rewrite planning assumptions, not because of an alleged Qt
+capability defect. No Qt runtime exists in the inspected baseline. The earlier
+nested Work History correction/global pending-retry implementation task remains
+superseded and must not be executed as fallback.
+
+Select one local SQLite authority, relational current facts plus immutable typed
+work revisions/export/absolute-confirmation evidence, stable work-entry UUIDs,
+expected revisions and atomic committed request receipts. Exact request reuse
+returns committed results before stale checks; changed content under the same ID
+fails. Unchanged edits write no revision/artificial receipt. WAL/FULL/foreign keys,
+constraints, supported backups, exact integer microseconds, explicit IANA/offline
+tzdata and future rewritten-data upgrade protection are selected.
+
+This supersedes JSONL-as-target envelopes/manifests/replay/synchronization,
+replacement-interval UUIDs, Python authoritative projections/JSON snapshots and
+same-widget retry dependence. Retain frozen report, exact retry, protected default
+publication/explicit one-call overwrite and absolute confirmation semantics.
+SQLite commit and file publication remain distinct resources, without universal
+power-loss or hostile/concurrent-directory guarantees.
+
+Use shallow modules, all Tk calls on the UI thread and one worker-owned SQLite
+connection/database/file I/O via queues and a bounded UI result drain. Constructors
+construct only; explicit presentation/completion callbacks replace application
+blocking modal sequencing. Short toolkit dialogs are allowed with legitimate
+parent/grab/focus return. Main selection → task-bound modal History → inline editor
+supersedes subordinate correction dialogs and recursive metadata-editor History
+routing in the rewrite. Current code remains untouched by this documentation.
+
+Core is task recording AND explicit POL-R: frozen export, whole/checked/manual
+absolute confirmation, Unknown versus zero, stale-prior rejection, daily/weekly
+Actual/Confirmed/Delta/Enter and previous-week/every-used-day plus current-Friday/
+Monday reminders. All must be complete before core pilot. The earlier proposed
+Stage 6 POL-R deferral is expressly rejected; Stage 1 timer foundation is an
+engineering slice, not complete MVP/pilot. Allocations/conveniences are optional
+Stage 6 after reserved decisions, superseding the earlier Open first-release
+allocation-inclusion question. Enter is whole current Actual, never Delta; mandatory
+5.00/3.00/+2.00/5.00, then zero Delta at 5.00, and corrected 2.50/-0.50 examples remain.
+
+Fresh rewrite requires no legacy migration/import, old schema/API support,
+dual-write or parallel runtime. This does not authorize startup deletion. Exact
+release paths/cutover/cleanup, abnormal clock/sleep/restart, dataset-timezone changes,
+replacement templates and allocation policy remain reserved at their first affected
+gates. Existing JSONL Phase 2 acceptance stays historical, not SQLite completion.
+
+Preserve the feature branch and full history. After independent architecture
+acceptance, a separately authorized runtime branch originates at that accepted
+commit. Next runtime work is a bounded Stage 1 read-only implementation plan,
+not another whole-app planning cycle. No branch or runtime is created by this
+Markdown-only reconciliation.
 
 ## Material corrections, supersession and legacy evidence
 
@@ -595,11 +674,16 @@ owner or candidate implementation design.
 
 - Allocation defaults/overrides and their interaction with week-start changes.
 - Exact installation replacement and old-data cutover.
-- Whether allocations belong in the first replacement release (reserved release
-  scope in the roadmap, not a choice delegated to Codex).
+- Abnormal clock/sleep/persisted-timer restart rules before affected Stage 1 code.
+- Dataset-timezone changes before affected configuration/accounting.
+- Replacement template semantics before optional implementation.
 
-Formerly Open export event, confirmation, consistency/recovery and decimal-format
-questions are now resolved by the approved technical owner, with provenance
+The later rewrite approval places allocations in optional Stage 6; earlier
+first-release inclusion is superseded, not a remaining core pilot decision.
+
+Formerly Open export/confirmation/decimal semantic questions were resolved by
+the approved technical owner; their JSONL storage/recovery mechanisms are now
+superseded by the later SQLite transaction approval, with provenance
 recorded above. This history defines no alternate schema or recovery authority.
 POL-R allotment administration/enforcement remains an
 [Unverified external fact](TIMESHEET_REQUIREMENTS.md#unverified-external-behavior--pol-r-backend),

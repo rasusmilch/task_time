@@ -1,266 +1,89 @@
-# Chronicle (tkinter)
+# Chronicle
 
-A local-only Windows-friendly desktop task time tracker built with Python + tkinter.
+A small local Python + Tkinter/ttk application for task-time recording **and
+explicit absolute POL-R reconciliation**. The selected clean rewrite uses
+transactional SQLite. Confirmation, reconciliation, summaries and reminders are
+core requirements before pilot; optional allocations are separate.
 
 ## Product authority and implementation status
 
-The [approved replacement/POL-R product contract](docs/TIMESHEET_REQUIREMENTS.md)
-owns selected target behavior and its Open, Deferred and Unverified boundaries.
-Selected functionality is not automatically implemented.
-
-| Status | What it means here |
+| Owner | Scope |
 | --- | --- |
-| Approved target | Replacement workflow, configurable weeks, decimal-hour reporting and separate Actual/Exported/Confirmed POL-R reconciliation with snapshot-first evidence are selected; consult the contract for complete behavior. |
-| Staged service capability | Independent projects/tasks, date-only replay, closed timed-correction preparation/registration, exact and decimal text renderers, exact file-only saving, export-snapshot registration/replay, verified materialization, read-only file status, confirmation-batch preparation/registration/replay, frozen-export proposal/selection preparation and daily POL-R reconciliation calculation are staged. |
-| Connected calendar Actual | Main own-task Today/This week and mini Today use mixed accounting at one cutoff; application totals include retained deleted work. Failed calculations remain visibly unavailable until a successful refresh. The modal Timesheet uses mixed frozen reports. |
-| Connected read-only history | Main-panel and recursive task-editor Work History commands share the modal browser, originating-parent return and session-only sorting. Replacement editing remains pending. |
-| Connected frozen Timesheet | TimesheetPreviewFrame offers explicit This week/Last week/Custom preparation, independent All/Selected task scope including deleted work, and exact read-only frozen text. Draft changes/failures invalidate readiness. TimesheetSaveFrame composes locked same-event registration/materialization retries and protected explicit destinations, with a separate confirmed Overwrite action for stable regular-file content conflicts. One application-owned modal window connects every shipped export entry point and retains the same unfinished Save instance during the session. General recovery UI remains pending. |
-| Production still pending | File-status/recovery UI, weekly reconciliation reminders, remaining replacement editing UI, new date-only writers, POL-R confirmation/reconciliation UI and weekly reconciliation summaries, configurable weeks, weekly allocations and installation cutover are not active. |
+| [Requirements](docs/TIMESHEET_REQUIREMENTS.md) | Selected product behavior, core/optional scope and Open decisions. |
+| [Target architecture](docs/ARCHITECTURE.md) | Single Tkinter/SQLite technical owner: exact units, relational records/revisions, atomic requests, worker/Tk lifecycle. |
+| [Export/POL-R contract](docs/EXPORT_EVIDENCE_CONTRACT.md) | Frozen reports, rounding, protective publication/confirmed overwrite and absolute confirmations. |
+| [Roadmap](docs/ROADMAP.md) | Active rewrite Stages 0–6 and gates. |
+| [Design Notes](DESIGN_NOTES.md) | Actual legacy Tkinter/JSONL source and limitations, not rewrite instructions. |
+| [Testing strategy](docs/TESTING_STRATEGY.md) | Proportional evidence and platform/release limitations. |
+| [Decisions](docs/DECISIONS.md) | Historical approvals and explicit supersessions. |
+| [Repository instructions](AGENTS.md) / [Changelog](CHANGELOG.md) | Governance and sole cumulative change history. |
 
-[Phase 2's bounded evidence and daily-reconciliation service gate](docs/ROADMAP.md#phase-2--pol-r-evidence-and-reconciliation)
-is independently accepted as Complete under serialized dataset ownership;
-capabilities remain staged and production/release qualification remains pending.
+**Selected is not implemented.** No SQLite runtime, worker bridge or inline History
+editor is delivered by the documentation change. Tkinter is final, not a frontend
+pending Qt/PySide6. The rewrite has no migration/import/old-schema/API or parallel
+runtime requirement. Existing user files stay protected; exact release paths,
+installation/cutover and cleanup remain Open.
 
-Current production retains parent/subtask interfaces alongside read-only Work History
-and the modal Timesheet. Backend timestamp checkpoints and legacy submission
-markers remain readable, but Timesheet creates neither.
-Retained mutation/accounting services still handle synthetic duration records;
-Work History refuses applicable synthetic work rather than adapting it. There
-is no parallel legacy history interface.
-`save_date_range_timesheet()` still creates an exact-format file only, without
-export-event evidence or POL-R confirmation. Separate snapshot-first operations
-now register frozen decimal evidence and materialize verified copies. They are
-connected through the production Timesheet; saving never confirms POL-R entry
-or dismisses a reconciliation reminder.
-A [standalone timesheet preview](DESIGN_NOTES.md#frozen-timesheet-preview-standalone)
-prepares an unregistered frozen candidate without writes. A
-[standalone Save/retry component](DESIGN_NOTES.md#standalone-frozen-export-saveretry)
-composes that preview with the existing verified services. The
-[owned Timesheet](DESIGN_NOTES.md#application-owned-modal-timesheet) now replaces
-all shipped export routes. Unfinished saves resume in the same component only
-during this application session; exit warns before losing that resumption.
-Fresh openings require Preview. No restart recovery UI or dated writer is activated.
+## Selected core and sequence
 
-See [repository instructions](AGENTS.md), [current technical design](DESIGN_NOTES.md)
-and the [canonical changelog](CHANGELOG.md) for their respective authority scopes.
-The [development roadmap](docs/ROADMAP.md) owns sequencing, dependencies and phase
-completion gates.
-The [testing strategy](docs/TESTING_STRATEGY.md) defines validation applicability,
-evidence expectations and release-qualification boundaries.
-The [decision history](docs/DECISIONS.md) preserves historical rationale,
-provenance and supersessions.
-The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns approved
-decimal-hour, snapshot, file verification/recovery and confirmation semantics.
+- Independent UUID tasks, optional non-time-bearing projects, Start/Stop/atomic
+  Switch and persisted active timer; own Today/This week plus mini Today.
+- Genuine intervals and endpoint-free dated amounts, stable work-entry revisions,
+  correction/deletion details, exact local-day accounting, configurable week start
+  (Sunday initially), mixed History and inline whole-entry editing.
+- Explicit frozen This week/Last week/Custom preview, independent task selection
+  including retained deleted work, exact saved bytes and same-report recovery.
+- Whole/checked/manual absolute POL-R confirmation, explicit zero versus Unknown,
+  stale-prior rejection, daily Actual/Confirmed/Delta/Enter, weekly summaries and
+  required reminders. Save never confirms, resets timers or dismisses reminders.
 
-## Overview
+Mandatory: Actual 5.00, Confirmed 3.00 → Delta +2.00, Enter 5.00. Confirm 5.00 →
+Delta 0.00. Correct Actual to 2.50 against 3.00 → Delta -0.50, Enter 2.50, with old
+exports/confirmations unchanged. Unknown gives Unverified Delta; Enter is whole
+current Actual. Displayed hundredths round task/day once; rollups sum cells.
 
-The following describes the current production application.
+Stage 1 is a working timer **engineering slice, not complete MVP/pilot**. Stage 2
+completes recording/History; Stage 3 completes frozen Timesheet **and POL-R**;
+Stage 4 stabilizes; Stage 5 pilots the complete reporting-week workflow. Stage 6
+is optional allocations/conveniences, never deferred core reconciliation.
+After independent architecture acceptance, next runtime work is a bounded Stage 1
+read-only implementation plan, then separately approved execution on an authorized
+branch from the accepted architecture commit. This task creates no such branch.
 
-- Persistent tasks with start/stop/delete/task-edit controls and read-only Work History.
-- Event-sourced storage with append-only JSONL logs.
-- Archived immutable segments + manifest + derived snapshot.
-- Crash-safe behavior: each state-changing action appends and flushes an event immediately.
-- One-running-task rule: starting a task auto-stops the currently running task.
-- Task Reset commands and export-completion Reset choices are removed. Retained
-  backend reset evidence and independently callable interval-only exporters remain unchanged.
-- Main task rows show own Today/This week Actual; mini-mode shows Today from the
-  same observation. Application totals include deleted-task work. Failures show
-  — inline and retain Start/Stop with normal refresh recovery.
-- Timesheet previews frozen decimal-hour reports and saves verified copies after evidence registration.
+## Current legacy implementation
 
-## Project/task foundation (service only)
+The commands and layout below run/build the **existing JSONL application**.
+Source still has synchronous services, authoritative event logs/manifests and
+replayed Python state with derived JSON snapshots. It does not use SQLite or the
+selected worker architecture. Its inspected capabilities are:
 
-The service now keeps projects and tasks as separate domain objects. Projects
-have UUIDs, names, notes, and creation/update timestamps; they cannot own time
-intervals or operate timers. Tasks retain their own UUIDs and intervals, and can
-optionally belong to a project. Unassigned tasks and duplicate task names are
-valid. Assignment, reassignment, and project renaming never transfer or reset
-recorded time.
+- Main/mini mixed calendar Actual using one observation; own task Today/This week
+  and retained deleted work in application totals, with visible calculation errors.
+- Read-only modal Work History from main and recursive task editors, explicit
+  periods/Refresh, local sorting remembered for the session and safe modal return.
+- Production modal frozen Timesheet Preview/Save/retry and confirmed Overwrite,
+  with same-component unfinished-attempt retention only within the session.
+- Staged project/task/date-only replay, pure minute/DST inputs, standalone closed
+  correction dialog, decimal reports, frozen export evidence, absolute confirmation
+  services and read-only daily reconciliation. Production correction/date-only
+  entry, POL-R UI, weekly reminders and selectable weeks remain absent.
+- No shipped Reset or old full/selected export UI; independent legacy backend
+  reset/checkpoint/submission/export readers remain, not compatibility promises.
 
-Project navigation remains staged. Production Timesheet controls now report
-independent task UUIDs, including retained deleted work, without descendant
-expansion or legacy submission/checkpoint effects. The task hierarchy and launcher
-data path remain unchanged; no historical conversion is performed.
+The old **Phase 2 bounded service gate was independently accepted Complete** for
+JSONL serialized ownership; see [historical scope](docs/ROADMAP.md#historical-jsonl-evidence--not-rewrite-completion).
+It completes no SQLite stage. Existing tests establish semantic/current-runtime
+evidence only, not a complete replacement, worker safety or Windows qualification.
 
-The eventual fresh-start project workflow will use a **separate data directory**
-once it is usable. This change does not activate that directory, import historical
-data, or migrate `~/.task_timer_data`. Service tests use isolated temporary data
-directories. See [Design Notes](DESIGN_NOTES.md#projecttask-service-foundation)
-for the implemented APIs and event contract.
-
-The replay foundation also supports `DatedDurationRecord`: a separate task-owned
-work date and duration amount with audit timestamps and append-only corrections
-and deletion. These records have no start/stop timestamps. This support is
-not enabled in production time entry yet. The legacy duration-entry UI has been
-removed; replacement duration-entry UI remains pending. The read-only mixed
-accounting API now supplies main/mini calendar Actual over explicit local-date
-windows, and Timesheet prepares mixed frozen reports. Independently callable
-legacy export/submission services remain interval-only. Dated writer activation
-still requires separate approval and satisfaction of the active-reader/UI gate. No public dated-duration
-writer, historical migration, or data-directory cutover is included. See
-[mixed accounting](DESIGN_NOTES.md#mixed-date-window-accounting)
-for selection semantics and the explicit legacy synthetic-duration boundary.
-
-`get_task_work_history()` separately returns detached mixed history for one task:
-linked local-day interval segments and whole date-only amounts, with explicit
-cutoff, inclusive dates or All history, and deterministic date/within-day ordering.
-It ignores legacy resets and preserves underlying entry identity without writes.
-See the [history service contract](DESIGN_NOTES.md#mixed-work-history-service).
-
-The standalone [WorkHistoryFrame](DESIGN_NOTES.md#mixed-work-history-table)
-renders supplied rows in their exact order, with minute clocks, endpoint dates and
-repeated-hour offsets, completed-minute durations and ↔ linked-portion markers.
-Selection highlights related visible portions without work mutations. Full precise
-row metadata stays detached behind temporary widget handles; rendering errors are
-visible rather than silently presenting incomplete results. It loads no services,
-settings or clocks; the modal browser composes it for read-only history access.
-
-The standalone [WorkHistoryBrowserFrame](DESIGN_NOTES.md#single-task-history-browser)
-connects the reader/table with Current week, Custom and All periods, typed dates
-and calendar pickers, Apply and explicit Refresh. It retains unapplied drafts and
-last-successful period/as-of information on failure. Date-header sorting stably
-reorders existing results without loading newer records or advancing the cutoff;
-direction remains in memory. The caller supplies a clock and week start (initially
-Sunday); this is not the configurable-week setting.
-The [Selected replacement history](docs/TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history)
-starts each application session newest-first and remembers successful direction
-changes across subsequent task/dataset history openings only in that session.
-The application-owned handoff adds no settings or preference files. The
-[owned modal history window](DESIGN_NOTES.md#owned-modal-history-window)
-now connects Work History in the main selected-task panel and recursive task
-editors through one owner, preserving timers, session direction and origin drafts.
-It rejects duplicate requests without refreshing or changing the original task,
-validates the originating parent and safely returns grab/focus. Launch errors
-appear inline at their origin with Tk diagnostics; browser load errors remain
-inside the browser. This read-only replacement removes the old timeline UI and
-its editing tools without compatibility fallbacks. Unsupported synthetic work
-fails visibly; no migration or user-file/data-directory cutover occurs.
-Replacement segment editing, creation/deletion, missed-stop tools and audit
-remain pending. Task Reset controls and both export Reset branches are removed;
-backend reset APIs, persisted evidence and independently callable interval-only exporters are unchanged.
-Main/mini calendar Actual is connected separately; production POL-R presentation
-and remaining active-reader integration stay pending.
-
-Pure [timed-input validation](DESIGN_NOTES.md#replacement-timed-input-validation-staged)
-separately resolves minute-only clock inputs with independent start/end dates,
-explicit repeated-time occurrences, nonexistent-time rejection and UTC elapsed
-ordering. Replacement entry/editing/display is Selected as minute-only; this
-module activates no editor, writer or display changes and alters no recorded
-precision or billing-rounding rule. Existing production time helpers remain active.
-
-The standalone staged [TimedIntervalInputFrame](DESIGN_NOTES.md#timed-interval-input-form-staged)
-provides separate date/time fields, explicit occurrence choices with UTC offsets
-and inline validation through those APIs. It supplies no saving or record access;
-production record-editor integration and writer activation remain pending.
-The old timeline input dialog is removed; the standalone form is not routed.
-
-Separate staged [timed-correction APIs](DESIGN_NOTES.md#timed-interval-corrections-staged)
-prepare and register one effective closed genuine interval replacement. Unchanged
-saves write nothing; changed endpoints preserve the other endpoint's precision,
-comments are optional, and stale priors reject. Frozen identities support verified
-journal recovery/reuse without rolling back newer work or confirmations. Results
-distinguish registered evidence from projection/snapshot failures. These services
-are now consumed by a [standalone correction dialog](DESIGN_NOTES.md#standalone-timed-interval-correction-dialog-staged).
-It authoritatively loads one closed record, preserves unchanged precision behind
-minute controls, retains stale drafts and distinguishes unverified registration
-from recorded corrections with refresh warnings. Retries keep the same event;
-production correction routing remains pending; legacy mutation services are unchanged.
-
-`build_timesheet_text()` separately renders those accounting results as a
-plain-text timesheet with independent task rows, dated daily columns and weekly
-totals grouped by current project. Project subtotals are informational and
-non-additive; selected project subsets are labeled accordingly. Seconds and
-fractional seconds are preserved. Scope and timezone labels come from the
-accounting result; optional caller assertions must match. Full task names wrap
-in bordered tables without truncation, and calendar-edge slots are explicitly
-marked when no date can be represented. Bidirectional formatting controls use
-reversible visible ASCII escapes; useful Unicode such as ZWJ/ZWNJ remains intact.
-This renderer is independently callable and
-**not wired into production export menus**. See the
-[renderer contract](DESIGN_NOTES.md#independent-task-timesheet-renderer-staged)
-for authoritative metadata, wrapping and partial-week behavior.
-
-`build_decimal_timesheet_text()` is a separate pure replacement renderer using
-the same accounting result and safe layout. It displays two-place decimal hours:
-`seconds_to_decimal_hundredths()` rounds each task/day once with decimal
-ROUND_HALF_UP, then displayed rollups sum integer hundredths. Three tasks with
-60 seconds each display `0.02` each and total `0.06`, while Actual remains
-180 seconds. Nonzero work may display `0.00` without changing its recorded amount.
-See the [decimal renderer](DESIGN_NOTES.md#decimal-hour-timesheet-renderer-staged).
-No snapshot evidence, file output or production integration is added by rendering.
-
-The service now connects accounting and rendering through
-`generate_date_range_timesheet()`, which continues using the exact renderer.
-`save_date_range_timesheet()` optionally writes
-the complete report to private same-directory staging, then atomically publishes
-a caller-chosen **new** UTF-8 file with a no-overwrite hard link. Existing
-destinations are protected, and cleanup never deletes the final path. Filesystems
-without hard-link support fail clearly without a direct-write fallback. Both use
-explicit inclusive work dates and a fixed aware cutoff;
-neither submits time, creates checkpoints, resets counters, or changes timers.
-These exact-format APIs remain separate from the production frozen Timesheet workflow.
-See the [service workflow](DESIGN_NOTES.md#date-range-timesheet-service-staged).
-
-The separate `prepare_timesheet_export_snapshot()` freezes one calculation as
-decimal text, task/day seconds and hundredths, original labels/request/metadata,
-and a SHA-256 digest. `register_prepared_timesheet_export()` durably registers
-that candidate in the existing journal with stable, idempotent export identity.
-Recovery and exact-identity reuse require successful journal synchronization,
-complete evidence revalidation and installation before return; readable bytes alone
-are insufficient after failed flushing.
-`get_timesheet_export_snapshot()` and `list_timesheet_export_snapshots()` return
-detached committed evidence, retained across replay and later work changes.
-Preparation writes nothing; registration creates no external report, confirmation,
-checkpoint or reset. A preferred destination is frozen metadata, not file status.
-Registration alone does not establish a successfully exported file. See
-[snapshot registration](DESIGN_NOTES.md#immutable-export-snapshot-registration-staged).
-
-`materialize_timesheet_export(export_id, destination=None, *, overwrite=False)` verifies the journal,
-then writes only the frozen report bytes to an explicit path or the snapshot's
-preferred path. New files use complete staging and exclusive hard-link publication;
-matching regular files are reused only after full byte/SHA-256 verification.
-Ordinary Save/Retry refuses conflicts. Explicit confirmed Overwrite may replace a
-fully inspected stable regular-file conflict using owned staging and `os.replace`,
-with a target identity/metadata recheck; dataset-tree paths and resolved aliases
-are protected. Symlinks and uncertain inspections cannot authorize replacement.
-This is bounded checking, not atomic compare-and-replace or concurrency safety. Success follows complete destination
-verification, with no new events, recalculation or timer changes. Retries reuse
-the same evidence; alternative paths never change it. Verification is current at
-the check, not permanent file status. No general status/recovery UI or automatic missing-file
-recovery is implemented. See [materialization](DESIGN_NOTES.md#verified-export-materialization-staged).
-
-`evaluate_timesheet_export_file_status(export_id, destination=None)` strictly
-validates registered evidence and returns PENDING, READY, MISSING, CONFLICT or
-UNVERIFIABLE for the explicit destination or frozen preference. It performs no
-writes and retains no status or alternative path. Every check is current; absence
-does not establish whether publication previously occurred. See [file-status evaluation](DESIGN_NOTES.md#export-file-status-evaluation-staged).
-
-Strict immutable POL-R batch validation/replay now derives latest absolute
-task/day confirmations in memory. `get_effective_polr_confirmations()` returns
-detached evidence-derived values; Unknown differs from confirmed zero.
-`prepare_polr_confirmation_batch(cells, *, batch_id=None)` freezes explicit reviewed
-cells without writes; `register_prepared_polr_confirmation_batch(prepared_event)`
-validates current priors and durably registers the immutable batch. Exact retry
-synchronizes journal files before reuse without reapplying old amounts. These
-service APIs require serialized dataset ownership and never increase Actual.
-Confirmation dialogs and production integration remain absent. See [confirmation replay](DESIGN_NOTES.md#immutable-pol-r-confirmation-replay-staged).
-
-`propose_export_polr_confirmation(export_id)` returns frozen export cells with
-reviewed prior identities and stale-conflict flags. The separate
-`prepare_export_polr_confirmation_batch()` validates explicit selection and
-cell-specific acknowledgements, defaulting to positive proposals without selecting
-zero automatically. It prepares an event without registration; callers explicitly
-register and retry that exact event. These APIs review journal evidence, not report
-file readiness. Acknowledgement dialogs and production integration remain pending.
-See [proposal preparation](DESIGN_NOTES.md#export-confirmation-proposals-and-selected-preparation-staged).
-
-`calculate_polr_reconciliation()` takes the same dates, fixed cutoff and selection
-arguments as `calculate_date_window()`. It returns detached raw `actual` and daily
-`cells` containing Actual/Confirmed/Delta/Enter hundredths and batch identity.
-Unknown Confirmed/Delta are `None`; confirmed zero stays distinct. Enter is the
-absolute Actual replacement amount. Each call strictly validates journal evidence
-without writes or cache refresh. Reconciliation UI, weekly summaries and production
-integration remain pending. See [daily calculation](DESIGN_NOTES.md#daily-pol-r-reconciliation-calculation-staged).
+The legacy duration-entry UI has been removed; replacement manual work entry
+remains pending. Date-only replay/accounting already supplies main/mini and frozen
+Timesheet, but production dated writers stay inactive under the active-reader/UI
+gate. Current float-second storage, replacement interval IDs, constructor waits,
+monthly reminders and widget-retained retries are **not target mechanisms**.
+The rewrite uses integer microseconds, stable revisions, SQLite request receipts,
+callback-driven presentation, inline editing and saved-report recovery independent
+of a widget. Recursive metadata-editor History routing is superseded as target
+navigation; current source is unchanged by this documentation.
 
 ## Run from source (repo root)
 

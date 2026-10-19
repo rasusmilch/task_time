@@ -6,7 +6,32 @@ receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
-### Staged service capability
+### Selected clean-rewrite direction — documentation, not runtime delivery
+
+- Select Python + Tkinter/ttk with transactional SQLite as the sole replacement
+  authority, superseding earlier Qt/PySide6 planning and JSONL-as-target mechanics.
+  Preserve exact work semantics, immutable revisions/evidence, stable work-entry
+  UUIDs, atomic request receipts, serialized worker-owned I/O and callback-driven
+  Tk lifecycle with inline History editing. No runtime rewrite is delivered here.
+- Reconcile the core charter and Stages 0–6: timer foundation is not a complete
+  MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
+  daily/weekly reconciliation and reminders are mandatory before the complete
+  core pilot. Allocations/conveniences remain optional and separately decided.
+  Preserve fresh-data scope without migration/compatibility or startup deletion;
+  installation/cutover, clock/restart, timezone changes and template/allocation
+  decisions remain reserved at their first affected gates.
+- Establish one target architecture owner and distinguish the unchanged current
+  JSONL source, historical bounded Phase 2 acceptance and future SQLite evidence.
+  The next runtime work after independent acceptance is a bounded Stage 1 plan
+  on a separately authorized branch from that accepted architecture commit.
+
+### Current JSONL workstream capability — retained implementation history
+
+The cumulative entries below describe the existing runtime and earlier approvals.
+Their JSONL envelopes/replay/synchronization, replacement-interval identity,
+retained-widget retry and recursive editor routing are superseded **target
+mechanisms**, not instructions for the clean rewrite. Current source remains
+unchanged and its pending features are not SQLite stage completion.
 
 - Separate non-time-bearing project containers from independent UUID-based tasks,
   with optional membership and reassignment that preserves recorded work.
@@ -123,7 +148,7 @@ POL-R confirmation/reconciliation UI and weekly summaries, general file-status/r
 automatic missing-file recovery, configurable week starts and weekly allocation
 management are not implemented.
 
-### Documentation and governance
+### JSONL workstream documentation and governance history
 
 - Establish [repository operating instructions](AGENTS.md) and the
   [approved replacement/POL-R product contract](docs/TIMESHEET_REQUIREMENTS.md),

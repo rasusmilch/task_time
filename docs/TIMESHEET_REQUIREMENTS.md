@@ -1,614 +1,361 @@
-# Chronicle replacement application and POL-R product contract
-
-This document is the canonical current-state authority for the user-approved
-**target product behavior**. It is not a claim that the target is implemented.
-The user and ChatGPT approve requirements and architecture; Codex implements
-approved tasks without resolving the Open matters below. Repository instructions
-are in [AGENTS.md](../AGENTS.md), inspected technical behavior in
-[DESIGN_NOTES.md](../DESIGN_NOTES.md), and implementation status/navigation in
-[README.md](../README.md). Historical material changes belong to
-[CHANGELOG.md](../CHANGELOG.md).
+# Chronicle replacement requirements
 
 ## Authority and status
 
-- **SELECTED**: user-approved desired behavior to preserve and implement. A
-  requirement can be Selected and not yet implemented.
-- **CURRENT IMPLEMENTATION**: behavior established by inspected source. Existing
-  execution does not automatically establish selected target policy.
-- **OPEN**: a material decision reserved for the user and ChatGPT. Codex must
-  return it for adjudication, not close it through code, examples or assumptions.
-- **UNVERIFIED EXTERNAL BEHAVIOR**: a POL-R fact not established by direct evidence.
-- **DEFERRED**: approved functionality belonging to a later phase. Deferral does
-  not withdraw approval or imply implementation.
+Chronicle is a small local desktop application for recording task Actual **and
+explicit absolute POL-R reconciliation**. Both are core. Confirmation,
+reconciliation, daily/weekly summaries and reminders must be complete before
+core pilot signoff; allocations are optional expansion.
 
-The behavioral requirements below are Selected. The approved export-evidence,
-decimal-hour, recovery and confirmation technical contracts are owned by
-[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md). Pure decimal rendering,
-immutable export-snapshot registration/verified materialization and read-only
-destination-relative status evaluation are implemented/staged. Confirmation-batch
-validation/replay, dedicated preparation/registration and effective projection are
-staged service capabilities; the modal Timesheet now connects frozen preview,
-registration and verified file publication. General status/recovery
-UI, automatic missing-file recovery, confirmation/reconciliation UI and weekly
-reconciliation summaries are not implemented. Read-only daily reconciliation
-calculation is staged. Unrelated Open matters
-remain reserved for user/ChatGPT adjudication.
+This document owns user-selected behavior. [ARCHITECTURE.md](ARCHITECTURE.md)
+owns the selected Python + Tkinter/ttk + transactional SQLite design;
+[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md) owns frozen export,
+decimal and confirmation semantics. [ROADMAP.md](ROADMAP.md) owns Stages 0–6.
+[DESIGN_NOTES.md](../DESIGN_NOTES.md) describes the current JSONL implementation,
+not the replacement architecture. Source/tests establish implementation/evidence,
+not product choices. [DECISIONS.md](DECISIONS.md) preserves superseded approvals.
+The user and ChatGPT decide behavior and architecture; Codex implements approved
+outcomes and returns material unresolved choices for adjudication.
 
-## SELECTED — Replacement, installation and data boundary
+Selected does not mean implemented. This documentation selects a clean Tkinter
+rewrite, not a Qt/PySide6 frontend and not incremental JSONL compatibility work.
+No SQLite runtime is delivered by this change.
 
-Chronicle is a local, Windows-friendly task timekeeping application. The
-redesigned product replaces the legacy installation and user workflow; it is not
-intended to retain a permanent parallel legacy interface.
+## SELECTED — Replacement installation and data boundary
 
-The redesigned installation begins with a fresh timekeeping dataset. Historical
-task, interval, submission and template migration is not required. During staged
-development, existing user data must not be modified or imported unintentionally.
-Installation replacement is not permission to delete user files. Exact release
-cutover and handling of the old data directory remain Open.
+One local desktop application operates one selected dataset with one serialized
+application writer. The replacement starts with fresh data. No historical import,
+migration, old schema/API support, automatic old-data discovery, dual-write or
+parallel legacy runtime is required. Replacement packaging ships one runtime.
+Temporary old source during development creates no compatibility obligation.
+
+Existing files must remain protected during development. Absence of a release
+preservation obligation for the retired dataset does not authorize arbitrary
+startup deletion. Exact release paths, installation/cutover and cleanup remain
+Open. Protect new-runtime audit history and future schema/data upgrades.
 
 ## SELECTED — Independent projects and tasks
 
-Projects are user-created organizational containers with stable internal UUIDs,
-names and optional descriptive information. They own no direct time and have no
-independent running timer. Their displayed subtotals derive from member tasks.
+Tasks have stable UUIDs and own independent work. Duplicate names are valid;
+POL-R uses names rather than invented external task numbers. A task may belong
+to one optional organizational project or be Unassigned. Projects have stable
+UUIDs, names and optional descriptions but own no time or timer.
 
-Tasks are independent time-bearing assignments with stable internal UUIDs. POL-R
-identifies them by their names, not invented external task numbers. Duplicate
-names are valid. Each task may belong to one project or remain Unassigned, and
-retains its own daily and weekly totals.
+Moving or renaming a task preserves its identity/work. Reports group all its
+historical work by **current** project membership. Derived project subtotals are
+informational; never add them again to their tasks. Parent/descendant display
+must not turn another task's work into a task's own Actual.
 
-Moving a task preserves its identity and recorded time. Reports group all its
-historical work by its **current** project; time is not divided among former
-projects. Task time and project subtotals must never be added together as separate
-actual work.
+## SELECTED — Recording and timer operation
+
+Provide Start, Stop and Switch. Only one task is active. Switch atomically stops
+the old task and starts the new task at one accepted action time. Persist the
+active timer; reopening must not silently lose it. Rendering observes time and
+never records work, guesses missing stops or persists a tick counter.
+
+Unknown POL-R values, external unavailability or exhausted/unknown allocations
+never block Actual recording. Abnormal system-clock changes, sleep and restart
+recovery policy require adjudication before affected Stage 1 code; ordinary
+persistence is not permission to guess those policies.
 
 ## SELECTED — Actual-time records
 
-Actual work derives from two distinct types:
+Actual combines two distinct shapes, assigned to local work dates:
 
-- **Real timed interval**: genuine start/stop timestamps, actual elapsed time
-  assigned to local work dates, correct splitting at midnight, week boundaries
-  and daylight-saving transitions, with correction and deletion support.
-- **Date-only manual duration**: task identity, local work date and duration,
-  without fabricated start/stop timestamps. Its entire amount belongs to the
-  declared date, with correction/deletion and retained audit evidence.
+- Genuine timed intervals with real start/stop instants and UTC elapsed duration,
+  split correctly at local midnight, week boundaries and daylight-saving changes.
+- Date-only manual amounts with task UUID, civil date and duration, without
+  fabricated endpoints. A 14-hour Saturday amount stays entirely Saturday.
 
-A 14-hour dated duration on Saturday remains entirely on Saturday. Corrections
-and deletions change current actual totals without erasing authoritative earlier
-events. Replacement Reset actions and resettable counters are removed from the
-Selected workflow; normal history and calendar Actual are independent of legacy
-reset boundaries. Task Reset UI controls and export-completion Reset choices
-are now removed. Main and mini-mode displays now use calendar Actual. Backend
-reset APIs, historical evidence and retained interval-only backend export readers remain; their
-presence is not replacement policy or a compatibility commitment. Remaining
-reader and POL-R presentation integration stay separate.
-Real work must remain recordable when allocations are exhausted or unknown.
+Both support correction/deletion with immutable prior values and audit details.
+Work-entry UUID remains stable across revisions; reviewed revision changes reject
+stale edits. A displayed daily portion always targets its complete underlying
+entry, never a clipped replacement. Deleting a spanning interval warns about the
+other affected dates. Editing preserves entry type.
 
-Replacement timed-work entry, editing and work-history display use minute-only
-clock precision, with separate start/end dates and times. Repeated local times
-require explicit first/second occurrence selection, ordered by their UTC instants;
-nonexistent local times are rejected. Endpoint ordering and elapsed duration use
-UTC, so valid work may cross midnight or have an earlier-looking stop clock
-during a fallback. No overnight rollover, gap adjustment or occurrence is guessed.
-This selects input/display behavior, not billing rounding or changes to existing
-recorded precision, raw accounting or export representations.
+Timed entry, changed endpoints and History clocks use minute precision with
+separate start/end dates/times. Reuse accepted clock formats; reject seconds or
+fractions in new clock input. Repeated local minutes require explicit first/second
+UTC-ordered occurrence selection; nonexistent minutes reject. Do not guess
+rollover, an occurrence or a gap adjustment. UTC endpoints determine positivity,
+including earlier-looking fallback stops and cross-date work.
 
-Ordinary timed editing applies to closed genuine intervals. Saving unchanged
-work writes no event, including when only a comment is entered. Changing one
-endpoint preserves the other exactly; recorded seconds/fractions are not
-automatically rounded. A genuinely changed endpoint must be a whole local minute.
-Correction comments are optional. Original/replacement values and the correction
-audit timestamp remain available, and changes to the reviewed entry reject the
-save. A separate running interval does not prevent correcting older closed work.
-Minute drafts denoting the original local minute and UTC occurrence preserve the
-stored endpoint exactly, even after editing back or using equivalent clock text.
-Restore that precision before checking UTC order, including positive intervals
-whose endpoints display the same minute. A stored repeated-time occurrence may
-be initialized from its actual instant; subsequent changed repeated times still
-require an explicit choice. No gap adjustment or rounding is authorized.
+Ordinary timed editing is for closed genuine intervals, independently of another
+running timer. Unchanged Save, including a comment-only change, writes nothing.
+Changing one endpoint preserves the other exactly, including seconds/fractions.
+A draft equivalent to the original minute and occurrence preserves that original
+precision, including after changing back. Preserve it before span validation.
+A stored repeated occurrence may initialize from its instant; changed repeated
+times require explicit selection. Comments are optional. Original/revised values,
+revision identity and audit time remain available. No billing rounding changes
+raw work.
+
+Replacement Reset actions and resettable counters do not exist. Reset boundaries,
+exports and confirmations neither erase nor increase calendar Actual.
 
 ## SELECTED — Calendar Actual displays
 
-Main task rows show **Today** and **This week**, each containing only that task's
-own work, even when it has descendants. Mini-mode shows **Today** for its displayed
-task. Application Today/This week totals include retained work from deleted tasks,
-although deleted tasks remain absent from the active task list.
+Main task rows show **Today** and **This week**, each task's own work, including
+parents. Mini-mode shows **Today** for its displayed task and retains Start/Stop.
+Application totals include retained work of deleted tasks, while the active list
+omits deleted tasks. One coordinated refresh uses one aware UTC cutoff and local
+observation date for main/mini. This week is the complete containing calendar
+week. Timed work is cutoff-capped; dated amounts belong wholly to their declared
+dates, including later dates within that week.
 
-One application refresh supplies one aware UTC observation to all these displays.
-Today is its local date; This week is the complete containing calendar week,
-currently Sunday through Saturday. Timed work is capped by the observation; dated
-amounts remain wholly on their declared dates, including future dates in that
-week. Display uses completed-minute HH:MM without rounding stored seconds.
-Configurable weeks remain separately pending.
-
-Calculation or numeric-preparation failure displays **—** and one short inline
-"Time totals unavailable." message per affected window. Start/Stop and normal
-refresh remain available; later success clears the error. Main/mini readers are
-connected, but production dated writers remain inactive until remaining required
-readers, including exports, safely include their work.
+Show completed-minute HH:MM without changing underlying precision. Calculation
+failure shows **—** and one short “Time totals unavailable.” inline message per
+affected window. Keep Start/Stop available; a later normal refresh can recover.
+Do not present stale numbers as current or silently omit unsupported work.
 
 ## SELECTED — Mixed work history
 
-Normal task history contains genuine timed intervals and date-only entries
-together, showing their latest effective versions independently of resets.
-Earlier revisions and deletions remain available through audit/details. Editing
-preserves entry type; a dated amount must not acquire fabricated endpoints.
+One task-bound modal History shows effective genuine intervals and date-only
+amounts; earlier revisions/deletions are available through details. Main task
+selection → History → **inline editor on that surface** is the replacement route.
+Do not introduce a subordinate correction Toplevel. Metadata forms need not open
+History; legacy recursive task-editor routing is not a target requirement.
 
-The default UI period is the current week, with custom inclusive dates and All
-history available. The date-column header switches oldest/newest date order.
-Every application startup begins newest-first. A successful direction change is
-remembered across subsequent history openings for any task or dataset during that
-application session; closing and reopening the application resets newest-first.
-No preference file, settings field or cross-process coordination is required.
-At most one history window may be open per application. History is modal: close
-it before using the main application or choosing another task. It stays attached
-to its original task and provides browsing controls and Close, without Start/Stop
-or other main-window functions. Duplicate or reentrant opening requests have no
-effect; they do not replace, retarget or refresh the existing window. Timers
-continue running, unchanged by opening or closing history. Within each date,
-timed portions stay chronological and date-only entries follow them without
-invented clock positions.
+At most one History is presented per application. Close it before main/mini
+interaction or choosing another task. It supplies History controls and Close,
+not main-window Start/Stop. Timers continue. Duplicate/reentrant requests do not
+retarget, replace or refresh it. Every application starts newest-first; successful
+date-direction changes persist only in that application session across openings,
+not in settings or a preference file. Within-day timed portions stay chronological;
+dated entries follow without fabricated clock positions.
 
-History loads on opening, Apply, switching to Current week or All, and explicit
-Refresh. Date-header sorting reorders the displayed results without loading newer
-records or advancing the cutoff. Successful loads and sorts clear selection.
-Current week covers seven local calendar dates from the supplied week start,
-initially Sunday, and rolls over on refresh rather than through scheduled loading.
-This staged caller input is not delivery of the configurable-week setting.
+Default Current week, inclusive Custom and All history are available. Load on
+presentation, Apply, switching to Current week/All and explicit Refresh. Sorting
+by date reorders displayed rows without new work, cutoff capture or applying
+drafts. Successful replacement/sorting clears selection. Current week is seven
+local dates using the selected week convention, recalculated on refresh.
 
-Custom dates support typing and owned calendar pickers; Apply is required.
-Entering Custom, typing, focus changes and calendar selection do not load work.
-After surrounding whitespace is trimmed, Apply requires canonical YYYY-MM-DD,
-real ordered inclusive dates and the reader's representable boundary. Drafts are
-retained on failure and across period switches. Refresh reloads the last
-successfully applied period, reusing its Custom dates rather than unapplied
-drafts; before any success it retries Current week. Failed loading must leave
-last-successful period/as-of information truthful and distinguish unestablished
-history from a valid empty result. Rendering retains the table's failure rules.
+Custom dates permit typing and owned calendar pickers. Trim surrounding space,
+then require canonical YYYY-MM-DD, real ordered dates and representable boundaries.
+Typing, focus, calendar selection and entering Custom do not Apply. Preserve
+invalid/unapplied drafts across failures and period switches. Refresh uses the
+last applied period and committed Custom bounds; before first success it retries
+Current week. Report last-successful period/as-of truthfully; distinguish not
+loaded, valid empty and failed loading. Prepare complete display content before
+replacement; do not present partial output as successful. Widget failure invalidates
+untrusted output, with explicit later recovery rather than claimed GUI rollback.
 
-Intervals crossing local midnight appear as linked daily segments of one
-underlying interval. Editing or deleting a segment acts on that complete
-interval; deletion warns about affected dates. POL-R reconciliation stays per
-task/day, without per-entry confirmation or Delta state.
+Keep full detached row metadata behind temporary widget handles. Linked daily
+portions share the original entry identity, endpoints and continuation flags.
+Columns are link, Date, Kind, Start, End / as of and Duration:
 
-The history table presents a compact link column, Date, Kind, Start, End / as of
-and Duration. Dates use YYYY-MM-DD; Kind distinguishes Timed, Date only and
-Running. Dated entries have blank clock cells; running endpoints are observation
-boundaries, not recorded stops. The approved presentation rules are:
+- Date is YYYY-MM-DD; Kind distinguishes Timed, Date only and Running. Dated
+  clocks are blank. Running boundaries are observations, not recorded stops.
+- Segment endpoints use HH:MM, prefixed by actual date when different from the
+  row date (including next-date midnight). Repeated minutes append the actual
+  UTC offset, including non-hour offsets; use valid candidates to detect repeats.
+- Duration: 0:00 for zero, <1 min for positive sub-minute work, otherwise completed
+  minutes as unbounded H:MM. Preserve precise metadata and supplied work amounts.
+- Show ↔ for continuing portions. Selecting a portion highlights related visible
+  task/kind/entry portions without multiselection; running linkage is task-scoped.
+  Dated rows do not link. No routine explanatory text is required.
 
-- Segment clocks use 24-hour HH:MM. An endpoint on a different local date from
-  the row includes its actual YYYY-MM-DD date, including next-date midnight.
-- Repeated local minutes include the endpoint's actual UTC offset, preserving
-  non-hour offsets. Ambiguity comes from valid local-minute candidates, not a
-  timezone name or abbreviation.
-- Durations use supplied seconds: zero displays 0:00, positive sub-minute work
-  displays <1 min, and other amounts display completed whole minutes as H:MM
-  with unbounded hours. These display rules change no stored precision,
-  accounting, billing rounding, exports or POL-R values.
-- Linked interval portions show ↔ when either continuation flag is true.
-  Selecting one portion visually highlights its other visible portions by
-  task/kind/entry identity, including task-scoped running portions. Selection
-  stays on the chosen row; dated entries do not link. No routine extra text is
-  added. This later approval resolves the earlier undecided link styling.
-
-The detached [work-history service](../DESIGN_NOTES.md#mixed-work-history-service)
-and pure [timed-input validation](../DESIGN_NOTES.md#replacement-timed-input-validation-staged)
-are available, together with a standalone
-[timed-interval form](../DESIGN_NOTES.md#timed-interval-input-form-staged) and
-[closed-interval correction preparation/registration](../DESIGN_NOTES.md#timed-interval-corrections-staged).
-A [standalone correction dialog](../DESIGN_NOTES.md#standalone-timed-interval-correction-dialog-staged)
-now connects those components without production callers.
-A standalone [work-history table](../DESIGN_NOTES.md#mixed-work-history-table)
-now renders supplied rows and related-portion feedback without service access.
-The standalone [history browser](../DESIGN_NOTES.md#single-task-history-browser)
-now composes that reader/table with periods, typed/calendar drafts, explicit
-refresh and in-memory sorting. An application-owned boolean hands off successfully
-rendered direction across sequential browser openings without persistence.
-The [owned modal window](../DESIGN_NOTES.md#owned-modal-history-window)
-now connects both shipped Work History commands, in the selected-task panel and
-recursive task editors, through one owner with originating-parent validation,
-safe modal return and lifecycle cleanup. It replaces the old timeline UI without
-a parallel legacy interface or compatibility requirement. Applicable unsupported
-synthetic work remains a visible reader error; no data is converted or omitted.
-This activates read-only browsing only, not replacement editing or installation/
-data-directory cutover. Replacement record-editor integration, audit presentation,
-segment editing/deletion handlers and dated writer activation remain subsequent
-work. Main/mini calendar Actual and frozen Timesheet are connected; the
-active-reader/UI gate still applies before any writer activation.
-UI Reset actions and both export-completion Reset branches are removed without changing backend
-reset contracts or existing backend checkpoint/submission evidence. The old
-export UI routes are removed; Timesheet creates neither kind of legacy marker.
+Inline Cancel and unchanged Save return to browsing without writes. Validation or
+stale conflicts retain the draft, without retargeting a successor. Verified edits
+refresh the last applied period, preserve direction/unapplied drafts and report
+refresh failure truthfully. Database outcome, not widget destruction, establishes
+completion. All active readers must include each exposed work type before its
+writer is activated; History alone does not satisfy this gate.
 
 ## SELECTED — Configurable week convention
 
-The user can select **any weekday** as the beginning of a week; Sunday is the
-initial default. The selected day controls timesheet weekly columns/periods,
-weekly task totals, weekly project subtotals, weekly reconciliation summaries
-and weekly allocation periods when allocation tracking is active.
-
-Changing this setting must not change recorded work dates, individual amounts,
-POL-R daily confirmations, original export snapshots or actual historical events.
-An export retains the convention used at its creation; old exports must not be
-silently rewritten. Current Sunday-only code is a staged limitation, not a
-permanent product requirement. Configurable-week support remains approved but
-is not yet implemented.
+Any weekday may begin the week; Sunday is the initial default, not permanent
+policy. The setting controls weekly totals, Timesheet periods/columns, project
+subtotals, reconciliation summaries and later allocation periods. It does not
+change civil work dates, amounts, daily confirmations, immutable exports or prior
+work. Exports freeze their original convention. Core implementation is Stage 2;
+allocation override effects remain reserved for optional expansion.
 
 ## SELECTED — Actual, Exported and Confirmed POL-R are distinct
 
-| Concept | Meaning |
+| Fact | Meaning |
 | --- | --- |
-| Actual | Current calculated work by task UUID and local work date. |
-| Exported | Frozen evidence of the work contained in a particular saved timesheet at generation. |
-| Confirmed POL-R | Latest user-confirmed absolute total believed to be in an external task/day cell. |
+| Actual | Current genuine/date-only work by task UUID and local date. |
+| Exported | Immutable snapshot of a reviewed Timesheet's values, labels and context. |
+| Confirmed POL-R | Latest explicitly user-confirmed absolute external task/day value. |
 
-Exported and confirmed amounts are never additional actual work. They must not
-be added to elapsed totals. There is no automatic POL-R connection or
-synchronization: the user enters and corrects external values.
+Export and confirmation never add Actual. No automatic POL-R synchronization or
+independent backend verification is selected. User confirmation records reported
+external content, not an independently verified query.
 
 ## SELECTED — Decimal-hour replacement output
 
-Replacement exports and POL-R-facing reconciliation use decimal hours with exactly
-two places. Keep full-precision accounting seconds unchanged; round each task/day
-cell once using deterministic ROUND_HALF_UP to integer hundredths. Displayed
-weekly, project and overall totals sum displayed task/day cells, not independently
-rounded raw aggregates. This presentation does not create additional Actual.
-Nonzero work rounding to 0.00 stays nonzero internally and is not automatically
-confirmed as zero. The technical rules are in the
+Exports and POL-R fields show exactly two places. Keep underlying work exact in
+integer microseconds. Round each task/day once with ROUND_HALF_UP to integer
+hundredths of an hour; sum those cells for weekly/project/overall displayed
+rollups. Never independently round raw aggregates for those rollups or add
+project subtotals as additional work. Positive work rounding to 0.00 remains
+nonzero internally and is not automatically confirmed as zero. See the
 [decimal contract](EXPORT_EVIDENCE_CONTRACT.md#decimal-hour-representation).
 
 ## SELECTED — Daily reconciliation
 
-Every task/day reconciliation record supports **Actual**, **Confirmed POL-R**,
-**Delta**, and **Enter in POL-R**:
-
-- Actual is the current independent Chronicle task/day total.
-- Confirmed POL-R is the latest explicitly confirmed **absolute daily total**
-  for that task/date.
-- When the confirmed amount is known, Delta = Actual minus Confirmed POL-R.
-  Positive means POL-R needs additional hours; negative means its known amount
-  exceeds Chronicle's corrected actual. Zero means reconciliation with the last
-  confirmation, not independent verification of POL-R.
-- Enter in POL-R is the complete absolute daily replacement value, equal to the
-  current Actual. It is **not the Delta** or a separate incremental entry.
-
-Unknown is different from zero. If no external amount has ever been confirmed:
-
-| Field | Required value |
-| --- | --- |
-| Confirmed POL-R | Unknown |
-| Delta | Unverified |
-| Enter in POL-R | Current Actual |
-
-Do not assume an unconfirmed cell contains zero or calculate a fictitious exact
-outstanding amount from an unknown previous external value.
-
-POL-R-facing Delta uses displayed Actual hundredths minus confirmed hundredths;
-Enter uses current displayed Actual. Underlying Actual retains exact seconds.
-The mandatory HH:MM examples below preserve work semantics; their selected
-decimal representations are specified in the
-[reconciliation contract](EXPORT_EVIDENCE_CONTRACT.md#displayed-reconciliation).
-
-**CURRENT IMPLEMENTATION:** a staged read-only service returns detached raw Actual
-and task/day hundredths for Actual/Confirmed/Delta/Enter, with `None` for
-Unknown/Unverified and batch identity for known confirmation. It validates current
-journal evidence and uses existing current-state accounting without writes or
-cache installation. Reconciliation presentation, weekly summaries and production
-integration remain unimplemented.
+Show Actual, Confirmed POL-R, Delta and Enter in POL-R per task/day. Unknown is
+not confirmed zero. Unknown Confirmed gives **Unverified** Delta. When known,
+Delta is signed displayed Actual hundredths minus confirmed hundredths; Enter
+is **whole current Actual**, never Delta or an additive increment. Zero Delta
+means agreement with user confirmation, not independent external verification.
+Weekly summaries preserve cell-level Unknown/disagreement even when signed
+differences cancel. Recording Actual is independent of reconciliation availability.
 
 ## SELECTED — Mandatory 3:00 → 5:00 contractual behavior test
 
-Task A, Monday:
-
-1. Actual = **3:00**. The user saves an export containing **3:00**. POL-R remains
-   **Unknown** until explicitly confirmed.
-2. The user works another **2:00**. Actual = **5:00**. The earlier saved export
-   remains frozen at **3:00**.
-3. The user confirms that **3:00** from that earlier export was entered into
-   POL-R: **Actual = 5:00; Confirmed POL-R = 3:00; Delta = +2:00;
-   Enter in POL-R = 5:00**.
-4. The user changes Monday's POL-R cell from **3:00** to **5:00** and confirms
-   the new absolute daily total: **Actual = 5:00; Confirmed POL-R = 5:00;
-   Delta = 0:00**. No further cell update is required.
-
-The earlier 3:00 confirmation remains historical evidence. No timer reset is
-required to distinguish new work from already-confirmed time. The external cell
-must become **5:00**, not an additional independent **2:00** entry. This example
-is mandatory acceptance behavior, not optional illustration.
+Save a 3.00 export, record 2.00 more, then confirm the frozen 3.00 was entered:
+**Actual 5.00 / Confirmed 3.00 / Delta +2.00 / Enter 5.00**. Confirm the external
+cell at 5.00: Delta becomes 0.00. Earlier export/confirmation stays unchanged.
+Correct Actual to 2.50 against Confirmed 3.00: **Delta -0.50 / Enter 2.50**.
+These are mandatory, not illustrative alternatives. No Reset or extra additive
+2.00 entry is needed.
 
 ## SELECTED — Preview and saved exports
 
-**Preview timesheet** displays a frozen candidate of current calculated Actual
-without persistence, submission, confirmation, timer resets or checkpoints.
-One application-owned modal Timesheet window replaces the shipped export workflows.
-Running timers and normal event processing continue; main/mini controls cannot
-be used through the modal window. Fresh openings start This week/All tasks and
-require explicit Preview. Close before registration discards the preview; Close
-after known Save completion disposes it and permits a fresh opening. Close after
-an unsuccessful Save defaults to staying open; explicit confirmation withdraws
-the same window and retains the exact attempt/controls/report in application
-memory. Reopening resumes that instance without calculation or automatic retry.
-Busy Save/confirmation/file-selection operations cannot be interrupted by
-reentrant close, open or exit callbacks. Exit with an unfinished attempt defaults
-to cancellation and warns that automatic session resumption will be lost;
-registered evidence/files are never undone. This warning takes precedence over
-the existing monthly close prompt. No persistent/restart or forced-destruction
-resumption is selected. Saving does not confirm POL-R or dismiss a reminder.
-Periods are **This week**, **Last week** and **Custom**, initially This week;
-Custom accepts typed dates and calendar pickers. Current weeks use Sunday through
-Saturday; configurable-week support remains separate.
+One modal Timesheet/POL-R workflow replaces old export workflows. Main/mini input
+is blocked while timers continue. Fresh preview defaults to This week/All tasks;
+Last week and Custom, typed dates/pickers, All or explicit task UUIDs are supported.
+Do not expand descendants. Duplicate names remain separate; retained deleted-task
+work stays reportable. Calendar selection only edits drafts, cancellation preserves
+them, and invalid drafts remain correctable. Resolve relative periods at explicit
+Preview/Refresh, not by silently advancing an old preview.
 
-Choose All tasks or explicitly checked task UUIDs, independently of legacy
-hierarchy; selecting a parent never selects descendants. Retained deleted-task
-work remains reportable. No automatic submission, confirmation, Reset or
-post-export task deletion belongs in the replacement workflow.
+Preview prepares a detached frozen candidate with one cutoff and complete text,
+without evidence/file writes. Changed dates/scope/checks invalidate Save readiness
+immediately, even after changing back. Keep old report labeled as previous.
+Preparation/render failure invalidates readiness and reports the original error;
+valid empty All differs from invalid empty Selected. Show applied dates/cutoff,
+not unapplied drafts. Save publishes exactly the reviewed candidate, without
+recalculation. Later work, rename or regrouping does not change it.
 
-Explicit Preview/Refresh captures a new cutoff and prepares one complete frozen
-candidate. Date/period or task-selection changes require a fresh successful
-preview before Save, even if changed back. Prior output retains its applied
-range/cutoff and is marked previous/refresh-required. Later work, corrections,
-renaming and project movement do not mutate that candidate. Saving must publish
-exactly the previewed amounts and text; it must not recalculate on Save.
+Commit the immutable snapshot in SQLite before file publication. Unknown commit
+outcome cannot authorize publication; reconcile the same request/identity against
+the database. File failure retries the saved report independently of any retained
+widget; no global one-pending-operation slot or widget lifetime is authority.
+Default Save/Retry protects existing files, reuses fully verified matching copies
+and creates absent files exclusively. A stable regular-file content conflict
+allows a separate default-cancel confirmation naming the destination; Overwrite
+permission is for that call only. Reject unsuitable/unreadable/unstable objects
+and protect the dataset tree/aliases from replacement. Preserve exact frozen
+bytes/digest, staging-only cleanup and truthful post-publication diagnostics;
+see [file rules](EXPORT_EVIDENCE_CONTRACT.md#materialization-and-byte-verification).
 
-**Save/export timesheet** must save a complete readable report and record immutable
-evidence of that export's work-date amounts. It preserves the selected date
-range, week-start convention, calculation cutoff, reporting scope, task UUIDs
-and historical display labels. The export can be reviewed and confirmed later.
-Saving never automatically marks work as entered into POL-R.
-
-Saved exports remain unchanged after later work, corrections, project movement
-or task renaming. Repeated exports never add their hours to actual work.
-
-One immutable journal-backed snapshot is authoritative; external files are
-reproducible copies. Register and verify that snapshot before file publication,
-then verify complete file bytes before reporting successful export. A failed
-materialization leaves recoverable registered evidence. Retry the same snapshot
-without recalculating work. Ordinary Save/Retry never overwrites. A completely
-inspected stable regular-file content conflict permits a separate, user-confirmed
-Overwrite operation or another selected path. Authorization applies to that call
-only; it does not change immutable evidence. Matching copies are reused without
-rewriting, and initially absent destinations retain exclusive creation.
-Unsuitable/unreadable/unstable files cannot authorize replacement. Explicit
-replacement is prohibited inside the active dataset tree, including resolved
-aliases. Use complete owned staging and `os.replace()`, with a final target
-identity/metadata recheck and complete byte/digest verification. These bounded
-checks assume trusted directories and serialized ownership; they are not atomic
-compare-and-replace or protection against arbitrary concurrent changes.
-File availability is derived from valid committed evidence and the selected
-destination: an explicit path, otherwise the original preferred path if present.
-No available destination differs from a selected destination with no file. An
-absent selected file establishes no publication history, including whether it
-ever existed. Reverify current status rather than assuming it remains correct;
-do not persist publication-history or completion state.
-The [technical contract](EXPORT_EVIDENCE_CONTRACT.md) owns identity, contents,
-registration uncertainty, materialization and recovery rules.
-
-**CURRENT IMPLEMENTATION distinction:** standalone `TimesheetPreviewFrame`
-prepares and displays an unregistered candidate only after explicit Preview/
-Refresh. It retains a detached candidate and returns it only while its displayed
-preview is current; failed preparation or rendering invalidates readiness.
-The preview itself does not register or publish files. Its composed standalone
-`TimesheetSaveFrame` locks the reviewed candidate, registers it before verified
-materialization and retains its exact event and explicit destination for retry.
-Unverified registration never permits publication; a failed save call does not
-prove the destination absent. A typed stable regular-file content conflict offers
-Overwrite with an owned, default-cancel confirmation naming the exact path.
-Every confirmed replacement re-registers the retained event before publication;
-Retry and alternate paths never inherit its permission. A generic registration,
-inspection or publication failure cannot enable Overwrite. Matching copies may
-be reused. Only a returned materialization result
-establishes that save call's completion, not permanent current-file availability.
-No recalculation, submission, checkpoint, confirmation or timer mutation belongs
-in Save. The current component supports one operation per instance and ephemeral
-retry-input handoff. `TimesheetWindow` now composes it through the application
-owner for toolbar, File menu, reminder-banner and close-reminder access. Supported
-unfinished closure retains that same instance only in this application session.
-The legacy full/selected export dialogs, overlap prompts, post-export dispatch
-and checkpoint-reopening command are removed without a fallback. General recovery
-UI remains pending; no New export/Abandon or restart recovery is supplied.
-Production dated writers remain inactive.
-The separate file-only save service publishes a
-report file but does not register an immutable export-snapshot event. It still
-uses exact HH:MM:SS output and lacks snapshot-linked byte verification/recovery.
-The separate pure decimal renderer and immutable snapshot-registration APIs are
-implemented/staged but are not used by these generation/save APIs. Registration
-alone publishes no file. A separate materialization API verifies journal evidence
-and exact destination bytes, reuses matching files and defaults to no overwrite;
-explicit authorized replacement follows the restrictions above. It does
-not recalculate work or create another event. Standalone status evaluation also
-strictly validates committed evidence and derives the five current file outcomes
-without writes, retained status or remembered alternative paths. General
-status/recovery UI and confirmation UI remain Selected
-and not yet implemented.
-
-## SELECTED — Reconciliation reminders
-
-Previous-week reconciliation is checked every local day the application is used,
-including opening after absence and local-date rollover while running. Current
-week is checked Friday and Monday. Reconciliation remains per task/day; opposing
-differences cannot cancel through weekly totals. The banner offers Open Timesheet
-and Dismiss for today. Saving is not reconciliation and cannot dismiss it.
-
-**CURRENT IMPLEMENTATION distinction:** weekly scheduling/reconciliation reminders
-remain pending. Existing monthly visibility, startup notice and settings mechanics
-remain temporarily; Open Timesheet uses the shared owner and explicit Dismiss
-still updates the current monthly settings. Opening, Save success/cancellation/
-failure never marks a reminder handled. The monthly close choice returns to the
-application after Timesheet closes, without automatically exiting or claiming Save
-success. These observations are not replacement weekly-reminder policy.
+Export never stops/resets timers, confirms POL-R, submits legacy markers,
+deletes tasks or dismisses reminders. Saving and later explicit confirmation are
+distinct. General new-runtime saved-report recovery belongs in the core workflow;
+the current retained-window implementation is not the target recovery mechanism.
 
 ## SELECTED — Explicit POL-R confirmation workflow
 
-After saving, offer a quick workflow to:
-
-1. Confirm the entire applicable export as entered.
-2. Confirm only checked task/day cells.
-3. Defer confirmation and return to that export later.
-4. Manually confirm the absolute amount currently in one POL-R task/day cell.
-
-The common workflow requires no retyping of exported amounts. Propose each
-applicable cell's **frozen export amount**, not its later recalculated actual.
-Several entries can be confirmed together, always explicitly; saving alone is
-never confirmation.
-
-Partial confirmation changes checked entries only. Unchecked entries, including
-previous confirmations, must not be cleared or reset. Zero-hour export cells are
-not automatically confirmed. A user may explicitly confirm zero after clearing
-or setting the actual external cell to zero.
-
-Manual confirmation may differ from current Actual or the previous export.
-Retain that distinction and show the resulting reconciliation Delta.
-
-**CURRENT IMPLEMENTATION:** staged service APIs propose frozen export cells,
-apply positive-only default or explicit checked/zero selection, validate
-cell-specific acknowledgements against unchanged reviewed priors, and prepare an
-existing-format batch without registration. Registration is a separate explicit
-call. Deferral writes nothing; reopening requires renewed review. Acknowledgement
-presentation, dialogs, manual-confirmation UI and production integration remain
-unimplemented; these services do not verify external POL-R or report-file readiness.
+Offer confirmation of the whole applicable saved export, checked task/day cells,
+deferral with later review, and manual absolute confirmation without an export.
+Propose **frozen** export values, not recalculated Actual. Do not require retyping
+all cells or a free-text reason for ordinary bulk confirmation. Unchecked cells
+retain prior evidence; do not automatically confirm zero. Explicit zero is valid.
+Manual values may differ from Actual/export and must show resulting Delta.
 
 ## SELECTED — Confirmation evidence and batch integrity
 
-The approved design uses two new event-backed concepts: **immutable saved export
-snapshot** and **immutable POL-R confirmation**. A confirmation identifies task/day
-cells and their new absolute external totals. Each cell's latest confirmed value
-is derived from authoritative evidence.
-
-Confirmations replace the known external cell total; they are not additive
-increments. Prior evidence is not rewritten or deleted. A batch validates every
-selected entry before committing; a rejected batch must not partially confirm
-entries. Latest confirmed amounts, Delta and outstanding status are derived,
-without independent additive project totals, outstanding balances or Delta
-counters.
-
-Confirmations may reference an export. Manual confirmation must also work without
-a saved export. The approved
-[confirmation technical contract](EXPORT_EVIDENCE_CONTRACT.md#confirmation-event-structure)
-defines one validated batch event, expected prior identities and conflict-specific
-acknowledgement. Strict immutable batch validation/replay, dedicated batch
-preparation/registration and a derived in-memory effective-confirmation mapping
-are implemented/staged. The low-level writer accepts explicitly reviewed cells;
-it does not present proposals, infer acknowledgements or verify report copies.
-Separate frozen-export proposal and selected preparation services are staged;
-user acknowledgement presentation and confirmation UI remain unimplemented.
-Staged service APIs do not make the production POL-R workflow operational.
+One reviewed batch validates/commits atomically, with immutable history and current
+cell references. Reject stale reviewed priors; never silently replace newer
+confirmations. A source export older than a newer differing confirmation requires
+cell-specific acknowledgement bound to the reviewed prior. Acknowledgement does
+not bypass a changed prior. Equal proposed/current values need no extra manual
+entry; even an intervening equal-value confirmation changes the prior identity.
+Rejected batches change no subset. Deferral writes nothing. Confirmations never
+change Actual, timers or exports. See the [technical contract](EXPORT_EVIDENCE_CONTRACT.md#absolute-confirmation-batches).
 
 ## SELECTED — Corrections and stale exports
 
-Corrections remain permitted after POL-R confirmation. When Actual changes,
-recalculate it, preserve confirmed evidence, recalculate Delta, and show the new
-absolute replacement total. When the user updates POL-R, record a new absolute
-confirmation, retain earlier evidence and recalculate Delta.
-
-Mandatory correction behavior: Actual originally **3:00**, Confirmed POL-R
-**3:00**, Actual corrected to **2:30** produces **Delta = -0:30** and
-**Enter in POL-R = 2:30**.
-
-An export can be older than both current Actual and the latest confirmation. If
-confirming an older export would replace a newer confirmed value with a different
-amount, identify that specific conflict and require explicit user acknowledgement
-before recording the replacement. Ordinary bulk confirmation must not silently
-roll back newer confirmations. If the proposal already equals the latest known
-value, no extra manual entry should be necessary. Confirmation errors and
-corrections remain auditable.
+Correcting Actual remains permitted after export/confirmation. Recalculate current
+Actual/Delta/Enter, retain all older evidence and permit a new explicit absolute
+confirmation after the external cell is updated. Never rewrite old export bytes
+or silently roll a newer confirmation back to an old export.
 
 ## SELECTED — Incomplete current workdays
 
-Export and confirmation are permitted during an incomplete workday; formal day
-closure is not required. Where appropriate, clearly distinguish ongoing work
-from a finalized historical reporting period. More work after confirmation
-increases Actual and Delta while Confirmed POL-R stays unchanged; Enter in POL-R
-shows the new complete daily total. Unknown prior values still follow the
-Unknown/Unverified rule, rather than an invented signed Delta.
-
-No automatic resubmission occurs. Exporting or confirming does not stop a timer
-or reset actual-work counters.
+Preview/export/confirmation need no formal day closure. Distinguish running
+observation from a recorded stop. Later work changes Actual/Delta, not previous
+confirmation; no automatic resubmission, Reset or timer interruption occurs.
 
 ## SELECTED — Low-friction primary workflow
 
-Prioritize quick, clear actions. The user can see task/day cells needing attention,
-read and easily copy the absolute replacement value, read signed Delta when the
-prior value is known, select multiple cells, confirm all applicable export
-entries or checked entries, defer, and manually correct a confirmed amount.
-Unknown external values are visibly identifiable.
+Show cells needing attention, copyable whole replacement amounts, signed known
+Delta and visible Unknown. Support bulk/checked confirmation, defer/review and
+manual correction without duplicating a second manual timesheet. Recording and
+reconciliation are both core; neither allocations nor an unavailable external
+system may block Actual.
 
-Ordinary bulk confirmation must not require a reason or free-text explanation
-for every entry. Accidental or exceptional correction of prior evidence remains
-traceable. Do not force reconstruction of a saved export cell by cell, or create
-an additional timesheet requiring duplication of every manual entry already made
-into POL-R.
+## SELECTED — Reconciliation reminders
+
+Check the previous week every local day the application is used, including
+opening after absence and date rollover while running. Check current week on
+Friday and Monday. Use per-task/day truth, never a weekly net that hides opposing
+differences. Banner actions are Open Timesheet and explicit Dismiss for today.
+Opening or saving does not dismiss or confirm. Required reminders and daily/weekly
+reconciliation are complete before pilot; current monthly prompts are legacy,
+not the selected replacement schedule.
 
 ## SELECTED — Optional weekly allocations; implementation DEFERRED
 
-Allocations are optional informational, user-supplied data, not automatically
-verified against POL-R. Do not assume one fixed lifetime allocation. Future
-tracking supports Unknown allocation, explicit zero, task-specific weekly
-allocation, a recurring weekly default, a specific weekly override, and manual
-correction when project management changes an allotment.
+Stage 6 optional expansion, after reserved decisions: user-supplied informational
+allocations with Unknown distinct from zero, task-specific weeks, recurring
+defaults, overrides and manual correction. Allocation minus confirmed and projected
+remaining after Actual are separate estimates, **not reconciliation Delta**.
+Limits may warn but never block recording. Allocation controls, recurrence/override
+rules and week-change interactions require adjudication. They are not core pilot
+gates; no automatic external allocation verification is established.
 
-Remaining allocation differs from outstanding unconfirmed time. For known
-allocation, provide both **allocation minus confirmed external time** and
-**projected remaining allocation after all current recorded actual work** as
-estimates based on available information. Unknown allocation is not zero.
-Negative remaining allocation may warn, but limits must never stop recording
-or discard actual work.
+## Scope inventory — core, optional and unresolved
 
-Exact allocation-edit controls and treatment of existing weekly overrides after
-week-start changes are Deferred for later adjudication, not choices made here.
-POL-R's administration and enforcement of allotments remain Unverified.
+| Capability | Placement / boundary |
+| --- | --- |
+| Tasks, optional project grouping, Start/Stop/Switch, main/mini | Core Stage 1 foundation; not a complete MVP/pilot. |
+| Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
+| Frozen exports, saved-report recovery, absolute confirmation, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot. |
+| Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
+| Subtask templates | Existing legacy convenience; replacement semantics Open before any optional implementation. No silent carryover of hierarchy/duplicate-name rules. |
+| Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
 
-Source describes what executes, not an alternative product contract. See
-[DESIGN_NOTES.md](../DESIGN_NOTES.md) for the technical contracts and limitations.
-
-| Area | Inspected current behavior |
-| --- | --- |
-| Project/task foundation | Separate UUID-based service records, optional current project membership and independent task-owned time. |
-| Date-only duration foundation | Separate endpoint-free records with append-only creation/correction/deletion replay and snapshots; new production duration writers are inactive. |
-| Mixed accounting | Read-only explicit local-date windows, real intervals plus effective dated records, derived project/Unassigned/application totals, and fixed Sunday-start weeks. |
-| Mixed work history | Detached task-owned interval/day segments and date-only rows, explicit cutoff, All history or inclusive dates, deterministic date direction and within-day chronology. Known deleted tasks are readable. A standalone table renders ordered rows with minute clocks, completed-minute durations and related-portion highlighting. A standalone browser adds Current week/Custom/All, Apply-only calendar/typed dates, explicit Refresh and local date sorting, with application-session direction handoff. Both shipped Work History commands use one owned modal path with safe originating-parent return. Superseded timeline presentation is removed; replacement editing and audit remain pending. Task Reset controls and export Reset choices are removed; main/mini calendar Actual is connected while backend reset evidence and independent interval-only backend exporters remain. |
-| Timed input validation | Pure minute-clock candidate/resolution APIs with separate endpoint dates, explicit repeated-time occurrences, gap rejection, UTC ordering and edit-aware restoration of unchanged precision. Consumed by the form and standalone editor; production callers remain unchanged. |
-| Timed input form | Standalone minute-only endpoint fields, canonical dates, timezone/occurrence choices and inline errors using the accepted validators. No stored-record loading, saving or production correction connection; legacy timeline input UI is removed. |
-| Timed corrections | Separate staged preparation/registration of one effective closed genuine interval replacement, preserving unchanged precision, optional comments and retry identities. No-op saves write nothing; stale priors reject. Consumed by the standalone dialog; production editing remains inactive. |
-| Standalone timed editor | Authoritative detached loading, minute controls preserving unchanged precision, stale conflict presentation, optional comments and frozen correction registration/retry. No production callers, creation/deletion or dated/running editing. |
-| Timesheet rendering/generation | Staged independent-task exact and decimal renderers with authoritative scope/timezone metadata, safe calendar slots, reversible escaping and wrapped borders. Decimal output rounds task/day cells once and sums displayed hundredths; service generation still uses exact durations. |
-| Separate exact-format file saving | Complete same-directory staging and atomic no-overwrite hard-link publication on supported filesystems; no new export event, submission, checkpoint or reset. |
-| Production application | Parent/subtask UI and modal frozen Timesheet export access are active; historical checkpoints/submission markers remain readable in backend replay; read-only mixed Work History replaces the legacy timeline; replacement work-entry/editing UI remains pending. Task Reset UI is removed; main task Today/This week and mini Today use mixed calendar Actual with deleted work included in application totals. Backend reset APIs and independently callable interval-only exporters remain; production Timesheet uses mixed accounting. |
-| Export evidence | Separate frozen decimal snapshot preparation, validated journal registration/readers/replay, verified materialization and read-only destination-relative five-status evaluation. Production Timesheet connects exact copies, matching-file reuse, default no-overwrite publication and explicitly confirmed stable-file replacement; materialization/evaluation create no new events or persistent file-status flags. |
-| POL-R target workflow | Immutable confirmation-batch preparation/registration/replay, frozen-export proposals/selected preparation and latest absolute task/day projection are staged. Read-only daily Actual/Confirmed/Delta/Enter calculation is staged; confirmation/reconciliation UI, weekly summaries and production integration remain unimplemented. Legacy markers are not this contract; export registration is not confirmation or successful file export. |
-| Week configuration and allocations | No selectable week-start setting or selected weekly-allocation management. |
-| Data/installation | Launcher still uses the existing data path; fresh-directory release cutover is inactive. No historical migration implemented. |
-
-Current text `HH:MM:SS[.fraction]` reporting remains available and unchanged;
-two-decimal replacement rendering, separate persistent snapshot registration,
-verified materialization and status evaluation are independently callable and
-implemented with production Timesheet integration, without a general file-status/recovery UI. Current source
-Sunday-start handling is not a fixed future policy.
-Backend foundations do not make the redesigned production workflow operational.
+The checkout remains Python/Tkinter with authoritative JSONL, replayed Python
+state and derived JSON snapshots, not SQLite. Main/mini mixed Actual, read-only
+modal Work History and frozen Timesheet Preview/Save/retry/confirmed Overwrite
+are connected. The standalone correction dialog is not production-connected;
+its replacement-interval IDs are legacy mechanics, not stable-revision design.
+Date-only replay/accounting and absolute confirmation/proposal/reconciliation
+services are staged; date-only production writers, confirmation/reconciliation
+UI, weekly reminders, configurable weeks and complete replacement workflow are
+not delivered. Legacy reset/export/evidence APIs remain independently callable,
+although shipped Reset and old export UI are removed. Source-specific detail is
+in [Design Notes](../DESIGN_NOTES.md). Earlier Phase 2 service acceptance is
+historical JSONL evidence, not completion of a SQLite stage.
 
 ## OPEN — Reserved user/ChatGPT decisions
 
-- **Allocation configuration details:** recurring defaults, overrides,
-  allocation-edit controls and existing allocations/overrides after week-start
-  changes.
-- **First-release allocation scope:** whether allocation management is required
-  for the first replacement release.
-- **Replacement cutover:** exact release installation and old-data handling.
-  Migration is not required; automatic deletion is not authorized.
+| Decision | First affected gate |
+| --- | --- |
+| Abnormal clock movement, sleep, persisted timer restart recovery | Stage 1 before affected recording/reopen code. |
+| Dataset-timezone changes and historical date attribution under changes | Stage 1 dataset configuration / Stage 2 accounting, before implementation. Explicit fixed dataset zone is required; change policy is not guessed. |
+| Replacement template semantics | Before optional Stage 6 template implementation. |
+| Exact release paths, installation/cutover and retired-data cleanup | Before affected deployment/Stage 5 fresh pilot setup; startup deletion is unauthorized. |
+| Allocation controls/recurrence/overrides/week-change effects | Before optional Stage 6 allocation work. |
+
+These reservations do not reopen Tkinter/SQLite or defer core POL-R. Resolve only
+the affected work; they do not block this authority reconciliation.
 
 ## UNVERIFIED EXTERNAL BEHAVIOR — POL-R backend
 
-The user's description suggests allotted-hour limits, but how allotments are
-administered/changed and automatically enforced across recurring weeks is not
-established by direct evidence. User-entered allocations and confirmations are
-not independent external verification. Do not turn these assumptions into policy.
+External allotment administration/enforcement and direct backend behavior are
+not independently established. User-entered confirmations/allocations are not
+external verification. Future external integration needs explicit approval.
 
 ## DEFERRED — Approved implementation work
 
-Future implementation includes configurable week starts, weekly reconciliation
-reminders and general file-status/recovery UI, explicit POL-R confirmation/reconciliation UI and weekly summaries,
-the low-friction UI, weekly allocation tracking and replacement installation/cutover. Their Selected
-behavior remains binding. Export/confirmation development follows the approved
-technical contract through separately reviewed outcomes; unrelated Open allocation
-and cutover decisions still require adjudication. No production workflow is active
-merely because its contract is documented.
+All SQLite runtime implementation awaits independent architecture acceptance and
+separately authorized work. The next runtime action is a bounded Stage 1 read-only
+implementation plan, not another whole-application planning cycle. Only optional
+expansion is deferred beyond the complete core pilot; POL-R is not deferred there.

@@ -1,19 +1,30 @@
-# Design Notes
+# Design Notes — current legacy implementation
 
-This document describes inspected **current implementation** and technical
-limitations. The [approved replacement/POL-R contract](docs/TIMESHEET_REQUIREMENTS.md)
-owns selected future product behavior, including Open architectural decisions.
-Legacy behavior below remains current during staging; it is not permanent policy
-for the replacement application. See [AGENTS.md](AGENTS.md) for the ownership map.
-The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns the selected
-snapshot-first, decimal-hour and confirmation architecture. Pure decimal rendering,
-export-snapshot registration/verified materialization and read-only file-status
-evaluation are staged. Confirmation validation/replay and dedicated batch
-preparation/registration, frozen-export proposal/selection preparation and read-only
-daily reconciliation calculation are staged;
-confirmation/reconciliation UI, weekly reconciliation summaries and general
-file-status/recovery UI are unimplemented.
-The source descriptions below remain current implementation observations.
+This owner describes the inspected **Tkinter + JSONL runtime**, including staged
+services and actual limitations. It does not specify the clean rewrite.
+[ARCHITECTURE.md](docs/ARCHITECTURE.md) is the single selected Tkinter/SQLite target
+technical owner; [requirements](docs/TIMESHEET_REQUIREMENTS.md) owns product
+behavior, the [export contract](docs/EXPORT_EVIDENCE_CONTRACT.md) owns retained
+frozen-export/absolute-confirmation semantics, and the [roadmap](docs/ROADMAP.md)
+owns rewrite Stages 0–6. See [AGENTS.md](AGENTS.md) for actor/authority rules.
+
+All source contracts below are **legacy/current observations**, not requirements
+to reproduce JSONL in SQLite. Append/replay/manifests/synchronize-journal, derived
+JSON snapshots, replacement-interval UUIDs, constructor waits and same-widget
+unfinished Save retention remain descriptions of code that still executes.
+They are superseded as target architecture by transactional relational records,
+stable work-entry revisions, request receipts, worker-owned I/O, callback-driven
+presentation and saved-report recovery independent of widgets. No SQLite runtime
+is delivered by documenting that choice.
+
+Current main/mini Actual, read-only Work History and frozen modal Timesheet are
+connected. The timed correction dialog is standalone; date-only production
+writers, confirmation/reconciliation UI, weekly summaries/reminders and selectable
+weeks remain absent. Those are source gaps, not instructions to connect a nested
+editor or global pending-correction slot. The rewrite uses main selection →
+History → inline editor; recursive metadata-editor routing below remains current
+code only. POL-R is core before pilot, not optional later expansion. Old Phase 2
+acceptance remains bounded historical JSONL service evidence, not a SQLite gate.
 
 ## Architecture
 
@@ -557,8 +568,8 @@ services, storage and settings remain unchanged. This is fresh replacement work,
 not legacy-data compatibility: applicable synthetic work fails visibly under the
 existing reader contract, without fallback, conversion or omission. User files
 and installation/data-directory cutover are untouched. Read-only history alone
-does not satisfy the Phase 3 active-reader gate. There is no window registry,
-persistent identity, polling or additional mainloop.
+does not alone satisfy the active-reader gate (now in rewrite Stage 2). There is
+no window registry, persistent identity, polling or additional mainloop.
 
 ## Replacement timed-input validation (staged)
 
@@ -1087,7 +1098,8 @@ as its sole export identity. Payload fields are `start_date`, `end_date`,
 Each task's `daily` array contains ordered `work_date`, full-precision
 `actual_seconds` and integer `decimal_hundredths`; projects list frozen member
 task UUIDs and full/selected scope. There are no persisted aggregate counters.
-The technical authority remains the [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md).
+The [export evidence contract](docs/EXPORT_EVIDENCE_CONTRACT.md) retains semantics;
+the envelope here is the current JSONL implementation, superseded for the rewrite.
 
 `register_prepared_timesheet_export(prepared_event)` returns the export UUID only
 after finding exact valid authoritative evidence. It validates schema, canonical
@@ -1260,8 +1272,8 @@ directories, real concurrent writers or power-loss behavior.
 `collect_polr_confirmations(events)` for pure whole-journal validation and the
 effective `(task_id, ISO work_date)` mapping. Each value contains only
 `confirmed_hundredths` and `batch_event_id`; missing keys mean Unknown while zero
-remains an entry. The [technical owner](docs/EXPORT_EVIDENCE_CONTRACT.md#confirmation-event-structure)
-defines the persisted schema and relationship rules.
+remains an entry. The [semantic owner](docs/EXPORT_EVIDENCE_CONTRACT.md#absolute-confirmation-batches)
+retains absolute batch rules; the schema below describes current JSONL only.
 
 Confirmation envelopes use the supported schema, canonical UUID and UTC audit
 seconds ending in `Z`. `local_timezone` is audit metadata: exactly a nonempty
@@ -1367,8 +1379,8 @@ registration prior check after preparation. Source provenance remains independen
 of report-copy readiness; file-dependent workflows still require current checks.
 Deferral has no write; reopening requires renewed review. Acknowledgement dialogs,
 manual-confirmation UI and production integration are not implemented.
-The [technical owner](docs/EXPORT_EVIDENCE_CONTRACT.md#staged-export-proposals-and-selected-preparation)
-defines the transient fields, selection and acknowledgement contract.
+The [semantic owner](docs/EXPORT_EVIDENCE_CONTRACT.md#whole-batch-validation-concurrency-and-stale-exports)
+retains selection/acknowledgement rules. Transient fields above describe current APIs.
 
 ## Daily POL-R reconciliation calculation (staged)
 
@@ -1405,8 +1417,9 @@ projection installation, cache refresh, implicit clock, rendering, file
 materialization or timer/submission/checkpoint changes. Returned results do not
 change after later work or confirmations. No Confirmed/Delta aggregate balances,
 weekly reconciliation, formatting, presentation/UI or production integration is
-implemented. The [technical contract](docs/EXPORT_EVIDENCE_CONTRACT.md#staged-daily-calculation)
-owns the transient response and freshness boundary.
+implemented. The response/freshness boundary above describes current source;
+the [semantic contract](docs/EXPORT_EVIDENCE_CONTRACT.md#displayed-reconciliation)
+owns retained Actual/Confirmed/Delta/Enter rules, not this legacy API shape.
 
 ## Date-range timesheet service (staged)
 
@@ -1477,10 +1490,10 @@ execution is unavailable in this environment and is not claimed as validated.
 Generating is read-only accounting; this exact-format save is file output only and does
 not persist immutable export-snapshot evidence. The
 [selected saved-export/confirmation requirement](docs/TIMESHEET_REQUIREMENTS.md)
-requires integration with immutable evidence and future POL-R reconciliation UI. The
-[approved technical contract](docs/EXPORT_EVIDENCE_CONTRACT.md) now selects
-snapshot-first registration, decimal output, verified materialization, pending
-recovery and confirmation batches; none is used by these file-only generation/save APIs. The
+requires immutable evidence and core POL-R reconciliation UI. The
+[export contract](docs/EXPORT_EVIDENCE_CONTRACT.md) retains snapshot-first
+registration, decimal output, verified materialization, recovery and confirmations
+under the selected SQLite target; none is used by these file-only generation/save APIs. The
 current method regenerates text on each call, rejects existing destinations even
 if matching, and does not perform snapshot-linked postpublication byte verification.
 A saved report is **not submission evidence**. Neither operation appends events, updates

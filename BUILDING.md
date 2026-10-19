@@ -1,6 +1,27 @@
 # Building Chronicle for Windows (PyInstaller)
 
-This repository includes a Windows-focused PyInstaller setup for internal distribution.
+## Current source versus selected rewrite
+
+The commands below describe the inspected **legacy Tkinter/JSONL** scripts and
+launcher. They do not build an implemented SQLite rewrite or establish Windows
+qualification. [ARCHITECTURE.md](docs/ARCHITECTURE.md) owns the selected replacement;
+[ROADMAP.md](docs/ROADMAP.md) starts early native Windows onedir smoke in Stage 1
+and requires complete core POL-R before pilot. Preserve one replacement runtime,
+not parallel legacy packaging or a Qt/PySide6 frontend.
+
+The future package must verify its actual SQLite runtime, WAL/FULL profile,
+foreign keys/constraints and supported backup/restore, and bundle offline IANA
+timezone data. Existing metadata declares Python 3.11+, tkcalendar and tzlocal;
+the current spec includes tkcalendar/tzlocal and does not establish tzdata bundling.
+Exact rewrite runtime/toolkit pins and packaging changes require validation in
+later authorized implementation, not assumptions in this document. No scripts,
+dependencies or spec are changed here. Native Tk/SQLite/filesystem/package tests
+remain separate from Linux source tests and syntax checks.
+
+The replacement starts with fresh data. Exact selected release paths/cutover and
+cleanup are Open; no old-data discovery/import or startup deletion is authorized.
+Future upgrades must protect new-runtime data. This documentation neither moves
+nor removes the existing data directory.
 
 ## Expected environment
 
@@ -69,9 +90,11 @@ python -m PyInstaller --noconfirm --clean chronicle.spec
 - The default supported artifact is the full folder: **`dist\Chronicle\`**.
 - Distribute that entire folder internally (zip/copy as a unit).
 - End users should run: **`Chronicle.exe`** from inside that folder.
-- For future releases, replacing the app folder does **not** delete user data, because data is stored outside the app directory.
+- Replacing the current app folder does **not** delete user data, because the
+  current launcher stores data outside the app directory. This does not select
+  replacement release paths or authorize deleting existing data.
 
-## User data location (unchanged)
+## Current legacy user data location (unchanged)
 
 Chronicle continues to read/write user data in the per-user home directory:
 

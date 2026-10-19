@@ -6,15 +6,16 @@ architecture, persistence/recovery mechanisms or a new release policy.
 
 The [product contract](TIMESHEET_REQUIREMENTS.md) owns acceptance semantics;
 the [roadmap](ROADMAP.md) owns sequencing and completion gates;
-[Design Notes](../DESIGN_NOTES.md) owns current technical implementation and
-limitations. [AGENTS.md](../AGENTS.md) routes repository work;
+[ARCHITECTURE.md](ARCHITECTURE.md) owns the selected Tkinter/SQLite target;
+[Design Notes](../DESIGN_NOTES.md) owns current legacy implementation/limitations. [AGENTS.md](../AGENTS.md) routes repository work;
 [README.md](../README.md) describes status; [BUILDING.md](../BUILDING.md) owns
 Windows packaging instructions; [CHANGELOG.md](../CHANGELOG.md) is the sole
 historical change record. Tests are evidence, not independent product authority.
 An expectation below does not establish an existing test or a passing result.
 Export/confirmation tests follow the selected
 [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md), the sole technical
-owner of event, decimal, verification/recovery and batch semantics.
+owner of frozen evidence, decimal, verification/recovery and batch semantics.
+SQLite transaction mechanisms belong to ARCHITECTURE, not legacy JSONL replay.
 
 ## Principles and applicability
 
@@ -57,10 +58,14 @@ a full regression. Levels D–F require evidence of interactions/platforms actua
 exercised, with material omissions explicit. Implementation tests and integrated
 qualification remain distinct.
 
-## Current test evidence and limits
+## Current legacy test inventory and limits
 
 The following inventory describes existing test cases and their scope, not
-exhaustive coverage or passing results. Use it to find affected tests and inspect
+exhaustive coverage or passing results. These are tests of the current
+Tkinter/JSONL implementation, not SQLite transaction/worker/inline-editor evidence.
+Old names containing “replacement” or “staged” do not make them rewrite delivery.
+Retain useful semantic cases, but do not require JSONL replay/synchronization,
+constructor waits or widget-retained retries in the new architecture. Use it to find affected tests and inspect
 their assertions before selecting a run.
 
 | Area | Existing test sources and observed scope |
@@ -100,544 +105,223 @@ their assertions before selecting a run.
 | Retained service regression | [test_exporter.py](../tests/test_exporter.py), [test_timeline_corrections.py](../tests/test_timeline_corrections.py), and neighboring tags/subtask/template/selected-export tests protect unchanged service/accounting and export behavior during staging, not a replacement compatibility commitment. Legacy submission/checkpoint tests are not proof of replacement POL-R semantics. |
 | UI and launch routing | [test_app_ui.py](../tests/test_app_ui.py), dialog/window tests and [test_root_launcher.py](../tests/test_root_launcher.py): callbacks, formatting and routing; some construct fake roots, SimpleNamespace widgets or instances without real GUI initialization. They do not establish real Windows desktop usability or packaged execution. |
 
-Existing fixtures use pytest `tmp_path` and `monkeypatch`, including fixed clocks
-and America/Chicago timezone examples. File/state snapshots make purity and
-invalid-operation assertions meaningful.
+Existing fixtures use disposable `tmp_path`, fixed clocks and real service
+composition where applicable. The accepted historical Phase 2 service gate is
+JSONL-only; no test in this inventory completes a SQLite stage. Current production
+has main/mini Actual, read-only History and frozen Timesheet; dated writers,
+confirmation/reconciliation UI, weekly reminders and selected week settings are
+not active. Current nested-editor modal tests protect code that still runs,
+not a requirement to reproduce that navigation in the rewrite.
 
-Currently, mixed accounting is Sunday-only and supplies main/mini calendar Actual;
-mixed work-history projection/table/browser are connected for read-only Work History through both
-shipped commands, with periods, explicit refresh, session sorting and modal return,
-production date-only writers are inactive, and production modal Timesheet now
-composes frozen preview, registration and verified materialization through all
-shipped export entry points. Unfinished Save attempts retain the same component
-only within the session; general recovery UI remains pending. Confirmation
-preparation/registration/replay and daily reconciliation calculation are staged; configurable weeks, POL-R
-confirmation/reconciliation UI, weekly reconciliation summaries and replacement
-installation are not implemented or validated by existing foundation
-tests. Future acceptance obligations below are explicitly conditional on approved
-implementation; test names or prior receipts do not change that status.
+## Rewrite evidence by stage
 
-The access suite covers the connected read-only
-[Selected UI behavior](TIMESHEET_REQUIREMENTS.md#selected--mixed-work-history),
-including periods, session direction and one modal owner. Future editing/audit
-integration must validate linked segment edit/delete acting on the complete interval with affected-date warnings,
-entry-type preservation, effective-only normal history and audit/details access.
-Pure timed-input tests separately cover the Selected minute-only and daylight-saving
-interpretation rules. The standalone form has field/occurrence/inline-error
-coverage, including edit-aware precision preservation. The standalone correction
-dialog connects these to real correction services, with its own callback,
-registration/retry and real-Tk cases. Future production integration must retain
-these guarantees and validate the operator workflow. Those input/editor tests do
-not establish work-history rendering; the separate table suite covers standalone
-rendering and related-portion feedback. The browser suite separately covers
-standalone reader/table integration and explicit interactions, not production
-integration, application-wide window enforcement, native Windows or production readiness.
-The separate session-direction suite covers the staged application-owned handoff,
-not production routing; it requires no preference file or settings persistence.
-The owned-window suite separately covers the modal shell. Both shipped history
-commands now use that owner; the access suite covers their wiring and operator
-interaction, while platform/release evidence remains separate. Real input
-tests must exercise actual event routing under the grab, not merely direct
-button invocation or programmatic calendar selection.
-Originating-parent return is covered both through direct helper drivers and
-shipped controls. It does not repair unrelated recursive-dialog grab behavior or
-establish legacy-data compatibility. Read-only access is fresh replacement work;
-installation/data-directory cutover remains separate.
-Task Reset UI removal has separate constructed-control and real-Tk coverage;
-new Timesheet suites replace the removed legacy export UI assertions. It is distinct from proving that history ignores legacy reset boundaries
-or qualifying all active readers. Main/mini calendar Actual has separate connected
-reader coverage; production Timesheet also uses mixed accounting. Independently
-callable legacy backend export/submission contracts remain interval-only. Backend reset/replay/audit tests
-remain applicable to unchanged implementations, without selecting compatibility
-policy. Service projection or Linux UI tests do not establish native Windows
-interaction, production POL-R integration or release qualification.
+These are future acceptance obligations, **not existing tests or passing results**.
+Tests follow the user-selected [architecture](ARCHITECTURE.md) and
+[semantic contract](EXPORT_EVIDENCE_CONTRACT.md); they do not choose stronger
+recovery/platform policy. Integrity tests begin in each slice, not only Stage 4.
 
-## Accounting guarantees to validate when changed
-
-Use exact recorded seconds, including supported fractions, as accounting inputs;
-do not establish correctness from rounded report text alone. Test:
-
-- Independent UUID-keyed task totals, duplicate names, Unassigned tasks and
-  historical deleted-task inclusion under explicit selection rules.
-- Derived non-additive project subtotals and application conservation:
-  **sum of included task Actual = application Actual**;
-  project subtotals plus Unassigned equal the same application amount.
-  Never add a project subtotal to its constituent task work again.
-- Genuine interval start/stop elapsed time, local-midnight and week-boundary
-  splits, spring-forward/fall-back DST, and one fixed cutoff for running work.
-  Calculation must not interrupt timers or append events.
-- Whole-date attribution of dated durations with no fabricated endpoints or
-  clock-overlap inference: 12,600 seconds stays on its selected date; 50,400
-  seconds on Saturday remains entirely Saturday, not Sunday.
-- Effective corrections, work-date movement and deletion without double counting
-  prior revisions or losing audit evidence; fractional seconds remain intact.
-- Reassignment changes grouping under the current project, not UUID or work;
-  selected project/task unions deduplicate by UUID and an empty selection stays
-  empty. Partial date windows contain no unrequested work.
-- Task daily/weekly/window totals reconcile. Counter resets do not erase
-  historical date-based Actual. Main/mini calendar displays must ignore resets;
-  retained backend/export clipping is a separate contract. Unsupported legacy
-  synthetic records must not silently become genuine work in the new accounting path.
-
-**Future configurable-week acceptance:** test every selectable weekday with
-Sunday as the initial default, consistent weekly reporting/reconciliation, and
-preservation of task/day amounts, original events, daily confirmations and saved
-export conventions across setting changes. Existing Sunday tests do not establish
-this requirement. Allocation-period tests follow adjudicated allocation behavior
-when that deferred feature is implemented; limits must never prevent recording.
-
-For current exact renderer/service changes, assert output against supplied seconds.
-For replacement decimal rendering, assert the selected displayed-cell sums while
-preserving full-precision accounting. Both need authoritative scope/timezone,
-partial weeks, Unicode escape reversibility, complete wrapped names, aligned
-borders and no repeated chargeable values on continuation rows. Pure generation
-and rendering must not mutate inputs/state/files. Evidence registration changes
-its intended evidence only, never Actual records, timers or export checkpoints.
-
-## Decimal rendering, export registration and future integration validation
-
-The pure decimal renderer/converter, immutable export-snapshot registration and
-verified materialization and read-only file-status evaluation are implemented/staged,
-with coverage above. Confirmation preparation/registration/replay is also staged,
-while confirmation UI and general file-status/recovery UI remain unimplemented.
-The owned production Timesheet composes explicit preview/Save/retry/Overwrite;
-weekly reconciliation reminder scheduling is still pending.
-Apply the selected technical contract to current export services and future integration:
-
-- Exactly two decimal places, integer hundredths and deterministic ROUND_HALF_UP
-  conversion without binary-float presentation artifacts. Check the supplied
-  3.00, 3.25, 3.33, 1.50, 0.75 and 0.02 examples, halfway boundaries and supported
-  fractional seconds; nonzero work rounding to 0.00 retains its Actual and is not
-  auto-confirmed as zero.
-- Rollups sum rounded task/day cells: three distinct 60-second task/day cells
-  display 0.02 each, totaling 0.06, while Actual remains 180 seconds. Project and
-  application display both conserve that 0.06, never 0.12 through double counting.
-- One calculation/cutoff produces consistent structured cells, frozen labels,
-  metadata, exact UTF-8 text and digest before registration. Renderer changes,
-  work corrections, renames, regrouping and week changes never alter old evidence.
-- Successful durable registration and authoritative verification precede any
-  external publication. A snapshot-linked copy contains frozen bytes, not a
-  recalculation. Full-byte comparison and digest integrity agree; no success is
-  reported for a mismatching file.
-- Status-evaluation tests require valid committed journal evidence first;
-  unhealthy or uncertain evidence must not become a file-status result. Distinguish
-  PENDING (neither explicit nor preferred destination available) from MISSING
-  (a destination is selected but no file exists). Neither establishes prior
-  publication or an attempted write. READY requires current full-byte/digest
-  verification of a suitable regular file; incompatible bytes, digest or object
-  type produce CONFLICT, while unsafe or inconclusive inspection produces
-  UNVERIFIABLE. An unreadable file cannot retain an earlier READY result.
-- Evaluate status per selected destination, preferring an explicit path over the
-  frozen preference. After restart, reevaluate without remembering prior
-  alternative paths or inferring whether an absent file ever existed. Test these
-  semantics without adding persisted completion, publication-history or status
-  state. Recoverable registered evidence is broader than PENDING. Matching files
-  may be reused, ordinary attempts never overwrite conflicts, and explicit one-call
-  confirmation may replace only stable regular-file content conflicts outside the
-  active dataset tree. Retry at another path
-  retains the original snapshot/identity without another export event.
-- Ambiguous registration reuses a valid journal event, retries a demonstrably
-  absent event only with a healthy journal and the same identity, and fails closed
-  on malformed/partial/unknown registration. Derived-snapshot failure does not
-  undo valid evidence; restart, archive replay, rebuild and backup/restore retain
-  registered exports. Duplicate identities cannot duplicate effective evidence.
-
-Decimal conversion/displayed rollups, journal registration/replay and bounded
-materialization/retry and five-status service evaluation have focused coverage.
-General file-status/recovery UI, confirmation/reconciliation UI and weekly-summary
-assertions remain future expectations, not passing coverage or a mechanism selected by tests.
-Preserve exact renderer and legacy assertions. Each foundation requires independent
-review before subsequent workflow integration.
-Linux fault injection is not power-loss, concurrent-process or Windows qualification.
-
-## Immutable confirmation validation/replay evidence
-
-The staged validator and pure projection implement the exact
-[confirmation contract](EXPORT_EVIDENCE_CONTRACT.md#confirmation-event-structure).
-Test manual and frozen export-linked absolute cells, canonical identities/dates,
-integer amounts, exact fields, preceding task/export evidence and whole-batch
-rejection. Expected prior IDs and stale acknowledgements are checked per cell,
-including required and forbidden acknowledgement cases. Physical journal order
-must prevail over equal or backdated audit timestamps. Exact duplicate identities
-cannot reapply earlier values; changed duplicates and cross-type collisions fail
-closed. Rejected replay cannot install a partial projection.
-
-Timezone audit metadata tests accept IANA names, fixed offsets, abbreviations and
-opaque labels without resolution. Reject invalid types, empty/edge-whitespace
-text, NUL/C0/C1 controls and invalid UTF-8. Forbid timezone lookup and network calls;
-verify unchanged labels and amounts through replay, archive restart and supported
-backup restore. These checks do not qualify timezone arithmetic or offline Windows
-timezone-data packaging.
-
-Use isolated persisted fixtures to exercise real startup, archive rotation,
-snapshot rebuild and supported backup restoration, retaining immutable earlier
-evidence after rename, reassignment or task deletion. Assert detached readers,
-Unknown versus zero, unchanged Actual/timers/submissions/exports/file copies and
-absence of confirmation data in derived state snapshots. Generic service append
-must reject confirmation creation in favor of dedicated registration. Replay tests
-alone establish no writer, dialog, concurrency guarantee or reconciliation UI.
-
-The dedicated writer tests cover detached, write-free explicit-cell preparation;
-stable UUID/audit/timezone metadata; manual/export-linked absolute amounts and
-explicit zero without selection expansion. Check the authoritative journal, not
-cached state, on preparation and registration. Reject the entire new proposal for
-invalid cells or changed prior identity, including equal amounts. Unrelated-cell
-changes may leave a proposal valid. Test exact acknowledgement truth conditions
-and deliberate manual amounts without claiming export provenance.
-
-Inject before-write, silent no-op, partial JSONL, complete-write-then-error,
-transient/persistent fsync, synchronization/close, rotation-manifest,
-post-append inspection and installation failures. Exact identity retry after newer
-batches must neither append nor roll back the latest projection. Successful reuse
-requires successful fsync/close of all indexed journal segments, active segment
-and manifest followed by strict revalidation. Repeated failed synchronization
-cannot report success. Model Windows flush access by rejecting actual non-writable
-file objects while retaining real opens and fsync; this is portable fault injection,
-not native Windows qualification. Verify existing-file writable, non-truncating
-access preserves bytes, missing files are not recreated, writable-open denial
-propagates, and the close-failure injection is reached before installation.
-An unchanged candidate remains retryable once transient failures clear.
-Compare surviving bytes, event counts, unchanged prepared inputs and effective
-state, including no partial installation. Logical batch
-integrity is not filesystem rollback after operational failure.
-
-Exercise writer-created evidence through restart, rotation, rebuild and supported
-restore; assert unchanged Actual/timers/export evidence/files/submissions/checkpoints,
-no automatic backups and no confirmation state in derived snapshots. Source export
-IDs prove frozen provenance, not file readiness; later file-dependent workflows
-retain current verification obligations. These fixtures support serialized
-single-service use only, not a thread/multi-process transaction claim.
-
-## Export confirmation proposal and selection evidence
-
-Test proposals against real registered exports and fresh strict journal evidence,
-including Unknown/zero, frozen duplicate-name identities after later work and
-lifecycle changes, complete coverage and canonical row order. Share the replay
-stale predicate; exercise first physical occurrences, backdated/equal audit times
-and repeated identical export/batch events. Proposal creation must use no clock,
-UUID, accounting, rendering, cached readers or external-file inspection.
-
-Test positive-only defaults including already-equal cells; never auto-select zero
-or nonzero work rounded to zero. Explicit keys may select zero. Reject malformed,
-duplicate/absent selection keys, empty effective selection, invalid proposal shape,
-tampered source/name/amount/coverage and selected prior identity/amount/stale changes.
-Unselected confirmation changes must remain permissible. Acknowledgements must
-exactly match selected stale conflicts; reject missing/extra/duplicate/unselected
-or nonconflicting keys and blanket booleans. No inferred acknowledgement or silently
-retained subset is valid.
-
-Capture unchanged inputs, service projections and complete dataset bytes for both
-APIs on success/rejection. Prohibit writes, sync, backups, projection installation
-and file materialization; only final delegation may capture event identity/audit
-metadata. Exercise propose/select/acknowledge/prepare followed by separate explicit
-registration, checked-only effects, exact six-field cells and unchanged-event retry
-after newer confirmations without duplicate append or rollback. Registration must
-still reject an intervening selected prior change after preparation. Existing writer
-recovery tests retain their scope. These service fixtures do not qualify UI,
-production integration, real concurrent writers or Windows interaction.
-
-## POL-R reconciliation evidence and future workflow acceptance
-
-Read-only daily calculation is implemented/staged in
-[test_polr_reconciliation.py](../tests/test_polr_reconciliation.py). Validate one
-strict journal read and one unchanged accounting request per call, current
-confirmation evidence rather than cache, and `None` versus confirmed zero.
-Keep every included task/date, including sparse zero-Actual cells with negative
-Delta, without widening selection to other confirmations or counting project rows.
-Check HALF_UP boundaries and unchanged fractional seconds, selected/deleted and
-duplicate identities, fixed running cutoffs, physical confirmation order regardless
-of audit time, detached earlier results and errors for invalid evidence/requests.
-Capture all dataset bytes and service state; prohibit append, sync, backup,
-snapshot writes, rendering and state/cache installation during each calculation.
-
-The connected scenarios in
-[test_polr_service_workflow.py](../tests/test_polr_service_workflow.py) exercise
-these calculations after real frozen export registration/materialization,
-proposal/selection and separate explicit confirmation registration. Default
-positive selection leads to 5.00/3.00/+2.00/5.00, then a manual absolute 5.00
-confirmation and zero Delta; rotation/restart retains identities, and old-event
-retries cannot roll back that value. Checked selection includes explicit zero,
-leaves unchecked cells Unknown and yields 2.50/3.00/-0.50/2.50 after correction.
-Backup/restore, fresh startup and snapshot rebuild retain the corrected state,
-discard subsequent work/confirmation changes and permit rematerialization of
-the original frozen bytes. Equal proposed/confirmed 3.00 requires no stale
-acknowledgement even when current Actual is 2.50. Captured journal, dataset bytes,
-Actual/timer/legacy state and detached inputs/results establish nonpersistent
-proposal, preparation and calculation behavior. The registration guard converts
-native captured names to relative paths and excludes only the root active journal,
-root manifest and paths beginning with the archives component. PurePosixPath and
-PureWindowsPath cases exercise this same filter: legitimate journal rotation is
-ignored while snapshots, backups, similarly named directories, nested journal
-filenames and unrelated additions/removals/changes remain observable. These cases
-run on either host and do not establish native Windows execution. Existing fault
-suites remain responsible for failure injection; these two service scenarios do
-not qualify production interaction, Windows/NTFS, real concurrency or power-loss
-durability.
-
-The obligations below come from the product contract. Daily numeric semantics
-have staged service coverage; full operator workflows, weekly reconciliation and
-presentation remain future acceptance, **not an implemented production workflow**.
-Validate Actual, immutable Exported and latest Confirmed POL-R independently:
-
-- Preview has no persistence effect; saving does not confirm external entry.
-  Export or confirmation amounts never increase Actual.
-- Confirmed values are absolute daily replacements, not additive increments.
-  Unknown differs from zero: without confirmation, Delta is Unverified and
-  Enter is current Actual. With confirmation, Delta is signed Actual minus
-  Confirmed; Enter is the complete current Actual, never the Delta.
-- Prior export/confirmation evidence remains immutable after later work,
-  corrections, renaming or regrouping. Corrections recalculate Delta without
-  rewriting confirmation evidence.
-- A stale export cannot silently roll back a newer differing confirmation;
-  validate the specific acknowledgement and unchanged values on rejection.
-- Full applicable export, checked-cell partial confirmation, defer/reopen and
-  manual confirmation without an export work as selected. Unchecked cells
-  retain prior values; zero export cells are not automatically confirmed;
-  explicit zero is allowed. Frozen export amounts are proposed without retyping.
-- Rejected batches do not partially confirm. Audit earlier confirmations and
-  exceptional corrections. Export/confirmation never resets or interrupts
-  timers; further current-day work remains reportable without day closure.
-
-**Mandatory acceptance sequence:** Actual 3:00; saved export 3:00; additional
-work 2:00. Confirm that the earlier exported 3:00 was entered:
-
-| Field | Expected |
+| Stage | Applicable evidence |
 | --- | --- |
-| Actual | 5:00 |
-| Confirmed POL-R | 3:00 |
-| Delta | +2:00 |
-| Enter in POL-R | 5:00 |
+| 0 authority | Review complete affected Markdown/current source, all material decisions, current/target separation, incoming relative links/anchors and executable scope. No runtime delivery from documentation. |
+| 1 foundation | Real SQLite recording/reopen, stable task/project IDs, one active timer, atomic Switch at one accepted time, rollback on rejected use cases, exact request reuse before stale checks and changed-content rejection. Verify actual WAL/FULL/foreign-key/constraint behavior, bounded lock failure and truthful commit uncertainty. Early native Windows onedir smoke includes SQLite runtime and offline zone availability. Clock/sleep/restart rules must be adjudicated before dependent assertions. |
+| 2 recording | Integer-unit mixed accounting, genuine/date-only shape integrity, stable work UUID/revision/current references, correction/deletion history, no-op purity, stale drafts, whole-entry segment editing, precise unchanged endpoints, minute changes, DST/UTC, all week starts, applied periods/unapplied drafts/session sorting and all-reader gate before exposed writers. |
+| 3 Timesheet AND POL-R | Connected frozen Preview/Save/saved-report recovery and explicit whole/checked/manual absolute confirmation, Unknown/zero, stale priors, daily/weekly reconciliation and required reminders. No pilot without these. |
+| 4 stabilization | Integrated interruption/commit ambiguity, second-instance refusal, queued shutdown/restore invalidation, real backup/restore, upgrades, storage faults, native Tk and packaged Windows. Earlier slices already test their integrity boundaries. |
+| 5 complete core pilot | Deliberately fresh dataset, representative reporting week of timer/manual/correction/export/whole-partial-zero-Unknown confirmation/reconciliation/reminder/restore, without UI workarounds or counting errors. Independent review and native evidence; not a timer-only pilot. |
+| 6 optional | Only adjudicated allocation/convenience/external integration outcomes. No optional limit blocks Actual; core POL-R is already complete. |
 
-Then confirm the external cell at 5:00: Confirmed POL-R = 5:00, Delta = 0:00.
-Keep prior evidence. No timer reset or separate additive 2:00 entry is required.
-Also test Actual 3:00 confirmed at 3:00, then corrected to 2:30:
-**Delta = -0:30; Enter in POL-R = 2:30**.
+## Accounting and revision guarantees
 
-No automatic POL-R connection or independent external verification is implied.
-POL-R-facing values use the selected two-place decimal contract: displayed Actual
-hundredths minus confirmed hundredths gives Delta; Enter is current displayed
-Actual. Test 5.00/3.00/+2.00/5.00 and the 2.50/3.00/-0.50/2.50 correction alongside
-the original work-time semantics. Unknown still gives Unverified Delta.
+Compare integer microseconds, not formatted values or float sums. Exercise:
 
-Validate whole-batch rejection, duplicate cell keys, invalid references/amounts,
-explicit zero and export-linked frozen values. One valid operation appends one
-whole batch event. Check optimistic prior-identity changes between proposal and
-commit, stale acknowledgements bound to the observed identity and cell-specific
-conflict, full/checked-cell parity, deterministic replay and immutable earlier
-evidence. No batch changes Actual, exported snapshots or timers.
+- Independent task UUIDs and duplicate names, current-project/Unassigned grouping,
+  retained deleted-task amounts and task/application conservation without double
+  counting project subtotals or descendants.
+- Midnight, month/year/week boundaries, spring/fall DST, non-hour transitions,
+  explicit IANA/offline zones, range limits and a shared main/mini running cutoff.
+- Whole-date amounts, including a 14-hour Saturday and later dates within the
+  containing week, with no fabricated clock overlap or audit-date attribution.
+- All seven week starts, Sunday default and setting changes preserving work dates,
+  daily confirmations and original saved export conventions.
+- Stable work UUID across edits, expected-revision conflicts, exact preserved
+  unchanged seconds/fractions, no-op/comment-only purity, positive same-minute
+  spans, explicit repeated occurrences and nonexistent-time rejection.
+- Correction/redating/deletion changes effective work and current totals while
+  older revisions, exports and confirmations remain immutable.
+- Read/render purity and one observation for main/mini; errors display unavailable
+  values without disabling normal Start/Stop or creating synthetic zero work.
 
-## Persistence, replay and recovery evidence
+Do not reproduce replay/accounting in tests. Use independent expected examples
+and real use cases/transactions, with snapshots of authoritative facts before
+and after rejected or read-only operations.
 
-For event-backed changes, validate before mutation and compare state, event count
-and authoritative file bytes on rejection. Test stable UUIDs, append-only history,
-deterministic replay including equal-timestamp read order, effective corrections
-and deletions, restart, archive rotation, derived snapshots and reconstruction.
-Compare rebuilt projections with authoritative archived and active events.
+## SQLite, requests and recovery evidence
 
-Exercise initialization through `TaskTimerService(EventStorage(data_dir))`, not
-only reads from an already-created storage instance. Test nonexistent/empty
-directories, healthy zero-event journals and existing datasets missing either
-root journal file, including archived work and registered exports. Capture the
-surviving directory entries (including empty directories) and file bytes before
-rejected construction; prove no replacements or other mutations occur. Derived
-snapshots and unrelated content cannot justify a fabricated fresh journal.
-Keep valid explicit backup/restore and subsequent restart coverage separate from
-these refusal tests; no automatic recovery or power-loss guarantee is implied.
+Use disposable real databases, actual transactions and independent reopen reads.
+Test current rows, immutable revision/batch cells, current references and receipt
+committing together or not at all; constraints/foreign keys must actually reject
+invalid shapes. Do not infer transaction integrity from mocked adapter calls.
 
-Validate backup creation and restoration with representative records and audit
-history, malformed event envelopes/payloads, partial event writes and meaningful
-append/interruption failures. Earlier valid work must not be silently lost.
-Assertions must follow approved failure semantics, not invent repair or rollback
-behavior. Existing happy-path restart/restore tests do not prove every
-interrupted-recovery scenario.
+Inject failures before commit, uncertain commit/response delivery, and after
+commit before UI refresh. Reconcile the same request ID/content authoritatively;
+exact old retries after newer work/confirmations return the original result
+without rolling back current state. Changed content under the same ID rejects.
+Unchanged edits create no revision/artificial receipt. A committed mutation remains
+committed when rendering fails or its view closes. Do not use a global pending
+slot, new request ID or visible widget/file as authority for uncertain results.
 
-[storage.py](../src/task_timer/storage.py) appends JSONL, flushes/fsyncs,
-orders archived/active reads and replaces derived JSON files. The service validates
-new project/dated lifecycle and export-snapshot events before append and replay.
-The separate staged timed-correction path structurally validates frozen
-`interval_edited` candidates and checks prospective effects using existing detached
-work replay; legacy interval mutators and replay ordering remain unchanged.
-These mechanisms do not establish universal transactional or power-loss guarantees.
+Verify one worker owns its connection and database/file I/O, no arbitrary sharing
+or `check_same_thread=False`, and bounded lock handling. Test supported SQLite
+backup captures committed WAL contents, independently validates, restores and
+reopens all work/export/confirmation history. Do not test a live main-file copy
+as a valid backup. Protect future rewritten-data schema upgrades and reject
+unsupported versions truthfully. No legacy import/compatibility fixture obligation.
+Linux fault injection does not prove arbitrary concurrent-writer, power-loss or
+native Windows/NTFS safety.
 
-Export snapshots and confirmation batches have bounded replay/fault coverage
-above, including dedicated confirmation append/interruption, proposal/commit and
-recovery synchronization coverage against the
-[selected technical contract](EXPORT_EVIDENCE_CONTRACT.md). Export registration
-uses the same synchronization requirement for existing-identity reuse and recovery
-after append exceptions. Test transient failed append fsync followed by successful
-synchronization, persistent failures across unchanged retries, and complete appends
-followed by errors. Successful ordinary new appends must not add unconditional sync.
-Use actual writable handles and real synchronization where available; assert indexed
-archives, active segment and manifest are synchronized without byte changes.
-Inject open/fsync/close/inspection and export/confirmation-validation failures;
-require no success or installation and preserve original append diagnostics.
-Malformed evidence must fail before synchronization-as-repair. Exact reuse must
-remain renderer-independent and install the latest complete confirmation projection.
-Test installation-failure recovery without another append; compare prepared inputs,
-event counts, dataset bytes, Actual/timers, snapshots and external copies. Operational
-failure may retain complete/partial evidence; logical integrity is not filesystem
-rollback. Timed-correction recovery/reuse also requires synchronization and full
-work/export/confirmation reconstruction before installation. Exercise unchanged
-endpoints, no-op saves, stale priors, backup gates and prospective replay ordering;
-returned registered-but-not-installed/saved warnings must differ from uncertain
-outcomes that raise. Historical retries must install current work, not roll it
-back, and must not save stale snapshots after installation failure.
-Preserve one-event confirmation batch integrity and authoritative journal
-precedence over derived snapshots. This strategy defines tests, not another event/schema/recovery owner.
+## Tk thread, interaction and lifecycle evidence
+
+Construct actual controls and exercise completion wiring as well as doubles.
+Instrument **all** Tk calls, including Variable access, `after`, focus and destroy,
+to remain on the UI thread; worker results travel only through queues. Exercise
+the single bounded UI result drain, stale refresh coalescing, delayed/out-of-order
+responses, session invalidation after restore and owner reconciliation after view
+closure. Slow I/O must not prevent timer display/event processing. The drain must
+not create work, replay journals or become another projection authority.
+
+Constructors must construct only; explicit presentation/completion callbacks must
+not use app-authored nested mainloops, `update` loops or blocking modal sequencing.
+Test normal local modal ownership with timers continuing and main/mini input
+blocked; inline History editing returns to the same task/period/drafts/direction.
+Cancel/no-op writes nothing; validation/conflict preserves drafts. No selection
+or unsupported row can authorize a write from text/temporary widget handles.
+
+Separate real-Tk server-delivered mouse/keyboard evidence from doubles/direct
+`invoke()` calls. Exercise History inline fields, calendar select/cancel/Escape,
+Timesheet Preview/Save/overwrite/confirmation, modal input blocking and legitimate
+focus/grab return. Short toolkit/native dialogs may internally wait; test explicit
+parents, reentry guards, destruction and competing local/global ownership without
+stealing it. Focus claims requiring a window manager differ from local-grab checks.
+No global modal registry or polling workaround is selected.
+
+Shutdown rejects submissions while queued work drains/reconciles, keeps UI event
+processing alive, and closes connection/worker without UI-thread joining a
+running worker or silently killing it. Root/view destruction and later results
+must neither hang nor install stale state. Tests cannot choose still-Open abnormal
+clock/restart or dataset-timezone-change behavior.
+
+## Frozen exports and core POL-R workflow
+
+Test complete structured cells and exact UTF-8 text/digest from one preview
+calculation, explicit periods/independent task selection and deleted work.
+Draft changes invalidate readiness, including after changing back; valid empty
+All differs from invalid empty Selected. Save never recalculates. Commit frozen
+snapshot/cells/receipt before publication and fail closed when commit is uncertain.
+Recovery reads committed saved reports without requiring a retained widget.
+
+Test HALF_UP ties and precise input units, two places, cell-rounding once and
+rollup conservation. Preserve readable complete names, duplicate UUID labels,
+Unicode escaping and safe partial-week layout. Nonzero rounded 0.00 is not
+implicitly confirmed zero.
+
+Exercise actual whole/checked/manual absolute confirmation and defer/later review:
+unchecked cells untouched, zero explicit, Unknown not zero, expected prior checks
+and cell-specific stale-export acknowledgement. An intervening equal-value prior
+still invalidates reviewed identity; reject the entire batch. Exact old request
+reuse cannot reapply earlier values. No confirmation adds Actual or mutates timers,
+snapshots of exported facts or saved text.
+
+Mandatory connected examples: 5.00 Actual / 3.00 Confirmed / +2.00 Delta / 5.00
+Enter, then confirm 5.00 for 0.00 Delta; correct Actual to 2.50 against 3.00 for
+-0.50 Delta / 2.50 Enter. Preserve earlier exports/confirmations, including manual
+values without an export, positive confirmed/zero-work dates and Unknown giving
+Unverified Delta. Zero Delta is user-reported agreement, not backend verification.
+
+Test weekly summaries with opposing differences and Unknown so a net zero cannot
+hide cells needing review. Required reminders: previous week every used local day
+including restart/rollover/absence, current week Friday/Monday, explicit Dismiss
+for today. Opening/Save does not confirm or dismiss. External unavailability does
+not block Actual. These tests are mandatory core before Stage 5, not Stage 6 scope.
 
 ## File publication and cross-resource failures
 
-The separate file-only timesheet saving uses complete same-directory staging followed by
-no-overwrite hard-link publication; its detailed guarantees and limitations are
-in [Design Notes](../DESIGN_NOTES.md#date-range-timesheet-service-staged).
-Existing service tests exercise several failures, including write/flush/fsync/
-close, publication, concurrent targets and cleanup. They are not a claim of
-universal filesystem/platform coverage.
+Validate the selected file contract with committed SQLite evidence: matching-copy
+reuse without rewrite, absent-target exclusive publication, complete same-directory
+write/flush/fsync/close/ownership, final byte/digest verification and staging-only
+cleanup. File failures cannot undo a database commit or falsely claim no file
+exists. Exact saved-report retries remain independent of later Actual/labels.
 
-For affected changes, test generation errors before file creation, exact Unicode
-UTF-8 bytes and final newline, staging completeness, flush/fsync/close failures,
-atomic no-clobber publication, existing files/directories/symlinks (including
-dangling links), concurrent destination creation and unsupported operations.
-Test original-error propagation and staging-only cleanup before publication;
-after publication, cleanup failure must not remove the complete final report or
-a concurrent replacement. Capture unrelated files and timekeeping state.
+Ordinary Save/Retry cannot overwrite. A typed stable regular-file content conflict
+alone offers explicit one-call default-cancel overwrite. Test cancellation/reentry,
+dataset tree/alias protection, final target metadata/identity checks, `os.replace`
+failures and postpublication diagnostics without rollback/deleting output.
+Status is freshly derived per destination; no persisted READY/history registry.
 
-Materializing committed immutable export evidence now exercises the bounded
-cross-resource boundary governed by the approved snapshot-first contract. Inject failures
-before/during registration, after durable registration but before publication, during derived-snapshot writes,
-through staging/publication and during final verification. Validate no external
-publication without established registration, retained immutable evidence, stable
-retry identity, default no overwrite and no false success for byte disagreement.
-Explicit confirmed replacement must validate the target, protect dataset-owned
-paths/aliases, recheck identity/metadata before `os.replace`, verify full final
-bytes, preserve one-call permission and report attempted/known replacement
-truthfully. Bounded checks do not establish atomic compare-and-replace. Native
-FIFO/symlink cases are capability-dependent; a setup skip is not evidence of
-service rejection. The overwrite suite's same-size/restored-mtime case injects
-change time only at the final target recheck, independently of real filesystem
-change-time advancement. It does not exercise Windows creation/change-time
-semantics or claim detection when every compared observation is unchanged. Recheck
-externally changed files before status/confirmation use. Backup/restore
-interruptions require corresponding recovery evidence where applicable.
-The strategy adds no alternate transaction or recovery policy. Staging fsync is
-not directory fsync or guaranteed power-loss durability; no such claim follows
-from architecture approval or simulated interruption tests.
+Native FIFO/symlink cases remain capability-dependent with narrow setup skips,
+not evidence that a service rejected an object that setup failed to create.
+Current [overwrite tests](../tests/test_timesheet_overwrite.py) include deterministic
+same-size/restored-mtime evidence injecting changed change-time only at the actual
+final recheck. Preserve that distinction from native filesystem evidence; do not
+assume Windows creation/change-time semantics or claim detection when every
+compared observation is unchanged. Unexpected errors remain failures.
+Bounded observations are not atomic compare-and-replace, hostile-directory safety
+or universal power-loss proof. UI consent cannot make an unreadable/unstable or
+unsuitable target safe.
 
 ## Windows desktop and release qualification
 
-Linux service results and mocked UI callbacks cannot independently establish
-Windows tkinter interaction, NTFS behavior, PowerShell or PyInstaller correctness.
-Use an approved isolated test area for representative real Windows checks:
+Native Windows is required for applicable desktop, filesystem, PowerShell and
+packaged qualification. Early Stage 1 onedir smoke starts this evidence, not final
+qualification. Test actual SQLite profile/runtime, bundled offline timezone rules,
+main/mini controls, inline History, Timesheet/POL-R confirmation, reminders,
+publication/overwrite, backup/restore and queued shutdown. A package that starts
+but omits core POL-R is not a qualified pilot.
 
-- Source launch and main-window operation; project/task navigation; timer start,
-  stop and switching; real date-only creation/edit/delete when activated.
-- Timesheet display/scrolling, keyboard/mouse actions, confirmation dialogs and
-  checkboxes, long names, Unicode, errors and cancellation without side effects.
-  Check mini-mode where retained by the approved replacement contract.
-- Same-directory no-clobber publication on a supported Windows filesystem,
-  existing-target protection, meaningful failures and backup/restore.
-- Packaged executable launch and operation separately from source launch;
-  fresh-data installation and old-data protection under approved cutover policy.
-
-Follow [BUILDING.md](../BUILDING.md) and inspect [build.ps1](../scripts/build.ps1)
-and [run.ps1](../scripts/run.ps1). Source launch uses the root launcher; default
-packaging produces the full onedir distribution, with optional onefile output.
-The build script installs dependencies and removes existing build/dist outputs
-(and may recreate a broken venv). Do not run it as a harmless documentation check.
-
-Release qualification follows [Phase 6](ROADMAP.md#phase-6--replacement-release-and-integration):
-full Python regression plus end-to-end timer/manual/project/export/confirmation/
-correction workflows, persistence/recovery, actual Windows packaging/installation
-and protected old data. No critical data-integrity failure may remain; current
-documentation and cumulative changelog must agree with the product, and independent
-integrated review must support readiness. Tests alone do not authorize release
-or merge. No new release scope or allocation requirement is selected here.
+Inspect [BUILDING.md](../BUILDING.md), [build.ps1](../scripts/build.ps1),
+[run.ps1](../scripts/run.ps1) and metadata before selecting commands. Current
+scripts build JSONL source and install dependencies/remove build outputs; do not
+run them as a documentation check. Linux Tk results do not establish Windows Tk,
+NTFS, packaging or installation. Source and packaged checks are distinct. No
+release/merge approval follows from a successful build/test run alone.
 
 ## User-data protection
 
-Routine automated tests use disposable temporary directories. They must not
-modify `~/.task_timer_data`, delete real records, import old history into the
-replacement dataset, change user backups or alter installations outside an
-approved test area. Use constructed fixtures or disposable copies for old-data
-tests; inspect launcher/data paths before any manual execution.
-
-EventStorage and service construction can create files; do not initialize them
-against real data merely to investigate source. Eventual replacement validation
-must cover fresh initialization, the approved selected path, old-data protection,
-no unauthorized migration, backup/recovery and replacement failures. Exact
-installation cutover remains Open; this document does not choose it.
+Use disposable temporary datasets only. Do not initialize services against
+`~/.task_timer_data`, read actual user settings for source investigation, import
+old history, delete user files or change installation paths. Fresh rewrite scope
+removes migration/compatibility obligations, not data protection. Exact release
+cutover/cleanup remains Open; future new-runtime backup/restore/upgrades require
+integrity evidence. No arbitrary startup deletion is authorized.
 
 ## Commands and evidence classification
 
-[pyproject.toml](../pyproject.toml) requires Python 3.11+, configures pytest's `src`
-import path and quiet output. Existing tests establish the paths below.
-Use the appropriate existing interpreter and dependencies. Commands are examples
-to select by applicability, not a universal per-task checklist.
+Current [pyproject.toml](../pyproject.toml) requires Python 3.11+, `src` pytest
+imports and tkcalendar/tzlocal. Inspect the existing environment; do not invent
+new dependency or command workflows. These are source-grounded examples to select
+proportionally, not universal per-task requirements:
 
-**Source-grounded command examples:**
+- Current pure/semantic baseline: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts='' tests/test_mixed_accounting.py tests/test_work_entry_inputs.py`.
+- Full current regression: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts=''`.
+- Syntax only: `.venv/bin/python -B -c "from pathlib import Path; paths=sorted({*Path('src').rglob('*.py'), *Path('tests').rglob('*.py'), *Path('.').glob('*.py')}); [compile(p.read_bytes(), str(p), 'exec') for p in paths]; print(f'{len(paths)} files compiled in memory')"`.
 
-These examples are supported by repository configuration and existing test paths;
-their presence does not imply that they have passed.
+Syntax compilation imports no application and writes no bytecode; it establishes
+no runtime guarantee. New rewrite test filenames/commands follow actual approved
+implementation, not imagined existing suites. For the Stage 0 Markdown outcome,
+the task specifically requests the unchanged-runtime focused baseline and syntax
+check when available; no full regression or desktop launch is needed for verified
+Markdown-only scope. This does not become blanket future policy.
 
-```bash
-.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts=''
-.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts='' tests/test_mixed_accounting.py tests/test_time_utils.py
-.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts='' tests/test_timesheet_service.py
-```
-
-The first is full regression; the others are focused examples, not coverage of
-every affected dependency. Select additional existing paths for the actual change.
-Applicable Python syntax validation can compile changed source/test bytes in
-memory without importing the application or writing bytecode, for example:
-
-```bash
-.venv/bin/python -B - <<'PY'
-from pathlib import Path
-for filename in ("src/task_timer/accounting.py", "tests/test_mixed_accounting.py"):
-    compile(Path(filename).read_bytes(), filename, "exec")
-PY
-```
-
-This example checks syntax only; it does not execute application behavior.
-Use it when syntax validation is applicable and select paths according to the
-changed files; no new runner or fixture is required.
-
-**Documentation validation:** applicable checks may include reviewing the actual
-Markdown diff, checking whitespace and formatting, verifying relative links and
-anchors, confirming changed-file scope and current-state consistency, and
-confirming executable content remains unchanged. Select checks proportionally;
-no fixed command checklist is required. Report actual results in the task receipt,
-not an accumulating validation ledger.
-
-**Windows-specific applicability:** Windows launch and build procedures are
-documented in BUILDING. PowerShell packaging requires an appropriate Windows
-build environment. Assess availability for each actual execution; Linux results
-do not establish Windows compatibility. Source launch is not packaged executable
-validation, and a successful build alone does not prove installation or GUI
-workflow correctness.
-
-**Historical test evidence:** an earlier passing result may be cited as historical
-or carried-forward evidence only with an appropriate applicability judgment.
-It must not be reported as a newly executed test. Do not invent CI commands,
-numeric coverage thresholds or Windows results.
+Documentation checks cover the complete affected owner set, relative links and
+anchors including incoming links from unedited files, formatting/whitespace,
+working/staged scope and absence of executable changes. A fresh ephemeral checker
+outside tracked source is sufficient; no permanent validation framework or ledger.
 
 ## Reporting and maintenance
 
-For applicable validation, report the behavior/guarantee, exact commands actually
-executed, results, relevant environment, material failures, checks not run with
-reasons and remaining unsupported claims. Environment detail should explain the
-claim's limits (for example OS, timezone/cutoff or filesystem when relevant).
-
-Distinguish **Current execution**, **Historical evidence**, **Carried-forward
-evidence** (earlier results whose applicability to unchanged behavior was assessed)
-and **Not run / Unavailable**. Carrying evidence forward is not running it again.
-No new standalone ledger is required: receipts, inspected existing tests and
-targeted review are acceptable evidence sources.
-
-Reconcile this strategy and related owners when approved behavior or actual
-validation capability changes. Keep expectations separate from implemented
-coverage and results. Export/confirmation, consistency/recovery and decimal rules
-are selected in their technical owner, not implemented by this strategy.
-Allocation details, first-release inclusion and replacement cutover remain with
-user/ChatGPT adjudication; POL-R backend facts remain Unverified. Testing governance
-alone does not complete roadmap Phase 1 or qualify the release.
+Report exact commands/results, skips/reasons, materially applicable omissions,
+platform limits and independent review boundaries. Distinguish current execution,
+historical evidence, assessed carried-forward evidence and not run/unavailable.
+Source inspection is not runtime validation; old passing JSONL results cannot
+qualify SQLite transactions or complete a rewrite stage. Receipts are evidence,
+not independent product authority. Preserve historical acceptance without claiming
+new checks, Windows/NTFS, concurrency, power-loss or release qualification.
