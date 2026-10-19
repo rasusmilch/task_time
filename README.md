@@ -22,7 +22,10 @@ Start/Stop/atomic Switch, persisted active timers and audited active-start recov
 Main shows own-task Today/This week; mini shows active or selected task Today.
 One database worker supplies coordinated integer-microsecond accounting while Tk
 continues events. Exact committed request retries precede stale checks; uncertain
-acknowledgements retain the same request for reconciliation.
+acknowledgements retain the same request for reconciliation. Active-start correction
+keeps its modal draft until a matching worker result: rejected inputs stay visible,
+stale review requires reopening, and uncertain work offers exact Retry/Reconcile
+and exceptional exit inside the editor. Queuing alone never closes it or means Saved.
 
 Sleep and normal exit do not stop timers. Restart/crash restores committed active
 identity/start. Impossible observations show unavailable values and a clock/start

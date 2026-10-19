@@ -233,9 +233,28 @@ main/mini consume one report/cutoff. Unavailable numbers never substitute zero.
 `worker` serializes I/O on one non-daemon thread. `app` owns retained pending request,
 bounded queue drain, read invalidation and orderly shutdown. `mini_mode` delegates
 controls and renders supplied values. Constructors do not wait. Short toolkit
-metadata/confirmation dialogs are owned and guarded; correction uses callback-driven
-local modal presentation. Workers never call Tk. Temporary detached UI state is not
-another datastore. No settings, snapshots, exports or per-tick writes are added.
+metadata/confirmation dialogs are owned and guarded; active-start correction uses
+callback-driven local modal presentation. One temporary `_ActiveStartEditor` holds
+the original UUID/version, fields/occurrence/comment and the owner's submitted
+Request/token. Queue acceptance retains the window and locks fields/Close; only a
+matching committed/unchanged result disposes it. Validation, known rollback and
+unavailable outcomes preserve drafts and permit a new Save; typed stale rejection
+requires closing/reopening without retargeting. Changing date/time still clears
+occurrence, but worker completion/control state changes do not.
+
+Unverified correction retains the exact immutable Request and offers Retry/Reconcile
+and exceptional exit inside the modal editor. Reconciliation delegates to the
+owner/worker; each dispatch has a new delivery token while request UUID, accepted
+instant and content stay unchanged. Duplicate/old results cannot settle a later
+attempt or editor. Root Close cannot interrupt executing work; idle unverified
+correction reaches the same default-cancel exit warning, parented to the editor.
+Canceled exit retains its session; confirmed exit closes orderly without undoing
+possible commitment. External editor destruction clears widget references only;
+the owner still reconciles pending evidence. Committed diagnostics and later
+presentation/cleanup errors remain distinct from the verified result. Main/mini
+callbacks respect editor ownership, with a narrow correction-origin submission.
+Workers never call Tk. Temporary detached UI state is not another datastore.
+No settings, snapshots, exports or per-tick writes are added.
 
 Future dated revisions/export basis/confirmation batches/cells/current references
 extend schema under protected versioned upgrades, preserving stable identities.

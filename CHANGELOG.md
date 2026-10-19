@@ -15,7 +15,9 @@ receipts or commits. No release or production qualification is implied below.
   Tk lifecycle with future inline History editing. Connect the first SQLite timer
   slice through the sole source/build route: independent task/project controls,
   atomic Start/Stop/Switch, persisted active identity, audited explicit active-start
-  recovery and exact same-request reconciliation. Main/mini share calendar Actual;
+  recovery with asynchronous draft retention and editor-local exact-request
+  reconciliation/exceptional exit; queue acceptance is never Save completion.
+  Main/mini share calendar Actual;
   one worker keeps Tk responsive and shutdown preserves approved uncertainty.
   Sleep/exit never stops timers; restart uses committed state. Use explicit fresh
   paths, offline tzdata and a WAL-reset-fixed SQLite gate. Operational/native Windows

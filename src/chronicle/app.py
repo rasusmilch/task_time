@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import dataclass
 from queue import Empty
 import time
 import traceback
@@ -11,9 +12,29 @@ from tkinter import messagebox, simpledialog, ttk
 from uuid import uuid4
 
 from .mini_mode import MiniModeWindow
-from .records import ClockWarning, Outcome, Request
+from .records import ClockWarning, Outcome, Request, StaleState
 from .timekeeping import format_duration, from_us, local_minute_candidates, parse_date, to_us, utc_now
 from .worker import Message
+
+
+@dataclass
+class _ActiveStartEditor:
+    """One temporary draft, correlated with the owner's existing pending request."""
+    window: object
+    entry_id: str
+    version: int
+    fields: tuple
+    selector: object
+    choices: dict
+    status: object
+    save: object
+    cancel: object
+    retry: object
+    exit: object
+    phase: str = "editing"
+    request: Request | None = None
+    token: int | None = None
+    outcome: Outcome | None = None
 
 
 class ChronicleApp:
@@ -27,6 +48,7 @@ class ChronicleApp:
         self.zone = None
         self.runtime = None
         self.mini = self.editor = None
+        self._correction = None
         self._token, self._read_inflight, self._read_again = 0, None, False
         self._drain_id = self._tick_id = None
         self._shutdown_sent = False
@@ -90,8 +112,11 @@ class ChronicleApp:
         self.cancel_close_button = ttk.Button(self.recovery, text="Cancel exit", command=self.cancel_close)
         self._controls()
 
-    def can_mutate(self):
-        return self.alive and self.ready and not self.closing and self.pending is None and not self.executing
+    def can_mutate(self, *, origin=None):
+        owns_editor = (origin is not None and origin is self._correction
+                       and self.editor is origin.window and origin.phase == "editing")
+        return (self.alive and self.ready and not self.closing and self.pending is None
+                and not self.executing and (self.editor is None or owns_editor))
 
     def selected_task_id(self):
         if not self.alive:
@@ -138,8 +163,8 @@ class ChronicleApp:
     def _selection_changed(self):
         self._controls()
 
-    def _submit(self, operation, **arguments):
-        if not self.can_mutate():
+    def _submit(self, operation, *, _origin=None, **arguments):
+        if not self.can_mutate(origin=_origin):
             return False
         try:
             accepted = to_us(self.now_utc())  # Exactly one action observation, on the Tk thread.
@@ -153,7 +178,14 @@ class ChronicleApp:
         self._pending_token = self._token
         # Invalidate any read that predates this accepted mutation.
         self._read_again = True
-        self.worker.requests.put(Message("mutate", self._token, request))
+        try:
+            self.worker.requests.put(Message("mutate", self._token, request))
+        except Exception as exc:
+            self.pending, self.executing, self._pending_token = None, False, None
+            self.status.configure(text=f"Action not submitted: {exc}")
+            self._diagnose(exc)
+            self._controls()
+            return False
         self.status.configure(text="Saving…")
         self._controls()
         return True
@@ -255,16 +287,95 @@ class ChronicleApp:
             top.grab_set()
             top.focus_set()
         top.bind("<Map>", mapped, add="+")
+        self._controls()
 
     def _editor_destroyed(self, event, top):
         if event.widget is top and self.editor is top:
             self.editor = None
+            if self._correction is not None and self._correction.window is top:
+                self._correction = None  # The owner's pending request survives unexpected destruction.
+            self._controls()
 
     def _close_editor(self, top):
+        session = self._correction
+        if self.editor is top and session is not None and session.window is top:
+            if session.request is not None:
+                session.status.configure(text=("Still processing; please wait." if self.executing else
+                                               "Correction may have committed. Retry/Reconcile or explicitly exit."))
+                return False
+        return self._dispose_editor(top)
+
+    def _dispose_editor(self, top):
         if self.editor is top and top.winfo_exists():
             if self.root.grab_current() is top:
                 top.grab_release()
             top.destroy()
+        return True
+
+    def _correction_controls(self, session):
+        if self._correction is not session or self.editor is not session.window:
+            return
+        editable = session.phase == "editing" and not self.closing
+        for field in session.fields:
+            field.configure(state="normal" if editable else "disabled")
+        session.selector.configure(state="readonly" if editable else "disabled")
+        session.save.configure(state="normal" if editable else "disabled")
+        session.cancel.configure(state="normal" if session.request is None else "disabled")
+        for button in (session.retry, session.exit):
+            if session.phase == "unverified":
+                button.pack(pady=4)
+            else:
+                button.pack_forget()
+
+    def _correction_result(self, request, token, result):
+        session = self._correction
+        if (session is None or self.editor is not session.window
+                or session.request is not request or session.token != token):
+            return
+        session.outcome = result
+        if result.status in ("committed", "unchanged"):
+            session.request = None
+            session.phase = "complete"
+            self._correction_controls(session)
+            self._close_editor(session.window)
+            return
+        if result.status == "unverified":
+            session.phase = "unverified"
+            text = "Correction may already have committed. Retry/Reconcile uses the exact request."
+        else:
+            session.request, session.token = None, None
+            session.phase = "stale" if isinstance(result.error, StaleState) else "editing"
+            text = {
+                "rejected": "Correction rejected.",
+                "rolled_back": "This attempted change did not commit; you may edit and save again.",
+                "unavailable": "Storage unavailable; operation did not begin. Try Save later.",
+            }.get(result.status, result.status)
+            if session.phase == "stale":
+                text = "The reviewed active timer changed. Close and reopen for fresh review; this draft was retained."
+        if result.error:
+            text += " " + str(result.error)
+        session.status.configure(text=text)
+        self._correction_controls(session)
+
+    def _correction_retry(self, session):
+        if (self._correction is not session or self.editor is not session.window
+                or session.phase != "unverified" or self.pending is not session.request):
+            return False
+        return self.retry()
+
+    def _correction_exit(self, session):
+        if (self._correction is not session or self.editor is not session.window
+                or session.phase != "unverified" or self.executing
+                or self.pending is not session.request):
+            return False
+        was_closing = self.closing
+        self.closing = True
+        try:
+            return self.exceptional_exit()
+        finally:
+            if not self._shutdown_sent:
+                self.closing = was_closing
+            self._controls()
 
     def correct_active_start(self):
         if not self.can_mutate() or self.editor is not None or not self.state.get("active"):
@@ -309,19 +420,36 @@ class ChronicleApp:
         clock.configure(validate="key", validatecommand=(top.register(lambda value: changed(clock_text=value) or True), "%P"))
         changed()
         def save():
+            if self._correction is not session or not self.can_mutate(origin=session):
+                return False
             selected = choices.get(selector.get())
             if choices and selected is None:
                 error.configure(text="Select the first or second occurrence.")
-                return
-            # Freeze the draft in the request; keep it open on synchronous validation errors.
-            if self._submit("correct_active_start", entry_id=active["entry_id"], expected_version=active["version"],
-                            date_text=day.get(), time_text=clock.get(), occurrence=selected, comment=comment.get()):
-                self._close_editor(top)
-        ttk.Button(top, text="Correct start", command=save).pack(pady=8)
+                return False
+            if not self._submit("correct_active_start", _origin=session,
+                                entry_id=session.entry_id, expected_version=session.version,
+                                date_text=day.get(), time_text=clock.get(), occurrence=selected, comment=comment.get()):
+                error.configure(text=self.status.cget("text"))
+                return False
+            session.request, session.token = self.pending, self._pending_token
+            session.phase = "executing"
+            session.outcome = None
+            error.configure(text="Saving; waiting for the database result…")
+            self._correction_controls(session)
+            return True
+        save_button = ttk.Button(top, text="Correct start", command=save)
+        save_button.pack(pady=8)
+        cancel = ttk.Button(top, text="Cancel", command=lambda: self._close_editor(top))
+        cancel.pack(pady=4)
+        retry = ttk.Button(top, text="Retry/Reconcile", command=lambda: self._correction_retry(session))
+        exit_button = ttk.Button(top, text="Exit despite unresolved save", command=lambda: self._correction_exit(session))
+        session = _ActiveStartEditor(top, active["entry_id"], active["version"], tuple(fields),
+                                     selector, choices, error, save_button, cancel, retry, exit_button)
+        self._correction = session
         self._present_editor(top)
 
     def open_mini(self):
-        if not self.alive or self.closing:
+        if not self.alive or self.closing or self.editor is not None:
             return
         if self.mini is None:
             self.mini = MiniModeWindow(self)
@@ -411,9 +539,10 @@ class ChronicleApp:
             self.status.configure(text=f"Unable to open dataset: {message.value}")
             self._diagnose(message.value)
         elif message.kind in ("mutate", "reconcile"):
-            if self.pending is None or message.token != self._pending_token:
+            if self.pending is None or message.token != self._pending_token or not self.executing:
                 return  # A duplicate completion cannot consume a newer accepted request.
             result = message.value
+            request = self.pending
             self.executing = False
             if result.status == "unverified":
                 self.status.configure(text="Registration not verified; operation may have committed. Retry/Reconcile uses the same request.")
@@ -426,6 +555,11 @@ class ChronicleApp:
             if result.error:
                 self.status.configure(text=self.status.cget("text") + " " + str(result.error))
                 self._diagnose(result.error)
+            try:
+                self._correction_result(request, message.token, result)
+            except Exception as exc:
+                exc.add_note(f"Authoritative correction outcome remains {result.status}; presentation/cleanup failed.")
+                self._diagnose(exc)
             self._controls()
             if self.closing:
                 self._advance_close()
@@ -510,13 +644,35 @@ class ChronicleApp:
         if not self.alive or self.executing or self.pending is None:
             return False
         self.executing = True
-        self.worker.requests.put(Message("reconcile", self._pending_token, self.pending))
+        self._token += 1
+        self._pending_token = self._token  # Each delivery attempt rejects earlier/duplicate completions.
+        session = self._correction
+        if session is not None and session.request is self.pending:
+            session.token = self._pending_token
+            session.phase = "executing"
+            session.status.configure(text="Reconciling the exact request; waiting for the database result…")
+            self._correction_controls(session)
+        try:
+            self.worker.requests.put(Message("reconcile", self._pending_token, self.pending))
+        except Exception as exc:
+            self.executing = False
+            if session is not None and session.request is self.pending:
+                self._correction_result(self.pending, self._pending_token, Outcome("unverified", error=exc))
+            self.status.configure(text=f"Reconciliation not submitted; original request retained. {exc}")
+            self._diagnose(exc)
+            self._controls()
+            return False
         self.status.configure(text="Reconciling the exact saved request…")
         self._controls()
         return True
 
     def request_close(self):
-        if not self.alive or self.editor is not None:
+        if not self.alive:
+            return
+        if self.editor is not None:
+            session = self._correction
+            if session is not None and session.phase == "unverified" and not self.executing:
+                self._correction_exit(session)
             return
         if self.closing:
             if not self.executing and self.pending is None and not self._shutdown_sent:
@@ -549,14 +705,21 @@ class ChronicleApp:
         if not self.alive or self.executing or not self.closing or self.pending is None:
             return False
         self.executing = True
+        session = self._correction
+        parent = session.window if session is not None and self.editor is session.window else self.root
         try:
             confirmed = messagebox.askyesno("Unresolved save", "The operation may already have committed. Exit loses this session's retry inputs. No work or evidence is undone. Exit anyway?",
-                                           parent=self.root, default=messagebox.NO)
+                                           parent=parent, default=messagebox.NO)
         finally:
             self.executing = False
         if confirmed:
             # No executing operation is interrupted. The worker still closes orderly.
             self.pending = None
+            if session is not None and self.editor is session.window:
+                try:
+                    self._dispose_editor(session.window)
+                except Exception as exc:
+                    self._diagnose(exc)
             self._advance_close()
         else:
             self._controls()

@@ -752,6 +752,20 @@ not merely the STRICT feature floor, and uses explicit disposable engineering
 paths. Production cutover and timezone changes remain Open. Stage 1A does not
 complete Stage 1 qualification or later core/POL-R/pilot gates.
 
+### Asynchronous active-start completion and draft preservation
+
+**Status:** current. **Provenance:** explicit user execution task “Chronicle —
+Stage 1A Repair: Asynchronous Active-Start Correction and Draft Preservation,”
+following the connected timer approval above. Queue acceptance cannot close an
+editor or prove Save. Matching committed/unchanged completion may close; validation,
+known rollback and unavailable outcomes retain drafts; stale authority requires
+fresh review rather than retargeting. Unverified work freezes the same Request and
+offers owner-mediated Retry/Reconcile and the approved default-cancel exceptional
+exit inside the modal editor. Executing I/O blocks ordinary Close. View destruction
+cannot discard owner-held evidence; later presentation failure cannot undo verified
+completion. This is a bounded timer repair, not Stage 1 operational acceptance,
+Stage 2 History editing or Stage 3 POL-R delivery.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

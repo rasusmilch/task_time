@@ -74,6 +74,16 @@ comment and request identity immutably in the same transaction as the receipt.
 An unchanged correction writes nothing. No automatic recovery, timer deletion,
 idle detection or sleep subtraction is selected.
 
+Queue acceptance is not correction completion. Keep the modal active-start draft
+until a matching authoritative result: committed/unchanged closes it; validation,
+known rollback and pre-execution unavailability retain editable values. A stale
+UUID/version retains the reviewed draft without retargeting; close and reopen for
+fresh review. Executing requests lock fields and ordinary Close. Unverified
+requests remain frozen with editor-local exact Retry/Reconcile and the existing
+default-cancel exceptional exit, never a second correction identity. Unexpected
+view destruction does not erase the application owner's pending request. A later
+report failure cannot reclassify a verified correction.
+
 Normal shutdown rejects new submissions, lets accepted operations finish and
 reconciles them without joining a live worker on Tk. When work has finished but
 storage truth remains unverified, offer Retry/Reconcile or Exit despite unresolved

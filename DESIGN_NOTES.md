@@ -1,6 +1,9 @@
 # Design Notes — retained JSONL implementation
 
 The shipped launcher/build now targets `src/chronicle`, the Stage 1A SQLite timer.
+Its active-start recovery retains the modal draft through asynchronous failure and
+offers exact-request reconciliation within that editor; queue acceptance is not Save
+completion. This is separate from the historical closed-interval editor below.
 [ARCHITECTURE.md](docs/ARCHITECTURE.md) owns its implemented technical boundary;
 [requirements](docs/TIMESHEET_REQUIREMENTS.md), [roadmap](docs/ROADMAP.md) and
 [testing strategy](docs/TESTING_STRATEGY.md) distinguish delivery from pending

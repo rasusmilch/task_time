@@ -48,8 +48,11 @@ Gate: real recording/reopen path, atomic Switch at one accepted time, active-tim
 uniqueness, same-request committed-result reuse and truthful failures. Verify
 SQLite WAL/FULL/foreign keys/constraints and UI/worker thread ownership. Integrity
 and failure tests start here. The approved clock/sleep/restart and explicit
-active-start/uncertain-exit policies are in requirements. Operational interruption
-and native Windows source/onedir qualification remain the subsequent slice.
+active-start/uncertain-exit policies are in requirements. Active-start editor
+completion now follows matching asynchronous results, retains rejected drafts and
+exposes exact reconciliation/exceptional exit within the modal editor. This repair
+does not complete Stage 1. Operational interruption and native Windows source/onedir
+qualification remain the subsequent slice.
 Timezone-change policy stays reserved; Stage 1A has no zone-changing operation.
 A foundation without POL-R is not core signoff.
 

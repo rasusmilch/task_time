@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import timedelta
 from queue import Queue
 import threading
@@ -15,21 +16,27 @@ from conftest import NOW, uid
 
 
 def pump(root, predicate, timeout=8000):
-    done, errors = [], []
+    done, errors, scheduled = [], [], []
     def check():
         try:
             if predicate():
                 done.append(True)
                 root.quit()
             else:
-                root.after(5, check)
+                scheduled.append(root.after(5, check))
         except Exception as exc:
             errors.append(exc)
             root.quit()
     deadline = root.after(timeout, root.quit)
-    root.after(0, check)
-    root.mainloop()  # Bounded test driver; the runtime itself owns one ordinary mainloop.
-    root.after_cancel(deadline)
+    scheduled.append(root.after(0, check))
+    try:
+        root.mainloop()  # Bounded test driver; the runtime itself owns one ordinary mainloop.
+    finally:
+        for token in [deadline, *scheduled]:
+            try:
+                root.after_cancel(token)
+            except tk.TclError:
+                pass  # Test driver may have deliberately destroyed its interpreter.
     if errors:
         raise errors[0]
     assert done, "Timed out waiting for the connected Tk/worker result"
@@ -298,7 +305,9 @@ def test_stale_read_rejected_but_closed_origin_commit_handled():
             return self.text
     app.status = Label()
     app.pending, app.closing, app.editor = object(), False, None
+    app._correction = None
     app._pending_token = 2
+    app.executing = True
     app._controls = lambda: None
     app._handle(Message("mutate", 2, Outcome("committed", {"entry_id": "retained"})))
     assert app.pending is None and app.status.text == "Saved."
@@ -482,3 +491,677 @@ def test_real_tk_correction_drafts_clear_occurrence_without_loading(connected, r
     assert selector.get() == "" and not selector.winfo_ismapped()
     assert app.pending is None
     app._close_editor(top)
+
+
+def test_real_tk_correction_queue_acceptance_is_not_completion(connected, root, monkeypatch):
+    from tkinter import ttk
+    app, worker, clock = connected
+    task = create(app)
+    app.tree.selection_set(task)
+    assert app.start()
+    pump(root, lambda: app.pending is None and app.state['active'] is not None)
+    app.correct_active_start()
+    top = app.editor
+    entries = [w for w in top.winfo_children() if isinstance(w, ttk.Entry) and not isinstance(w, ttk.Combobox)]
+    entries[1].delete(0, 'end')
+    entries[1].insert(0, '09:00')
+    gate, entered = threading.Event(), threading.Event()
+    original = TimerService.execute
+    def slow(self, request):
+        if request.operation == 'correct_active_start':
+            entered.set()
+            assert gate.wait(5)
+        return original(self, request)
+    monkeypatch.setattr(TimerService, 'execute', slow)
+    try:
+        next(w for w in top.winfo_children() if isinstance(w, ttk.Button)).invoke()
+        pump(root, entered.is_set)
+        assert app.editor is top and top.winfo_exists(), 'Queue acceptance must retain the correction editor'
+        assert app.executing and app.pending.operation == 'correct_active_start'
+    finally:
+        gate.set()
+    pump(root, lambda: app.pending is None and app.editor is None)
+
+
+def open_active_editor(connected, root):
+    app, worker, clock = connected
+    task = create(app)
+    app.tree.selection_set(task)
+    assert app.start()
+    pump(root, lambda: app.pending is None and app.state['active'] is not None and app._read_inflight is None)
+    app.correct_active_start()
+    session = app._correction
+    pump(root, lambda: root.grab_current() is session.window)
+    return session
+
+
+def draft(session, day='2026-10-19', clock='09:00', comment='  reviewed draft  ', occurrence=None):
+    for field, text in zip(session.fields, (day, clock, comment)):
+        field.delete(0, 'end')
+        field.insert(0, text)
+    if occurrence is not None:
+        session.selector.current(occurrence)
+    return (*[field.get() for field in session.fields], session.selector.get())
+
+
+def visible_draft(session):
+    return (*[field.get() for field in session.fields], session.selector.get())
+
+
+def evidence(worker):
+    import sqlite3
+    from pathlib import Path
+    with sqlite3.connect(Path(worker.directory, 'chronicle.sqlite3').as_uri() + '?mode=ro', uri=True) as connection:
+        return {table: connection.execute(f'SELECT * FROM {table} ORDER BY 1').fetchall()
+                for table in ('work_entries', 'work_revisions', 'active_timer', 'active_start_corrections', 'committed_requests')}
+
+
+@pytest.mark.parametrize('failure', ['clock', 'queue'])
+def test_real_tk_correction_synchronous_submission_failure_retains_editable_draft(connected, root, monkeypatch, failure):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    values = draft(session)
+    before = evidence(worker)
+    if failure == 'clock':
+        monkeypatch.setattr(app, 'now_utc', lambda: None)
+    else:
+        def fail(message):
+            raise OSError('queue unavailable')
+        monkeypatch.setattr(worker.requests, 'put', fail)
+    session.save.invoke()
+    assert app.editor is session.window and visible_draft(session) == values
+    assert app.pending is None and not app.executing
+    assert str(session.fields[0].cget('state')) == 'normal'
+    assert session.status.cget('text') and root.test_errors
+    assert evidence(worker) == before
+    monkeypatch.undo()
+    session.save.invoke()
+    pump(root, lambda: app.editor is None and app.pending is None)
+
+
+@pytest.mark.parametrize('day,clock_text,occurrence,error', [
+    ('2026-03-08', '02:30', None, 'does not exist'),
+    ('2026-10-19', '10:01', None, 'later than'),
+    ('2026-10-19', '09:00:01', None, 'minute-only'),
+    ('2026-11-01', '01:30', 1, 'later than'),
+])
+def test_real_tk_correction_worker_rejection_preserves_every_draft_then_recovers(connected, root, day, clock_text, occurrence, error):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    values = draft(session, day, clock_text, occurrence=occurrence)
+    before = evidence(worker)
+    reviewed = (session.entry_id, session.version)
+    session.save.invoke()
+    pump(root, lambda: app.pending is None and not app.executing)
+    assert app.editor is session.window and visible_draft(session) == values
+    assert error in session.status.cget('text')
+    assert str(session.fields[0].cget('state')) == 'normal'
+    assert (session.entry_id, session.version) == reviewed
+    assert evidence(worker) == before
+    draft(session)
+    session.save.invoke()
+    pump(root, lambda: app.editor is None and app.state['active']['version'] == 2)
+    assert app.state['active']['entry_id'] == reviewed[0]
+    rows = evidence(worker)
+    assert len(rows['active_start_corrections']) == 1 and not rows['work_revisions']
+    assert rows['work_entries'] == before['work_entries']
+    assert rows['active_start_corrections'][0][-2] == 'reviewed draft'
+    app.correct_active_start()
+    assert app._correction is not session
+    app._close_editor(app.editor)
+    assert app._correction is None
+
+
+def test_real_tk_worker_repeated_requirement_rejects_without_erasing_draft(connected, root, monkeypatch):
+    import chronicle.app as module
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    original = module.local_minute_candidates
+    # An incomplete presentation observation cannot bypass authoritative DST validation.
+    monkeypatch.setattr(module, 'local_minute_candidates', lambda *args: original(*args)[:1])
+    values = draft(session, '2026-11-01', '01:30')
+    before = evidence(worker)
+    session.save.invoke()
+    pump(root, lambda: app.pending is None)
+    assert 'first or second' in session.status.cget('text')
+    assert visible_draft(session) == values and app.editor is session.window
+    assert evidence(worker) == before
+
+
+@pytest.mark.parametrize('fault', ['rolled_back', 'unavailable'])
+def test_real_tk_correction_settled_storage_failure_allows_new_request(connected, root, monkeypatch, fault):
+    from test_services import FaultConnection
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    values = draft(session)
+    before = evidence(worker)
+    original, submitted = TimerService.execute, []
+    def fail_once(service, request):
+        if request.operation == 'correct_active_start':
+            submitted.append(request)
+            if len(submitted) == 1:
+                if fault == 'rolled_back':
+                    service.store.connection = FaultConnection(service.store.connection)
+                else:
+                    recover = service.store._recover_connection
+                    def unavailable():
+                        service.store._recover_connection = recover
+                        raise OSError('storage unavailable before execution')
+                    service.store._recover_connection = unavailable
+        return original(service, request)
+    monkeypatch.setattr(TimerService, 'execute', fail_once)
+    session.save.invoke()
+    pump(root, lambda: app.pending is None and not app.executing)
+    assert session.outcome.status == fault
+    assert visible_draft(session) == values and str(session.save.cget('state')) == 'normal'
+    assert evidence(worker) == before
+    clock.value += timedelta(minutes=1)
+    session.save.invoke()
+    pump(root, lambda: app.editor is None and app.state['active']['version'] == 2)
+    assert submitted[0].request_id != submitted[1].request_id
+    assert submitted[1].action_utc_us > submitted[0].action_utc_us
+    assert len(evidence(worker)['active_start_corrections']) == 1
+
+
+def test_real_tk_stale_correction_keeps_reviewed_identity_and_draft(connected, root, monkeypatch):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    values = draft(session)
+    original, attempted = TimerService.execute, []
+    def changed(service, request):
+        if request.operation == 'correct_active_start' and not attempted:
+            attempted.append(request)
+            assert service.correct_active_start(session.entry_id, '2026-10-19', '09:30', expected_version=1,
+                                                request_id=uid(), action_utc_us=NOW).status == 'committed'
+        return original(service, request)
+    monkeypatch.setattr(TimerService, 'execute', changed)
+    session.save.invoke()
+    pump(root, lambda: app.pending is None and app._read_inflight is None)
+    assert session.phase == 'stale' and 'Close and reopen' in session.status.cget('text')
+    assert visible_draft(session) == values and session.version == 1
+    assert str(session.save.cget('state')) == 'disabled'
+    session.save.invoke()
+    assert len(attempted) == 1 and len(evidence(worker)['active_start_corrections']) == 1
+    app._close_editor(session.window)
+    app.correct_active_start()
+    assert app._correction.version == 2 and app._correction.entry_id == session.entry_id
+
+
+@pytest.mark.parametrize('already_committed', [False, True])
+def test_real_tk_correction_unverified_exact_editor_retry_and_duplicate_results(connected, root, monkeypatch, already_committed):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    values = draft(session)
+    original, reconcile = TimerService.execute, TimerService.reconcile_request
+    accepted, reconciled = [], []
+    def uncertain(service, request):
+        if request.operation == 'correct_active_start':
+            accepted.append(request)
+            if len(accepted) == 1:
+                if already_committed:
+                    assert original(service, request).status == 'committed'
+                return Outcome('unverified', error=OSError('ambiguous correction acknowledgement'))
+        return original(service, request)
+    def still_uncertain(service, request):
+        reconciled.append(request)
+        if len(reconciled) == 1:
+            return Outcome('unverified', error=OSError('independent inspection unavailable'))
+        return reconcile(service, request)
+    monkeypatch.setattr(TimerService, 'execute', uncertain)
+    monkeypatch.setattr(TimerService, 'reconcile_request', still_uncertain)
+    session.save.invoke()
+    frozen, token = app.pending, app._pending_token
+    pump(root, lambda: not app.executing)
+    assert session.phase == 'unverified' and session.request is app.pending is frozen
+    assert visible_draft(session) == values
+    assert str(session.fields[0].cget('state')) == 'disabled'
+    assert session.retry.winfo_manager() and session.exit.winfo_manager()
+    assert not app._close_editor(session.window)
+    session.save.invoke()
+    assert len(accepted) == 1
+    session.retry.invoke()
+    assert app.executing and app.pending is frozen
+    pump(root, lambda: not app.executing)
+    assert session.phase == 'unverified' and 'inspection unavailable' in session.status.cget('text')
+    assert visible_draft(session) == values and app.pending is frozen
+    clock.value += timedelta(hours=1)
+    session.retry.invoke()
+    pump(root, lambda: app.editor is None and app.pending is None and app._read_inflight is None)
+    assert all(request is frozen for request in accepted + reconciled)
+    assert frozen.action_utc_us == NOW and frozen.args()['comment'] == values[2]
+    rows = evidence(worker)
+    assert len(rows['active_start_corrections']) == 1
+    assert sum(row[1] == frozen.request_id for row in rows['committed_requests']) == 1
+    app.correct_active_start()
+    newer = app._correction
+    new_draft = draft(newer, clock='08:00')
+    app._handle(Message('reconcile', token, Outcome('committed')))
+    assert app._correction is newer and visible_draft(newer) == new_draft
+    # Even a matching owner token cannot settle a different session's request.
+    app._correction_result(frozen, token, Outcome('committed'))
+    assert app._correction is newer
+
+
+def test_real_tk_unchanged_correction_preserves_microseconds_and_no_evidence(connected, root):
+    app, worker, clock = connected
+    clock.value += timedelta(microseconds=123456)
+    session = open_active_editor(connected, root)
+    before = evidence(worker)
+    session.save.invoke()
+    pump(root, lambda: app.editor is None and app.pending is None)
+    assert app.status.cget('text') == 'Unchanged; nothing written.'
+    assert evidence(worker) == before
+    assert app.state['active']['start_utc_us'] == NOW + 123456
+
+
+def test_real_tk_committed_correction_survives_report_and_cleanup_failure(connected, root, monkeypatch):
+    import chronicle.app as module
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    draft(session)
+    original = app._close_editor
+    def cleanup(top):
+        original(top)
+        raise OSError('cleanup acknowledgement fault')
+    monkeypatch.setattr(app, '_close_editor', cleanup)
+    def no_numbers(value):
+        raise ValueError('later report failure')
+    monkeypatch.setattr(module, 'format_duration', no_numbers)
+    session.save.invoke()
+    pump(root, lambda: app.editor is None and app.pending is None and 'later report failure' in app.error.cget('text'))
+    assert 'Saved' in app.status.cget('text')
+    assert len(evidence(worker)['active_start_corrections']) == 1
+    errors = [args[1] for args in root.test_errors]
+    cleanup_error = next(exc for exc in errors if 'cleanup acknowledgement' in str(exc))
+    assert any('remains committed' in note for note in cleanup_error.__notes__)
+    assert app._correction is None
+
+
+def test_real_tk_unexpected_editor_destruction_retains_owner_request(connected, root, monkeypatch):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    draft(session)
+    original = TimerService.execute
+    def lost(service, request):
+        result = original(service, request)
+        return Outcome('unverified', error=OSError('lost correction response'))
+    monkeypatch.setattr(TimerService, 'execute', lost)
+    session.save.invoke()
+    frozen = app.pending
+    session.window.destroy()
+    assert app.editor is None and app._correction is None and app.pending is frozen
+    pump(root, lambda: not app.executing)
+    assert app.pending is frozen and app.retry_button.winfo_manager()
+    assert app.retry()
+    pump(root, lambda: app.pending is None)
+    assert app.editor is None and len(evidence(worker)['active_start_corrections']) == 1
+
+
+@pytest.mark.parametrize('confirm', [False, True])
+def test_real_tk_correction_modal_exceptional_exit_is_reachable(connected, root, monkeypatch, confirm):
+    import chronicle.app as module
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    values = draft(session)
+    original = TimerService.execute
+    def lost(service, request):
+        result = original(service, request)
+        return Outcome('unverified', error=OSError('lost correction response'))
+    monkeypatch.setattr(TimerService, 'execute', lost)
+    session.save.invoke()
+    frozen = app.pending
+    pump(root, lambda: not app.executing)
+    asked = []
+    def decide(*args, **kwargs):
+        asked.append(kwargs)
+        assert kwargs['parent'] is session.window and kwargs['default'] == 'no'
+        assert not app.retry() and not app.exceptional_exit()
+        app.request_close()  # Cannot stack another warning during confirmation.
+        return confirm
+    monkeypatch.setattr(module.messagebox, 'askyesno', decide)
+    app.request_close()
+    assert len(asked) == 1
+    if confirm:
+        root.after(6000, root.quit)
+        root.mainloop()
+        assert not app.alive
+        worker.join(timeout=5)
+        with _reopen_store(worker) as store:
+            active = store.connection.execute('SELECT entry_id,version FROM active_timer').fetchone()
+            assert tuple(active) == (session.entry_id, 2)
+            assert store.connection.execute('SELECT count(*) FROM active_start_corrections').fetchone()[0] == 1
+    else:
+        assert app.pending is frozen and app.editor is session.window and not app.closing
+        assert visible_draft(session) == values and root.grab_current() is session.window
+        session.exit.invoke()
+        assert len(asked) == 2 and app.pending is frozen
+        session.retry.invoke()
+        pump(root, lambda: app.editor is None and app.pending is None)
+
+
+@contextmanager
+def _reopen_store(worker):
+    store = SQLiteStore(worker.directory)
+    try:
+        yield store
+    finally:
+        store.close()
+
+
+@pytest.fixture
+def keyboard(root, click):
+    """Server-delivered keyboard events; capability handling mirrors the pointer fixture."""
+    import ctypes as c
+    from ctypes.util import find_library
+    x, xt = c.CDLL(find_library('X11')), c.CDLL(find_library('Xtst'))
+    x.XOpenDisplay.argtypes, x.XOpenDisplay.restype = [c.c_char_p], c.c_void_p
+    x.XCloseDisplay.argtypes = [c.c_void_p]
+    x.XSync.argtypes = [c.c_void_p, c.c_int]
+    x.XStringToKeysym.argtypes, x.XStringToKeysym.restype = [c.c_char_p], c.c_ulong
+    x.XKeysymToKeycode.argtypes, x.XKeysymToKeycode.restype = [c.c_void_p, c.c_ulong], c.c_uint
+    xt.XTestFakeKeyEvent.argtypes = [c.c_void_p, c.c_uint, c.c_int, c.c_ulong]
+    display = x.XOpenDisplay(None)
+    if not display:
+        pytest.skip('XTest cannot open the isolated keyboard display')
+    def press(name, control=False, shift=False):
+        modifiers = [key for key, used in [('Control_L', control), ('Shift_L', shift)] if used]
+        def send(key, down):
+            code = x.XKeysymToKeycode(display, x.XStringToKeysym(key.encode()))
+            assert code and xt.XTestFakeKeyEvent(display, code, down, 0)
+        for key in modifiers:
+            send(key, True)
+        send(name, True)
+        send(name, False)
+        for key in reversed(modifiers):
+            send(key, False)
+        x.XSync(display, False)
+    def replace(widget, text):
+        click(widget)
+        pump(root, lambda: root.focus_get() is widget)
+        press('Home')
+        press('End', shift=True)
+        press('BackSpace')
+        for char in text:
+            press('semicolon' if char == ':' else 'minus' if char == '-' else 'space' if char == ' ' else char,
+                  shift=char == ':')
+        pump(root, lambda: widget.get() == text)
+    yield press, replace
+    x.XCloseDisplay(display)
+
+
+def test_real_tk_server_input_rejection_recovery_and_modal_blocking(connected, root, click, keyboard):
+    app, worker, clock = connected
+    task = create(app)
+    app.tree.selection_set(task)
+    click(app.buttons['Start'])
+    pump(root, lambda: app.state['active'] is not None and app.pending is None)
+    click(app.buttons['Mini mode'])
+    mini = app.mini
+    pump(root, lambda: mini is not None)
+    click(app.buttons['Correct active start'])
+    session = app._correction
+    pump(root, lambda: root.grab_current() is session.window)
+    press, replace = keyboard
+    replace(session.fields[0], '2026-03-08')
+    replace(session.fields[1], '02:30')
+    replace(session.fields[2], 'operator draft')
+    values, before = visible_draft(session), evidence(worker)
+    click(session.save)
+    pump(root, lambda: not app.executing and app.pending is None)
+    assert 'does not exist' in session.status.cget('text')
+    assert app.editor is session.window and visible_draft(session) == values
+    assert evidence(worker) == before
+    # Server input aimed at ancestors/mini must not reach them through the local grab.
+    hits = []
+    root.bind('<ButtonPress-1>', lambda event: hits.append('root'), add='+')
+    mini.window.bind('<ButtonPress-1>', lambda event: hits.append('mini'), add='+')
+    click(app.buttons['Stop'])
+    click(mini.toggle)
+    assert hits == [] and app.pending is None and app.state['active']['version'] == 1
+    assert not app.stop() and not app.mini_toggle()  # Direct callbacks are guarded too.
+    replace(session.fields[0], '2026-10-19')
+    replace(session.fields[1], '09:00')
+    click(session.save)
+    pump(root, lambda: app.editor is None and app.state['active']['version'] == 2)
+    assert len(evidence(worker)['active_start_corrections']) == 1
+    click(app.buttons['Correct active start'])
+    later = app._correction
+    pump(root, lambda: root.grab_current() is later.window)
+    before = evidence(worker)
+    press('Escape')
+    pump(root, lambda: app.editor is None)
+    assert evidence(worker) == before
+
+
+def test_real_tk_server_escape_wm_close_and_cancel_cannot_interrupt_correction(connected, root, click, keyboard, monkeypatch):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    values = draft(session)
+    gate, entered, ticks = threading.Event(), threading.Event(), []
+    original = TimerService.execute
+    accepted = []
+    def slow(service, request):
+        if request.operation == 'correct_active_start':
+            accepted.append(request)
+            entered.set()
+            assert gate.wait(5)
+        return original(service, request)
+    monkeypatch.setattr(TimerService, 'execute', slow)
+    try:
+        click(session.save)
+        pump(root, entered.is_set)
+        root.after(30, lambda: ticks.append(True))
+        keyboard[0]('Escape')
+        root.tk.call(session.window.protocol('WM_DELETE_WINDOW'))
+        session.cancel.invoke()
+        session.save.invoke()
+        app.request_close()
+        assert not app.exceptional_exit() and not app.stop()
+        pump(root, lambda: ticks)
+        assert len(accepted) == 1 and app.editor is session.window
+        assert visible_draft(session) == values and root.grab_current() is session.window
+        assert app.executing and not app.closing
+        assert str(session.fields[0].cget('state')) == 'disabled'
+    finally:
+        gate.set()
+    pump(root, lambda: app.editor is None and app.pending is None)
+
+
+def test_real_tk_server_repeated_selection_retention_and_editor_reconcile(connected, root, click, keyboard, monkeypatch):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    press, replace = keyboard
+    replace(session.fields[0], '2026-11-01')
+    replace(session.fields[1], '01:30')
+    click(session.selector)
+    press('Down')
+    press('Return')
+    pump(root, lambda: session.selector.get() != '')
+    choice = session.selector.get()
+    click(session.save)  # Future relative to accepted observation; authoritative rejection.
+    pump(root, lambda: app.pending is None and not app.executing)
+    assert session.selector.get() == choice and 'later than' in session.status.cget('text')
+    # Choosing an earlier unambiguous draft clears the occurrence only on the edit.
+    replace(session.fields[0], '2026-10-19')
+    replace(session.fields[1], '09:00')
+    assert session.selector.get() == ''
+    original = TimerService.execute
+    def lost(service, request):
+        result = original(service, request)
+        return Outcome('unverified', error=OSError('lost committed acknowledgement'))
+    monkeypatch.setattr(TimerService, 'execute', lost)
+    click(session.save)
+    pump(root, lambda: session.phase == 'unverified')
+    frozen = app.pending
+    click(session.retry)
+    pump(root, lambda: app.editor is None and app.pending is None)
+    assert len(evidence(worker)['active_start_corrections']) == 1
+    assert frozen.args()['occurrence'] is None
+
+
+def test_real_tk_native_default_cancel_exit_keeps_correction_and_exact_request(connected, root, click, keyboard, monkeypatch):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    draft(session)
+    original = TimerService.execute
+    def uncertain(service, request):
+        result = original(service, request)
+        return Outcome('unverified', error=OSError('lost correction acknowledgement'))
+    monkeypatch.setattr(TimerService, 'execute', uncertain)
+    click(session.save)
+    pump(root, lambda: session.phase == 'unverified')
+    frozen, shown = app.pending, []
+    import time
+    deadline = time.monotonic() + 4
+    def respond():
+        # Toolkit messageboxes are Tcl-owned windows, not Python widget objects.
+        grab = str(root.tk.call('grab', 'current', root._w))
+        focus = str(root.tk.call('focus'))
+        if grab and grab != str(session.window) and focus.startswith(grab):
+            shown.append(grab)
+            keyboard[0]('Return')  # Native yes/no defaults to No, not affirmative exit.
+        elif time.monotonic() < deadline:
+            root.after(10, respond)
+    def abort_dialog():
+        grab = str(root.tk.call('grab', 'current', root._w))
+        if grab and grab != str(session.window):
+            root.tk.call('destroy', grab)
+    # Independent timeout also bounds an unexpected error in the interaction driver.
+    timeout = root.after(5000, abort_dialog)
+    root.after(10, respond)
+    click(session.exit)
+    root.after_cancel(timeout)
+    assert shown and app.alive and app.editor is session.window and app.pending is frozen
+    assert not app.closing and not app.executing
+    assert root.grab_current() is session.window
+    click(session.retry)
+    pump(root, lambda: app.editor is None and app.pending is None)
+
+
+def test_real_tk_completed_editor_does_not_steal_competing_grab(connected, root, monkeypatch):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    draft(session)
+    gate, entered = threading.Event(), threading.Event()
+    original = TimerService.execute
+    def slow(service, request):
+        entered.set()
+        assert gate.wait(5)
+        return original(service, request)
+    monkeypatch.setattr(TimerService, 'execute', slow)
+    try:
+        session.save.invoke()
+        pump(root, entered.is_set)
+        other = tk.Toplevel(root)
+        pump(root, other.winfo_viewable)
+        other.grab_set()
+        other.focus_set()
+        gate.set()
+        pump(root, lambda: app.editor is None and app.pending is None)
+        assert root.grab_current() is other and other.grab_status() == 'local'
+    finally:
+        gate.set()
+        if 'other' in locals() and other.winfo_exists():
+            other.destroy()
+
+
+def test_real_tk_absent_uncertain_correction_can_settle_rejected_then_save_new(connected, root, monkeypatch):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    values = draft(session, clock='10:01')
+    before = evidence(worker)
+    original, requests = TimerService.execute, []
+    def first_unknown(service, request):
+        requests.append(request)
+        if len(requests) == 1:
+            return Outcome('unverified', error=OSError('execution not established'))
+        return original(service, request)
+    monkeypatch.setattr(TimerService, 'execute', first_unknown)
+    session.save.invoke()
+    frozen = app.pending
+    pump(root, lambda: session.phase == 'unverified')
+    session.retry.invoke()  # Genuine healthy absence; worker executes the original request.
+    pump(root, lambda: app.pending is None and not app.executing)
+    assert requests == [frozen, frozen] and session.outcome.status == 'rejected'
+    assert session.phase == 'editing' and visible_draft(session) == values
+    assert evidence(worker) == before
+    draft(session)
+    session.save.invoke()
+    pump(root, lambda: app.editor is None)
+    assert requests[-1].request_id != frozen.request_id
+    assert len(evidence(worker)['active_start_corrections']) == 1
+
+
+def test_real_tk_duplicate_delivery_cannot_unfreeze_executing_reconciliation(connected, root, monkeypatch):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    draft(session)
+    original = TimerService.execute
+    def lost(service, request):
+        result = original(service, request)
+        return Outcome('unverified', error=OSError('lost acknowledgement'))
+    monkeypatch.setattr(TimerService, 'execute', lost)
+    session.save.invoke()
+    frozen, old_token = app.pending, app._pending_token
+    pump(root, lambda: session.phase == 'unverified')
+    gate, entered = threading.Event(), threading.Event()
+    reconcile = TimerService.reconcile_request
+    def slow(service, request):
+        entered.set()
+        assert gate.wait(5)
+        return reconcile(service, request)
+    monkeypatch.setattr(TimerService, 'reconcile_request', slow)
+    try:
+        session.retry.invoke()
+        pump(root, entered.is_set)
+        assert app._pending_token != old_token
+        app._handle(Message('mutate', old_token, Outcome('unverified')))
+        app._handle(Message('mutate', old_token, Outcome('committed')))
+        assert app.executing and app.pending is session.request is frozen
+        assert session.phase == 'executing' and app.editor is session.window
+        assert not app.retry()
+    finally:
+        gate.set()
+    pump(root, lambda: app.editor is None and app.pending is None)
+
+
+def test_real_tk_reconcile_queue_failure_retains_frozen_request_and_controls(connected, root, monkeypatch):
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    draft(session)
+    original = TimerService.execute
+    def lost(service, request):
+        result = original(service, request)
+        return Outcome('unverified', error=OSError('lost acknowledgement'))
+    monkeypatch.setattr(TimerService, 'execute', lost)
+    session.save.invoke()
+    frozen = app.pending
+    pump(root, lambda: session.phase == 'unverified')
+    def no_queue(message):
+        raise OSError('reconciliation queue unavailable')
+    with monkeypatch.context() as local:
+        local.setattr(worker.requests, 'put', no_queue)
+        session.retry.invoke()
+    assert app.pending is session.request is frozen and not app.executing
+    assert session.phase == 'unverified' and 'queue unavailable' in session.status.cget('text')
+    session.retry.invoke()
+    pump(root, lambda: app.editor is None and app.pending is None)
+
+
+def test_real_tk_correction_verified_commit_keeps_original_warning(connected, root, monkeypatch):
+    from test_services import FaultConnection
+    app, worker, clock = connected
+    session = open_active_editor(connected, root)
+    draft(session)
+    original = TimerService.execute
+    def acknowledgement_fault(service, request):
+        if request.operation == 'correct_active_start':
+            service.store.connection = FaultConnection(service.store.connection, after=True)
+        return original(service, request)
+    monkeypatch.setattr(TimerService, 'execute', acknowledgement_fault)
+    session.save.invoke()
+    pump(root, lambda: app.editor is None and app.state['active']['version'] == 2)
+    assert 'Saved.' in app.status.cget('text') and 'acknowledgement fault' in app.status.cget('text')
+    warning = root.test_errors[-1][1]
+    assert any('committed receipt verified' in note for note in warning.__notes__)
+    assert len(evidence(worker)['active_start_corrections']) == 1
