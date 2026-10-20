@@ -810,8 +810,39 @@ are accepted (the latter at `1e84a043c1c055aced9b8c4b000ef766bbf6d178`). Stage 1
 may receive independent functional acceptance after this simplification and its
 relevant checks. Actual native Windows source operation remains required before
 real deployment/complete core pilot, without permanently blocking Stage 2 work
-because the eventual work computer is unavailable. Stage 2/3 remain unimplemented;
+because the eventual work computer is unavailable. At that approval Stage 2/3 were unimplemented;
 POL-R stays mandatory before complete core pilot. Release paths/cutover remain Open.
+
+### Stage 2A — Connected mixed work, revisions and week configuration
+
+**Status:** current. **Provenance:** explicit user “GO — APPROVED FOR EXECUTION”
+task titled “Chronicle — Stage 2A: Complete Mixed-Work Persistence, Manual Entry,
+Revision Services, Shared Accounting, and Week Configuration,” on the independently
+verified starting source `2f4328232c3e86426e354c87fa60dcdc40061bfc`. This later approval
+adds the bounded work below; it does not retroactively attribute it to Stage 1.
+
+Extend the same fresh work_entries/work_revisions schema for timed and date_only
+kinds, stable UUIDs, positive typed values, immutable corrections/deletions and
+atomic exact receipts. No production SQLite migration is needed; revise the fresh
+schema directly and refuse incompatible files without recreation. Existing timer,
+audit, one-worker, DELETE/EXTRA/FK and uncertain-outcome guarantees remain binding.
+
+Manual date-only input is positive H:MM, minute resolution, no 24-hour cap within
+integer bounds, wholly at a real declared civil date including future dates. New
+and changed timed input resolves separate local dates/minutes with explicit DST
+occurrences; historical timed work cannot end after its accepted observation.
+Unchanged endpoints retain exact precision; unchanged/comment-only edits write
+nothing. Deletion is a retained terminal revision, not physical removal.
+
+Connect task-bound Add forms with local-date/blank-time initialization, explicit
+Save and the existing asynchronous owner/reconciliation session. New manual work
+is additional work, without inferred overlap correction or changes to a running
+timer. All active mixed readers must agree before exposing those writers. Week
+start is a persisted expected-prior checked mutation, all seven weekdays with
+Sunday initially, changing periods rather than work facts. History/revision reads
+are delivered as backend foundations; the modal browser/inline historical editor,
+audit UI and deletion controls remain Stage 2B. Stage 2 remains In Progress.
+Stage 3 Timesheet/quarter-hour POL-R/reminders remain mandatory, unimplemented core.
 
 ## Open decisions
 

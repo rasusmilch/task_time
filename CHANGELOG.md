@@ -17,8 +17,14 @@ receipts or commits. No release or production qualification is implied below.
   atomic Start/Stop/Switch, persisted active identity, audited explicit active-start
   recovery with asynchronous draft retention and editor-local exact-request
   reconciliation/exceptional exit; queue acceptance is never Save completion.
-  Main/mini share calendar Actual;
-  one worker keeps Tk responsive and shutdown preserves approved uncertainty.
+  Connect task-bound manual genuine timed/date-only entry, immutable typed
+  revision/deletion services, complete detached History/revision reads and all
+  seven persisted week-start choices. Main/mini share exact mixed calendar Actual;
+  date-only work retains its whole declared date and unchanged timed endpoints
+  retain precision. No-op edits write nothing; expected revisions/settings reject
+  stale writes. Manual forms retain drafts and exact uncertain requests through
+  the existing worker/session. History rendering/inline historical editing remain
+  pending. One worker keeps Tk responsive and shutdown preserves uncertainty.
   Sleep/exit never stops timers; restart uses committed state. Use explicit fresh
   paths and offline tzdata. Use built-in sqlite3 with verified DELETE journaling,
   synchronous EXTRA, foreign keys and the SQLite 3.37.0 STRICT floor. Exercise
@@ -28,8 +34,8 @@ receipts or commits. No release or production qualification is implied below.
   Run directly from Python source with a minimal pip-installed runtime dependency;
   retire executable-build tooling and the obsolete WAL-specific version pin.
   Preserve unsupported datasets without conversion/deletion. Independent Stage 1
-  functional review, native Windows source/actual suspend qualification and later
-  recording/Timesheet/POL-R remain pending.
+  functional review, Stage 2A independent review, native Windows source/actual
+  suspend qualification and Stage 2B/Timesheet/POL-R remain pending.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete

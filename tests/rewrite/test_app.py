@@ -7,7 +7,7 @@ import tkinter as tk
 import pytest
 
 from chronicle.app import ChronicleApp
-from chronicle.records import Outcome
+from chronicle.records import Outcome, Request
 from chronicle.services import TimerService
 from chronicle.sqlite_store import SQLiteStore
 from chronicle.timekeeping import from_us
@@ -309,8 +309,9 @@ def test_stale_read_rejected_but_closed_origin_commit_handled():
         def cget(self, name):
             return self.text
     app.status = Label()
-    app.pending, app.closing, app.editor = object(), False, None
-    app._correction = None
+    app.pending = Request.make(uid(), uid(), "create_task", NOW, task_id=uid(), name="Detached", project_id=None)
+    app.closing, app.editor = False, None
+    app._work_editor = None
     app._pending_token = 2
     app.executing = True
     app._controls = lambda: None
@@ -535,7 +536,7 @@ def open_active_editor(connected, root):
     assert app.start()
     pump(root, lambda: app.pending is None and app.state['active'] is not None and app._read_inflight is None)
     app.correct_active_start()
-    session = app._correction
+    session = app._work_editor
     pump(root, lambda: root.grab_current() is session.window)
     return session
 
@@ -612,9 +613,9 @@ def test_real_tk_correction_worker_rejection_preserves_every_draft_then_recovers
     assert rows['work_entries'] == before['work_entries']
     assert rows['active_start_corrections'][0][-2] == 'reviewed draft'
     app.correct_active_start()
-    assert app._correction is not session
+    assert app._work_editor is not session
     app._close_editor(app.editor)
-    assert app._correction is None
+    assert app._work_editor is None
 
 
 def test_real_tk_worker_repeated_requirement_rejects_without_erasing_draft(connected, root, monkeypatch):
@@ -689,7 +690,7 @@ def test_real_tk_stale_correction_keeps_reviewed_identity_and_draft(connected, r
     assert len(attempted) == 1 and len(evidence(worker)['active_start_corrections']) == 1
     app._close_editor(session.window)
     app.correct_active_start()
-    assert app._correction.version == 2 and app._correction.entry_id == session.entry_id
+    assert app._work_editor.version == 2 and app._work_editor.entry_id == session.entry_id
 
 
 @pytest.mark.parametrize('already_committed', [False, True])
@@ -738,13 +739,13 @@ def test_real_tk_correction_unverified_exact_editor_retry_and_duplicate_results(
     assert len(rows['active_start_corrections']) == 1
     assert sum(row[1] == frozen.request_id for row in rows['committed_requests']) == 1
     app.correct_active_start()
-    newer = app._correction
+    newer = app._work_editor
     new_draft = draft(newer, clock='08:00')
     app._handle(Message('reconcile', token, Outcome('committed')))
-    assert app._correction is newer and visible_draft(newer) == new_draft
+    assert app._work_editor is newer and visible_draft(newer) == new_draft
     # Even a matching owner token cannot settle a different session's request.
-    app._correction_result(frozen, token, Outcome('committed'))
-    assert app._correction is newer
+    app._work_editor_result(frozen, token, Outcome('committed'))
+    assert app._work_editor is newer
 
 
 def test_real_tk_unchanged_correction_preserves_microseconds_and_no_evidence(connected, root):
@@ -779,7 +780,7 @@ def test_real_tk_committed_correction_survives_report_and_cleanup_failure(connec
     errors = [args[1] for args in root.test_errors]
     cleanup_error = next(exc for exc in errors if 'cleanup acknowledgement' in str(exc))
     assert any('remains committed' in note for note in cleanup_error.__notes__)
-    assert app._correction is None
+    assert app._work_editor is None
 
 
 def test_real_tk_unexpected_editor_destruction_retains_owner_request(connected, root, monkeypatch):
@@ -794,7 +795,7 @@ def test_real_tk_unexpected_editor_destruction_retains_owner_request(connected, 
     session.save.invoke()
     frozen = app.pending
     session.window.destroy()
-    assert app.editor is None and app._correction is None and app.pending is frozen
+    assert app.editor is None and app._work_editor is None and app.pending is frozen
     pump(root, lambda: not app.executing)
     assert app.pending is frozen and app.retry_button.winfo_manager()
     assert app.retry()
@@ -904,7 +905,7 @@ def test_real_tk_server_input_rejection_recovery_and_modal_blocking(connected, r
     mini = app.mini
     pump(root, lambda: mini is not None)
     click(app.buttons['Correct active start'])
-    session = app._correction
+    session = app._work_editor
     pump(root, lambda: root.grab_current() is session.window)
     press, replace = keyboard
     replace(session.fields[0], '2026-03-08')
@@ -930,7 +931,7 @@ def test_real_tk_server_input_rejection_recovery_and_modal_blocking(connected, r
     pump(root, lambda: app.editor is None and app.state['active']['version'] == 2)
     assert len(evidence(worker)['active_start_corrections']) == 1
     click(app.buttons['Correct active start'])
-    later = app._correction
+    later = app._work_editor
     pump(root, lambda: root.grab_current() is later.window)
     before = evidence(worker)
     press('Escape')

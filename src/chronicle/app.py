@@ -13,12 +13,14 @@ from uuid import uuid4
 
 from .mini_mode import MiniModeWindow
 from .records import ClockWarning, Outcome, Request, StaleState
-from .timekeeping import format_duration, from_us, local_minute_candidates, parse_date, to_us, utc_now
+from .timekeeping import format_duration, from_us, local_date, local_minute_candidates, parse_date, to_us, utc_now
 from .worker import Message
+
+WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 
 @dataclass
-class _ActiveStartEditor:
+class _WorkEditor:
     """One temporary draft, correlated with the owner's existing pending request."""
     window: object
     entry_id: str
@@ -35,6 +37,9 @@ class _ActiveStartEditor:
     request: Request | None = None
     token: int | None = None
     outcome: Outcome | None = None
+    purpose: str = "correct_active_start"
+    task_id: str | None = None
+    extra_selectors: tuple = ()
 
 
 class ChronicleApp:
@@ -48,7 +53,7 @@ class ChronicleApp:
         self.zone = None
         self.runtime = None
         self.mini = self.editor = None
-        self._correction = None
+        self._work_editor = None
         self._token, self._read_inflight, self._read_again = 0, None, False
         self._drain_id = self._tick_id = None
         self._shutdown_sent = False
@@ -76,6 +81,11 @@ class ChronicleApp:
             button = ttk.Button(bar, text=label, command=callback)
             button.grid(row=0, column=column, padx=2)
             self.buttons[label] = button
+        ttk.Label(bar, text="Week starts").grid(row=1, column=0, sticky="e", pady=(6,0))
+        self.week_selector = ttk.Combobox(bar, values=WEEKDAYS, state="disabled", width=12)
+        self.week_selector.current(6)
+        self.week_selector.grid(row=1, column=1, sticky="w", pady=(6,0))
+        self.week_selector.bind("<<ComboboxSelected>>", self._week_changed)
         self.headline = ttk.Label(self.root, text="Today: —    This week: —")
         self.headline.grid(row=1, column=0, sticky="w", padx=10)
         holder = ttk.Frame(self.root)
@@ -100,6 +110,11 @@ class ChronicleApp:
             button = ttk.Button(actions, text=label, command=callback)
             button.grid(row=0, column=column, padx=3, pady=6)
             self.buttons[label] = button
+        for column, (label, callback) in enumerate((("Add timed work", self.add_timed_work),
+                                                     ("Add date-only work", self.add_date_only_work))):
+            button = ttk.Button(actions, text=label, command=callback)
+            button.grid(row=1, column=column, padx=3, pady=4)
+            self.buttons[label] = button
         self.active_label = ttk.Label(self.root, text="No active timer")
         self.active_label.grid(row=4, column=0, sticky="w", padx=10)
         self.error = ttk.Label(self.root, text="", wraplength=700)
@@ -114,7 +129,7 @@ class ChronicleApp:
         self._controls()
 
     def can_mutate(self, *, origin=None):
-        owns_editor = (origin is not None and origin is self._correction
+        owns_editor = (origin is not None and origin is self._work_editor
                        and self.editor is origin.window and origin.phase == "editing")
         return (self.alive and self.ready and not self.closing and self.pending is None
                 and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor))
@@ -141,7 +156,7 @@ class ChronicleApp:
         task, active, enabled = self._selected(), self.state.get("active"), self.can_mutate()
         for name, button in self.buttons.items():
             allowed = enabled
-            if name in ("Rename task", "Assign project"):
+            if name in ("Rename task", "Assign project", "Add timed work", "Add date-only work"):
                 allowed &= task is not None
             if name == "Start":
                 allowed &= task is not None and active is None
@@ -150,6 +165,7 @@ class ChronicleApp:
             if name == "Switch":
                 allowed &= task is not None and active is not None and task["task_id"] != active["task_id"]
             button.configure(state="normal" if allowed else "disabled")
+        self.week_selector.configure(state="readonly" if enabled else "disabled")
         if (self.pending is not None or self._cleanup_failed) and not self.executing:
             self.retry_button.pack(side="left", padx=3)
             if self.closing and self.pending is not None:
@@ -296,16 +312,16 @@ class ChronicleApp:
     def _editor_destroyed(self, event, top):
         if event.widget is top and self.editor is top:
             self.editor = None
-            if self._correction is not None and self._correction.window is top:
-                self._correction = None  # The owner's pending request survives unexpected destruction.
+            if self._work_editor is not None and self._work_editor.window is top:
+                self._work_editor = None  # The owner's pending request survives unexpected destruction.
             self._controls()
 
     def _close_editor(self, top):
-        session = self._correction
+        session = self._work_editor
         if self.editor is top and session is not None and session.window is top:
             if session.request is not None:
                 session.status.configure(text=("Still processing; please wait." if self.executing else
-                                               "Correction may have committed. Retry/Reconcile or explicitly exit."))
+                                               "Save may have committed. Retry/Reconcile or explicitly exit."))
                 return False
         return self._dispose_editor(top)
 
@@ -316,13 +332,15 @@ class ChronicleApp:
             top.destroy()
         return True
 
-    def _correction_controls(self, session):
-        if self._correction is not session or self.editor is not session.window:
+    def _work_editor_controls(self, session):
+        if self._work_editor is not session or self.editor is not session.window:
             return
         editable = session.phase == "editing" and not self.closing
         for field in session.fields:
             field.configure(state="normal" if editable else "disabled")
-        session.selector.configure(state="readonly" if editable else "disabled")
+        for selector in (session.selector, *session.extra_selectors):
+            if selector is not None:
+                selector.configure(state="readonly" if editable else "disabled")
         session.save.configure(state="normal" if editable else "disabled")
         session.cancel.configure(state="normal" if session.request is None else "disabled")
         for button in (session.retry, session.exit):
@@ -331,8 +349,8 @@ class ChronicleApp:
             else:
                 button.pack_forget()
 
-    def _correction_result(self, request, token, result):
-        session = self._correction
+    def _work_editor_result(self, request, token, result):
+        session = self._work_editor
         if (session is None or self.editor is not session.window
                 or session.request is not request or session.token != token):
             return
@@ -340,7 +358,7 @@ class ChronicleApp:
         if result.status in ("committed", "unchanged"):
             session.request = None
             session.phase = "complete"
-            self._correction_controls(session)
+            self._work_editor_controls(session)
             self._close_editor(session.window)
             return
         if result.status == "unverified":
@@ -348,7 +366,8 @@ class ChronicleApp:
             text = "Correction may already have committed. Retry/Reconcile uses the exact request."
         else:
             session.request, session.token = None, None
-            session.phase = "stale" if isinstance(result.error, StaleState) else "editing"
+            session.phase = ("stale" if session.purpose == "correct_active_start"
+                             and isinstance(result.error, StaleState) else "editing")
             text = {
                 "rejected": "Correction rejected.",
                 "rolled_back": "This attempted change did not commit; you may edit and save again.",
@@ -356,19 +375,21 @@ class ChronicleApp:
             }.get(result.status, result.status)
             if session.phase == "stale":
                 text = "The reviewed active timer changed. Close and reopen for fresh review; this draft was retained."
+        if session.purpose != "correct_active_start":
+            text = text.replace("Correction", "Work entry").replace("correction", "work entry")
         if result.error:
             text += " " + str(result.error)
         session.status.configure(text=text)
-        self._correction_controls(session)
+        self._work_editor_controls(session)
 
-    def _correction_retry(self, session):
-        if (self._correction is not session or self.editor is not session.window
+    def _work_editor_retry(self, session):
+        if (self._work_editor is not session or self.editor is not session.window
                 or session.phase != "unverified" or self.pending is not session.request):
             return False
         return self.retry()
 
-    def _correction_exit(self, session):
-        if (self._correction is not session or self.editor is not session.window
+    def _work_editor_exit(self, session):
+        if (self._work_editor is not session or self.editor is not session.window
                 or session.phase != "unverified" or self.executing
                 or self.pending is not session.request):
             return False
@@ -424,7 +445,7 @@ class ChronicleApp:
         clock.configure(validate="key", validatecommand=(top.register(lambda value: changed(clock_text=value) or True), "%P"))
         changed()
         def save():
-            if self._correction is not session or not self.can_mutate(origin=session):
+            if self._work_editor is not session or not self.can_mutate(origin=session):
                 return False
             selected = choices.get(selector.get())
             if choices and selected is None:
@@ -439,18 +460,135 @@ class ChronicleApp:
             session.phase = "executing"
             session.outcome = None
             error.configure(text="Saving; waiting for the database result…")
-            self._correction_controls(session)
+            self._work_editor_controls(session)
             return True
         save_button = ttk.Button(top, text="Correct start", command=save)
         save_button.pack(pady=8)
         cancel = ttk.Button(top, text="Cancel", command=lambda: self._close_editor(top))
         cancel.pack(pady=4)
-        retry = ttk.Button(top, text="Retry/Reconcile", command=lambda: self._correction_retry(session))
-        exit_button = ttk.Button(top, text="Exit despite unresolved save", command=lambda: self._correction_exit(session))
-        session = _ActiveStartEditor(top, active["entry_id"], active["version"], tuple(fields),
+        retry = ttk.Button(top, text="Retry/Reconcile", command=lambda: self._work_editor_retry(session))
+        exit_button = ttk.Button(top, text="Exit despite unresolved save", command=lambda: self._work_editor_exit(session))
+        session = _WorkEditor(top, active["entry_id"], active["version"], tuple(fields),
                                      selector, choices, error, save_button, cancel, retry, exit_button)
-        self._correction = session
+        self._work_editor = session
         self._present_editor(top)
+
+    def _week_changed(self, event=None):
+        if not self.can_mutate():
+            return False
+        return self._submit("set_week_start", week_start=self.week_selector.current(),
+                            expected_week_start=self.state["week_start"])
+
+    def add_timed_work(self):
+        return self._open_manual_work("add_timed_work")
+
+    def add_date_only_work(self):
+        return self._open_manual_work("add_date_only_work")
+
+    def _open_manual_work(self, operation):
+        task = self._selected()
+        if task is None or not self.can_mutate():
+            return False
+        top = None
+        try:
+            # Initialization is an observation for drafts, never a saved work endpoint.
+            initial_date = local_date(to_us(self.now_utc()), self.zone).isoformat()
+            top = tk.Toplevel(self.root)
+            self.editor = top
+            top.title("Add timed work" if operation == "add_timed_work" else "Add date-only work")
+            top.transient(self.root)
+            ttk.Label(top, text=f"Task: {task['name']}\n{task['task_id']}").pack(padx=12, pady=8)
+            fields, selectors, mappings = [], [], []
+
+            def field(label, initial=""):
+                ttk.Label(top, text=label).pack(anchor="w", padx=12)
+                entry = ttk.Entry(top, width=42)
+                entry.insert(0, initial)
+                entry.pack(padx=12, pady=3)
+                fields.append(entry)
+                return entry
+
+            def endpoint(label):
+                day = field(label + " date (YYYY-MM-DD)", initial_date)
+                clock = field(label + " time (minute precision)")
+                selector = ttk.Combobox(top, state="readonly", width=42)
+                choices = {}
+                selectors.append(selector)
+                mappings.append(choices)
+                def changed(day_text=None, clock_text=None):
+                    selector.set("")
+                    choices.clear()
+                    selector.pack_forget()
+                    try:
+                        candidates = local_minute_candidates(parse_date(day.get() if day_text is None else day_text),
+                                                             clock.get() if clock_text is None else clock_text, self.zone)
+                        if len(candidates) == 2:
+                            for i, candidate in enumerate(candidates):
+                                text = from_us(candidate).astimezone(self.zone).strftime("%H:%M (UTC%z)")
+                                choices[("First " if i == 0 else "Second ") + text] = ("first", "second")[i]
+                            selector.configure(values=list(choices))
+                            selector.pack(padx=12, pady=3)
+                    except ValueError:
+                        pass  # Preserve invalid drafts; the worker validates Save.
+                day.configure(validate="key", validatecommand=(top.register(lambda value: changed(day_text=value) or True), "%P"))
+                clock.configure(validate="key", validatecommand=(top.register(lambda value: changed(clock_text=value) or True), "%P"))
+                return day, clock
+
+            if operation == "add_timed_work":
+                start_day, start_clock = endpoint("Start")
+                end_day, end_clock = endpoint("End")
+            else:
+                day = field("Work date (YYYY-MM-DD)", initial_date)
+                duration = field("Duration (H:MM)")
+            comment = field("Optional comment")
+            status = ttk.Label(top, text="", wraplength=430)
+            status.pack(padx=12, pady=6)
+            def save():
+                if self._work_editor is not session or not self.can_mutate(origin=session):
+                    return False
+                occurrences = [mapping.get(selector.get()) for mapping, selector in zip(mappings, selectors)]
+                if any(mapping and value is None for mapping, value in zip(mappings, occurrences)):
+                    status.configure(text="Select the first or second occurrence for each repeated minute.")
+                    return False
+                args = dict(task_id=session.task_id, entry_id=session.entry_id, comment=comment.get())
+                if operation == "add_timed_work":
+                    args.update(start_date=start_day.get(), start_time=start_clock.get(), end_date=end_day.get(),
+                                end_time=end_clock.get(), start_occurrence=occurrences[0], end_occurrence=occurrences[1])
+                else:
+                    args.update(work_date=day.get(), duration_text=duration.get())
+                if not self._submit(operation, _origin=session, **args):
+                    status.configure(text=self.status.cget("text"))
+                    return False
+                session.request, session.token = self.pending, self._pending_token
+                session.phase, session.outcome = "executing", None
+                status.configure(text="Saving; waiting for the database result…")
+                self._work_editor_controls(session)
+                return True
+            save_button = ttk.Button(top, text="Save", command=save)
+            save_button.pack(pady=5)
+            cancel = ttk.Button(top, text="Cancel", command=lambda: self._close_editor(top))
+            cancel.pack(pady=4)
+            retry = ttk.Button(top, text="Retry/Reconcile", command=lambda: self._work_editor_retry(session))
+            exit_button = ttk.Button(top, text="Exit despite unresolved save", command=lambda: self._work_editor_exit(session))
+            session = _WorkEditor(top, str(uuid4()), 0, tuple(fields), selectors[0] if selectors else None,
+                                  mappings[0] if mappings else {}, status, save_button, cancel, retry, exit_button,
+                                  purpose=operation, task_id=task["task_id"], extra_selectors=tuple(selectors[1:]))
+            self._work_editor = session
+            self._present_editor(top)
+            return True
+        except Exception as primary:
+            if top is not None:
+                try:
+                    self._dispose_editor(top)
+                    if self.editor is top:
+                        self.editor = self._work_editor = None
+                        self._controls()
+                except Exception as secondary:
+                    primary.add_note(f"Manual form construction cleanup failed: {secondary!r}")
+            if self.alive:
+                self.status.configure(text=f"Unable to open manual work: {primary}")
+            self._diagnose(primary)
+            return False
 
     def open_mini(self):
         if not self.alive or self.closing or self.editor is not None:
@@ -510,7 +648,10 @@ class ChronicleApp:
             started = from_us(active["start_utc_us"]).astimezone(self.zone)
             active_text = f"Running: {name} — since {started.isoformat()}"
         selected = self.selected_task_id()
+        previous_week = self.state.get("week_start")
         self.state = deepcopy(candidate)
+        if candidate["week_start"] != previous_week:
+            self.week_selector.current(candidate["week_start"])
         valid = {row[0] for row in prepared}
         for old in self.tree.get_children():
             if old not in valid:
@@ -536,6 +677,8 @@ class ChronicleApp:
             self.dataset_id, self.timezone = message.value["dataset_id"], message.value["timezone"]
             self.zone = message.value["zone"]
             self.runtime = message.value["runtime"]
+            self.state["week_start"] = message.value["week_start"]
+            self.week_selector.current(self.state["week_start"])
             self.status.configure(text=(f"SQLite {self.runtime['sqlite']} — "
                                         f"{self.runtime['journal_mode'].upper()} / "
                                         f"synchronous={self.runtime['synchronous']} (EXTRA) / "
@@ -559,13 +702,15 @@ class ChronicleApp:
                 self.status.configure(text={"committed": "Saved.", "unchanged": "Unchanged; nothing written.",
                                             "rejected": "Action rejected.", "rolled_back": "Operation rolled back.",
                                             "unavailable": "Database unavailable; operation did not begin."}.get(result.status, result.status))
+            if request.operation == "set_week_start" and result.status not in ("committed", "unchanged", "unverified"):
+                self.week_selector.current(self.state["week_start"])
             if result.error:
                 self.status.configure(text=self.status.cget("text") + " " + str(result.error))
                 self._diagnose(result.error)
             try:
-                self._correction_result(request, message.token, result)
+                self._work_editor_result(request, message.token, result)
             except Exception as exc:
-                exc.add_note(f"Authoritative correction outcome remains {result.status}; presentation/cleanup failed.")
+                exc.add_note(f"Authoritative work outcome remains {result.status}; presentation/cleanup failed.")
                 self._diagnose(exc)
             self._controls()
             if self.closing:
@@ -655,18 +800,18 @@ class ChronicleApp:
         self.executing = True
         self._token += 1
         self._pending_token = self._token  # Each delivery attempt rejects earlier/duplicate completions.
-        session = self._correction
+        session = self._work_editor
         if session is not None and session.request is self.pending:
             session.token = self._pending_token
             session.phase = "executing"
             session.status.configure(text="Reconciling the exact request; waiting for the database result…")
-            self._correction_controls(session)
+            self._work_editor_controls(session)
         try:
             self.worker.requests.put(Message("reconcile", self._pending_token, self.pending))
         except Exception as exc:
             self.executing = False
             if session is not None and session.request is self.pending:
-                self._correction_result(self.pending, self._pending_token, Outcome("unverified", error=exc))
+                self._work_editor_result(self.pending, self._pending_token, Outcome("unverified", error=exc))
             self.status.configure(text=f"Reconciliation not submitted; original request retained. {exc}")
             self._diagnose(exc)
             self._controls()
@@ -679,9 +824,9 @@ class ChronicleApp:
         if not self.alive:
             return
         if self.editor is not None:
-            session = self._correction
+            session = self._work_editor
             if session is not None and session.phase == "unverified" and not self.executing:
-                self._correction_exit(session)
+                self._work_editor_exit(session)
             return
         if self.closing:
             if not self.executing and self.pending is None and not self._shutdown_sent:
@@ -717,7 +862,7 @@ class ChronicleApp:
         if not self.alive or self.executing or not self.closing or self.pending is None:
             return False
         self.executing = True
-        session = self._correction
+        session = self._work_editor
         parent = session.window if session is not None and self.editor is session.window else self.root
         try:
             confirmed = messagebox.askyesno("Unresolved save", "The operation may already have committed. Exit loses this session's retry inputs. No work or evidence is undone. Exit anyway?",

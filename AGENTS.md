@@ -36,15 +36,18 @@ unresolved material design choice for user/ChatGPT adjudication.
 Read the product contract and target architecture before replacement work.
 Stage 0's documentation gate is independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`. The active rewrite workstream is
-`feature/chronicle-rewrite`, originating at that commit. Stage 1 is the next active
-engineering stage. Its approved Stage 1A connected SQLite timer slice is
+`feature/chronicle-rewrite`, originating at that commit. Stage 1 supplies the timer
+engineering foundation. Its approved Stage 1A connected SQLite timer slice is
 implemented and accepted. Stage 1B portable reliability is accepted at
 `1e84a043c1c055aced9b8c4b000ef766bbf6d178`. Stage 1C selects built-in sqlite3,
 DELETE/EXTRA/foreign keys and direct Python source execution. Stage 1 functional
 completion awaits independent adjudication; native Windows source evidence is
 required before deployment/pilot, not an executable-build or Stage 2 blocker.
-Subsequent execution remains bounded and
-independently reviewed, using substantial coherent slices without microtasks.
+The explicit Stage 2A approval now authorizes connected mixed work, immutable
+revision/read services, shared accounting and week configuration. Stage 2 remains
+In Progress; Stage 2B History/inline editing and Stage 3 POL-R remain pending.
+Subsequent execution stays bounded and independently reviewed, using substantial
+coherent slices without microtasks.
 The fresh rewrite
 requires no legacy JSONL compatibility/import, old internal APIs or duplicate UI
 paths. Existing user files remain protected; no reset, clean or user-data mutation

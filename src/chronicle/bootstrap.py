@@ -15,7 +15,7 @@ from .worker import DatabaseWorker
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Chronicle SQLite timer (Stage 1 engineering foundation)")
+    parser = argparse.ArgumentParser(description="Chronicle task timer and manual work")
     parser.add_argument("--data-dir", required=True, type=Path)
     parser.add_argument("--timezone")
     parser.add_argument("--create", action="store_true")

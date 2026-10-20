@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from .dataset_lock import DatasetLock
 from .records import Outcome, Request, canonical, uuid_text
-from .timekeeping import MIN_US, MAX_US, load_zone
+from .timekeeping import MIN_US, MAX_US, load_zone, parse_date
 
 SCHEMA_VERSION = 1
 APPLICATION_ID = 0x4348524E
@@ -55,22 +55,30 @@ CREATE TABLE committed_requests (
 ) STRICT;
 CREATE TABLE work_entries (
  entry_id TEXT PRIMARY KEY {uuid_constraint('entry_id')}, task_id TEXT NOT NULL REFERENCES tasks(task_id),
- kind TEXT NOT NULL CHECK(kind='timed'),
- original_start_utc_us INTEGER NOT NULL CHECK(original_start_utc_us {STAMP}),
+ kind TEXT NOT NULL CHECK(kind IN ('timed','date_only')),
+ original_start_utc_us INTEGER CHECK(original_start_utc_us {STAMP}),
  current_revision INTEGER CHECK(current_revision>0),
  created_request_id TEXT NOT NULL REFERENCES committed_requests(request_id) DEFERRABLE INITIALLY DEFERRED,
+ CHECK((kind='timed' AND original_start_utc_us IS NOT NULL)
+    OR (kind='date_only' AND original_start_utc_us IS NULL AND current_revision IS NOT NULL)),
  UNIQUE(entry_id,task_id), UNIQUE(entry_id,kind),
  FOREIGN KEY(entry_id,current_revision,kind) REFERENCES work_revisions(entry_id,revision,kind)
  DEFERRABLE INITIALLY DEFERRED
 ) STRICT;
 CREATE TABLE work_revisions (
  entry_id TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision>0),
- kind TEXT NOT NULL CHECK(kind='timed'),
- start_utc_us INTEGER NOT NULL CHECK(start_utc_us {STAMP}),
- stop_utc_us INTEGER NOT NULL CHECK(stop_utc_us {STAMP} AND stop_utc_us>start_utc_us),
+ kind TEXT NOT NULL CHECK(kind IN ('timed','date_only')),
+ start_utc_us INTEGER CHECK(start_utc_us {STAMP}),
+ stop_utc_us INTEGER CHECK(stop_utc_us {STAMP}),
+ work_date TEXT, duration_us INTEGER,
  is_deleted INTEGER NOT NULL DEFAULT 0 CHECK(is_deleted IN (0,1)), comment TEXT NOT NULL,
  audit_utc_us INTEGER NOT NULL CHECK(audit_utc_us {STAMP}),
  request_id TEXT NOT NULL REFERENCES committed_requests(request_id) DEFERRABLE INITIALLY DEFERRED,
+ CHECK((kind='timed' AND start_utc_us IS NOT NULL AND stop_utc_us IS NOT NULL
+        AND stop_utc_us>start_utc_us AND work_date IS NULL AND duration_us IS NULL)
+    OR (kind='date_only' AND start_utc_us IS NULL AND stop_utc_us IS NULL
+        AND work_date IS NOT NULL AND work_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        AND length(work_date)=10 AND duration_us IS NOT NULL AND duration_us>0)),
  PRIMARY KEY(entry_id,revision), UNIQUE(entry_id,revision,kind),
  FOREIGN KEY(entry_id,kind) REFERENCES work_entries(entry_id,kind)
 ) STRICT;
@@ -95,10 +103,26 @@ CREATE TRIGGER work_identity_immutable BEFORE UPDATE OF entry_id,task_id,kind,or
 CREATE TRIGGER work_identity_retained BEFORE DELETE ON work_entries
  BEGIN SELECT RAISE(ABORT,'retained work identity'); END;
 CREATE TRIGGER active_only_open BEFORE INSERT ON active_timer
- WHEN EXISTS(SELECT 1 FROM work_entries WHERE entry_id=NEW.entry_id AND current_revision IS NOT NULL)
- BEGIN SELECT RAISE(ABORT,'entry already closed'); END;
+ WHEN EXISTS(SELECT 1 FROM work_entries WHERE entry_id=NEW.entry_id AND (kind!='timed' OR current_revision IS NOT NULL))
+ BEGIN SELECT RAISE(ABORT,'entry already closed or not timed'); END;
 CREATE TRIGGER active_identity_immutable BEFORE UPDATE OF entry_id,task_id,singleton ON active_timer
  BEGIN SELECT RAISE(ABORT,'immutable active identity'); END;
+CREATE TRIGGER revision_successor BEFORE INSERT ON work_revisions
+ WHEN NEW.revision != COALESCE((SELECT max(revision)+1 FROM work_revisions WHERE entry_id=NEW.entry_id),1)
+   OR EXISTS(SELECT 1 FROM work_revisions WHERE entry_id=NEW.entry_id AND is_deleted=1)
+   OR (NEW.is_deleted=1 AND NOT EXISTS(SELECT 1 FROM work_revisions p
+       WHERE p.entry_id=NEW.entry_id AND p.revision=NEW.revision-1
+         AND p.start_utc_us IS NEW.start_utc_us AND p.stop_utc_us IS NEW.stop_utc_us
+         AND p.work_date IS NEW.work_date AND p.duration_us IS NEW.duration_us))
+ BEGIN SELECT RAISE(ABORT,'invalid revision successor'); END;
+CREATE TRIGGER current_revision_forward BEFORE UPDATE OF current_revision ON work_entries
+ WHEN NEW.current_revision IS NOT OLD.current_revision
+   AND (NEW.current_revision IS NULL OR NEW.current_revision != COALESCE(OLD.current_revision+1,1))
+ BEGIN SELECT RAISE(ABORT,'current revision must advance by one'); END;
+CREATE TRIGGER correction_active_only BEFORE INSERT ON active_start_corrections
+ WHEN NOT EXISTS(SELECT 1 FROM active_timer a WHERE a.entry_id=NEW.entry_id
+   AND a.version+1=NEW.version AND a.start_utc_us=NEW.prior_start_utc_us)
+ BEGIN SELECT RAISE(ABORT,'correction must match active timer'); END;
 CREATE TRIGGER closed_not_active BEFORE UPDATE OF current_revision ON work_entries
  WHEN NEW.current_revision IS NOT NULL AND EXISTS(SELECT 1 FROM active_timer WHERE entry_id=NEW.entry_id)
  BEGIN SELECT RAISE(ABORT,'entry still active'); END;
@@ -163,7 +187,7 @@ class SQLiteStore:
                 self.connection.execute("BEGIN IMMEDIATE")
                 for statement in schema_statements():
                     self.connection.execute(statement)
-                self.connection.execute("INSERT INTO dataset_meta VALUES(1,?,?,6)", (str(uuid4()), timezone))
+                self.connection.execute("INSERT INTO dataset_meta(singleton,dataset_id,timezone,week_start) VALUES(1,?,?,6)", (str(uuid4()), timezone))
                 self.connection.execute(f"PRAGMA application_id={APPLICATION_ID}")
                 self.connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self.connection.execute("COMMIT")
@@ -174,7 +198,7 @@ class SQLiteStore:
                 self._profile()
             self._verify(self.connection)
             row = self.connection.execute("SELECT * FROM dataset_meta").fetchone()
-            self.dataset_id, self.timezone, self.week_start = row["dataset_id"], row["timezone"], row["week_start"]
+            self.dataset_id, self.timezone = row["dataset_id"], row["timezone"]
             uuid_text(self.dataset_id)
             if timezone is not None and timezone != self.timezone:
                 raise ValueError("Explicit timezone conflicts with this dataset")
@@ -217,6 +241,11 @@ class SQLiteStore:
                 primary._chronicle_cleanup_store = self
                 raise  # A failed close is still a real startup failure.
 
+    @property
+    def week_start(self):
+        """Read current metadata on the owning thread, never a cached setting."""
+        return self.connection.execute("SELECT week_start FROM dataset_meta").fetchone()[0]
+
     def _connect(self):
         conn = sqlite3.connect(self.path.as_uri() + "?mode=rw", uri=True,
                                isolation_level=None, timeout=BUSY_MS / 1000)
@@ -254,17 +283,21 @@ class SQLiteStore:
             raise ValueError("Dataset integrity check failed")
         normalize = lambda text: " ".join(text.lower().split()).rstrip(";")
         definitions = {r[0]: normalize(r[1]) for r in c.execute("SELECT name,sql FROM sqlite_schema WHERE sql IS NOT NULL")}
+        expected_names = set()
         for statement in schema_statements():
             name = re.match(r"CREATE (?:TABLE|INDEX|TRIGGER) (\w+)", statement)[1]
+            expected_names.add(name)
             if definitions.get(name) != normalize(statement):
                 raise ValueError(f"Schema definition differs: {name}")
+        if {name for name in definitions if not name.startswith("sqlite_")} != expected_names:
+            raise ValueError("Unexpected schema objects; no automatic repair/upgrade")
         tables = {r[1]: r for r in c.execute("PRAGMA table_list")}
         for name in ("dataset_meta", "projects", "tasks", "committed_requests", "work_entries",
                      "work_revisions", "active_timer", "active_start_corrections"):
             if name not in tables or tables[name][5] != 1:
                 raise ValueError(f"Missing STRICT table: {name}")
         required = {"work_identity_immutable", "work_identity_retained", "active_only_open",
-                    "active_identity_immutable", "closed_not_active"}
+                    "active_identity_immutable", "closed_not_active", "revision_successor", "current_revision_forward", "correction_active_only"}
         required |= {f"immutable_{table}_{verb}" for table in
                      ("work_revisions", "active_start_corrections", "committed_requests") for verb in ("update", "delete")}
         present = {r[0] for r in c.execute("SELECT name FROM sqlite_schema WHERE type='trigger'")}
@@ -280,24 +313,44 @@ class SQLiteStore:
     @staticmethod
     def assert_lifecycle(c):
         bad = c.execute("""SELECT e.entry_id FROM work_entries e LEFT JOIN active_timer a USING(entry_id)
-          WHERE (e.current_revision IS NULL AND a.entry_id IS NULL)
+          WHERE (a.entry_id IS NOT NULL AND e.kind!='timed')
+             OR (e.current_revision IS NULL AND a.entry_id IS NULL)
              OR (e.current_revision IS NOT NULL AND a.entry_id IS NOT NULL) LIMIT 1""").fetchone()
         if bad:
             raise ValueError(f"Invalid active/closed lifecycle: {bad[0]}")
         for table, key in (("tasks", "task_id"), ("projects", "project_id"), ("work_entries", "entry_id")):
             for row in c.execute(f"SELECT {key} FROM {table}"):
                 uuid_text(row[0])
-        for row in c.execute("SELECT * FROM active_timer"):
-            corrections = list(c.execute("SELECT * FROM active_start_corrections WHERE entry_id=? ORDER BY version", (row["entry_id"],)))
-            prior = c.execute("SELECT original_start_utc_us FROM work_entries WHERE entry_id=?", (row["entry_id"],)).fetchone()[0]
-            version = 1
+        for entry in c.execute("SELECT * FROM work_entries"):
+            revisions = list(c.execute("SELECT * FROM work_revisions WHERE entry_id=? ORDER BY revision", (entry["entry_id"],)))
+            expected = entry["current_revision"] or 0
+            if len(revisions) != expected or any(r["revision"] != i for i, r in enumerate(revisions, 1)):
+                raise ValueError("Invalid current revision chain")
+            previous = None
+            for revision in revisions:
+                if revision["kind"] != entry["kind"] or (previous is not None and previous["is_deleted"]):
+                    raise ValueError("Invalid revision kind/deleted successor")
+                if revision["kind"] == "date_only":
+                    if parse_date(revision["work_date"]).isoformat() != revision["work_date"]:
+                        raise ValueError("Invalid revision civil date")
+                if revision["is_deleted"]:
+                    if previous is None or any(revision[key] != previous[key] for key in
+                                              ("start_utc_us", "stop_utc_us", "work_date", "duration_us")):
+                        raise ValueError("Deletion must retain prior work values")
+                previous = revision
+            corrections = list(c.execute("SELECT * FROM active_start_corrections WHERE entry_id=? ORDER BY version", (entry["entry_id"],)))
+            prior, version = entry["original_start_utc_us"], 1
             for correction in corrections:
                 version += 1
-                if correction["version"] != version or correction["prior_start_utc_us"] != prior:
+                if (entry["kind"] != "timed" or correction["version"] != version
+                        or correction["prior_start_utc_us"] != prior):
                     raise ValueError("Invalid active-start audit chain")
                 prior = correction["corrected_start_utc_us"]
-            if row["version"] != version or row["start_utc_us"] != prior:
+            active = c.execute("SELECT * FROM active_timer WHERE entry_id=?", (entry["entry_id"],)).fetchone()
+            if active and (active["version"] != version or active["start_utc_us"] != prior):
                 raise ValueError("Active start does not match immutable evidence")
+            if revisions and entry["kind"] == "timed" and revisions[0]["start_utc_us"] != prior:
+                raise ValueError("Initial closed revision does not match original/active-start evidence")
 
     @staticmethod
     def _receipt(c, request, content):

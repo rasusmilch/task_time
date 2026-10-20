@@ -39,7 +39,9 @@ source/history branch; normal rewrite publication uses the new branch under
 [AGENTS.md](../AGENTS.md). Its origin does not pin the old branch's future HEAD.
 The independently reviewed bounded plan led to the explicitly approved Stage 1A
 execution. Subsequent substantial slices remain independently reviewed; this
-status does not authorize Stage 2/3 or resolve reserved release policy.
+status alone does not authorize later stages or resolve reserved release policy.
+The subsequent explicit Stage 2A execution approval authorizes only the bounded
+connected mixed-work outcome below.
 
 ## Stage 1 — Working timer foundation
 
@@ -74,9 +76,15 @@ A foundation without POL-R is not core signoff.
 
 ## Stage 2 — Complete core work recording
 
-**Selected / not implemented.** Manual genuine intervals and date-only amounts;
-correction/deletion with stable UUID revisions/details; mixed History with inline
-editing; shared exact daily/weekly accounting and selectable week convention.
+**IN PROGRESS — Stage 2A delivered for independent review; Stage 2B pending.**
+Stage 2A connects genuine timed and date-only creation, immutable typed revisions,
+closed/date-only correction/deletion services, shared exact main/mini/daily Actual,
+task-scoped history/revision reads and all seven persisted week-start choices.
+Active-reader completeness is established before exposing manual writers.
+
+Stage 2B must deliver the modal mixed History browser and inline whole-entry
+correction/deletion with revision/audit presentation. Those UI controls are not
+partially exposed by Stage 2A.
 Preserve periods/drafts/session sorting, full-entry identity, unchanged precision,
 minute changes and explicit DST resolution.
 

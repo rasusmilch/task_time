@@ -125,3 +125,35 @@ def format_duration(value: int) -> str:
     integer(value, "Duration", 0, 2**63 - 1)
     minutes = value // 60_000_000
     return f"{minutes // 60:02d}:{minutes % 60:02d}"
+
+
+def parse_duration(text: str) -> int:
+    """Positive minute-resolution H:MM, in exact bounded microseconds."""
+    if type(text) is not str:
+        raise ValueError("Duration must be positive H:MM")
+    match = re.fullmatch(r"([0-9]+):([0-5][0-9])", text.strip())
+    if not match:
+        raise ValueError("Duration must be positive H:MM; minutes must be 00–59")
+    # Avoid both unbounded conversion and Python's integer-string limit.
+    hours = match[1].lstrip('0') or '0'
+    if len(hours) > 10:
+        raise ValueError("Duration overflows integer microseconds")
+    return integer((int(hours) * 60 + int(match[2])) * 60_000_000,
+                   "Duration microseconds", 1, 2**63 - 1)
+
+
+def resolve_minute(date_text: str, time_text: str, occurrence: str | None, zone: ZoneInfo,
+                   *, original: int | None = None) -> int:
+    """Same strict local-minute rules for new and revised genuine endpoints."""
+    if original is not None:
+        return resolve_start(original, date_text, time_text, occurrence, zone)
+    if occurrence not in (None, 'first', 'second') or type(occurrence) not in (str, type(None)):
+        raise ValueError("Occurrence must be first, second or empty")
+    candidates = local_minute_candidates(parse_date(date_text), time_text, zone)
+    if not candidates:
+        raise ValueError("The local minute does not exist")
+    if len(candidates) == 2 and occurrence is None:
+        raise ValueError("Select the first or second occurrence of this repeated minute")
+    if len(candidates) == 1 and occurrence is not None:
+        raise ValueError("Ordinary minutes require no occurrence selection")
+    return candidates[1 if occurrence == 'second' else 0]

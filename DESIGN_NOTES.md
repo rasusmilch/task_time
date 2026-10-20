@@ -6,6 +6,10 @@ reliability is accepted. Stage 1C uses built-in sqlite3 DELETE/EXTRA/foreign key
 with STRICT (SQLite 3.37.0+) and direct Python source execution; the executable
 build path is retired. Stage 1 functional review and native source-deployment
 qualification are distinct; the latter remains pending before real use/pilot.
+Stage 2A now adds connected timed/date-only creation, immutable revision/deletion
+services, shared mixed Actual, task history/revision readers and persisted week
+start. Its forms reuse the application-owned request/session path. The Stage 2B
+modal History/inline editor and Stage 3 remain pending; Stage 2 is In Progress.
 These changes do not qualify the retained JSONL implementation.
 Its active-start recovery retains the modal draft through asynchronous failure and
 offers exact-request reconciliation within that editor; queue acceptance is not Save
@@ -27,7 +31,8 @@ History, Timesheet or POL-R is exposed by the new Stage 1A timer.
 The selected [quarter-hour contract](docs/EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
 remains mandatory for later core completion. Retained JSONL confirmations use
 hundredths/Actual-as-Enter; they do not implement that contract. SQLite recording
-is delivered, while Stage 2/3 and native release qualification are not.
+is delivered with Stage 2A; Stage 2B, Stage 3 and native release qualification
+remain pending.
 
 ## Architecture
 

@@ -10,7 +10,9 @@ semantics and the single full-week quarter-hour algorithm to
 [EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md); sequence
 to [ROADMAP.md](ROADMAP.md); validation to [TESTING_STRATEGY.md](TESTING_STRATEGY.md).
 [DESIGN_NOTES.md](../DESIGN_NOTES.md) describes retained, unshipped JSONL source.
-Stage 1A implements the connected SQLite timer/worker/main/mini foundation.
+Stage 1A implements the connected SQLite timer/worker/main/mini foundation;
+Stage 2A adds connected manual work, typed revision/read services, mixed accounting
+and persisted week configuration.
 Inline History editing and later Timesheet/POL-R remain unimplemented. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
@@ -223,7 +225,7 @@ not interrupted. No repaint/shutdown infers missing stops.
 `bootstrap` requires explicit data-dir/create/zone arguments. `dataset_lock` holds
 OS ownership before writable open; unknown/nonempty create targets and unknown
 schema versions refuse without data cleanup. `sqlite_store` owns isolation_level=None,
-BEGIN IMMEDIATE/COMMIT/ROLLBACK and checked STRICT schema version 1. Dataset/task/
+BEGIN IMMEDIATE/COMMIT/ROLLBACK and checked STRICT fresh schema version 1. Dataset/task/
 project UUIDs, optional membership, timed work identities/current immutable revisions,
 one active row, immutable active-start audits and committed receipts are relational.
 Original start never changes; active effective start/version follows its audit chain.
@@ -241,8 +243,8 @@ retain the partial store solely for cleanup; it removes that explicit handoff be
 reporting the original error to Tk. Failed close never means stopped or releases
 ownership early. The existing explicit cleanup retry loop remains on the worker.
 The UI retains cleanup failure/Retry even after selection refresh and cannot cancel
-back into mutations once the worker has left its operation loop. No new schema,
-pending registry or automatic recovery loop is introduced. Known completion
+back into mutations once the worker has left its operation loop. Cleanup handoff
+adds no schema, pending registry or automatic recovery loop. Known completion
 survives later read/render failure. No new request identity is allocated for retry.
 
 `services` exposes explicit task/project/Start/Stop/Switch/correct-active-start/read/
@@ -252,7 +254,7 @@ main/mini consume one report/cutoff. Unavailable numbers never substitute zero.
 bounded queue drain, read invalidation and orderly shutdown. `mini_mode` delegates
 controls and renders supplied values. Constructors do not wait. Short toolkit
 metadata/confirmation dialogs are owned and guarded; active-start correction uses
-callback-driven local modal presentation. One temporary `_ActiveStartEditor` holds
+callback-driven local modal presentation. One temporary `_WorkEditor` holds
 the original UUID/version, fields/occurrence/comment and the owner's submitted
 Request/token. Queue acceptance retains the window and locks fields/Close; only a
 matching committed/unchanged result disposes it. Validation, known rollback and
@@ -270,13 +272,14 @@ Canceled exit retains its session; confirmed exit closes orderly without undoing
 possible commitment. External editor destruction clears widget references only;
 the owner still reconciles pending evidence. Committed diagnostics and later
 presentation/cleanup errors remain distinct from the verified result. Main/mini
-callbacks respect editor ownership, with a narrow correction-origin submission.
+callbacks respect editor ownership, with a narrow owned-work-form submission.
 Workers never call Tk. Temporary detached UI state is not another datastore.
-No settings, snapshots, exports or per-tick writes are added.
+No UI-settings files, snapshots, exports or per-tick writes are added.
 
-Future dated revisions/export basis/confirmation batches/cells/current references
-extend schema under protected versioned upgrades, preserving stable identities.
-Stage 1A exposes none of those writers or workflows. Stage 1B exercises real SQLite
+Stage 2A extends the fresh development schema directly for date-only revisions;
+older development signatures refuse, without a migration path. Future export
+basis/confirmation batches/cells/current references remain Stage 3 work, preserving
+stable identities. The current application exposes none of those export/POL-R workflows. Stage 1B exercises real SQLite
 process death at transaction/receipt/commit boundaries, atomic Switch, historical
 exact retries, active restart/calendar continuity, ordinary ownership races and
 rollback-journal pre-COMMIT and post-cleanup boundaries. These bounded local
@@ -291,6 +294,97 @@ pip within available permissions; stdlib supplies sqlite3, Tkinter/ttk and the
 worker queues/threading. Missing Tk/rules fail actionably, never auto-download.
 No executable builder or project build is required. [RUNNING.md](../RUNNING.md)
 is the single source-running guide; `scripts/run.ps1` is a thin optional launcher.
+
+## Implemented Stage 2A mixed-work boundary
+
+`work_entries` is the shared immutable task/UUID/kind identity. Timed identities
+retain a genuine original start; date_only identities require NULL original start
+and a current revision. `work_revisions` is the sole immutable closed/date-only
+revision authority. Timed revisions have positive genuine UTC endpoints and NULL
+date/duration fields. Date-only revisions have a canonical civil date and positive
+integer duration_us, with NULL endpoints. Services parse complete calendar dates;
+SQL shape checks do not prove date validity. Initial closed/manual creation writes
+identity, revision 1, current reference and receipt atomically. Stop still closes
+the active entry under the same typed model.
+
+Edits append the next revision and atomically advance the current reference.
+Deletion appends a deleted revision preserving the previous work values; no
+identity/revision is physically removed. Kind/ownership/original start remain
+immutable. Triggers enforce successor/deletion shape, forward references,
+active-only start audits and timed-only active ownership. Final transaction/reopen
+checks validate complete contiguous chains, current references, deletion terminality,
+real dates and original/active-start evidence. Exact schema-object signatures
+reject incompatible or unknown structures. The profile and schema version remain
+DELETE/EXTRA/FK and 1; there is no automatic upgrade, conversion or recreation.
+
+The explicit `TimerService` mutation interfaces below all return Outcome and
+require keyword-only `request_id: str, action_utc_us: int`; dataset identity comes
+from the owned store or is validated on an explicit frozen Request. Common
+`comment: str = ""` is keyword-only. Input dates/clocks/duration are text.
+
+| Method | Work-specific arguments |
+| --- | --- |
+| add_timed_work | task_id, entry_id, start_date, start_time, end_date, end_time; keyword start_occurrence=None, end_occurrence=None, comment="". |
+| add_date_only_work | task_id, entry_id, work_date, duration_text; keyword comment="". |
+| edit_closed_timed_work | task_id, entry_id, start_date, start_time, end_date, end_time; keyword expected_revision: int, start_occurrence=None, end_occurrence=None, comment="". |
+| edit_date_only_work | task_id, entry_id, work_date, duration_text; keyword expected_revision: int, comment="". |
+| delete_work_entry | task_id, entry_id; keyword expected_revision: int, comment="". |
+| set_week_start | week_start: int; keyword expected_week_start: int (no comment). |
+
+Identity arguments are canonical UUID strings; date/time arguments are str and
+occurrences are str | None, limited to first/second or None. The source signatures
+are typed. New work requires a live task; revision operations validate the retained
+owning task UUID, effective closed kind and expected revision within the transaction.
+Running/deleted/wrong-kind/stale work rejects without retargeting. Unchanged dates,
+amounts/endpoints or comment-only edits write no revision or receipt. Equivalent
+minute/occurrence input preserves stored endpoint microseconds, including after
+reverting a draft. Changed/new timed endpoints are strict minutes, positive in UTC
+and cannot end after the accepted observation; date-only positive H:MM inputs are
+bounded exact integer microseconds and may be future dated.
+
+`accounting.timed_portions` is shared by totals and the pure `work_history` reader;
+no view recomputes splitting. One metadata/read transaction captures current work,
+active timer and week convention, followed by pure accounting under one explicit
+cutoff. Closed/running timed contributions are cutoff-capped; dated work is wholly
+attributed to its date. Deleted effective work contributes nothing; retained deleted
+tasks remain included in application totals. Main/mini share this one report.
+
+Read signatures:
+
+- read_task_work_history(task_id: str, *, cutoff_utc_us: int, period: str="current_week", start_date: str | None=None, end_date: str | None=None) -> list[dict].
+- read_work_entry_revisions(entry_id: str) -> dict.
+
+History periods are current_week using committed metadata, custom with both ordered
+inclusive ISO dates, or all without bounds. Custom needs a representable following
+boundary. Detached rows are newest-date-first, then genuine UTC portions followed
+by date-only UUIDs. Rows carry kind, revision, complete effective endpoints,
+original start, precise duration_us, daily segment endpoints/actual offset seconds,
+continuation flags, task/kind/entry linkage, comment and request/audit references.
+Running uses its real entry UUID, active version, NULL recorded stop and an explicit
+observed segment boundary; a just-started zero observation creates no closed work.
+Date-only rows have no endpoints or interval linkage. Revision details return the
+identity, ordered immutable revisions (including deletion) and active-start audits.
+These are current effective reads, not audit-clock as-of replay. Worker history and
+revisions messages dispatch these explicit read services on the existing thread.
+
+Week metadata is read from SQLite, never retained as an authoritative Python cache.
+The main weekday selector submits an expected-prior checked request, writes no-op
+nothing and refreshes the containing seven civil dates after verified completion.
+It changes neither timezone nor work facts; restart retains it.
+
+The two task-bound Add controls use ordinary fields and one existing `_WorkEditor`
+slot shared with active-start correction, not another coordinator. Dates initialize
+from the dataset-local observation, other fields empty. Save captures one accepted
+instant/request before queueing. Main/mini actions remain blocked while the local
+modal form is owned; normal timer/read delivery continues. Only matching verified
+completion closes it. Rejected/manual stale drafts stay editable; uncertainty
+locks the same Request and exposes owner Retry/Reconcile/exceptional exit.
+Unexpected view destruction does not discard owner-held pending evidence.
+
+Stage 2B History rendering, direction controls, calendar pickers and inline
+correction/deletion remain pending. No History placeholder or historical editor
+Toplevel is exposed here. Stage 3 export/POL-R and the active-reader gate for future
+work types remain separate. This Stage 2A delivery does not complete Stage 2.
 
 ## Frozen files and core POL-R
 

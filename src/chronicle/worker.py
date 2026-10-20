@@ -29,7 +29,7 @@ class DatabaseWorker(Thread):
             service = TimerService(store)
             self.results.put(Message("ready", value={"dataset_id": store.dataset_id,
                                                      "timezone": store.timezone, "zone": store.zone,
-                                                     "runtime": store.info}))
+                                                     "runtime": store.info, "week_start": store.week_start}))
             while True:
                 message = self.requests.get()
                 if message.kind == "shutdown":
@@ -37,6 +37,10 @@ class DatabaseWorker(Thread):
                 try:
                     if message.kind == "read":
                         value = service.read_current_state(cutoff_utc_us=message.value)
+                    elif message.kind == "history":
+                        value = service.read_task_work_history(**message.value)
+                    elif message.kind == "revisions":
+                        value = service.read_work_entry_revisions(message.value)
                     elif message.kind == "mutate":
                         value = service.execute(message.value)
                     elif message.kind == "reconcile":

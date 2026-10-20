@@ -19,7 +19,7 @@ def stamp(text):
 ])
 def test_dst_and_midnight_exact(start, stop, expected):
     task_id = uid()
-    report = calculate([{"task_id": task_id}], [{"task_id": task_id, "start_utc_us": stamp(start), "stop_utc_us": stamp(stop)}], None,
+    report = calculate([{"task_id": task_id}], [{"task_id": task_id, "kind": "timed", "start_utc_us": stamp(start), "stop_utc_us": stamp(stop)}], None,
                        stamp(stop), load_zone("America/Chicago"))
     assert report["application"]["week_us"] == expected
     if expected == 2:
@@ -62,7 +62,7 @@ def test_local_week_and_utc_date_difference():
 def test_non_hour_dst_and_closed_cutoff():
     task = uid()
     first, last = stamp("2026-10-04T01:45:00+10:30"), stamp("2026-10-04T03:00:00+11:00")
-    report = calculate([{"task_id": task}], [{"task_id": task, "start_utc_us": first, "stop_utc_us": last}], None,
+    report = calculate([{"task_id": task}], [{"task_id": task, "kind": "timed", "start_utc_us": first, "stop_utc_us": last}], None,
                        last - 900_000_000, load_zone("Australia/Lord_Howe"))
     assert report["application"]["today_us"] == 1_800_000_000
 

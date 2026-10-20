@@ -83,4 +83,22 @@ evidence, not Windows/NTFS, hardware power-loss or release qualification.
 Stage 1 functional acceptance is independently adjudicated; unavailable Windows
 source evidence is a deployment/pilot gate, not an executable-build prerequisite
 or a permanent blocker to Stage 2 development. See [roadmap](docs/ROADMAP.md) and
-[testing strategy](docs/TESTING_STRATEGY.md). Stage 2/3 remain unimplemented.
+[testing strategy](docs/TESTING_STRATEGY.md). Stage 2A is connected; Stage 2B and
+Stage 3 remain pending.
+
+## Manual work and week configuration
+
+Select a task, then Add timed work or Add date-only work. Dates default to today
+in the dataset timezone; enter actual clocks or a positive H:MM duration and Save.
+Repeated local minutes need an explicit first/second occurrence; gaps reject.
+Timed work cannot end after the accepted observation. Future date-only amounts
+remain wholly on their declared dates. Cancel writes nothing. Validation/storage
+errors retain drafts; an unverified Save retains exact retry inputs. Opening a
+form does not stop an existing timer.
+
+Week starts accepts Monday through Sunday (initially Sunday) and saves the choice
+in this dataset. It changes containing-week totals, not work dates or amounts.
+Stage 2A uses a revised fresh schema version 1: older development schema signatures
+refuse without migration/recreation. Choose a new disposable directory explicitly;
+never delete or overwrite an existing dataset as an automatic startup action.
+The History/inline edit interface is not exposed yet.

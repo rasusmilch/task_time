@@ -176,3 +176,29 @@ def test_failed_validation_probe_cleanup_is_not_reported_stopped(tmp_path, monke
         worker.join(timeout=8)
         assert not worker.is_alive()
     assert attempts == [worker.ident] * 3
+
+
+def test_mixed_work_history_revisions_and_week_change_use_same_worker(tmp_path):
+    worker=DatabaseWorker(tmp_path/'mixed',create=True,timezone='America/Chicago')
+    worker.start()
+    try:
+        ready=receive(worker,'ready');task,entry=uid(),uid()
+        assert ready['week_start']==6
+        for token,op,args in [
+            (1,'create_task',dict(task_id=task,name='Worker mixed',project_id=None)),
+            (2,'add_date_only_work',dict(task_id=task,entry_id=entry,work_date='2026-10-19',duration_text='14:00',comment='worker')),
+            (3,'set_week_start',dict(week_start=0,expected_week_start=6))]:
+            request=Request.make(uid(),ready['dataset_id'],op,NOW,**args)
+            worker.requests.put(Message('mutate',token,request))
+            assert receive(worker,'mutate').status=='committed'
+        worker.requests.put(Message('history',4,dict(task_id=task,cutoff_utc_us=NOW)))
+        rows=receive(worker,'history')
+        assert rows[0]['entry_id']==entry and rows[0]['duration_us']==14*3_600_000_000
+        worker.requests.put(Message('revisions',5,entry))
+        assert receive(worker,'revisions')['entry']['current_revision']==1
+        worker.requests.put(Message('read',6,NOW))
+        state=receive(worker,'read')
+        assert state['week_start']==0 and state['report']['application']['today_us']==14*3_600_000_000
+    finally:
+        worker.requests.put(Message('shutdown'));worker.join(timeout=5)
+        assert not worker.is_alive()

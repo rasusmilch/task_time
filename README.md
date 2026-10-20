@@ -19,6 +19,9 @@ explicit absolute POL-R reconciliation**. SQLite is the sole replacement authori
 The shipped source route now runs `src/chronicle`. Stage 1A connects fresh
 SQLite datasets, task/project creation and renaming, independent reassignment,
 Start/Stop/atomic Switch, persisted active timers and audited active-start recovery.
+Stage 2A adds Add timed work and Add date-only work for a selected task, with
+callback-driven modal forms, immutable revision/deletion services and detached
+history/revision readers. The Week starts selector persists any weekday.
 Main shows own-task Today/This week; mini shows active or selected task Today.
 One database worker supplies coordinated integer-microsecond accounting while Tk
 continues events. Exact committed request retries precede stale checks; uncertain
@@ -92,10 +95,21 @@ permission; ordinary Chronicle operation is offline and never installs packages.
 
 ## Selected core and sequence
 
-Stage 2 adds genuine manual intervals and endpoint-free dated amounts, immutable
-correction/deletion revisions, mixed History with inline whole-entry editing and
-configurable weeks. None is exposed by this timer slice. Sunday is initially used,
-not a permanent week policy. No Reset controls/counters or synthetic work are added.
+Stage 2 is **In Progress**. Stage 2A connects genuine manual intervals and
+endpoint-free date-only amounts to the worker and main/mini Actual. Date-only
+H:MM work stays wholly on its declared date, including future dates. Timed entry
+uses separate local dates/minutes and explicit repeated-time choices; its end
+cannot exceed the accepted submission observation. Forms start with local dates
+and blank clock/duration fields; validation retains drafts and uncertain outcomes
+retain exact requests. No automatic overlap correction is performed.
+
+Correction/deletion services preserve earlier revisions and entry UUIDs; unchanged
+and comment-only edits write nothing. Task History reads include daily portions
+with complete identities/endpoints, and revision details retain deleted work.
+These are backend foundations: Stage 2B's modal History/inline editing and deletion
+UI remain pending. Week start is configurable, initially Sunday. Main/mini and
+Current week history reads use committed metadata, with no historical-work rewrite.
+No Reset controls/counters or synthetic work are added.
 
 Stage 3 must deliver frozen Timesheet Preview/Save/recovery **and core POL-R**:
 full-task/week upward quarter rounding, deterministic daily distribution, immutable

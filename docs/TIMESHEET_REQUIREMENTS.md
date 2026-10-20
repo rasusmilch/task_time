@@ -20,8 +20,10 @@ outcomes and returns material unresolved choices for adjudication.
 
 Selected does not mean implemented. This documentation selects a clean Tkinter
 rewrite, not a Qt/PySide6 frontend and not incremental JSONL compatibility work.
-Stage 1A now delivers the connected SQLite timer foundation. Recording/History,
-Timesheet and POL-R completeness remain later gates; the foundation is not a pilot.
+Stage 1A delivers the connected SQLite timer foundation. Stage 2A adds connected
+manual work, revision/read services, mixed accounting and week configuration.
+Stage 2B History/inline editing, Timesheet and POL-R remain later gates; this is
+not complete core/pilot readiness.
 
 ## SELECTED — Replacement installation and data boundary
 
@@ -103,6 +105,21 @@ Actual combines two distinct shapes, assigned to local work dates:
   split correctly at local midnight, week boundaries and daylight-saving changes.
 - Date-only manual amounts with task UUID, civil date and duration, without
   fabricated endpoints. A 14-hour Saturday amount stays entirely Saturday.
+
+Manual date-only entry uses a genuine YYYY-MM-DD date and strictly positive
+H:MM duration (two minute digits 00–59, unbounded hours within integer-microsecond
+limits). Trim surrounding whitespace; reject decimals, seconds, fractions and
+overflow. Future civil dates are allowed. New genuine timed work must end no later
+than its accepted submission observation; resolve start/end independently, with
+no inferred overnight rollover or automatic overlap adjustment.
+
+The Add timed work and Add date-only work forms are task-bound and initialize
+dates to the current dataset-local date, clocks/duration/comment empty. Save alone
+submits one frozen request through the existing worker. Cancel writes nothing;
+verified completion closes the form. Validation, stale rejection, known rollback
+and unavailable storage preserve editable drafts; uncertainty freezes the same
+request for owner-mediated Retry/Reconcile or the approved exceptional exit.
+Main/mini actions are blocked through the modal form while running time continues.
 
 Both support correction/deletion with immutable prior values and audit details.
 Work-entry UUID remains stable across revisions; reviewed revision changes reject
@@ -205,8 +222,11 @@ Any weekday may begin the week; Sunday is the initial default, not permanent
 policy. The setting controls weekly totals, Timesheet periods/columns, project
 subtotals, reconciliation summaries and later allocation periods. It does not
 change civil work dates, amounts, daily confirmations, immutable exports or prior
-work. Exports freeze their original convention. Core implementation is Stage 2;
-allocation override effects remain reserved for optional expansion.
+work. Exports freeze their original convention. Stage 2A persists the selector in
+dataset metadata, Monday=0 through Sunday=6, with an expected-prior check and
+atomic receipt. Unchanged selection writes nothing. Shared totals and Current
+week history reads use the committed convention. Allocation override effects
+remain reserved for optional expansion; dataset timezone changes remain Open.
 
 ## SELECTED — Actual, Exported and Confirmed POL-R are distinct
 
@@ -448,7 +468,7 @@ gates; no automatic external allocation verification is established.
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
 
-The sole shipped source/build route uses `src/chronicle`: explicit fresh SQLite
+The sole shipped source route uses `src/chronicle`: explicit fresh SQLite
 paths, independent task/project controls, Start/Stop/atomic Switch, immutable timed
 revisions, audited active-start recovery, exact receipts, worker-owned I/O and
 coordinated main/mini Actual. It does not discover or modify the former default
@@ -464,8 +484,11 @@ conversion/deletion. Executable-build and WAL-reset version requirements are
 superseded. Stage 1 functional acceptance awaits independent review; native
 Windows source evidence remains required before deployment/pilot, not as a
 permanent Stage 2 development blocker.
-Stage 2 manual timed/dated writers, History/inline historical correction and week
-settings are not shipped. Stage 3 frozen export/confirmation/reconciliation,
+Stage 2A delivers connected Add timed/date-only work and week-start controls,
+immutable closed/date-only correction/deletion services, detached history/revision
+reads and mixed main/mini/daily Actual. All active readers include both exposed
+work types. Stage 2 remains In Progress: the Stage 2B modal History browser,
+inline correction/deletion and audit-detail UI are not shipped. Stage 3 frozen export/confirmation/reconciliation,
 quarter-hour allocation and weekly reminders are not shipped. Retained JSONL
 services do not satisfy those gates. Earlier Phase 2 acceptance remains bounded
 historical evidence. This timer foundation is not complete core/pilot readiness.
@@ -505,5 +528,5 @@ foundation, independently accepted at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`
 Stage 1B portable reliability is accepted. Stage 1C source/runtime simplification
 requires independent Stage 1 functional adjudication; native Windows source
 qualification is separate and remains required before real deployment/pilot.
-Later recording and mandatory POL-R
-remain approved, unimplemented stages. Open policies stay reserved before their affected work.
+Stage 2A is delivered for independent review; Stage 2B History/inline editing
+and mandatory Stage 3 POL-R remain approved, unimplemented work. Open policies stay reserved before their affected work.
