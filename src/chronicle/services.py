@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import datetime, time, timedelta
 
 from .accounting import calculate
 from .records import Outcome, Request, StaleState, integer, uuid_text
 from .sqlite_store import SQLiteStore
-from .timekeeping import instant, local_date, resolve_start, resolve_minute, parse_date, parse_duration, week_dates
+from .timekeeping import instant, local_date, resolve_start, resolve_minute, parse_date, parse_duration, week_dates, to_us
 
 
 def name_text(value: str) -> str:
@@ -376,14 +377,21 @@ class TimerService:
     def read_task_work_history(self, task_id: str, *, cutoff_utc_us: int, period: str = "current_week",
                                start_date: str | None = None, end_date: str | None = None) -> list[dict]:
         """Current effective daily rows, newest date first; never an audit-clock replay."""
+        return self.read_history_snapshot(task_id, cutoff_utc_us=cutoff_utc_us, period=period,
+                                          start_date=start_date, end_date=end_date)["rows"]
+
+    def read_history_snapshot(self, task_id: str, *, cutoff_utc_us: int, period: str = "current_week",
+                              start_date: str | None = None, end_date: str | None = None) -> dict:
+        """Detached History rows, deleted identities and their one-transaction context."""
         from .work_history import build_history
         uuid_text(task_id)
         instant(cutoff_utc_us)
         with self._read_transaction() as c:
             if not c.execute("SELECT 1 FROM tasks WHERE task_id=?", (task_id,)).fetchone():
                 raise ValueError("Task identity is unknown")
+            weekday = self.store.week_start
             if period == "current_week" and start_date is None and end_date is None:
-                _, first, last = week_dates(cutoff_utc_us, self.store.zone, self.store.week_start)
+                _, first, last = week_dates(cutoff_utc_us, self.store.zone, weekday)
             elif period == "all" and start_date is None and end_date is None:
                 first = last = None
             elif period == "custom":
@@ -393,9 +401,18 @@ class TimerService:
                     raise ValueError("Require ordered inclusive dates with a representable end boundary")
             else:
                 raise ValueError("Period must be current_week, custom with both dates, or all without bounds")
+            if first is not None:
+                # Validate even an empty/date-only result: absence of intervals
+                # does not make an unrepresentable calendar boundary acceptable.
+                to_us(datetime.combine(first, time(), self.store.zone))
+                to_us(datetime.combine(last + timedelta(days=1), time(), self.store.zone))
             rows = [dict(r) for r in c.execute("""SELECT e.task_id,e.original_start_utc_us,e.created_request_id,r.*
               FROM work_entries e JOIN work_revisions r ON r.entry_id=e.entry_id AND r.revision=e.current_revision
               WHERE e.task_id=? AND r.is_deleted=0""", (task_id,))]
+            deleted = [dict(r) for r in c.execute("""SELECT e.task_id,e.entry_id,r.kind,r.revision,r.is_deleted,
+              r.start_utc_us,r.stop_utc_us,r.work_date,r.duration_us FROM work_entries e
+              JOIN work_revisions r ON r.entry_id=e.entry_id AND r.revision=e.current_revision
+              WHERE e.task_id=? AND r.is_deleted=1 ORDER BY e.entry_id""", (task_id,))]
             row = c.execute("""SELECT a.*,e.original_start_utc_us,e.created_request_id FROM active_timer a
               JOIN work_entries e USING(entry_id) WHERE a.task_id=?""", (task_id,)).fetchone()
             active = dict(row) if row else None
@@ -407,7 +424,11 @@ class TimerService:
                 else:
                     audit = c.execute("SELECT action_utc_us FROM committed_requests WHERE request_id=?", (active["created_request_id"],)).fetchone()
                     active.update(comment="", audit_utc_us=audit[0], request_id=active["created_request_id"])
-        return build_history(rows, active, cutoff_utc_us, self.store.zone, first, last)
+        return {"dataset_id": self.store.dataset_id, "task_id": task_id, "cutoff_utc_us": cutoff_utc_us,
+                "period": period, "start_date": first.isoformat() if first else None,
+                "end_date": last.isoformat() if last else None, "week_start": weekday,
+                "rows": build_history(rows, active, cutoff_utc_us, self.store.zone, first, last),
+                "deleted_entries": deleted}
 
     def read_work_entry_revisions(self, entry_id: str) -> dict:
         """Detached identity, immutable closed/date-only revisions and active-start audits."""

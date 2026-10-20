@@ -22,6 +22,10 @@ Start/Stop/atomic Switch, persisted active timers and audited active-start recov
 Stage 2A adds Add timed work and Add date-only work for a selected task, with
 callback-driven modal forms, immutable revision/deletion services and detached
 history/revision readers. The Week starts selector persists any weekday.
+Stage 2B connects Work History for the selected task: Current week/Custom/All,
+draft-only inline calendars, session date direction, complete-entry inline editing,
+confirmed deletion and immutable revision/deleted-entry details. One modal owner
+blocks main/mini input while timers and worker delivery continue.
 Main shows own-task Today/This week; mini shows active or selected task Today.
 One database worker supplies coordinated integer-microsecond accounting while Tk
 continues events. Exact committed request retries precede stale checks; uncertain
@@ -41,8 +45,9 @@ Stage 1A is independently accepted at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`
 Stage 1B portable interruption/ownership and cleanup work is independently accepted
 at `1e84a043c1c055aced9b8c4b000ef766bbf6d178`. Stage 1C simplifies the runtime to
 standard sqlite3 DELETE/EXTRA and direct Python execution, retiring executable
-build tooling. Stage 1 remains **In Progress** pending independent functional
-adjudication, not complete MVP/pilot. Native Windows source/NTFS/Tk and actual
+build tooling. Stage 1 functionality is independently accepted, not complete
+MVP/pilot. Stage 2A is independently accepted at
+`7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`. Native Windows source/NTFS/Tk and actual
 suspend/resume evidence remain deployment/pilot qualifications; they do not
 permanently block later Stage 2 development.
 Stage 0 was independently accepted at `a24aca706740b7e02cc1f856baa194042785bbcb`. Active work is
@@ -106,8 +111,12 @@ retain exact requests. No automatic overlap correction is performed.
 Correction/deletion services preserve earlier revisions and entry UUIDs; unchanged
 and comment-only edits write nothing. Task History reads include daily portions
 with complete identities/endpoints, and revision details retain deleted work.
-These are backend foundations: Stage 2B's modal History/inline editing and deletion
-UI remain pending. Week start is configurable, initially Sunday. Main/mini and
+Stage 2B connects those services through modal Work History with inline editing,
+whole-entry Delete confirmation and read-only revision/deletion navigation.
+Applied periods, unapplied Custom drafts and session sorting survive verified
+edits; stale/unverified results retain their reviewed draft/exact request.
+Stage 2 functional completion awaits independent review. Week start is
+configurable, initially Sunday. Main/mini and
 Current week history reads use committed metadata, with no historical-work rewrite.
 No Reset controls/counters or synthetic work are added.
 

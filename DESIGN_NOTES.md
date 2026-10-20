@@ -4,12 +4,16 @@ The shipped source launcher targets `src/chronicle`, the independently accepted
 Stage 1A SQLite timer. Stage 1B portable interruption/ownership and cleanup
 reliability is accepted. Stage 1C uses built-in sqlite3 DELETE/EXTRA/foreign keys
 with STRICT (SQLite 3.37.0+) and direct Python source execution; the executable
-build path is retired. Stage 1 functional review and native source-deployment
-qualification are distinct; the latter remains pending before real use/pilot.
+build path is retired. Stage 1 functionality is independently accepted; native
+source-deployment qualification remains pending before real use/pilot.
 Stage 2A now adds connected timed/date-only creation, immutable revision/deletion
 services, shared mixed Actual, task history/revision readers and persisted week
-start. Its forms reuse the application-owned request/session path. The Stage 2B
-modal History/inline editor and Stage 3 remain pending; Stage 2 is In Progress.
+start. Stage 2A is independently accepted at
+`7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`. Stage 2B connects owned modal History,
+inline whole-entry correction/deletion and immutable revision/deleted-entry details,
+reusing that owner/worker path. Its consistent snapshots, draft-only standard-library
+calendar and session sorting are described in Architecture. Stage 2 remains In
+Progress for independent functional adjudication; Stage 3 remains pending.
 These changes do not qualify the retained JSONL implementation.
 Its active-start recovery retains the modal draft through asynchronous failure and
 offers exact-request reconciliation within that editor; queue acceptance is not Save
@@ -25,14 +29,14 @@ refer to that former JSONL runtime, not the replacement launcher. Its package is
 not imported by Chronicle. No compatibility, migration, parallel
 runtime, nested-editor or widget-retained retry requirement follows from it.
 Historical Phase 2 acceptance is not SQLite qualification. The preserved details
-support source/test review and retain earlier chronology; they do not claim that
-History, Timesheet or POL-R is exposed by the new Stage 1A timer.
+support source/test review and retain earlier chronology; they do not qualify the
+shipped SQLite History or establish pending Timesheet/POL-R functionality.
 
 The selected [quarter-hour contract](docs/EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
 remains mandatory for later core completion. Retained JSONL confirmations use
 hundredths/Actual-as-Enter; they do not implement that contract. SQLite recording
-is delivered with Stage 2A; Stage 2B, Stage 3 and native release qualification
-remain pending.
+is delivered with Stage 2A/2B; independent Stage 2 review, Stage 3 and native release
+qualification remain pending.
 
 ## Architecture
 

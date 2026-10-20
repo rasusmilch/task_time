@@ -312,6 +312,7 @@ def test_stale_read_rejected_but_closed_origin_commit_handled():
     app.pending = Request.make(uid(), uid(), "create_task", NOW, task_id=uid(), name="Detached", project_id=None)
     app.closing, app.editor = False, None
     app._work_editor = None
+    app.history = None
     app._pending_token = 2
     app.executing = True
     app._controls = lambda: None

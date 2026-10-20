@@ -80,11 +80,11 @@ paths. Actual suspend/resume needs native evidence too. Later core workflows nee
 their own validation when delivered. Linux SQLite/Xorg tests are engineering
 evidence, not Windows/NTFS, hardware power-loss or release qualification.
 
-Stage 1 functional acceptance is independently adjudicated; unavailable Windows
+Stage 1 functionality is independently accepted; unavailable Windows
 source evidence is a deployment/pilot gate, not an executable-build prerequisite
 or a permanent blocker to Stage 2 development. See [roadmap](docs/ROADMAP.md) and
-[testing strategy](docs/TESTING_STRATEGY.md). Stage 2A is connected; Stage 2B and
-Stage 3 remain pending.
+[testing strategy](docs/TESTING_STRATEGY.md). Stage 2A is independently accepted;
+Stage 2B is connected for review. Stage 3 remains pending.
 
 ## Manual work and week configuration
 
@@ -101,4 +101,11 @@ in this dataset. It changes containing-week totals, not work dates or amounts.
 Stage 2A uses a revised fresh schema version 1: older development schema signatures
 refuse without migration/recreation. Choose a new disposable directory explicitly;
 never delete or overwrite an existing dataset as an automatic startup action.
-The History/inline edit interface is not exposed yet.
+Select a task and open Work History to browse Current week, inclusive Custom or
+All. Custom typing/calendar choices need Apply; Refresh reloads the applied period.
+Date reverses date groups only and is remembered for this running application.
+Select a closed timed or date-only row to Edit the complete entry inline, or Delete
+after reviewing its full date/range confirmation. Running rows cannot use those
+actions. Details includes earlier revisions and Deleted entries. Save waits for
+the worker result; unverified work retains exact Retry/Reconcile inputs. Close
+History before using main/mini. No Timesheet/POL-R workflow is exposed yet.

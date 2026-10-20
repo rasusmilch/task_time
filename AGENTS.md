@@ -40,12 +40,15 @@ Stage 0's documentation gate is independently accepted at
 engineering foundation. Its approved Stage 1A connected SQLite timer slice is
 implemented and accepted. Stage 1B portable reliability is accepted at
 `1e84a043c1c055aced9b8c4b000ef766bbf6d178`. Stage 1C selects built-in sqlite3,
-DELETE/EXTRA/foreign keys and direct Python source execution. Stage 1 functional
-completion awaits independent adjudication; native Windows source evidence is
+DELETE/EXTRA/foreign keys and direct Python source execution. Stage 1 functionality
+is independently accepted; native Windows source evidence is
 required before deployment/pilot, not an executable-build or Stage 2 blocker.
-The explicit Stage 2A approval now authorizes connected mixed work, immutable
-revision/read services, shared accounting and week configuration. Stage 2 remains
-In Progress; Stage 2B History/inline editing and Stage 3 POL-R remain pending.
+Stage 2A mixed work, immutable revisions, shared accounting and week configuration
+are independently accepted at `7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`.
+The later explicit Stage 2B approval authorizes connected modal History, inline
+whole-entry correction/deletion and revision details. That implementation awaits
+independent functional adjudication; Stage 2 remains In Progress and Stage 3 POL-R
+remains pending.
 Subsequent execution stays bounded and independently reviewed, using substantial
 coherent slices without microtasks.
 The fresh rewrite

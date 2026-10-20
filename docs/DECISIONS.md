@@ -840,9 +840,36 @@ is additional work, without inferred overlap correction or changes to a running
 timer. All active mixed readers must agree before exposing those writers. Week
 start is a persisted expected-prior checked mutation, all seven weekdays with
 Sunday initially, changing periods rather than work facts. History/revision reads
-are delivered as backend foundations; the modal browser/inline historical editor,
-audit UI and deletion controls remain Stage 2B. Stage 2 remains In Progress.
+were delivered as backend foundations; at that approval the modal browser/inline
+historical editor, audit UI and deletion controls remained Stage 2B. Stage 2 remains In Progress.
 Stage 3 Timesheet/quarter-hour POL-R/reminders remain mandatory, unimplemented core.
+
+### Stage 2B — Connected History and inline whole-entry revision workflow
+
+**Status:** current. **Provenance:** later explicit user “GO — APPROVED EXECUTION
+TASK” titled “CHRONICLE — STAGE 2B: Complete Work History, Inline Correction/Deletion,
+Revision Details, and Modal Integration,” against independently accepted
+`7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`. That instruction also reports independent
+Stage 1 functional acceptance and Stage 2A acceptance at that SHA; neither is a
+Codex inference from passing tests. Native Windows source qualification remains
+separate and unverified here.
+
+Connect one application-owned, fixed-task local-modal History from main selection,
+using callback presentation and legitimate origin return, no subordinate correction
+Toplevel or nested application wait. Current week/Custom/All preserve Apply-only
+drafts, explicit Refresh and one application-session chronological direction.
+Use an inline standard-library calendar, not a new runtime dependency.
+
+Add one transaction-consistent detached snapshot with context, effective rows and
+deleted-entry index, sharing existing History/accounting logic. Keep immutable
+details discoverable in revision order, including deleted entries. Inline editing
+and confirmed whole-entry deletion use the accepted Stage 2A services and existing
+application pending request/worker. Stale review never retargets; uncertainty keeps
+the identical Request and owned exceptional exit. Successful mutation refreshes
+the applied History context without applying drafts or changing sort direction.
+Read/render failure cannot reclassify committed work or make stale/partial rows
+current. Stage 2B delivery requires independent functional adjudication before
+Stage 2 completion. Stage 3 and all reserved Open policies remain unchanged.
 
 ## Open decisions
 

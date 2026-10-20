@@ -11,13 +11,14 @@ describes retained unshipped JSONL source; [decisions](DECISIONS.md) retains chr
 The active sequence is **Stages 0–6**, superseding the old JSONL Phase 1–6 plan.
 Selected does not mean implemented; old component tests do not complete SQLite
 stages. Stage 0 is independently accepted Complete for documentation only;
-no rewrite runtime stage is Complete. Stage 1 is In Progress: its connected
-Stage 1A timer slice is independently accepted at
+Stage 1 functionality is independently accepted, with native source deployment
+qualification separate. Its connected Stage 1A timer slice is accepted at
 `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`. Stage 1B portable reliability is
 independently accepted at
 `1e84a043c1c055aced9b8c4b000ef766bbf6d178`; its executable-build preparation is
 superseded by Stage 1C's standard sqlite3 DELETE/EXTRA and source-only deployment.
-Stage 1 functional acceptance remains independent. Native Windows source operation
+Stage 2A is independently accepted at `7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`.
+Stage 2B is delivered for independent functional review. Native Windows source operation
 is required before deployment/pilot, not an unavailable executable-build gate.
 
 Each stage can contain several substantial, independently reviewed tasks. Do not
@@ -40,13 +41,13 @@ source/history branch; normal rewrite publication uses the new branch under
 The independently reviewed bounded plan led to the explicitly approved Stage 1A
 execution. Subsequent substantial slices remain independently reviewed; this
 status alone does not authorize later stages or resolve reserved release policy.
-The subsequent explicit Stage 2A execution approval authorizes only the bounded
-connected mixed-work outcome below.
+The subsequent explicit Stage 2A and Stage 2B execution approvals authorize the
+bounded connected mixed-work and History outcomes below, not Stage 3 execution.
 
 ## Stage 1 — Working timer foundation
 
-**IN PROGRESS — Stage 1A and Stage 1B portable reliability accepted; Stage 1C
-simplification delivered for independent functional adjudication; NOT complete MVP or pilot.**
+**FUNCTIONALLY ACCEPTED — Stage 1A/1B/1C; native source-deployment qualification
+remains separate. NOT complete MVP or pilot.**
 The functional gate includes fresh SQLite, task/project identities, Start/Stop/Switch,
 persisted active timer, main/mini display, worker bridge and direct source startup.
 Design immutable frozen-export and absolute-confirmation batches/cells/current-reference
@@ -59,15 +60,15 @@ UI/worker thread ownership. Integrity
 and failure tests start here. The approved clock/sleep/restart and explicit
 active-start/uncertain-exit policies are in requirements. Active-start editor
 completion now follows matching asynchronous results, retains rejected drafts and
-exposes exact reconciliation/exceptional exit within the modal editor. This repair
-does not complete Stage 1. Stage 1B tests process interruption, committed receipt
+exposes exact reconciliation/exceptional exit within the modal editor. That repair
+alone did not complete Stage 1. Stage 1B tests process interruption, committed receipt
 reuse, ownership/startup refusal and explicit cleanup retry; it repairs primary
 validation diagnostics and ownership retention through failed startup cleanup.
 Source launch requires no compiler, project build or executable bundle; pinned
 tzdata installs through ordinary permitted pip. Stage 1C removes the obsolete
 WAL-specific version floor and executable tooling, retaining transactions and
-immutable receipts/evidence. Independent ChatGPT review may accept Stage 1
-functionality after its relevant tests pass. Actual Windows Python/SQLite/Tk,
+immutable receipts/evidence. Later independent review accepted Stage 1 functionality.
+Actual Windows Python/SQLite/Tk,
 NTFS locking, GUI input, exceptions, offline zones, close/reopen and suspend/resume
 remain source-deployment qualification before real use/pilot. Linux evidence does
 not replace it; lack of the eventual work computer is not a permanent Stage 2 blocker.
@@ -76,15 +77,17 @@ A foundation without POL-R is not core signoff.
 
 ## Stage 2 — Complete core work recording
 
-**IN PROGRESS — Stage 2A delivered for independent review; Stage 2B pending.**
+**IN PROGRESS — Stage 2A independently accepted; Stage 2B delivered for independent review.**
 Stage 2A connects genuine timed and date-only creation, immutable typed revisions,
 closed/date-only correction/deletion services, shared exact main/mini/daily Actual,
 task-scoped history/revision reads and all seven persisted week-start choices.
 Active-reader completeness is established before exposing manual writers.
 
-Stage 2B must deliver the modal mixed History browser and inline whole-entry
-correction/deletion with revision/audit presentation. Those UI controls are not
-partially exposed by Stage 2A.
+Stage 2B connects the modal mixed History browser and inline whole-entry
+correction/deletion with immutable revision/deleted-entry navigation. It adds one
+consistent detached snapshot, owned standard-library calendar panels, session-only
+date direction and exact-request retry through the existing application owner.
+Stage 2 is submitted for independent functional adjudication, not declared Complete.
 Preserve periods/drafts/session sorting, full-entry identity, unchanged precision,
 minute changes and explicit DST resolution.
 

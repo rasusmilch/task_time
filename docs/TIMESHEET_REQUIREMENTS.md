@@ -22,8 +22,9 @@ Selected does not mean implemented. This documentation selects a clean Tkinter
 rewrite, not a Qt/PySide6 frontend and not incremental JSONL compatibility work.
 Stage 1A delivers the connected SQLite timer foundation. Stage 2A adds connected
 manual work, revision/read services, mixed accounting and week configuration.
-Stage 2B History/inline editing, Timesheet and POL-R remain later gates; this is
-not complete core/pilot readiness.
+Stage 2B connects modal History, inline correction/deletion and immutable details
+for independent review. Timesheet and POL-R remain later gates; this is not
+complete core/pilot readiness.
 
 ## SELECTED — Replacement installation and data boundary
 
@@ -215,6 +216,24 @@ refresh the last applied period, preserve direction/unapplied drafts and report
 refresh failure truthfully. Database outcome, not widget destruction, establishes
 completion. All active readers must include each exposed work type before its
 writer is activated; History alone does not satisfy this gate.
+
+The UI consumes one detached snapshot containing dataset/task identity, observation,
+resolved period bounds, committed week convention, effective rows and a task-scoped
+deleted-entry index, collected in one read transaction. Details exposes immutable
+creation, correction, deletion and active-start evidence in revision order. Deleted
+identities remain discoverable without adding them to effective Actual.
+
+The standard-library inline calendar owns one panel, changes drafts only and never
+captures another accounting observation. History uses callback-driven local modal
+ownership, without application-authored waits or another event loop. Close restores
+only a surviving eligible origin grab/focus and never displaces a competing owner.
+
+Edit/Delete use the application's existing pending request. Executing I/O blocks
+ordinary Close. Unverified outcomes lock the exact request for Retry/Reconcile or
+the History-owned default-cancel exceptional application exit. Stale reviews keep
+the original draft and disable Save until Cancel, explicit Refresh and fresh review.
+Committed corrections refresh the applied period once; later display failure does
+not undo commitment or make old rows current. Unchanged Save reloads no History.
 
 ## SELECTED — Configurable week convention
 
@@ -481,14 +500,17 @@ Stage 1C selects built-in sqlite3, DELETE/EXTRA/foreign keys, SQLite 3.37.0+ STR
 and direct Python execution with pinned pip-installable tzdata. No production
 SQLite databases exist; development datasets are disposable without automatic
 conversion/deletion. Executable-build and WAL-reset version requirements are
-superseded. Stage 1 functional acceptance awaits independent review; native
+superseded. Stage 1 functionality is independently accepted; native
 Windows source evidence remains required before deployment/pilot, not as a
 permanent Stage 2 development blocker.
 Stage 2A delivers connected Add timed/date-only work and week-start controls,
 immutable closed/date-only correction/deletion services, detached history/revision
 reads and mixed main/mini/daily Actual. All active readers include both exposed
-work types. Stage 2 remains In Progress: the Stage 2B modal History browser,
-inline correction/deletion and audit-detail UI are not shipped. Stage 3 frozen export/confirmation/reconciliation,
+work types. Stage 2A is independently accepted at
+`7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`. Stage 2B now connects the main Work History
+command, modal browser, inline whole-entry correction/deletion and immutable details.
+Stage 2 remains In Progress pending independent functional adjudication.
+Stage 3 frozen export/confirmation/reconciliation,
 quarter-hour allocation and weekly reminders are not shipped. Retained JSONL
 services do not satisfy those gates. Earlier Phase 2 acceptance remains bounded
 historical evidence. This timer foundation is not complete core/pilot readiness.
@@ -525,8 +547,9 @@ Stage 0's authority set is independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`. The authorized
 `feature/chronicle-rewrite` now contains the approved Stage 1A connected timer
 foundation, independently accepted at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`.
-Stage 1B portable reliability is accepted. Stage 1C source/runtime simplification
-requires independent Stage 1 functional adjudication; native Windows source
+Stage 1B portable reliability and Stage 1 functionality are accepted after Stage 1C
+source/runtime simplification; native Windows source
 qualification is separate and remains required before real deployment/pilot.
-Stage 2A is delivered for independent review; Stage 2B History/inline editing
-and mandatory Stage 3 POL-R remain approved, unimplemented work. Open policies stay reserved before their affected work.
+Stage 2A is independently accepted; Stage 2B is delivered for independent review.
+Mandatory Stage 3 POL-R remains approved, unimplemented work. Open policies stay
+reserved before their affected work.

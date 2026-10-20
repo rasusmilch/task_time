@@ -54,6 +54,10 @@ class ChronicleApp:
         self.runtime = None
         self.mini = self.editor = None
         self._work_editor = None
+        self.history = None
+        self._history_opening = False
+        self._history_return = None
+        self._history_newest_first = True
         self._token, self._read_inflight, self._read_again = 0, None, False
         self._drain_id = self._tick_id = None
         self._shutdown_sent = False
@@ -111,7 +115,8 @@ class ChronicleApp:
             button.grid(row=0, column=column, padx=3, pady=6)
             self.buttons[label] = button
         for column, (label, callback) in enumerate((("Add timed work", self.add_timed_work),
-                                                     ("Add date-only work", self.add_date_only_work))):
+                                                     ("Add date-only work", self.add_date_only_work),
+                                                     ("Work History", self.open_history))):
             button = ttk.Button(actions, text=label, command=callback)
             button.grid(row=1, column=column, padx=3, pady=4)
             self.buttons[label] = button
@@ -131,8 +136,10 @@ class ChronicleApp:
     def can_mutate(self, *, origin=None):
         owns_editor = (origin is not None and origin is self._work_editor
                        and self.editor is origin.window and origin.phase == "editing")
+        owns_history = origin is not None and origin is self.history and origin.mutation_allowed()
         return (self.alive and self.ready and not self.closing and self.pending is None
-                and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor))
+                and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor)
+                and not self._history_opening and (self.history is None or owns_history))
 
     def selected_task_id(self):
         if not self.alive:
@@ -156,7 +163,7 @@ class ChronicleApp:
         task, active, enabled = self._selected(), self.state.get("active"), self.can_mutate()
         for name, button in self.buttons.items():
             allowed = enabled
-            if name in ("Rename task", "Assign project", "Add timed work", "Add date-only work"):
+            if name in ("Rename task", "Assign project", "Add timed work", "Add date-only work", "Work History"):
                 allowed &= task is not None
             if name == "Start":
                 allowed &= task is not None and active is None
@@ -196,12 +203,17 @@ class ChronicleApp:
         self.pending, self.executing = request, True
         self._token += 1
         self._pending_token = self._token
+        if _origin is not None and _origin is self.history:
+            # Correlate before queue/UI effects: accepted work outlives widgets.
+            _origin.request, _origin.token, _origin.phase = request, self._pending_token, "executing"
         # Invalidate any read that predates this accepted mutation.
         self._read_again = True
         try:
             self.worker.requests.put(Message("mutate", self._token, request))
         except Exception as exc:
             self.pending, self.executing, self._pending_token = None, False, None
+            if _origin is not None and _origin is self.history:
+                _origin.request, _origin.token, _origin.phase = None, None, "editing" if _origin.edit_fields else "browsing"
             self.status.configure(text=f"Action not submitted: {exc}")
             self._diagnose(exc)
             self._controls()
@@ -479,6 +491,135 @@ class ChronicleApp:
         return self._submit("set_week_start", week_start=self.week_selector.current(),
                             expected_week_start=self.state["week_start"])
 
+    def open_history(self):
+        # Duplicate/reentrant requests do not inspect drafts, clocks or task arguments.
+        if self._history_opening:
+            return False
+        if self.history is not None:
+            from .history_window import widget_live
+            if not self.history.disposed and widget_live(self.history.window):
+                return False
+            self._history_disposed(self.history)
+        if not self.can_mutate() or self._selected() is None:
+            return False
+        from .history_window import HistoryWindow, widget_live
+        self._history_opening = True
+        history = None
+        try:
+            if not widget_live(self.root):
+                raise ValueError("History origin is no longer live")
+            grab = self.root.grab_current()
+            if grab is not None and (grab is not self.root or grab.grab_status() != "local"):
+                raise ValueError("History cannot replace an unrelated or global grab")
+            focus = self.root.focus_get()
+            self._history_return = (self.root, grab, focus)
+            history = HistoryWindow(self, self._selected())
+            self.history = history  # Publish before any presentation event can run.
+            self._controls()
+            history.present()
+            return True
+        except Exception as primary:
+            self._history_launch_failed(history, primary)
+            return False
+
+    def _history_presented(self, history):
+        if self.history is history:
+            self._history_opening = False
+            self._controls()
+
+    def _remember_history_direction(self, newest_first):
+        self._history_newest_first = newest_first
+
+    def _restore_history_origin(self):
+        from .history_window import widget_live
+        context, self._history_return = self._history_return, None
+        if context is None or self.closing:
+            return
+        parent, grab, focus = context
+        if not widget_live(self.root) or not widget_live(parent):
+            return
+        current = parent.grab_current()
+        if current is not None and (current is not parent or current.grab_status() != "local"):
+            return
+        if grab is parent and current is not parent:
+            parent.grab_set()
+        target = focus if (widget_live(focus) and focus.winfo_toplevel() is parent) else parent
+        target.focus_set()
+
+    def _history_disposed(self, history, primary=None):
+        if self.history is not history:
+            return
+        previous_guard = self._history_opening
+        self._history_opening = True
+        self.history = None
+        try:
+            self._restore_history_origin()
+        except Exception as exc:
+            if primary is not None:
+                primary.add_note(f"History origin return failed: {exc!r}")
+            else:
+                self._diagnose(exc)
+        finally:
+            self._history_opening = previous_guard
+            from .history_window import widget_live
+            try:
+                if self.alive and widget_live(self.tree):
+                    self._controls()
+            except Exception as exc:
+                if primary is not None:
+                    primary.add_note(f"History disposal controls failed: {exc!r}")
+                else:
+                    self._diagnose(exc)
+
+    def _history_launch_failed(self, history, primary):
+        self._history_opening = True
+        try:
+            if history is not None:
+                try:
+                    history.close(force=True, primary=primary)
+                except Exception as secondary:
+                    primary.add_note(f"History launch cleanup failed: {secondary!r}")
+            if self.history is None or self.history is history:
+                try:
+                    self._restore_history_origin()
+                except Exception as secondary:
+                    primary.add_note(f"History origin return failed: {secondary!r}")
+            if self.alive:
+                try:
+                    self.status.configure(text=f"Unable to open Work History: {primary}")
+                except Exception as secondary:
+                    primary.add_note(f"History launch error presentation failed: {secondary!r}")
+        finally:
+            self._history_opening = False
+            try:
+                if self.alive:
+                    self._controls()
+            except Exception as secondary:
+                primary.add_note(f"History launch controls failed: {secondary!r}")
+            self._diagnose(primary)
+
+    def _history_read(self, history, kind, value):
+        if self.history is not history or history.disposed or not self.alive or self.closing:
+            raise ValueError("History session is no longer current")
+        self._token += 1
+        if kind == "history_snapshot":
+            value = dict(value, task_id=history.task["task_id"], cutoff_utc_us=to_us(self.now_utc()))
+        self.worker.requests.put(Message(kind, self._token, value))
+        return self._token
+
+    def _history_submit(self, history, operation, arguments):
+        row = history.reviewed
+        if (self.history is not history or row is None or row["task_id"] != history.task["task_id"]
+                or row["is_running"] or row["revision"] is None
+                or arguments.get("entry_id") != row["entry_id"]
+                or arguments.get("task_id") != row["task_id"]
+                or arguments.get("expected_revision") != row["revision"]
+                or operation not in ("edit_closed_timed_work", "edit_date_only_work", "delete_work_entry")
+                or (operation == "edit_closed_timed_work" and row["kind"] != "timed")
+                or (operation == "edit_date_only_work" and row["kind"] != "date_only")):
+            return False
+        return self._submit(operation, _origin=history, **arguments)
+
     def add_timed_work(self):
         return self._open_manual_work("add_timed_work")
 
@@ -591,7 +732,7 @@ class ChronicleApp:
             return False
 
     def open_mini(self):
-        if not self.alive or self.closing or self.editor is not None:
+        if not self.alive or self.closing or self.editor is not None or self.history is not None or self._history_opening:
             return
         if self.mini is None:
             self.mini = MiniModeWindow(self)
@@ -709,6 +850,8 @@ class ChronicleApp:
                 self._diagnose(result.error)
             try:
                 self._work_editor_result(request, message.token, result)
+                if self.history is not None:
+                    self.history.mutation_result(request, message.token, result)
             except Exception as exc:
                 exc.add_note(f"Authoritative work outcome remains {result.status}; presentation/cleanup failed.")
                 self._diagnose(exc)
@@ -717,6 +860,13 @@ class ChronicleApp:
                 self._advance_close()
             else:
                 self.refresh()
+        elif message.kind in ("history_snapshot", "revisions"):
+            history = self.history
+            if history is not None and not history.disposed:
+                if message.kind == "history_snapshot":
+                    history.receive_snapshot(message.token, message.value)
+                else:
+                    history.receive_details(message.token, message.value)
         elif message.kind == "read":
             if message.token != self._read_inflight:
                 return
@@ -806,16 +956,26 @@ class ChronicleApp:
             session.phase = "executing"
             session.status.configure(text="Reconciling the exact request; waiting for the database result…")
             self._work_editor_controls(session)
+        history = self.history
+        if history is not None and history.request is self.pending:
+            history.token, history.phase = self._pending_token, "executing"
         try:
             self.worker.requests.put(Message("reconcile", self._pending_token, self.pending))
         except Exception as exc:
             self.executing = False
             if session is not None and session.request is self.pending:
                 self._work_editor_result(self.pending, self._pending_token, Outcome("unverified", error=exc))
+            if history is not None and history.request is self.pending:
+                history.mutation_result(self.pending, self._pending_token, Outcome("unverified", error=exc))
             self.status.configure(text=f"Reconciliation not submitted; original request retained. {exc}")
             self._diagnose(exc)
             self._controls()
             return False
+        if history is not None and history.request is self.pending:
+            # Queue first: a presentation failure cannot claim executing I/O
+            # which was never dispatched, or lose the correlated exact retry.
+            history.status.configure(text="Reconciling the identical request; please wait.")
+            history.controls()
         self.status.configure(text="Reconciling the exact saved request…")
         self._controls()
         return True
@@ -823,6 +983,12 @@ class ChronicleApp:
     def request_close(self):
         if not self.alive:
             return
+        if self._history_opening:
+            return
+        if self.history is not None:
+            if self.history.phase == "unverified" and not self.executing:
+                self.history.exceptional_exit()
+            return  # As with a manual form, close owned History before ordinary exit.
         if self.editor is not None:
             session = self._work_editor
             if session is not None and session.phase == "unverified" and not self.executing:
@@ -864,9 +1030,19 @@ class ChronicleApp:
         self.executing = True
         session = self._work_editor
         parent = session.window if session is not None and self.editor is session.window else self.root
+        history = self.history
+        if history is not None and not history.disposed:
+            parent = history.window
         try:
             confirmed = messagebox.askyesno("Unresolved save", "The operation may already have committed. Exit loses this session's retry inputs. No work or evidence is undone. Exit anyway?",
                                            parent=parent, default=messagebox.NO)
+        except BaseException as primary:
+            if history is not None and self.history is history:
+                try:
+                    history.restore_modal()
+                except Exception as secondary:
+                    primary.add_note(f"History modal return also failed: {secondary!r}")
+            raise
         finally:
             self.executing = False
         if confirmed:
@@ -877,8 +1053,15 @@ class ChronicleApp:
                     self._dispose_editor(session.window)
                 except Exception as exc:
                     self._diagnose(exc)
+            if history is not None and self.history is history:
+                try:
+                    history.close(force=True)
+                except Exception as exc:
+                    self._diagnose(exc)
             self._advance_close()
         else:
+            if history is not None and self.history is history:
+                history.restore_modal()
             self._controls()
         return confirmed
 

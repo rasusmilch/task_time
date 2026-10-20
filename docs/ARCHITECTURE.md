@@ -13,7 +13,8 @@ to [ROADMAP.md](ROADMAP.md); validation to [TESTING_STRATEGY.md](TESTING_STRATEG
 Stage 1A implements the connected SQLite timer/worker/main/mini foundation;
 Stage 2A adds connected manual work, typed revision/read services, mixed accounting
 and persisted week configuration.
-Inline History editing and later Timesheet/POL-R remain unimplemented. Earlier
+Stage 2B connects owned modal History and inline correction/deletion for independent
+review. Later Timesheet/POL-R remains unimplemented. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
 ## Small application and responsibility boundaries
@@ -381,10 +382,77 @@ completion closes it. Rejected/manual stale drafts stay editable; uncertainty
 locks the same Request and exposes owner Retry/Reconcile/exceptional exit.
 Unexpected view destruction does not discard owner-held pending evidence.
 
-Stage 2B History rendering, direction controls, calendar pickers and inline
-correction/deletion remain pending. No History placeholder or historical editor
-Toplevel is exposed here. Stage 3 export/POL-R and the active-reader gate for future
-work types remain separate. This Stage 2A delivery does not complete Stage 2.
+At the Stage 2A approval, History rendering and inline editing were still pending;
+the later Stage 2B integration below connects them. Stage 3 export/POL-R and the
+active-reader gate for future work types remain separate. Delivery is not
+independent Stage 2 acceptance.
+
+## Implemented Stage 2B History boundary
+
+`ChronicleApp.open_history()` owns one `history_window.HistoryWindow`, bound to a
+detached live selected task. Ownership is published before callback-driven Map
+presentation. Constructors do not load, observe clocks or wait. The application
+captures the origin's eligible local grab/focus; Map rechecks ownership before a
+local grab. Matching disposal restores only a surviving eligible origin, including
+object-identity checks against reused Tcl paths. Competing local/global grabs are
+never replaced. Construction, disposal and return guards prevent reentrant opening;
+primary launch errors retain cleanup/return diagnostics. Root destruction cleans
+the view and leaves the existing worker shutdown path intact.
+
+`TimerService.read_history_snapshot(task_id: str, *, cutoff_utc_us: int,
+period: str="current_week", start_date: str | None=None,
+end_date: str | None=None) -> dict` collects one transaction's dataset/task identity,
+cutoff, period, resolved inclusive bounds (NULL for All), committed `week_start`,
+effective rows and task-scoped `deleted_entries`. The deleted index includes UUID,
+kind, current revision/deleted flag and retained date/duration or genuine range.
+It is audit navigation, not Actual. `read_task_work_history` retains its row-list
+contract through this same reader. Shared pure `work_history.build_history` and
+`accounting.timed_portions` remain the only portion calculation. No schema changes
+or cached History authority are added.
+
+The worker adds `history_snapshot` read routing and reuses `revisions`. Application
+delivery tokens are unique across dispatches; each live History stores only its
+latest snapshot/detail token and selected detail identity. Obsolete/closed-session
+deliveries cannot install in a later window or consume a mutation result. Read
+failure is unavailable data, never an unverified write.
+
+The component owns Current week/Custom/All, last-successful snapshot/applied bounds,
+as-of reporting, detached handle metadata and inline panels. Current/All switch
+loads immediately; Custom needs Apply. Refresh uses last applied bounds, or Current
+week before first success. One standard-library `calendar` panel changes drafts
+only; Cancel/Escape and bounded month navigation keep the local modal owner.
+`history_display` prepares complete strings and date-group ordering without I/O.
+Within-day UTC order remains stable. Linked selection is visual only. A failed
+preparation retains trusted prior rows; a failed widget installation invalidates
+and hides untrusted handles. Old rows are never represented as current after a
+failed read. Explicit Refresh recovers. Sorting uses no new cutoff/read; only a
+completed render commits direction. Owner-notification failure preserves that
+sort and reports the distinct session-memory handoff failure.
+
+One application boolean starts newest-first and survives sequential History
+openings only in that application. It is never persisted. Inline Edit fixes the
+original task/entry/kind/revision and complete endpoints; the existing strict
+minute/occurrence services retain unchanged precision and reject stale mutation.
+Date-only editing retains whole-date shape. Delete names the complete work and
+warns about other affected dates, using stop-minus-one-microsecond for the last
+affected date. Confirmation is History-owned and defaults No.
+
+History submits through `ChronicleApp._submit` with an explicit verified origin;
+it does not own a second coordinator. Request/token correlation precedes queue/UI
+effects. Main/mini controls stay blocked, running timers and normal reads continue.
+Executing Close is rejected. Unverified work locks the identical Request for
+owner Retry/Reconcile or owned default-cancel exceptional exit. Unexpected widget
+destruction leaves owner evidence intact. Stale drafts disable Save without
+retargeting. Committed results remain committed through later GUI failures and
+refresh the applied History period once plus the normal coordinated main/mini path.
+Unchanged/cancelled edits reload no History. Details renders immutable creation,
+correction, deletion and active-start revisions in authoritative order; no earlier
+revision or deleted identity becomes editable.
+
+Stage 2A is independently accepted at `7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`.
+Stage 2B/complete Stage 2 functionality awaits independent adjudication. No
+subordinate correction Toplevel, new worker, persistence mechanism, runtime calendar
+dependency, Timesheet or POL-R is introduced.
 
 ## Frozen files and core POL-R
 
@@ -415,8 +483,8 @@ external connection remain separately approved.
 Windows native Python source operation is the deployment qualification target.
 Validate actual bundled SQLite/Tk, offline rules, NTFS ownership, timer persistence,
 main/mini, active-start correction, modal input/focus and normal reopen before real
-use or complete core pilot. No executable build is required. Stage 1 functional
-acceptance is independently adjudicated after relevant tests; absent work-computer
+use or complete core pilot. No executable build is required. Stage 1 functionality
+is independently accepted; absent work-computer
 access does not permanently block Stage 2. Later core and Stage 4/5 integration
 still require applicable native evidence. Linux/unit results are not Windows,
 concurrency, hardware power-loss or release qualification.
@@ -425,6 +493,6 @@ Stage 0's documentation is independently accepted at
 `a24aca706740b7e02cc1f856baa194042785bbcb`. The active
 `feature/chronicle-rewrite` originates there; preserve the historical
 `feature/chronicle-projects-timesheets` branch. Stage 1A and Stage 1B portable
-reliability are accepted. Stage 1 remains In Progress pending independent
-functional adjudication; subsequent work remains independently reviewed under
+reliability and Stage 1 functionality are accepted. Subsequent work remains
+independently reviewed under
 [AGENTS.md](../AGENTS.md), without data-path cutover or resolution of Open policy.

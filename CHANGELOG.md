@@ -12,7 +12,7 @@ receipts or commits. No release or production qualification is implied below.
   authority, superseding earlier Qt/PySide6 planning and JSONL-as-target mechanics.
   Preserve exact work semantics, immutable revisions/evidence, stable work-entry
   UUIDs, atomic request receipts, serialized worker-owned I/O and callback-driven
-  Tk lifecycle with future inline History editing. Connect the first SQLite timer
+  Tk lifecycle and inline History editing. Connect the first SQLite timer
   slice through the sole source route: independent task/project controls,
   atomic Start/Stop/Switch, persisted active identity, audited explicit active-start
   recovery with asynchronous draft retention and editor-local exact-request
@@ -23,8 +23,12 @@ receipts or commits. No release or production qualification is implied below.
   date-only work retains its whole declared date and unchanged timed endpoints
   retain precision. No-op edits write nothing; expected revisions/settings reject
   stale writes. Manual forms retain drafts and exact uncertain requests through
-  the existing worker/session. History rendering/inline historical editing remain
-  pending. One worker keeps Tk responsive and shutdown preserves uncertainty.
+  the existing worker/session. Connect one modal Work History with Current week/
+  Custom/All, draft-only standard-library calendars, session date direction, linked
+  precise rows, inline whole-entry correction/confirmed deletion and immutable
+  revision/deleted-entry details. Snapshot context is transaction-consistent;
+  stale/uncertain outcomes retain review/request identity. One worker keeps Tk
+  responsive and shutdown preserves uncertainty.
   Sleep/exit never stops timers; restart uses committed state. Use explicit fresh
   paths and offline tzdata. Use built-in sqlite3 with verified DELETE journaling,
   synchronous EXTRA, foreign keys and the SQLite 3.37.0 STRICT floor. Exercise
@@ -33,9 +37,9 @@ receipts or commits. No release or production qualification is implied below.
   through failures, with accessible retry and no return to abandoned mutations.
   Run directly from Python source with a minimal pip-installed runtime dependency;
   retire executable-build tooling and the obsolete WAL-specific version pin.
-  Preserve unsupported datasets without conversion/deletion. Independent Stage 1
-  functional review, Stage 2A independent review, native Windows source/actual
-  suspend qualification and Stage 2B/Timesheet/POL-R remain pending.
+  Preserve unsupported datasets without conversion/deletion. Stage 1 functionality
+  and Stage 2A are independently accepted. Stage 2B functional review, native
+  Windows source/actual suspend qualification and Timesheet/POL-R remain pending.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete
@@ -58,7 +62,7 @@ receipts or commits. No release or production qualification is implied below.
 - Establish one target architecture owner and distinguish the retained unshipped
   JSONL source, historical bounded Phase 2 acceptance and future SQLite evidence.
   Stage 0 is independently accepted; the connected Stage 1A timer runs on the
-  authorized rewrite branch. Stage 1 remains In Progress, not complete core/pilot.
+  authorized rewrite branch. Stage 1 functionality is accepted, not complete core/pilot.
 
 ### Current JSONL workstream capability — retained implementation history
 

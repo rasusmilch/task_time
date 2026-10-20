@@ -39,6 +39,8 @@ class DatabaseWorker(Thread):
                         value = service.read_current_state(cutoff_utc_us=message.value)
                     elif message.kind == "history":
                         value = service.read_task_work_history(**message.value)
+                    elif message.kind == "history_snapshot":
+                        value = service.read_history_snapshot(**message.value)
                     elif message.kind == "revisions":
                         value = service.read_work_entry_revisions(message.value)
                     elif message.kind == "mutate":

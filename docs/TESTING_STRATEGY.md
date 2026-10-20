@@ -60,7 +60,7 @@ qualification remain distinct.
 
 ## Connected SQLite timer evidence
 
-The Stage 1A/1B/1C and Stage 2A suites below exercise the shipped `chronicle` source with disposable
+The Stage 1A/1B/1C and Stage 2A/2B suites below exercise the shipped `chronicle` source with disposable
 SQLite datasets. This inventory describes assertions, not an automatic passing
 result or native qualification; current command outcomes belong in receipts.
 
@@ -80,6 +80,10 @@ result or native qualification; current command outcomes belong in receipts.
 | [test_history_reader.py](../tests/rewrite/test_history_reader.py) | Current week/Custom/All, complete endpoints and daily linked identity, exact precision/offsets, active UUID/version/audit and zero observation without a saved Stop, future dated work, retained deleted tasks, deleted-entry details, invalid requests and detached read/accounting agreement. Backend reader evidence, not a rendered History or inline editor. |
 | [test_week_settings.py](../tests/rewrite/test_week_settings.py) | All seven persisted metadata conventions, containing-week/history agreement, unchanged/stale/type rejection, exact historical receipt reuse, restart and unchanged work evidence. No timezone change or allocation policy. |
 | [test_manual_entry_ui.py](../tests/rewrite/test_manual_entry_ui.py) | Actual ChronicleApp/worker/service forms, fixed task/defaults, positive duration/timed validation and retained drafts, matching completion, uncertainty/exact retry, destroyed forms, construction/presentation faults, owned default-cancel exceptional exit, unchanged running timers, midnight/manual mixed totals, persisted week changes/restart, one-cutoff main/mini and scheduled refresh recovery. Server-delivered XTest mouse/keyboard exercises actual Add/Save/Cancel controls, blocked main/mini and weekday combobox selection; separate direct-callback tests isolate faults. Tk calls are checked on the creator thread. Display/window manager required; Linux evidence is not native Windows qualification. |
+| [test_chronicle_history_snapshot.py](../tests/rewrite/test_chronicle_history_snapshot.py) | Actual one-transaction snapshot context/deleted index, seven week conventions, retained deleted tasks, detached row-list agreement, exact duration/midnight/link/repeated-offset formatting and immutable revision ordering. Pure presentation is separate from accounting. |
+| [test_chronicle_history_ui.py](../tests/rewrite/test_chronicle_history_ui.py) | Actual History/application/worker/services: periods/draft-only calendars, applied refresh/rollover, empty/unavailable/preparation/widget distinctions, session direction and notification failure, linked metadata, complete timed/date-only editing, precise/no-op behavior, stale/rollback/unavailable drafts, exact uncertain retry, duplicate/late delivery, committed-result preservation and owned exceptional exit. Direct callbacks isolate faults; they alone are not operator-input evidence. |
+| [test_chronicle_history_modal.py](../tests/rewrite/test_chronicle_history_modal.py) | Actual Tk local/global grab eligibility, Map-time conflicts, identity-checked origin return/focus fallback including reused paths, construction/presentation/return diagnostics, loading closure, obsolete-session rejection, root/calendar destruction and worker cleanup. Focus return requires a working window manager; local-grab evidence is distinct from Windows qualification. |
+| [test_chronicle_history_operator.py](../tests/rewrite/test_chronicle_history_operator.py) | Production main → modal History → inline Edit/Delete/Details → return/restart on one disposable dataset. Server-delivered XTest input exercises controls, heading, periods/Custom Apply, calendar select/cancel/Escape, blocked main/mini, native default-No and affirmative Delete, full-entry precision, deleted navigation and origin return. Scheduled events/timer observations continue; a second actual application verifies persistence and newest-first reset. Native toolkit buttons use actual pointer geometry with bounded cleanup, not nested test pumping within the toolkit wait. No Windows/power-loss or Stage 3 evidence. |
 
 A usable display is required for `real_tk` cases. Linux Xorg/XTest evidence does
 not establish native Windows/NTFS or actual suspend/resume. The actual Python,
@@ -87,10 +91,11 @@ SQLite source/compile options and DELETE/EXTRA/FK settings are recorded; the GUI
 profile is exercised separately. SQLite 3.37.0+ is the only runtime version floor.
 Stage 1A and Stage 1B portable reliability are independently accepted. Stage 1C
 simplifies the profile/source deployment and retires executable-build assertions.
-Stage 1 functional completion requires independent adjudication of relevant
-engineering evidence. Native Windows source/NTFS/Tk and actual suspend/resume
+Stage 1 functionality and Stage 2A are independently accepted under the later
+Stage 2B approval. Native Windows source/NTFS/Tk and actual suspend/resume
 remain deployment/pilot evidence, not an executable-build requirement or permanent
-Stage 2 blocker. Stage 2A adds connected manual writers and complete mixed readers; History UI/inline historical editing and Timesheet/POL-R remain later work.
+Stage 2 blocker. Stage 2B adds connected History/inline editing evidence; complete
+Stage 2 functional acceptance remains independent. Timesheet/POL-R is later work.
 
 ## Retained legacy test inventory and limits
 
@@ -158,8 +163,8 @@ Stage 0's documentation gate is independently accepted at
 The rows below are stage acceptance obligations, not automatic passing results.
 Stage 1A and Stage 1B portable reliability are independently accepted on
 `feature/chronicle-rewrite`. Stage 1C uses standard sqlite3 DELETE/EXTRA and direct
-source execution. Independent Stage 1 functional review remains distinct from
-pending native Windows source-deployment/pilot qualification.
+source execution. Independent Stage 1 functional acceptance is established under
+the later approval; native Windows source-deployment/pilot qualification remains pending.
 Tests follow the user-selected [architecture](ARCHITECTURE.md) and
 [semantic contract](EXPORT_EVIDENCE_CONTRACT.md); they do not choose stronger
 recovery/platform policy. Integrity tests begin in each slice, not only Stage 4.
@@ -168,7 +173,7 @@ recovery/platform policy. Integrity tests begin in each slice, not only Stage 4.
 | --- | --- |
 | 0 authority | Review complete affected Markdown/current source, all material decisions, current/target separation, incoming relative links/anchors and executable scope. No runtime delivery from documentation. |
 | 1 foundation | Real SQLite recording/reopen, stable task/project IDs, one active timer, atomic Switch at one accepted time, rollback on rejected use cases, exact request reuse before stale checks and changed-content rejection. Verify actual DELETE/EXTRA/foreign-key/STRICT behavior, bounded lock failure and truthful commit uncertainty. Source startup includes the actual built-in SQLite runtime and offline zone availability. Native Windows source evidence is required before deployment/pilot, not as an executable gate. Approved continuous sleep/restart, explicit active-start recovery and uncertain-exit rules now have Stage 1A assertions; native operational qualification remains pending. |
-| 2 recording | Stage 2A delivers connected creation, revision/read services, mixed totals and week settings; Stage 2B History/inline editor remains pending. Complete-stage obligations: integer-unit mixed accounting, genuine/date-only shape integrity, stable work UUID/revision/current references, correction/deletion history, no-op purity, stale drafts, whole-entry segment editing, precise unchanged endpoints, minute changes, DST/UTC, all week starts, applied periods/unapplied drafts/session sorting and all-reader gate before exposed writers. |
+| 2 recording | Stage 2A delivers connected creation, revision/read services, mixed totals and week settings; Stage 2B connects History/inline editing for independent adjudication. Complete-stage obligations: integer-unit mixed accounting, genuine/date-only shape integrity, stable work UUID/revision/current references, correction/deletion history, no-op purity, stale drafts, whole-entry segment editing, precise unchanged endpoints, minute changes, DST/UTC, all week starts, applied periods/unapplied drafts/session sorting and all-reader gate before exposed writers. |
 | 3 Timesheet AND POL-R | Connected frozen preview/full-week quarter-hour suggestions and saved-report recovery; explicit whole/checked/manual absolute quarter confirmations, complete reviewed source, exact acknowledgements, Unknown/zero, stale priors, daily gaps/adjustments/coverage and reminders. External reporting/zero-entry validation before affected official use. No pilot without these. |
 | 4 stabilization | Integrated interruption/commit ambiguity, second-instance refusal, queued shutdown/restore invalidation, real backup/restore, upgrades, storage faults, native Tk and Windows source operation. Earlier slices already test their integrity boundaries. |
 | 5 complete core pilot | Fresh representative reporting week: timer/manual/correction, full/partial frozen quarter-hour exports, whole/checked/manual/zero/Unknown confirmation, explained rounding, daily allocation agreement/coverage, reminders and restore without workarounds. External redistribution and zero-entry treatment validated; independent review/native evidence, not a timer-only pilot. |
