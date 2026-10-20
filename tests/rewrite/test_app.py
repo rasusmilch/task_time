@@ -313,6 +313,8 @@ def test_stale_read_rejected_but_closed_origin_commit_handled():
     app.closing, app.editor = False, None
     app._work_editor = None
     app.history = None
+    app.timesheet = None
+    app._timesheet_opening = False
     app._pending_token = 2
     app.executing = True
     app._controls = lambda: None

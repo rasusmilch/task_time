@@ -84,7 +84,8 @@ Stage 1 functionality is independently accepted; unavailable Windows
 source evidence is a deployment/pilot gate, not an executable-build prerequisite
 or a permanent blocker to Stage 2 development. See [roadmap](docs/ROADMAP.md) and
 [testing strategy](docs/TESTING_STRATEGY.md). Stage 2A is independently accepted;
-Stage 2B is connected for review. Stage 3 remains pending.
+Stage 2B/complete recording is independently accepted at `adc09ba0935e8718c4ad2101057af9c6022074cc`.
+Stage 3A preview/evidence is connected for independent review; Stage 3 remains incomplete.
 
 ## Manual work and week configuration
 
@@ -108,4 +109,20 @@ Select a closed timed or date-only row to Edit the complete entry inline, or Del
 after reviewing its full date/range confirmation. Running rows cannot use those
 actions. Details includes earlier revisions and Deleted entries. Save waits for
 the worker result; unverified work retains exact Retry/Reconcile inputs. Close
-History before using main/mini. No Timesheet/POL-R workflow is exposed yet.
+History before using main/mini.
+
+## Timesheet / POL-R Preview
+
+Close History or another work form, then choose Timesheet / POL-R. Fresh openings
+start This week/All tasks and require Preview. Last week uses the committed week
+convention; Custom accepts inclusive dates or draft-only inline calendar choices.
+Selected tasks uses explicit UUID rows (Ctrl/Shift selection), not names or
+hierarchy. Retained deleted tasks remain available. Preview observes a running
+timer without stopping it and shows Actual separately from suggested POL-R.
+Full-week target/adjustment context includes dates outside a partial report.
+Changed inputs require a fresh Preview even after changing back. Older output is
+labeled previous. Close discards the volatile draft; running work continues.
+No Save, file publication, confirmed values or reconciliation/reminders are
+available in Stage 3A. Registration/recovery services are backend foundations only.
+Current-week suggestions may change; Preview is not external submission or
+employer/customer policy qualification.

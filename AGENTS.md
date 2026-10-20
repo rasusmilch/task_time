@@ -45,10 +45,12 @@ is independently accepted; native Windows source evidence is
 required before deployment/pilot, not an executable-build or Stage 2 blocker.
 Stage 2A mixed work, immutable revisions, shared accounting and week configuration
 are independently accepted at `7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`.
-The later explicit Stage 2B approval authorizes connected modal History, inline
-whole-entry correction/deletion and revision details. That implementation awaits
-independent functional adjudication; Stage 2 remains In Progress and Stage 3 POL-R
-remains pending.
+Stage 2B and complete Stage 2 functional recording are independently accepted at
+`adc09ba0935e8718c4ad2101057af9c6022074cc`, as reported in the later explicit Stage 3A
+execution approval. Stage 3A implements exact weekly allocation, connected read-only
+Timesheet Preview and immutable SQLite export registration/recovery for independent
+review. Stage 3 remains In Progress: file Save/recovery UI (3B), confirmation (3C)
+and reconciliation/reminders (3D) remain pending.
 Subsequent execution stays bounded and independently reviewed, using substantial
 coherent slices without microtasks.
 The fresh rewrite

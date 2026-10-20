@@ -11,6 +11,15 @@ owns replacement SQLite schema/transaction/thread boundaries;
 [ROADMAP.md](ROADMAP.md) sequences core delivery before pilot. Approval is not
 implementation or platform qualification.
 
+Stage 3A implements exact weekly allocation, detached frozen candidates and the
+connected read-only modal Timesheet Preview. Four immutable SQLite tables retain
+master context, frozen tasks, full-week basis and scoped cells through the existing
+atomic registration/receipt service. Detached list/read and restart validation
+check original committed request content and exact bytes/digest without current
+Actual or a later renderer. Preview itself writes nothing. File Save/materialization,
+status/overwrite and recovery UI remain Stage 3B; confirmation is Stage 3C and
+reconciliation/reminders Stage 3D. No Stage 3A UI Save/Confirm action is exposed.
+
 **SQLite supersedes the earlier mandatory JSONL envelope, segment manifest,
 physical replay order, fsync/synchronize-journal and Python projection mechanisms.**
 There is one replacement authority, not SQLite alongside a required journal.

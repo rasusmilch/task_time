@@ -26,6 +26,11 @@ Stage 2B connects Work History for the selected task: Current week/Custom/All,
 draft-only inline calendars, session date direction, complete-entry inline editing,
 confirmed deletion and immutable revision/deleted-entry details. One modal owner
 blocks main/mini input while timers and worker delivery continue.
+Timesheet / POL-R opens one read-only modal preview: This week/Last week/Custom,
+All or explicit task UUIDs (including deleted tasks), draft-only calendars and
+explicit Preview/Refresh. Actual HH:MM/decimal and suggested quarter-hour amounts
+are separate, with complete-week target/adjustment context for partial views.
+Preview writes no evidence or files; no Save or Confirm control is exposed yet.
 Main shows own-task Today/This week; mini shows active or selected task Today.
 One database worker supplies coordinated integer-microsecond accounting while Tk
 continues events. Exact committed request retries precede stale checks; uncertain
@@ -100,7 +105,9 @@ permission; ordinary Chronicle operation is offline and never installs packages.
 
 ## Selected core and sequence
 
-Stage 2 is **In Progress**. Stage 2A connects genuine manual intervals and
+Stage 2 recording is **independently accepted** at
+`adc09ba0935e8718c4ad2101057af9c6022074cc` under the later Stage 3A approval.
+Stage 2A connects genuine manual intervals and
 endpoint-free date-only amounts to the worker and main/mini Actual. Date-only
 H:MM work stays wholly on its declared date, including future dates. Timed entry
 uses separate local dates/minutes and explicit repeated-time choices; its end
@@ -115,16 +122,19 @@ Stage 2B connects those services through modal Work History with inline editing,
 whole-entry Delete confirmation and read-only revision/deletion navigation.
 Applied periods, unapplied Custom drafts and session sorting survive verified
 edits; stale/unverified results retain their reviewed draft/exact request.
-Stage 2 functional completion awaits independent review. Week start is
+Stage 2 functional acceptance does not complete core POL-R. Week start is
 configurable, initially Sunday. Main/mini and
 Current week history reads use committed metadata, with no historical-work rewrite.
 No Reset controls/counters or synthetic work are added.
 
-Stage 3 must deliver frozen Timesheet Preview/Save/recovery **and core POL-R**:
-full-task/week upward quarter rounding, deterministic daily distribution, immutable
-absolute whole/checked/manual confirmation, Unknown versus zero, daily/weekly
-reconciliation and required reminders. Exact Actual, displayed hundredths and
-quarter units remain distinct. The single algorithm lives in the export contract;
+Stage 3 is In Progress. Stage 3A delivers connected frozen Preview, exact weekly
+suggestions and immutable SQLite registration/recovery services for independent
+review. Registration stores the reviewed labels, full-week basis, scoped cells
+and exact UTF-8 text/digest atomically with its request receipt; later work cannot
+rewrite them. There is no external publication or saved-report UI yet.
+Stage 3B file Save/retry/recovery, Stage 3C absolute whole/checked/manual confirmation,
+Unknown versus zero, and Stage 3D daily/weekly reconciliation/reminders remain pending.
+Exact Actual, displayed hundredths and quarter units remain distinct. The single algorithm lives in the export contract;
 there is no duplicate timer-display rounding implementation. External redistribution
 and worked-day zero-entry rules need validation before affected official reporting.
 

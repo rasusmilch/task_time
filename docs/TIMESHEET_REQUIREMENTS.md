@@ -22,8 +22,10 @@ Selected does not mean implemented. This documentation selects a clean Tkinter
 rewrite, not a Qt/PySide6 frontend and not incremental JSONL compatibility work.
 Stage 1A delivers the connected SQLite timer foundation. Stage 2A adds connected
 manual work, revision/read services, mixed accounting and week configuration.
-Stage 2B connects modal History, inline correction/deletion and immutable details
-for independent review. Timesheet and POL-R remain later gates; this is not
+Stage 2B/complete Stage 2 recording is independently accepted. Stage 3A connects
+read-only Timesheet Preview, exact weekly suggestions and immutable SQLite export
+registration/recovery services for independent review. File Save/recovery UI,
+confirmation and reconciliation/reminders remain later Stage 3 gates; this is not
 complete core/pilot readiness.
 
 ## SELECTED — Replacement installation and data boundary
@@ -343,8 +345,8 @@ make arbitrary displayed Actual decimals valid POL-R inputs.
 Also mandatory are [cases C–G](EXPORT_EVIDENCE_CONTRACT.md#mandatory-allocation-examples):
 exact weekly distribution, upward adjustment, no carryover, small positive work
 with an earlier-date tie and a zero suggestion, and exact-quarter work.
-They and partial-Custom/full-week behavior constrain later tests; they are not
-claims of implemented SQLite allocation.
+Stage 3A implements these examples and partial-Custom/full-week behavior;
+passing implementation evidence does not establish external-policy qualification.
 
 ## SELECTED — Preview and saved exports
 
@@ -509,10 +511,17 @@ reads and mixed main/mini/daily Actual. All active readers include both exposed
 work types. Stage 2A is independently accepted at
 `7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`. Stage 2B now connects the main Work History
 command, modal browser, inline whole-entry correction/deletion and immutable details.
-Stage 2 remains In Progress pending independent functional adjudication.
-Stage 3 frozen export/confirmation/reconciliation,
-quarter-hour allocation and weekly reminders are not shipped. Retained JSONL
-services do not satisfy those gates. Earlier Phase 2 acceptance remains bounded
+The later Stage 3A approval reports Stage 2B/complete Stage 2 recording independently
+accepted at `adc09ba0935e8718c4ad2101057af9c6022074cc`.
+Stage 3A connects Timesheet / POL-R from the main window: This week/Last week/Custom,
+All/explicit UUIDs including deleted tasks, draft-only calendars and explicit
+Preview/Refresh. It retains immutable full-week basis, in-scope cells, exact text
+and digest without writes during Preview. The modal window has no Save or Confirm.
+Immutable SQLite registration, exact-request reconciliation and detached registered
+export list/read are service foundations, not a file-save workflow. Stage 3 remains
+In Progress pending file publication/recovery UI (3B), absolute confirmation (3C)
+and reconciliation/reminders (3D). Retained JSONL services do not satisfy those
+gates. Earlier Phase 2 acceptance remains bounded
 historical evidence. This timer foundation is not complete core/pilot readiness.
 
 ## OPEN — Reserved user/ChatGPT decisions
@@ -550,6 +559,6 @@ foundation, independently accepted at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`
 Stage 1B portable reliability and Stage 1 functionality are accepted after Stage 1C
 source/runtime simplification; native Windows source
 qualification is separate and remains required before real deployment/pilot.
-Stage 2A is independently accepted; Stage 2B is delivered for independent review.
-Mandatory Stage 3 POL-R remains approved, unimplemented work. Open policies stay
+Stage 2 recording is independently accepted. Stage 3A is delivered for independent
+review; Stage 3B/3C/3D remain approved, unimplemented core work. Open policies stay
 reserved before their affected work.

@@ -13,8 +13,9 @@ to [ROADMAP.md](ROADMAP.md); validation to [TESTING_STRATEGY.md](TESTING_STRATEG
 Stage 1A implements the connected SQLite timer/worker/main/mini foundation;
 Stage 2A adds connected manual work, typed revision/read services, mixed accounting
 and persisted week configuration.
-Stage 2B connects owned modal History and inline correction/deletion for independent
-review. Later Timesheet/POL-R remains unimplemented. Earlier
+Stage 2B/complete recording is independently accepted. Stage 3A connects read-only
+Timesheet Preview and immutable export evidence for independent review. File Save,
+confirmation and reconciliation/reminders remain Stage 3B/3C/3D. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
 ## Small application and responsibility boundaries
@@ -164,7 +165,7 @@ its rollups sum those cells. **Submission is a distinct pure calculation** over
 exact full-task/week work, yielding suggested quarter counts with no carryover.
 The single [algorithm/proof owner](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
 defines weekly upward rounding, largest remainders, earlier-date ties and partial
-Custom/provisional-week rules. Implement later in plain domain/application logic,
+Custom/provisional-week rules. Stage 3A implements it in pure `polr_allocation`,
 not widgets, SQL formatting or another accounting implementation.
 
 Confirmed is latest absolute quarter-unit evidence or Unknown. Daily Delta uses
@@ -278,9 +279,10 @@ Workers never call Tk. Temporary detached UI state is not another datastore.
 No UI-settings files, snapshots, exports or per-tick writes are added.
 
 Stage 2A extends the fresh development schema directly for date-only revisions;
-older development signatures refuse, without a migration path. Future export
-basis/confirmation batches/cells/current references remain Stage 3 work, preserving
-stable identities. The current application exposes none of those export/POL-R workflows. Stage 1B exercises real SQLite
+older development signatures refuse, without a migration path. Export
+basis/cells are added in Stage 3A; confirmation batches/current references remain
+future Stage 3 work, preserving stable identities. The current application exposes
+read-only Timesheet Preview, with no file Save or confirmation workflow. Stage 1B exercises real SQLite
 process death at transaction/receipt/commit boundaries, atomic Switch, historical
 exact retries, active restart/calendar continuity, ordinary ownership races and
 rollback-journal pre-COMMIT and post-cleanup boundaries. These bounded local
@@ -384,8 +386,9 @@ Unexpected view destruction does not discard owner-held pending evidence.
 
 At the Stage 2A approval, History rendering and inline editing were still pending;
 the later Stage 2B integration below connects them. Stage 3 export/POL-R and the
-active-reader gate for future work types remain separate. Delivery is not
-independent Stage 2 acceptance.
+active-reader gate for future work types remain separate. Delivery alone did not
+establish independent acceptance; the later Stage 3A instruction reports Stage 2
+recording independently accepted.
 
 ## Implemented Stage 2B History boundary
 
@@ -450,9 +453,74 @@ correction, deletion and active-start revisions in authoritative order; no earli
 revision or deleted identity becomes editable.
 
 Stage 2A is independently accepted at `7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`.
-Stage 2B/complete Stage 2 functionality awaits independent adjudication. No
-subordinate correction Toplevel, new worker, persistence mechanism, runtime calendar
-dependency, Timesheet or POL-R is introduced.
+Stage 2B/complete Stage 2 recording is independently accepted at
+`adc09ba0935e8718c4ad2101057af9c6022074cc`, as reported in the later Stage 3A approval.
+The Stage 2B slice introduced no subordinate correction Toplevel, new worker,
+persistence mechanism, runtime calendar dependency, Timesheet or POL-R.
+
+## Implemented Stage 3A Timesheet and immutable evidence boundary
+
+`accounting.calculate_daily` is the shared exact attribution seam for main/mini,
+History portions and arbitrary Timesheet date windows. `polr_allocation` implements
+the [single allocation contract](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
+and precision conversions. `timesheet` owns frozen dataclasses (`Candidate`,
+`TaskLabel`, `Basis`, `Cell`), strict structure/coverage/allocation validation and
+one deterministic renderer. It retains immutable tuples, exact microseconds,
+displayed hundredths, quarter counts, complete week basis and in-scope cells.
+Printable Unicode is preserved; control characters in labels are escaped. LF,
+fixed field order and a trailing newline produce exact UTF-8 bytes and SHA-256.
+Displayed rollups sum rounded cells; full-week summaries label partial coverage.
+
+Explicit `TimerService` APIs:
+
+- `prepare_timesheet_preview(*, export_id: str, cutoff_utc_us: int, period: str="this_week", start_date: str | None=None, end_date: str | None=None, scope_kind: str="all", task_ids: tuple[str, ...]=()) -> Candidate`.
+- `read_timesheet_task_choices() -> dict` (dataset identity and UUID/label/project/deleted rows).
+- `register_timesheet_export(candidate: Candidate, *, request_id: str, action_utc_us: int) -> Outcome` (the Request carries strict complete candidate JSON, not raw bytes).
+- `list_registered_timesheet_exports() -> list[dict]` and `read_registered_timesheet_export(export_id: str) -> Candidate`.
+
+Preparation captures task/project metadata, effective mixed work, active start,
+zone and committed weekday within one read transaction, then calculates detached
+facts under the explicit UI observation. All includes retained deleted tasks;
+Selected rejects empty/duplicate/unknown IDs. Each intersecting week retains seven
+basis dates even for one-day Custom, while visible cells cover exactly the requested
+task/dates. Valid empty All is distinct from failure. There is no preparation write.
+
+Four STRICT immutable tables extend fresh schema version 1: `timesheet_exports`,
+`timesheet_export_tasks`, `timesheet_export_week_basis`, `timesheet_export_cells`.
+Deferred foreign keys allow validated task/basis/cell rows before the master; the
+master seals further child inserts. UPDATE/DELETE triggers protect all evidence.
+The existing transaction helper appends the exact receipt and commits atomically.
+Installed relational coverage is checked before the receipt. Registration validates
+the reviewed content/text agreement without reading current Actual or replacing
+labels/settings; it stores UTF-8 derived from that frozen text, not fresh work.
+Exact receipt reuse precedes validation; uncertainty reconciles the same Request.
+Read/reopen validates structure, full allocation proof, exact bytes/digest and
+association with the complete original committed request. Recovery preserves old
+text without calling a later renderer or current accounting. No file status is stored.
+
+Worker kinds `timesheet_tasks`, `timesheet_preview`, `timesheet_exports` and
+`timesheet_export` use the existing serialized thread. Registration uses `mutate`/
+`reconcile`; there is no second pending-operation coordinator. `ChronicleApp`
+owns one `TimesheetWindow`, opening/return guards and read tokens. Constructor is
+withdrawn, with no clocks/reads/preparation; ownership is published before Map.
+Map rechecks local-grab eligibility and loads task choices only. Work forms/History
+must close first. Modal input blocks main/mini while normal timer/worker delivery
+continues. Only eligible surviving origin focus/grab is restored, never a competitor.
+
+This week/Last week/Custom and All/Selected drafts never auto-prepare. Inline
+standard-library calendars change drafts only; a valid draft seeds the picker,
+otherwise an existing observation or explicit local-date seed observation is used.
+Preview alone captures one new report cutoff/UUID. Draft changes abandon readiness
+and obsolete delivery; changing back cannot resurrect a candidate. Tokens plus
+export/dataset/cutoff checks reject late/mismatched results. Complete content is
+prepared before rendering. Partial installation hides untrusted output, preserves
+the original diagnostic and allows explicit recovery. Read-only exact text remains
+scrollable/copyable. Close can discard outstanding reads and volatile candidates;
+there is no unfinished-Save lifecycle in Stage 3A.
+
+Stage 3A has no Save/Export/Confirm control, external publication or recovery UI.
+Its registration/list/read services are automated-test foundations for Stage 3B,
+not a misleading SQLite-only file-save action. Stage 3 remains incomplete.
 
 ## Frozen files and core POL-R
 

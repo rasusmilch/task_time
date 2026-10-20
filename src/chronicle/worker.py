@@ -43,6 +43,14 @@ class DatabaseWorker(Thread):
                         value = service.read_history_snapshot(**message.value)
                     elif message.kind == "revisions":
                         value = service.read_work_entry_revisions(message.value)
+                    elif message.kind == "timesheet_tasks":
+                        value = service.read_timesheet_task_choices()
+                    elif message.kind == "timesheet_preview":
+                        value = service.prepare_timesheet_preview(**message.value)
+                    elif message.kind == "timesheet_exports":
+                        value = service.list_registered_timesheet_exports()
+                    elif message.kind == "timesheet_export":
+                        value = service.read_registered_timesheet_export(message.value)
                     elif message.kind == "mutate":
                         value = service.execute(message.value)
                     elif message.kind == "reconcile":

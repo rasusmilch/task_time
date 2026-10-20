@@ -220,11 +220,65 @@ class TimerService:
                    request.action_utc_us, request.request_id))
         c.execute("UPDATE work_entries SET current_revision=1 WHERE entry_id=?", (active["entry_id"],))
 
+    def prepare_timesheet_preview(self, *, export_id: str, cutoff_utc_us: int, period: str = "this_week",
+                                  start_date: str | None = None, end_date: str | None = None,
+                                  scope_kind: str = "all", task_ids: tuple[str, ...] = ()):
+        from .timesheet import prepare
+        instant(cutoff_utc_us)
+        uuid_text(export_id)
+        with self._read_transaction() as c:
+            tasks = [dict(r) for r in c.execute("SELECT * FROM tasks ORDER BY task_id")]
+            projects = [dict(r) for r in c.execute("SELECT * FROM projects ORDER BY project_id")]
+            work = [dict(r) for r in c.execute("""SELECT e.task_id,r.* FROM work_entries e
+              JOIN work_revisions r ON r.entry_id=e.entry_id AND r.revision=e.current_revision WHERE r.is_deleted=0""")]
+            row = c.execute("SELECT * FROM active_timer").fetchone()
+            active = dict(row) if row else None
+            weekday = self.store.week_start
+            dataset_id, timezone = self.store.dataset_id, self.store.timezone
+        return prepare(export_id=export_id,dataset_id=dataset_id,cutoff_utc_us=cutoff_utc_us,
+                       timezone=timezone,week_start=weekday,tasks=tasks,projects=projects,work=work,active=active,
+                       period=period,start_date=start_date,end_date=end_date,scope_kind=scope_kind,task_ids=task_ids)
+
+    def read_timesheet_task_choices(self):
+        with self._read_transaction() as c:
+            rows = [dict(r) for r in c.execute("""SELECT t.task_id,t.name,t.is_deleted,t.project_id,
+              COALESCE(p.name,'Unassigned') AS project_name FROM tasks t LEFT JOIN projects p USING(project_id)
+              ORDER BY project_name,t.name,t.task_id""")]
+        return {"dataset_id":self.store.dataset_id,"tasks":rows}
+
+    def register_timesheet_export(self, candidate, *, request_id: str, action_utc_us: int) -> Outcome:
+        from .timesheet import Candidate
+        content = candidate.content() if type(candidate) is Candidate else candidate
+        return self._make('register_timesheet_export',request_id,action_utc_us,dict(candidate=content))
+
+    def list_registered_timesheet_exports(self):
+        with self._read_transaction() as c:
+            result = []
+            for row in c.execute("SELECT export_id,registered_utc_us FROM timesheet_exports ORDER BY registered_utc_us,export_id"):
+                value = self.store.read_export(c,row['export_id'])
+                result.append({"export_id":value.export_id,"registered_utc_us":row['registered_utc_us'],
+                               "start_date":value.start_date,"end_date":value.end_date,"cutoff_utc_us":value.cutoff_utc_us,
+                               "timezone":value.timezone,"week_start":value.week_start,"scope_kind":value.scope_kind,
+                               "tasks":value.tasks,"preferred_destination":value.preferred_destination})
+            return result
+
+    def read_registered_timesheet_export(self, export_id: str):
+        with self._read_transaction() as c:
+            return self.store.read_export(c,export_id)
+
     def execute(self, request: Request) -> Outcome:
         # The transaction resolves exact receipts before calling this current-state validator.
         def operation(c):
             a, op, now = request.args(), request.operation, request.action_utc_us
             local_date(now, self.store.zone)
+            if op == 'register_timesheet_export':
+                from .timesheet import from_content
+                if set(a) != {'candidate'}:
+                    raise ValueError("Registration requires complete frozen candidate")
+                candidate = from_content(a['candidate'])
+                if candidate.dataset_id != self.store.dataset_id or candidate.timezone != self.store.timezone:
+                    raise ValueError("Wrong candidate dataset/timezone")
+                return self.store.insert_export(c,candidate,request)
             expected = {
                 "create_task": {"task_id", "name", "project_id"},
                 "rename_task": {"task_id", "name", "expected_version"},

@@ -127,7 +127,46 @@ CREATE TRIGGER closed_not_active BEFORE UPDATE OF current_revision ON work_entri
  WHEN NEW.current_revision IS NOT NULL AND EXISTS(SELECT 1 FROM active_timer WHERE entry_id=NEW.entry_id)
  BEGIN SELECT RAISE(ABORT,'entry still active'); END;
 """
-for _table in ("work_revisions", "active_start_corrections", "committed_requests"):
+SCHEMA += f"""
+CREATE TABLE timesheet_exports (
+ export_id TEXT PRIMARY KEY {uuid_constraint('export_id')},
+ created_request_id TEXT NOT NULL UNIQUE REFERENCES committed_requests(request_id) DEFERRABLE INITIALLY DEFERRED,
+ registered_utc_us INTEGER NOT NULL CHECK(registered_utc_us {STAMP}),
+ cutoff_utc_us INTEGER NOT NULL CHECK(cutoff_utc_us {STAMP}),
+ start_date TEXT NOT NULL CHECK(length(start_date)=10), end_date TEXT NOT NULL CHECK(length(end_date)=10 AND end_date>=start_date),
+ timezone TEXT NOT NULL CHECK(length(timezone)>0), week_start INTEGER NOT NULL CHECK(week_start BETWEEN 0 AND 6),
+ scope_kind TEXT NOT NULL CHECK(scope_kind IN ('all','selected')), selected_task_ids_json TEXT NOT NULL,
+ preferred_destination TEXT, report_utf8 BLOB NOT NULL, report_sha256 TEXT NOT NULL
+ CHECK(length(report_sha256)=64 AND report_sha256 NOT GLOB '*[^0-9a-f]*')
+) STRICT;
+CREATE TABLE timesheet_export_tasks (
+ export_id TEXT NOT NULL REFERENCES timesheet_exports(export_id) DEFERRABLE INITIALLY DEFERRED,
+ task_id TEXT NOT NULL REFERENCES tasks(task_id), name TEXT NOT NULL,
+ project_id TEXT REFERENCES projects(project_id), project_name TEXT NOT NULL,
+ is_deleted INTEGER NOT NULL CHECK(is_deleted IN (0,1)), ordinal INTEGER NOT NULL CHECK(ordinal>=0),
+ PRIMARY KEY(export_id,task_id), UNIQUE(export_id,ordinal)
+) STRICT;
+CREATE TABLE timesheet_export_week_basis (
+ export_id TEXT NOT NULL, task_id TEXT NOT NULL, week_start_date TEXT NOT NULL CHECK(length(week_start_date)=10),
+ work_date TEXT NOT NULL CHECK(length(work_date)=10), actual_us INTEGER NOT NULL CHECK(actual_us>=0),
+ suggested_quarters INTEGER NOT NULL CHECK(suggested_quarters>=0),
+ PRIMARY KEY(export_id,task_id,week_start_date,work_date),
+ FOREIGN KEY(export_id,task_id) REFERENCES timesheet_export_tasks(export_id,task_id) DEFERRABLE INITIALLY DEFERRED
+) STRICT;
+CREATE TABLE timesheet_export_cells (
+ export_id TEXT NOT NULL, task_id TEXT NOT NULL, work_date TEXT NOT NULL, week_start_date TEXT NOT NULL,
+ actual_us INTEGER NOT NULL CHECK(actual_us>=0), actual_hundredths INTEGER NOT NULL CHECK(actual_hundredths>=0),
+ suggested_quarters INTEGER NOT NULL CHECK(suggested_quarters>=0), PRIMARY KEY(export_id,task_id,work_date),
+ FOREIGN KEY(export_id,task_id,week_start_date,work_date)
+ REFERENCES timesheet_export_week_basis(export_id,task_id,week_start_date,work_date) DEFERRABLE INITIALLY DEFERRED
+) STRICT;
+"""
+EXPORT_TABLES = ("timesheet_exports", "timesheet_export_tasks", "timesheet_export_week_basis", "timesheet_export_cells")
+for _table in EXPORT_TABLES[1:]:
+    SCHEMA += (f"CREATE TRIGGER sealed_{_table} BEFORE INSERT ON {_table} "
+               "WHEN EXISTS(SELECT 1 FROM timesheet_exports WHERE export_id=NEW.export_id) "
+               "BEGIN SELECT RAISE(ABORT,'sealed export'); END;\n")
+for _table in ("work_revisions", "active_start_corrections", "committed_requests", *EXPORT_TABLES):
     for _verb in ("UPDATE", "DELETE"):
         SCHEMA += (f"CREATE TRIGGER immutable_{_table}_{_verb.lower()} BEFORE {_verb} ON {_table} "
                    "BEGIN SELECT RAISE(ABORT,'immutable evidence'); END;\n")
@@ -293,7 +332,7 @@ class SQLiteStore:
             raise ValueError("Unexpected schema objects; no automatic repair/upgrade")
         tables = {r[1]: r for r in c.execute("PRAGMA table_list")}
         for name in ("dataset_meta", "projects", "tasks", "committed_requests", "work_entries",
-                     "work_revisions", "active_timer", "active_start_corrections"):
+                     "work_revisions", "active_timer", "active_start_corrections", *EXPORT_TABLES):
             if name not in tables or tables[name][5] != 1:
                 raise ValueError(f"Missing STRICT table: {name}")
         required = {"work_identity_immutable", "work_identity_retained", "active_only_open",
@@ -309,6 +348,8 @@ class SQLiteStore:
         uuid_text(meta[0]["dataset_id"])
         load_zone(meta[0]["timezone"])
         SQLiteStore.assert_lifecycle(c)
+        for row in c.execute("SELECT export_id FROM timesheet_exports"):
+            SQLiteStore.read_export(c, row[0])
 
     @staticmethod
     def assert_lifecycle(c):
@@ -351,6 +392,78 @@ class SQLiteStore:
                 raise ValueError("Active start does not match immutable evidence")
             if revisions and entry["kind"] == "timed" and revisions[0]["start_utc_us"] != prior:
                 raise ValueError("Initial closed revision does not match original/active-start evidence")
+
+    @staticmethod
+    def insert_export(c, candidate, request):
+        """Validated children first, immutable master last, receipt owned by transact."""
+        from .timesheet import validate
+        value = validate(candidate)
+        for task in value.tasks:
+            c.execute("""INSERT INTO timesheet_export_tasks
+              (export_id,task_id,name,project_id,project_name,is_deleted,ordinal) VALUES(?,?,?,?,?,?,?)""",
+                      (value.export_id,task.task_id,task.name,task.project_id,task.project_name,int(task.is_deleted),task.ordinal))
+        for row in value.basis:
+            c.execute("""INSERT INTO timesheet_export_week_basis
+              (export_id,task_id,week_start_date,work_date,actual_us,suggested_quarters) VALUES(?,?,?,?,?,?)""",
+                      (value.export_id,row.task_id,row.week_start_date,row.work_date,row.actual_us,row.suggested_quarters))
+        for row in value.cells:
+            c.execute("""INSERT INTO timesheet_export_cells
+              (export_id,task_id,work_date,week_start_date,actual_us,actual_hundredths,suggested_quarters) VALUES(?,?,?,?,?,?,?)""",
+                      (value.export_id,row.task_id,row.work_date,row.week_start_date,row.actual_us,row.actual_hundredths,row.suggested_quarters))
+        c.execute("""INSERT INTO timesheet_exports
+          (export_id,created_request_id,registered_utc_us,cutoff_utc_us,start_date,end_date,timezone,week_start,
+           scope_kind,selected_task_ids_json,preferred_destination,report_utf8,report_sha256)
+          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                  (value.export_id,request.request_id,request.action_utc_us,value.cutoff_utc_us,value.start_date,value.end_date,
+                   value.timezone,value.week_start,value.scope_kind,canonical(list(value.selected_task_ids)).decode(),
+                   value.preferred_destination,value.report_utf8,value.report_sha256))
+        # Compare the installed relational representation before allowing the receipt.
+        if SQLiteStore.read_export(c,value.export_id,check_request=False) != value:
+            raise ValueError("Installed frozen export differs from reviewed candidate")
+        return {"export_id":value.export_id,"report_sha256":value.report_sha256}
+
+    @staticmethod
+    def read_export(c, export_id, *, check_request=True):
+        from .timesheet import from_content
+        uuid_text(export_id)
+        row = c.execute("SELECT * FROM timesheet_exports WHERE export_id=?",(export_id,)).fetchone()
+        if row is None:
+            raise ValueError("Registered export is unknown")
+        meta = c.execute("SELECT dataset_id,timezone FROM dataset_meta").fetchone()
+        data = {key:row[key] for key in ("export_id","start_date","end_date","cutoff_utc_us","timezone","week_start",
+                                       "scope_kind","preferred_destination","report_sha256")}
+        data.update(dataset_id=meta['dataset_id'],selected_task_ids=json.loads(row['selected_task_ids_json']),
+                    report_text=row['report_utf8'].decode('utf-8'))
+        if canonical(data['selected_task_ids']).decode() != row['selected_task_ids_json']:
+            raise ValueError('Noncanonical registered scope')
+        data['tasks'] = [dict(r) for r in c.execute("""SELECT task_id,name,project_id,project_name,is_deleted,ordinal
+          FROM timesheet_export_tasks WHERE export_id=? ORDER BY ordinal""",(export_id,))]
+        for task in data['tasks']:
+            if type(task['is_deleted']) is not int or task['is_deleted'] not in (0,1):
+                raise ValueError('Invalid frozen deleted flag')
+            task['is_deleted'] = bool(task['is_deleted'])
+        for table,fields,key in (
+            ('week_basis','b.task_id,b.week_start_date,b.work_date,b.actual_us,b.suggested_quarters','b.week_start_date,b.work_date'),
+            ('cells','b.task_id,b.work_date,b.week_start_date,b.actual_us,b.actual_hundredths,b.suggested_quarters','b.work_date')):
+            data['basis' if table=='week_basis' else 'cells'] = [dict(r) for r in c.execute(
+                f"SELECT {fields} FROM timesheet_export_{table} b LEFT JOIN timesheet_export_tasks t USING(export_id,task_id) "
+                f"WHERE b.export_id=? ORDER BY t.ordinal,{key}",(export_id,))]
+        value = from_content(data,check_render=False)
+        if row['timezone'] != meta['timezone']:
+            raise ValueError("Registered export timezone/dataset association disagrees")
+        if check_request:
+            if list(c.execute('PRAGMA foreign_key_check')):
+                raise ValueError('Frozen export relational integrity failed')
+            receipt = c.execute("SELECT * FROM committed_requests WHERE request_id=?",(row['created_request_id'],)).fetchone()
+            if receipt is None:
+                raise ValueError("Export has no committed receipt")
+            expected = Request.make(row['created_request_id'],meta['dataset_id'],'register_timesheet_export',
+                                    row['registered_utc_us'],candidate=data)
+            if (receipt['operation'] != expected.operation or receipt['request_bytes'] != expected.content()
+                    or receipt['action_utc_us'] != row['registered_utc_us']
+                    or json.loads(receipt['result_bytes']) != {'export_id':export_id,'report_sha256':value.report_sha256}):
+                raise ValueError("Frozen export and committed request disagree")
+        return value
 
     @staticmethod
     def _receipt(c, request, content):

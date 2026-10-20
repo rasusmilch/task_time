@@ -30,10 +30,14 @@ def timed_portions(start: int, stop: int, cutoff: int, zone,
         cursor = segment_end
 
 
-def calculate(tasks: list[dict], work: list[dict], active: dict | None,
-              cutoff: int, zone, week_start: int = 6) -> dict:
+def calculate_daily(tasks: list[dict], work: list[dict], active: dict | None,
+                    cutoff: int, zone, first: date, last: date) -> dict:
+    """Shared exact attribution for any inclusive calendar window."""
     instant(cutoff)
-    today, first, last = week_dates(cutoff, zone, week_start)
+    if last < first:
+        raise ValueError("Ordered calendar dates required")
+    to_us(datetime.combine(first, time(), zone))
+    to_us(datetime.combine(last + timedelta(days=1), time(), zone))
     daily = {task["task_id"]: {} for task in tasks}
 
     def add(task_id, day, amount):
@@ -64,6 +68,13 @@ def calculate(tasks: list[dict], work: list[dict], active: dict | None,
             raise ClockWarning("Observation precedes active start. Correct active start or check the clock.")
         for day, start, stop in timed_portions(active["start_utc_us"], cutoff, cutoff, zone, first, last):
             add(active["task_id"], day, stop - start)
+    return daily
+
+
+def calculate(tasks: list[dict], work: list[dict], active: dict | None,
+              cutoff: int, zone, week_start: int = 6) -> dict:
+    today, first, last = week_dates(cutoff, zone, week_start)
+    daily = calculate_daily(tasks, work, active, cutoff, zone, first, last)
     by_task = {}
     for task_id, days in daily.items():
         total = integer(sum(days.values()), "Task week", 0, 2**63 - 1)

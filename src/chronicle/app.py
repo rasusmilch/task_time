@@ -55,6 +55,9 @@ class ChronicleApp:
         self.mini = self.editor = None
         self._work_editor = None
         self.history = None
+        self.timesheet = None
+        self._timesheet_opening = False
+        self._timesheet_return = None
         self._history_opening = False
         self._history_return = None
         self._history_newest_first = True
@@ -116,7 +119,8 @@ class ChronicleApp:
             self.buttons[label] = button
         for column, (label, callback) in enumerate((("Add timed work", self.add_timed_work),
                                                      ("Add date-only work", self.add_date_only_work),
-                                                     ("Work History", self.open_history))):
+                                                     ("Work History", self.open_history),
+                                                     ("Timesheet / POL-R", self.open_timesheet))):
             button = ttk.Button(actions, text=label, command=callback)
             button.grid(row=1, column=column, padx=3, pady=4)
             self.buttons[label] = button
@@ -139,7 +143,8 @@ class ChronicleApp:
         owns_history = origin is not None and origin is self.history and origin.mutation_allowed()
         return (self.alive and self.ready and not self.closing and self.pending is None
                 and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor)
-                and not self._history_opening and (self.history is None or owns_history))
+                and not self._history_opening and (self.history is None or owns_history)
+                and not self._timesheet_opening and self.timesheet is None)
 
     def selected_task_id(self):
         if not self.alive:
@@ -490,6 +495,121 @@ class ChronicleApp:
             return False
         return self._submit("set_week_start", week_start=self.week_selector.current(),
                             expected_week_start=self.state["week_start"])
+
+    def open_timesheet(self):
+        # Duplicate/reentrant requests do not inspect drafts, clocks or task arguments.
+        if self._timesheet_opening:
+            return False
+        if self.timesheet is not None:
+            from .timesheet_window import widget_live
+            if not self.timesheet.disposed and widget_live(self.timesheet.window):
+                return False
+            self._timesheet_disposed(self.timesheet)
+        if not self.can_mutate():
+            return False
+        from .timesheet_window import TimesheetWindow, widget_live
+        self._timesheet_opening = True
+        sheet = None
+        try:
+            if not widget_live(self.root):
+                raise ValueError("Timesheet origin is no longer live")
+            grab = self.root.grab_current()
+            if grab is not None and (grab is not self.root or grab.grab_status() != "local"):
+                raise ValueError("Timesheet cannot replace an unrelated or global grab")
+            focus = self.root.focus_get()
+            self._timesheet_return = (self.root, grab, focus)
+            sheet = TimesheetWindow(self)
+            self.timesheet = sheet  # Publish before any presentation event can run.
+            self._controls()
+            sheet.present()
+            return True
+        except Exception as primary:
+            self._timesheet_launch_failed(sheet, primary)
+            return False
+
+    def _timesheet_presented(self, sheet):
+        if self.timesheet is sheet:
+            self._timesheet_opening = False
+            self._controls()
+
+    def _restore_timesheet_origin(self):
+        from .timesheet_window import widget_live
+        context, self._timesheet_return = self._timesheet_return, None
+        if context is None or self.closing:
+            return
+        parent, grab, focus = context
+        if not widget_live(self.root) or not widget_live(parent):
+            return
+        current = parent.grab_current()
+        if current is not None and (current is not parent or current.grab_status() != "local"):
+            return
+        if grab is parent and current is not parent:
+            parent.grab_set()
+        target = focus if (widget_live(focus) and focus.winfo_toplevel() is parent) else parent
+        target.focus_set()
+
+    def _timesheet_disposed(self, sheet, primary=None):
+        if self.timesheet is not sheet:
+            return
+        previous_guard = self._timesheet_opening
+        self._timesheet_opening = True
+        self.timesheet = None
+        try:
+            self._restore_timesheet_origin()
+        except Exception as exc:
+            if primary is not None:
+                primary.add_note(f"Timesheet origin return failed: {exc!r}")
+            else:
+                self._diagnose(exc)
+        finally:
+            self._timesheet_opening = previous_guard
+            from .timesheet_window import widget_live
+            try:
+                if self.alive and widget_live(self.tree):
+                    self._controls()
+            except Exception as exc:
+                if primary is not None:
+                    primary.add_note(f"Timesheet disposal controls failed: {exc!r}")
+                else:
+                    self._diagnose(exc)
+
+    def _timesheet_launch_failed(self, sheet, primary):
+        self._timesheet_opening = True
+        try:
+            if sheet is not None:
+                try:
+                    sheet.close(primary=primary)
+                except Exception as secondary:
+                    primary.add_note(f"Timesheet launch cleanup failed: {secondary!r}")
+            if self.timesheet is None or self.timesheet is sheet:
+                try:
+                    self._restore_timesheet_origin()
+                except Exception as secondary:
+                    primary.add_note(f"Timesheet origin return failed: {secondary!r}")
+            if self.alive:
+                try:
+                    self.status.configure(text=f"Unable to open Timesheet: {primary}")
+                except Exception as secondary:
+                    primary.add_note(f"Timesheet launch error presentation failed: {secondary!r}")
+        finally:
+            self._timesheet_opening = False
+            try:
+                if self.alive:
+                    self._controls()
+            except Exception as secondary:
+                primary.add_note(f"Timesheet launch controls failed: {secondary!r}")
+            self._diagnose(primary)
+
+    def _timesheet_read(self, sheet, kind, value):
+        if self.timesheet is not sheet or sheet.disposed or not self.alive or self.closing:
+            raise ValueError("Timesheet session is no longer current")
+        if kind not in ("timesheet_tasks", "timesheet_preview"):
+            raise ValueError("Unsupported Timesheet view read")
+        self._token += 1
+        if kind == "timesheet_preview":
+            value = dict(value,export_id=str(uuid4()),cutoff_utc_us=to_us(self.now_utc()))
+        self.worker.requests.put(Message(kind,self._token,value))
+        return self._token,value
 
     def open_history(self):
         # Duplicate/reentrant requests do not inspect drafts, clocks or task arguments.
@@ -860,6 +980,13 @@ class ChronicleApp:
                 self._advance_close()
             else:
                 self.refresh()
+        elif message.kind in ("timesheet_tasks", "timesheet_preview"):
+            sheet = self.timesheet
+            if sheet is not None and not sheet.disposed:
+                if message.kind == "timesheet_tasks":
+                    sheet.receive_choices(message.token,message.value)
+                else:
+                    sheet.receive_preview(message.token,message.value)
         elif message.kind in ("history_snapshot", "revisions"):
             history = self.history
             if history is not None and not history.disposed:
@@ -983,8 +1110,10 @@ class ChronicleApp:
     def request_close(self):
         if not self.alive:
             return
-        if self._history_opening:
+        if self._history_opening or self._timesheet_opening:
             return
+        if self.timesheet is not None:
+            return  # Close the read-only modal preview before ordinary root exit.
         if self.history is not None:
             if self.history.phase == "unverified" and not self.executing:
                 self.history.exceptional_exit()

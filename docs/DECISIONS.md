@@ -871,6 +871,27 @@ Read/render failure cannot reclassify committed work or make stale/partial rows
 current. Stage 2B delivery requires independent functional adjudication before
 Stage 2 completion. Stage 3 and all reserved Open policies remain unchanged.
 
+### Stage 2 acceptance and Stage 3A preview/evidence approval
+
+**Status:** current. **Provenance:** explicit user “GO — APPROVED EXECUTION TASK”
+“CHRONICLE — STAGE 3A: Exact Weekly POL-R Allocation, Connected Timesheet Preview,
+and Immutable SQLite Export Evidence,” against independently verified
+`adc09ba0935e8718c4ad2101057af9c6022074cc`. That instruction independently accepts
+Stage 2A/2B and complete Stage 2 functional recording. It does not retroactively
+attribute acceptance to the earlier implementation receipt or qualify Windows.
+
+Implement the already selected full-week allocation and precision policy in pure
+modules, a detached frozen candidate, connected read-only modal preview and four
+immutable relational export tables with exact atomic receipts and detached recovery.
+Use the existing accounting/worker; no current Actual recalculation on registration,
+second database or persistent aggregate cache. Preview writes no evidence/files.
+The approved staged boundary omits Save/Confirm controls: Stage 3B connects full
+verified file Save/status/one-call overwrite/recovery UI, Stage 3C absolute
+confirmation and Stage 3D reconciliation/reminders. There is no SQLite-only UI Save
+or prematurely selected unfinished-Save lifecycle. Stage 3A delivery is for
+independent review, not Stage 3/pilot completion or external-policy qualification.
+Earlier integrity guarantees, fresh-data protection and Open matters remain binding.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

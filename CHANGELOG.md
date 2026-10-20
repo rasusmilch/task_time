@@ -38,8 +38,16 @@ receipts or commits. No release or production qualification is implied below.
   Run directly from Python source with a minimal pip-installed runtime dependency;
   retire executable-build tooling and the obsolete WAL-specific version pin.
   Preserve unsupported datasets without conversion/deletion. Stage 1 functionality
-  and Stage 2A are independently accepted. Stage 2B functional review, native
-  Windows source/actual suspend qualification and Timesheet/POL-R remain pending.
+  and complete Stage 2 recording are independently accepted. Connect a read-only
+  modal Timesheet / POL-R Preview with explicit periods/UUID scope, full-week exact
+  allocation basis and in-scope Actual/suggestion cells. Preserve frozen labels,
+  exact UTF-8 text/digest and immutable SQLite export/task/basis/cell evidence with
+  atomic request registration, exact uncertainty reconciliation and detached
+  recovery independent of later work or renderer changes. Preview writes no
+  evidence/files; draft changes invalidate readiness and stale/failed reads cannot
+  establish current output. File Save/recovery UI, confirmation and reconciliation/
+  reminders remain pending, as do native Windows source/actual suspend qualification
+  and independent Stage 3A review.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete
@@ -51,7 +59,8 @@ receipts or commits. No release or production qualification is implied below.
   suggestions/context; never redistribute historical confirmations. Restore full
   reviewed source coverage including unchecked cells, positive-default selection
   including already-equal values, and exact selected stale acknowledgements.
-  These later reporting rules remain selected, not implemented by the timer slice.
+  Stage 3A implements the allocation/preview/evidence slice; remaining confirmation,
+  file publication/recovery UI and reconciliation/reminder rules are still pending.
   Retained JSONL source is unshipped; it is not a parallel runtime.
   External redistribution/zero-entry policy needs validation before official
   reporting/pilot. Allocation budgets/conveniences remain optional and separately

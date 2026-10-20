@@ -18,7 +18,9 @@ independently accepted at
 `1e84a043c1c055aced9b8c4b000ef766bbf6d178`; its executable-build preparation is
 superseded by Stage 1C's standard sqlite3 DELETE/EXTRA and source-only deployment.
 Stage 2A is independently accepted at `7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`.
-Stage 2B is delivered for independent functional review. Native Windows source operation
+Stage 2B/complete recording is independently accepted at
+`adc09ba0935e8718c4ad2101057af9c6022074cc`, as reported by the later Stage 3A approval.
+Stage 3A is delivered for independent review. Native Windows source operation
 is required before deployment/pilot, not an unavailable executable-build gate.
 
 Each stage can contain several substantial, independently reviewed tasks. Do not
@@ -41,8 +43,8 @@ source/history branch; normal rewrite publication uses the new branch under
 The independently reviewed bounded plan led to the explicitly approved Stage 1A
 execution. Subsequent substantial slices remain independently reviewed; this
 status alone does not authorize later stages or resolve reserved release policy.
-The subsequent explicit Stage 2A and Stage 2B execution approvals authorize the
-bounded connected mixed-work and History outcomes below, not Stage 3 execution.
+The subsequent explicit Stage 2A/2B and Stage 3A approvals authorize the bounded
+connected recording and preview/evidence slices below, not later Stage 3 execution.
 
 ## Stage 1 — Working timer foundation
 
@@ -77,7 +79,8 @@ A foundation without POL-R is not core signoff.
 
 ## Stage 2 — Complete core work recording
 
-**IN PROGRESS — Stage 2A independently accepted; Stage 2B delivered for independent review.**
+**FUNCTIONALLY ACCEPTED — Stage 2A/2B, complete recording at
+`adc09ba0935e8718c4ad2101057af9c6022074cc`.**
 Stage 2A connects genuine timed and date-only creation, immutable typed revisions,
 closed/date-only correction/deletion services, shared exact main/mini/daily Actual,
 task-scoped history/revision reads and all seven persisted week-start choices.
@@ -87,7 +90,8 @@ Stage 2B connects the modal mixed History browser and inline whole-entry
 correction/deletion with immutable revision/deleted-entry navigation. It adds one
 consistent detached snapshot, owned standard-library calendar panels, session-only
 date direction and exact-request retry through the existing application owner.
-Stage 2 is submitted for independent functional adjudication, not declared Complete.
+The later Stage 3A instruction independently accepts Stage 2 functional recording;
+this does not complete core POL-R or qualify a pilot.
 Preserve periods/drafts/session sorting, full-entry identity, unchanged precision,
 minute changes and explicit DST resolution.
 
@@ -100,9 +104,13 @@ Stage 3 POL-R workflow and is not pilot-ready.
 
 ## Stage 3 — Core frozen Timesheet AND POL-R reconciliation
 
-**Selected / not implemented in the rewrite.** Explicit This week/Last week/Custom
-preview, independent All/Selected tasks, frozen export commit, protected text
-publication and saved-report recovery; explicit whole/checked/manual absolute
+**IN PROGRESS — Stage 3A delivered for independent review.** Connected read-only
+This week/Last week/Custom preview, independent All/Selected UUID scope, exact
+full-week suggestions and immutable SQLite registration/list/read are implemented.
+Preview writes no evidence and exposes no Save/Confirm. Remaining bounded slices:
+Stage 3B connects verified file Save, protected publication, one-call overwrite and
+saved-report recovery UI; Stage 3C implements absolute confirmation; Stage 3D
+implements reconciliation/reminders. Core still requires explicit whole/checked/manual absolute
 quarter-hour confirmation, defer/later review, daily Actual/Suggested/Confirmed,
 Daily Delta, suggested-entry gap, exact weekly adjustment, Unknown/zero,
 stale-prior safety, weekly summaries and required reminder scheduling. Use the
