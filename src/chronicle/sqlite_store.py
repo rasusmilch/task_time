@@ -161,12 +161,46 @@ CREATE TABLE timesheet_export_cells (
  REFERENCES timesheet_export_week_basis(export_id,task_id,week_start_date,work_date) DEFERRABLE INITIALLY DEFERRED
 ) STRICT;
 """
+CONFIRMATION_TABLES = ("polr_confirmation_batches", "polr_confirmation_cells", "polr_confirmed_current")
+SCHEMA += f"""
+CREATE TABLE polr_confirmation_batches (
+ batch_id TEXT PRIMARY KEY {uuid_constraint('batch_id')},
+ created_request_id TEXT NOT NULL UNIQUE REFERENCES committed_requests(request_id) DEFERRABLE INITIALLY DEFERRED,
+ audit_utc_us INTEGER NOT NULL CHECK(audit_utc_us {STAMP}),
+ source_export_id TEXT REFERENCES timesheet_exports(export_id),
+ mode TEXT NOT NULL CHECK(mode IN ('source','manual')),
+ CHECK((mode='source' AND source_export_id IS NOT NULL) OR (mode='manual' AND source_export_id IS NULL))
+) STRICT;
+CREATE TABLE polr_confirmation_cells (
+ batch_id TEXT NOT NULL REFERENCES polr_confirmation_batches(batch_id),
+ task_id TEXT NOT NULL REFERENCES tasks(task_id),
+ work_date TEXT NOT NULL CHECK(length(work_date)=10 AND work_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+ confirmed_quarters INTEGER NOT NULL CHECK(confirmed_quarters BETWEEN 0 AND {((2**63)-1)//25}),
+ expected_prior_batch_id TEXT, expected_prior_quarters INTEGER,
+ stale_export_acknowledged INTEGER NOT NULL CHECK(stale_export_acknowledged IN (0,1)),
+ CHECK((expected_prior_batch_id IS NULL AND expected_prior_quarters IS NULL)
+    OR (expected_prior_batch_id IS NOT NULL AND expected_prior_quarters IS NOT NULL)),
+ PRIMARY KEY(batch_id,task_id,work_date), UNIQUE(batch_id,task_id,work_date,confirmed_quarters),
+ FOREIGN KEY(expected_prior_batch_id,task_id,work_date,expected_prior_quarters)
+ REFERENCES polr_confirmation_cells(batch_id,task_id,work_date,confirmed_quarters)
+) STRICT;
+CREATE TABLE polr_confirmed_current (
+ task_id TEXT NOT NULL REFERENCES tasks(task_id), work_date TEXT NOT NULL,
+ batch_id TEXT NOT NULL,
+ PRIMARY KEY(task_id,work_date),
+ FOREIGN KEY(batch_id,task_id,work_date) REFERENCES polr_confirmation_cells(batch_id,task_id,work_date)
+) STRICT;
+CREATE TRIGGER sealed_polr_confirmation_cells BEFORE INSERT ON polr_confirmation_cells
+ WHEN EXISTS(SELECT 1 FROM polr_confirmation_batches b JOIN committed_requests r
+ ON r.request_id=b.created_request_id WHERE b.batch_id=NEW.batch_id)
+ BEGIN SELECT RAISE(ABORT,'sealed confirmation'); END;
+"""
 EXPORT_TABLES = ("timesheet_exports", "timesheet_export_tasks", "timesheet_export_week_basis", "timesheet_export_cells")
 for _table in EXPORT_TABLES[1:]:
     SCHEMA += (f"CREATE TRIGGER sealed_{_table} BEFORE INSERT ON {_table} "
                "WHEN EXISTS(SELECT 1 FROM timesheet_exports WHERE export_id=NEW.export_id) "
                "BEGIN SELECT RAISE(ABORT,'sealed export'); END;\n")
-for _table in ("work_revisions", "active_start_corrections", "committed_requests", *EXPORT_TABLES):
+for _table in ("work_revisions", "active_start_corrections", "committed_requests", *EXPORT_TABLES, *CONFIRMATION_TABLES[:2]):
     for _verb in ("UPDATE", "DELETE"):
         SCHEMA += (f"CREATE TRIGGER immutable_{_table}_{_verb.lower()} BEFORE {_verb} ON {_table} "
                    "BEGIN SELECT RAISE(ABORT,'immutable evidence'); END;\n")
@@ -332,7 +366,7 @@ class SQLiteStore:
             raise ValueError("Unexpected schema objects; no automatic repair/upgrade")
         tables = {r[1]: r for r in c.execute("PRAGMA table_list")}
         for name in ("dataset_meta", "projects", "tasks", "committed_requests", "work_entries",
-                     "work_revisions", "active_timer", "active_start_corrections", *EXPORT_TABLES):
+                     "work_revisions", "active_timer", "active_start_corrections", *EXPORT_TABLES, *CONFIRMATION_TABLES):
             if name not in tables or tables[name][5] != 1:
                 raise ValueError(f"Missing STRICT table: {name}")
         required = {"work_identity_immutable", "work_identity_retained", "active_only_open",
@@ -350,6 +384,7 @@ class SQLiteStore:
         SQLiteStore.assert_lifecycle(c)
         for row in c.execute("SELECT export_id FROM timesheet_exports"):
             SQLiteStore.read_export(c, row[0])
+        SQLiteStore.assert_confirmations(c)
 
     @staticmethod
     def assert_lifecycle(c):
@@ -466,6 +501,80 @@ class SQLiteStore:
         return value
 
     @staticmethod
+    def confirmation_state(c):
+        current, history = {}, {}
+        for row in c.execute("""SELECT b.batch_id,v.task_id,v.work_date,v.confirmed_quarters,r.commit_seq
+          FROM polr_confirmation_batches b JOIN committed_requests r ON r.request_id=b.created_request_id
+          JOIN polr_confirmation_cells v USING(batch_id) ORDER BY r.commit_seq,v.task_id,v.work_date"""):
+            k=(row['task_id'],row['work_date'])
+            history[(row['batch_id'],*k)]=(row['confirmed_quarters'],row['commit_seq'])
+        for row in c.execute('''SELECT p.task_id,p.work_date,p.batch_id,v.confirmed_quarters,r.commit_seq
+          FROM polr_confirmed_current p JOIN polr_confirmation_cells v USING(batch_id,task_id,work_date)
+          JOIN polr_confirmation_batches b USING(batch_id) JOIN committed_requests r ON r.request_id=b.created_request_id'''):
+            current[(row['task_id'],row['work_date'])]=(row['batch_id'],row['confirmed_quarters'],row['commit_seq'])
+        return current,history
+
+    @staticmethod
+    def assert_confirmations(c):
+        """Prove receipts, complete batches, prior chains and latest pointers in commit order."""
+        from .polr_confirmation import validate_batch
+        meta=c.execute('SELECT dataset_id FROM dataset_meta').fetchone()
+        tasks={r[0] for r in c.execute('SELECT task_id FROM tasks')}
+        current,history={},{}
+        batches=list(c.execute("""SELECT b.*,r.commit_seq,r.operation,r.request_bytes,r.result_bytes,r.action_utc_us
+          FROM polr_confirmation_batches b LEFT JOIN committed_requests r ON r.request_id=b.created_request_id
+          ORDER BY r.commit_seq"""))
+        if len(batches)!=c.execute("SELECT count(*) FROM committed_requests WHERE operation='confirm_polr_absolute'").fetchone()[0]:
+            raise ValueError('Confirmation batch/receipt coverage differs')
+        for b in batches:
+            if b['operation']!='confirm_polr_absolute' or b['commit_seq'] is None:raise ValueError('Confirmation has no committed receipt')
+            content=json.loads(b['request_bytes'])
+            if type(content) is not dict or set(content)!={'format','dataset_id','operation','action_utc_us','arguments'} or type(content['format']) is not int or content['format']!=1:
+                raise ValueError('Invalid confirmation receipt format')
+            a=content['arguments']
+            expected=Request.make(b['created_request_id'],meta['dataset_id'],'confirm_polr_absolute',b['audit_utc_us'],**a)
+            if expected.content()!=b['request_bytes'] or b['action_utc_us']!=b['audit_utc_us']:
+                raise ValueError('Confirmation receipt identity/content differs')
+            if a['batch_id']!=b['batch_id'] or a['mode']!=b['mode'] or a['source_export_id']!=b['source_export_id']:
+                raise ValueError('Confirmation master differs from its request')
+            source=None;source_seq=None
+            if b['source_export_id'] is not None:
+                source=SQLiteStore.read_export(c,b['source_export_id'])
+                source_seq=c.execute("""SELECT r.commit_seq FROM timesheet_exports e JOIN committed_requests r
+                 ON r.request_id=e.created_request_id WHERE e.export_id=?""",(source.export_id,)).fetchone()[0]
+                if source_seq>=b['commit_seq']:raise ValueError('Confirmation source was not yet committed')
+            cells=validate_batch(a,source=source,source_seq=source_seq,current=current,history=history,tasks=tasks)
+            actual=[tuple(r) for r in c.execute("""SELECT task_id,work_date,confirmed_quarters,expected_prior_batch_id,
+              expected_prior_quarters,stale_export_acknowledged FROM polr_confirmation_cells WHERE batch_id=? ORDER BY task_id,work_date""",(b['batch_id'],))]
+            expected_cells=[(r.task_id,r.work_date,r.confirmed_quarters,r.expected_prior_batch_id,r.expected_prior_quarters,int(r.stale_export_acknowledged)) for r in cells]
+            result={'batch_id':b['batch_id'],'cell_count':len(cells)}
+            if actual!=expected_cells or b['result_bytes']!=canonical(result):raise ValueError('Confirmation cells/result differ from the whole committed request')
+            for cell in cells:
+                k=(cell.task_id,cell.work_date)
+                current[k]=(b['batch_id'],cell.confirmed_quarters,b['commit_seq'])
+                history[(b['batch_id'],*k)]=(cell.confirmed_quarters,b['commit_seq'])
+        pointers={(r['task_id'],r['work_date']):r['batch_id'] for r in c.execute('SELECT * FROM polr_confirmed_current')}
+        if pointers!={k:v[0] for k,v in current.items()}:raise ValueError('Current confirmation does not identify the latest committed cell')
+        if list(c.execute('PRAGMA foreign_key_check')):raise ValueError('Confirmation relational integrity failed')
+
+    @staticmethod
+    def insert_confirmation(c, request, source, source_seq):
+        from .polr_confirmation import validate_batch
+        SQLiteStore.assert_confirmations(c)
+        current,history=SQLiteStore.confirmation_state(c);a=request.args()
+        cells=validate_batch(a,source=source,source_seq=source_seq,current=current,history=history,
+                             tasks={r[0] for r in c.execute('SELECT task_id FROM tasks')})
+        c.execute("""INSERT INTO polr_confirmation_batches(batch_id,created_request_id,audit_utc_us,source_export_id,mode)
+          VALUES(?,?,?,?,?)""",(a['batch_id'],request.request_id,request.action_utc_us,a['source_export_id'],a['mode']))
+        for cell in cells:
+            c.execute("""INSERT INTO polr_confirmation_cells(batch_id,task_id,work_date,confirmed_quarters,
+             expected_prior_batch_id,expected_prior_quarters,stale_export_acknowledged) VALUES(?,?,?,?,?,?,?)""",
+             (a['batch_id'],cell.task_id,cell.work_date,cell.confirmed_quarters,cell.expected_prior_batch_id,cell.expected_prior_quarters,int(cell.stale_export_acknowledged)))
+            c.execute("""INSERT INTO polr_confirmed_current(task_id,work_date,batch_id) VALUES(?,?,?)
+              ON CONFLICT(task_id,work_date) DO UPDATE SET batch_id=excluded.batch_id""",(cell.task_id,cell.work_date,a['batch_id']))
+        return {'batch_id':a['batch_id'],'cell_count':len(cells)}
+
+    @staticmethod
     def _receipt(c, request, content):
         row = c.execute("SELECT * FROM committed_requests WHERE request_id=?", (request.request_id,)).fetchone()
         if row is None:
@@ -553,6 +662,7 @@ class SQLiteStore:
             self.assert_lifecycle(c)  # Cross-table final invariant, before any commit.
             c.execute("INSERT INTO committed_requests(request_id,operation,request_bytes,result_bytes,action_utc_us) VALUES(?,?,?,?,?)",
                       (request.request_id, request.operation, content, canonical(result), request.action_utc_us))
+            self.assert_confirmations(c)
             c.execute("COMMIT")
             return Outcome("committed", result)
         except Exception as primary:

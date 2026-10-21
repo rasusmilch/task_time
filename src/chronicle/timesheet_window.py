@@ -2,6 +2,8 @@
 import calendar
 from datetime import date
 from dataclasses import replace
+from copy import deepcopy
+from uuid import uuid4
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
@@ -25,6 +27,13 @@ class TimesheetWindow:
         self.picker = None
         self.observation = None
         self.mode = 'preview'
+        self.polr_tokens = {}
+        self.polr_ready = False
+        self.polr_proposal = self.polr_context = None
+        self.polr_selected = set()
+        self.polr_acks = {}
+        self.polr_stale = False
+        self.polr_return_mode = 'preview'
         self._dialog_busy = False
         self.saved_token = None
         self.saved_kind = None
@@ -123,8 +132,9 @@ class TimesheetWindow:
         self.load_saved_button = ttk.Button(self.saved_panel,text='Load registered report',command=self.load_saved)
         self.load_saved_button.grid(row=2,column=0,sticky='w')
         self.saved_panel.grid_remove()
+        self._build_polr()
         self.close_button = ttk.Button(self.window,text='Close',command=self.close)
-        self.close_button.grid(row=6,column=0,sticky='e',padx=8,pady=6)
+        self.close_button.grid(row=7,column=0,sticky='e',padx=8,pady=6)
         for var in (self.period,self.start,self.end,self.scope):
             var.trace_add('write',lambda *args:self.draft_changed())
         self.controls()
@@ -143,7 +153,7 @@ class TimesheetWindow:
         busy = self.is_busy()
         from .timesheet_files import FileState
         registered = attempt is not None and attempt.registration=='committed'
-        active = not busy and self.saved_token is None
+        active = not busy and self.saved_token is None and not self.mode.startswith('confirmation_')
         for button,allowed in ((self.save_button,active and not locked and self.current),
                                (self.retry_save_button,active and attempt is not None and (attempt.saved_path is None or (attempt.inspection is not None and attempt.inspection.state!=FileState.READY))),
                                (self.copy_button,active and registered), (self.check_button,active and registered),
@@ -156,6 +166,7 @@ class TimesheetWindow:
         else: self.overwrite_button.grid_remove()
         self.load_saved_button.configure(state='normal' if active and self.mode=='saved' else 'disabled')
         if not custom: self.close_picker()
+        self.polr_controls()
 
     def selection_changed(self):
         selected = tuple(sorted(self.tasks.selection()))
@@ -259,6 +270,8 @@ class TimesheetWindow:
 
     def mutation_allowed(self):
         attempt = self.owner._timesheet_attempt
+        if self.mode in ('confirmation_source','confirmation_manual'):
+            return self.polr_ready and not self.polr_stale and not self._dialog_busy
         return (not self.disposed and not self._dialog_busy and self.mode=='preview' and self.current
                 and (attempt is None or attempt.registration=='not attempted'))
 
@@ -266,9 +279,11 @@ class TimesheetWindow:
         return self._dialog_busy or self.owner.executing or self.owner._timesheet_dialog_busy
 
     def is_locked(self):
-        return self._dialog_busy or self.mode=='saved' or self.owner._timesheet_attempt is not None
+        return self._dialog_busy or self.mode!='preview' or self.owner._timesheet_attempt is not None
 
     def can_leave_attempt(self):
+        submission=getattr(self.owner,'_polr_submission',None)
+        if submission is not None and submission.request is self.owner.pending:return False
         a = self.owner._timesheet_attempt
         return a is None or a.registration not in ('unverified','registering')
 
@@ -417,6 +432,7 @@ class TimesheetWindow:
             self.owner._timesheet_detach()
             self.preview_token = None
             self.current = False
+            self._hide_polr()
             self.mode = 'saved'
             self.close_picker()
             self.saved_panel.grid()
@@ -479,6 +495,7 @@ class TimesheetWindow:
             if not self.confirm_leave(): return False
             self.owner._timesheet_detach()
             self.saved_token = self.preview_token = None
+            self._hide_polr()
             self.mode = 'preview'
             self.candidate,self.current = None,False
             self.period.set('This week');self.scope.set('All tasks');self.start.set('');self.end.set('')
@@ -489,6 +506,302 @@ class TimesheetWindow:
             self.status.configure(text='');self.controls()
             return True
         except Exception as exc: return self.save_failure(exc)
+
+    def _build_polr(self):
+        bar=ttk.Frame(self.window);bar.grid(row=6,column=0,sticky='w',padx=8)
+        self.review_polr_button=ttk.Button(bar,text='Review POL-R Confirmation',command=self.review_polr)
+        self.manual_polr_button=ttk.Button(bar,text='Manual POL-R Confirmation',command=self.manual_polr)
+        self.polr_history_button=ttk.Button(bar,text='Confirmation History',command=self.confirmation_history)
+        for i,b in enumerate((self.review_polr_button,self.manual_polr_button,self.polr_history_button)):b.grid(row=0,column=i,padx=2)
+        self.polr_panel=ttk.Frame(self.window);self.polr_panel.grid(row=3,column=0,sticky='nsew',padx=8)
+        self.polr_panel.columnconfigure(0,weight=1);self.polr_panel.rowconfigure(2,weight=1)
+        ttk.Label(self.polr_panel,text='Confirmation records your entered POL-R values; it does not query or verify POL-R.',wraplength=750).grid(row=0,column=0,sticky='w')
+        self.polr_manual=ttk.Frame(self.polr_panel);self.polr_manual.grid(row=1,column=0,sticky='ew')
+        self.polr_task=tk.StringVar(self.window,'');self.polr_date=tk.StringVar(self.window,'');self.polr_hours=tk.StringVar(self.window,'')
+        self.polr_task_choices=[]
+        for row,text in enumerate(('Task UUID','Work date YYYY-MM-DD','Absolute POL-R hours')):ttk.Label(self.polr_manual,text=text).grid(row=row,column=0,sticky='w')
+        self.polr_task_control=ttk.Combobox(self.polr_manual,textvariable=self.polr_task,state='readonly',width=48)
+        self.polr_date_control=ttk.Entry(self.polr_manual,textvariable=self.polr_date,width=14)
+        self.polr_hours_control=ttk.Entry(self.polr_manual,textvariable=self.polr_hours,width=12)
+        for i,w in enumerate((self.polr_task_control,self.polr_date_control,self.polr_hours_control)):w.grid(row=i,column=1,padx=2,sticky='w')
+        self.polr_context_button=ttk.Button(self.polr_manual,text='Review current',command=self.refresh_polr)
+        self.polr_context_button.grid(row=3,column=0,sticky='w')
+        self.polr_task.trace_add('write',lambda *a:self._manual_polr_dirty())
+        self.polr_date.trace_add('write',lambda *a:self._manual_polr_dirty())
+        holder=ttk.Frame(self.polr_panel);holder.grid(row=2,column=0,sticky='nsew');holder.columnconfigure(0,weight=1);holder.rowconfigure(0,weight=1)
+        self.polr_tree=ttk.Treeview(holder,show='headings',height=5,selectmode='browse')
+        self.polr_tree.grid(row=0,column=0,sticky='nsew')
+        for orient,row,col,command in (('vertical',0,1,self.polr_tree.yview),('horizontal',1,0,self.polr_tree.xview)):
+            b=ttk.Scrollbar(holder,orient=orient,command=command);b.grid(row=row,column=col,sticky='ns' if orient=='vertical' else 'ew')
+            self.polr_tree.configure(**{('yscrollcommand' if orient=='vertical' else 'xscrollcommand'):b.set})
+        self.polr_tree.bind('<Button-1>',self._polr_click,add='+')
+        ack_holder=ttk.Frame(self.polr_panel);ack_holder.grid(row=3,column=0,sticky='ew');ack_holder.columnconfigure(0,weight=1)
+        ack_canvas=tk.Canvas(ack_holder,height=85,highlightthickness=0);ack_canvas.grid(row=0,column=0,sticky='ew')
+        self.polr_ack_frame=ttk.Frame(ack_canvas);ack_canvas.create_window(0,0,window=self.polr_ack_frame,anchor='nw')
+        self.polr_ack_frame.bind('<Configure>',lambda event:ack_canvas.configure(scrollregion=ack_canvas.bbox('all')))
+        for orient,row,col,command in (('vertical',0,1,ack_canvas.yview),('horizontal',1,0,ack_canvas.xview)):
+            scroll=ttk.Scrollbar(ack_holder,orient=orient,command=command);scroll.grid(row=row,column=col,sticky='ns' if orient=='vertical' else 'ew')
+            ack_canvas.configure(**{('yscrollcommand' if orient=='vertical' else 'xscrollcommand'):scroll.set})
+        detail=ttk.Frame(self.polr_panel);detail.grid(row=4,column=0,sticky='ew');detail.columnconfigure(0,weight=1)
+        self.polr_detail=tk.Text(detail,wrap='word',height=4,state='disabled');self.polr_detail.grid(row=0,column=0,sticky='ew')
+        detail_scroll=ttk.Scrollbar(detail,orient='vertical',command=self.polr_detail.yview);detail_scroll.grid(row=0,column=1,sticky='ns')
+        self.polr_detail.configure(yscrollcommand=detail_scroll.set)
+        self.polr_status=ttk.Label(self.polr_panel,text='',wraplength=750);self.polr_status.grid(row=5,column=0,sticky='ew')
+        self.polr_actions=ttk.Frame(self.polr_panel);self.polr_actions.grid(row=6,column=0,sticky='w')
+        self.polr_positive_button=ttk.Button(self.polr_actions,text='Select all positive suggestions',command=self.polr_positive)
+        self.polr_confirm_button=ttk.Button(self.polr_actions,text='Confirm checked',command=self.confirm_polr)
+        self.polr_refresh_button=ttk.Button(self.polr_actions,text='Refresh review',command=self.refresh_polr)
+        self.polr_defer_button=ttk.Button(self.polr_actions,text='Defer / Review later',command=self.defer_polr)
+        self.polr_retry_button=ttk.Button(self.polr_actions,text='Retry/Reconcile',command=self.retry_polr)
+        self.polr_load_button=ttk.Button(self.polr_actions,text='Read batch',command=self.load_polr_batch)
+        for i,b in enumerate((self.polr_positive_button,self.polr_confirm_button,self.polr_refresh_button,self.polr_defer_button,self.polr_retry_button,self.polr_load_button)):
+            b.grid(row=i//3,column=i%3,padx=2,pady=2)
+        self.polr_panel.grid_remove()
+
+    def _polr_pending(self):
+        s=getattr(self.owner,'_polr_submission',None)
+        return s is not None and s.request is self.owner.pending
+
+    def polr_controls(self):
+        if self.disposed:return
+        pending=self._polr_pending();active=not self.is_busy() and self.can_leave_attempt()
+        a=self.owner._timesheet_attempt
+        for b,allowed in ((self.review_polr_button,active and a is not None and a.registration=='committed'),
+                          (self.manual_polr_button,active),(self.polr_history_button,active)):
+            b.configure(state='normal' if allowed else 'disabled')
+        source=self.mode=='confirmation_source';manual=self.mode=='confirmation_manual';history=self.mode=='confirmation_history'
+        for b,allowed in ((self.polr_positive_button,active and source and self.polr_ready),
+                          (self.polr_confirm_button,active and (source or manual) and self.polr_ready and not self.polr_stale),
+                          (self.polr_refresh_button,active and (source or manual)),(self.polr_defer_button,active),
+                          (self.polr_retry_button,not self.is_busy() and pending),(self.polr_load_button,active and history)):
+            b.configure(state='normal' if allowed else 'disabled')
+        self.polr_task_control.configure(state='readonly' if active else 'disabled')
+        for field in (self.polr_date_control,self.polr_hours_control):field.configure(state='normal' if active else 'disabled')
+        self.polr_context_button.configure(state='normal' if active else 'disabled')
+        for var,button in self.polr_acks.values():button.configure(state='normal' if active else 'disabled')
+
+    def _show_polr(self,mode):
+        if self.is_busy() or not self.can_leave_attempt():return False
+        if not self.mode.startswith('confirmation_'):self.polr_return_mode=self.mode
+        self.polr_tokens.clear();self.polr_ready=False;self.polr_stale=False
+        self.saved_token=self.preview_token=None  # Abandon earlier view reads, never their worker operations.
+        self.polr_proposal=self.polr_context=None
+        self.mode=mode;self.close_picker();self.report.master.grid_remove();self.polr_panel.grid()
+        self.polr_confirm_button.configure(text='Confirm absolute amount' if mode=='confirmation_manual' else 'Confirm checked')
+        self.polr_defer_button.configure(text='Cancel' if mode=='confirmation_manual' else 'Defer / Review later')
+        self.polr_manual.grid() if mode=='confirmation_manual' else self.polr_manual.grid_remove()
+        self.polr_detail.configure(state='normal');self.polr_detail.delete('1.0','end');self.polr_detail.configure(state='disabled')
+        self.polr_status.configure(text='Read-only review; nothing confirmed.')
+        self.polr_tree.delete(*self.polr_tree.get_children());self.polr_mapping={};self._draw_polr_acks()
+        self.controls();return True
+
+    def _hide_polr(self):
+        self.polr_tokens.clear();self.polr_ready=False
+        self.polr_panel.grid_remove();self.report.master.grid()
+
+    def review_polr(self):
+        a=self.owner._timesheet_attempt
+        if a is None or a.registration!='committed' or not self._show_polr('confirmation_source'):return False
+        self.polr_source_id=a.candidate.export_id
+        return self.refresh_polr()
+
+    def manual_polr(self):
+        if not self._show_polr('confirmation_manual'):return False
+        self.polr_task_choices=list(self.tasks.get_children())
+        labels=[str(self.tasks.item(k,'values')[0])+(' [Deleted]' if self.tasks.item(k,'values')[2]=='Deleted' else '') for k in self.polr_task_choices]
+        self.polr_task_control.configure(values=labels)
+        if labels:self.polr_task_control.current(0)
+        self.polr_date.set(from_us(to_us(self.owner.now_utc())).astimezone(self.owner.zone).date().isoformat())
+        self.polr_hours.set('');self.controls();return True
+
+    def confirmation_history(self):
+        if not self._show_polr('confirmation_history'):return False
+        self._polr_columns(('batch','audit','source'),('Batch UUID','Audit UTC','Source / Manual'))
+        return self._read_polr('polr_history',None)
+
+    def _polr_columns(self,columns,labels):
+        self.polr_tree.configure(columns=columns)
+        for column,label in zip(columns,labels):
+            self.polr_tree.heading(column,text=label);self.polr_tree.column(column,width=180 if column!='task' else 320,minwidth=60,stretch=False)
+
+    def _read_polr(self,kind,value):
+        try:
+            token,_=self.owner._timesheet_read(self,kind,value);self.polr_tokens[kind]=token
+            if kind=='polr_day':self.polr_day_key=(value['task_id'],value['work_date'])
+            return True
+        except Exception as exc:return self.polr_failure(exc)
+
+    def _manual_polr_dirty(self):
+        if self.mode=='confirmation_manual':
+            self.polr_context=None;self.polr_ready=False;self.polr_tokens.pop('polr_manual',None);self.polr_tokens.pop('polr_day',None)
+            self.polr_status.configure(text='Task/date changed; Review current before confirming.')
+            self.polr_controls()
+
+    def refresh_polr(self):
+        if self.is_busy() or not self.can_leave_attempt():return False
+        self.polr_ready=False;self.polr_stale=False
+        self.polr_selected.clear();self._draw_polr_acks()
+        if self.mode=='confirmation_manual':self.polr_confirm_button.configure(text='Confirm absolute amount')
+        else:self.polr_confirm_button.configure(text='Confirm checked')
+        if self.mode=='confirmation_source':return self._read_polr('polr_proposal',self.polr_source_id)
+        if self.mode=='confirmation_manual':
+            try:
+                index=self.polr_task_control.current()
+                if index<0:raise ValueError('Choose a retained task UUID')
+                task=self.polr_task_choices[index];day=parse_date(self.polr_date.get()).isoformat()
+                self.polr_date.set(day)
+                self.polr_manual_key=(task,day)
+                return self._read_polr('polr_manual',dict(task_id=task,work_date=day,cutoff_utc_us=to_us(self.owner.now_utc())))
+            except Exception as exc:return self.polr_failure(exc)
+        return False
+
+    def receive_polr(self,kind,token,value):
+        if self.disposed or self.polr_tokens.get(kind)!=token:return
+        self.polr_tokens.pop(kind)
+        try:
+            if isinstance(value,Outcome):raise value.error or ValueError('Confirmation read unavailable')
+            if kind=='polr_proposal':
+                if self.mode!='confirmation_source' or value['source_metadata']['export_id']!=self.polr_source_id:raise ValueError('Confirmation review source changed')
+                self.polr_proposal=deepcopy(value)
+                self.polr_mapping={f'p{i}':r for i,r in enumerate(value['reviewed_rows'])}
+                self.polr_selected={(r['task_id'],r['work_date']) for r in value['selected_keys']}
+                self.polr_ready=True;self.polr_stale=False
+                self._render_polr_rows();self._draw_polr_acks()
+            elif kind=='polr_manual':
+                if self.mode!='confirmation_manual' or (value['task_id'],value['work_date'])!=self.polr_manual_key:raise ValueError('Manual review task/date changed')
+                self.polr_context=deepcopy(value);self.polr_ready=True;self.polr_stale=False
+                self._show_day_status(value)
+            elif kind=='polr_day':
+                if (value['task_id'],value['work_date'])!=self.polr_day_key:raise ValueError('Confirmation day status identity changed')
+                self._show_day_status(value)
+            elif kind=='polr_history':
+                if self.mode!='confirmation_history':return
+                self.polr_tree.delete(*self.polr_tree.get_children())
+                for row in value:self.polr_tree.insert('','end',iid=row['batch_id'],values=(row['batch_id'],from_us(row['audit_utc_us']).isoformat(),row['source_export_id'] or 'Manual'))
+            elif kind=='polr_batch':
+                if self.mode!='confirmation_history' or value['batch_id']!=self.polr_batch_id:return
+                from .polr_allocation import quarter_text
+                lines=[f"Batch {value['batch_id']} | request {value['created_request_id']} | committed sequence {value['commit_seq']}"]
+                for r in value['cells']:lines.append(f"{r['task_id']} / {r['work_date']}: {quarter_text(r['confirmed_quarters'])}; prior {r['expected_prior_batch_id']} / {r['expected_prior_quarters']}; stale acknowledgement {bool(r['stale_export_acknowledged'])}")
+                self.polr_detail.configure(state='normal');self.polr_detail.delete('1.0','end');self.polr_detail.insert('1.0','\n'.join(lines));self.polr_detail.configure(state='disabled')
+            self.controls()
+        except Exception as exc:self.polr_failure(exc)
+
+    def _render_polr_rows(self):
+        from .polr_allocation import quarter_text
+        self._polr_columns(('select','task','date','suggested','confirmed','prior','stale'),('Select','Task / UUID','Date','Frozen Suggested POL-R','Current Confirmed POL-R','Current Prior Identity','Stale Source Conflict'))
+        self.polr_tree.column('select',width=65)
+        self.polr_tree.delete(*self.polr_tree.get_children())
+        for handle,r in self.polr_mapping.items():
+            self.polr_tree.insert('','end',iid=handle,values=('☑' if (r['task_id'],r['work_date']) in self.polr_selected else '☐',
+                f"{r['task_name']} / {r['task_id']}",r['work_date'],quarter_text(r['suggested_quarters']),
+                'Unknown' if r['prior_quarters'] is None else quarter_text(r['prior_quarters'])+' (confirmed)',r['prior_batch_id'] or 'Unknown',
+                'Yes' if r['requires_stale_acknowledgement'] else 'No'))
+
+    def _polr_click(self,event):
+        if self.mode!='confirmation_source' or self.is_busy() or not self.polr_ready or not self.can_leave_attempt():return
+        if self.polr_tree.identify_column(event.x)!='#1':return
+        row=self.polr_mapping.get(self.polr_tree.identify_row(event.y))
+        if row:self.toggle_polr_cell((row['task_id'],row['work_date']));return 'break'
+
+    def toggle_polr_cell(self,key):
+        if self.is_busy() or not self.can_leave_attempt() or not self.polr_ready:return False
+        if not any((r['task_id'],r['work_date'])==key for r in self.polr_mapping.values()):return False
+        if key in self.polr_selected:self.polr_selected.remove(key)
+        else:self.polr_selected.add(key)
+        self._render_polr_rows();self._draw_polr_acks();return True
+
+    def polr_positive(self):
+        if self.mode!='confirmation_source' or not self.polr_ready or self.is_busy() or not self.can_leave_attempt():return False
+        self.polr_selected={(r['task_id'],r['work_date']) for r in self.polr_mapping.values() if r['suggested_quarters']>0}
+        self._render_polr_rows();self._draw_polr_acks();return True
+
+    def _draw_polr_acks(self):
+        if not hasattr(self,'polr_ack_frame'):return
+        previous={k:var.get() for k,(var,b) in self.polr_acks.items() if k in self.polr_selected}
+        for child in self.polr_ack_frame.winfo_children():child.destroy()
+        self.polr_acks={}
+        from .polr_allocation import quarter_text
+        for row in getattr(self,'polr_mapping',{}).values():
+            k=(row['task_id'],row['work_date'])
+            if k not in self.polr_selected or not row['requires_stale_acknowledgement']:continue
+            var=tk.BooleanVar(self.window,previous.get(k,False))
+            b=ttk.Checkbutton(self.polr_ack_frame,variable=var,text=f"Acknowledge replacing this newer confirmed value: {row['task_name']} / {k[0]} / {k[1]}; frozen {quarter_text(row['suggested_quarters'])}, prior {quarter_text(row['prior_quarters'])} / {row['prior_batch_id']}")
+            b.grid(sticky='w');self.polr_acks[k]=(var,b)
+
+    def confirm_polr(self):
+        if self.is_busy() or not self.can_leave_attempt() or not self.polr_ready or self.polr_stale:return False
+        from .polr_confirmation import parse_hours
+        try:
+            args=dict(batch_id=str(uuid4()),mode='source',source_export_id=None,source_metadata=None,reviewed_rows=[],selected_keys=[],manual_cells=[],acknowledgements=[])
+            if self.mode=='confirmation_source':
+                if not self.polr_selected:raise ValueError('Check at least one genuine source cell; empty does not mean All')
+                if any(not var.get() for var,b in self.polr_acks.values()):raise ValueError('Explicitly acknowledge each selected stale conflict')
+                args.update(source_export_id=self.polr_source_id,source_metadata=deepcopy(self.polr_proposal['source_metadata']),
+                            reviewed_rows=deepcopy(self.polr_proposal['reviewed_rows']),selected_keys=[dict(task_id=t,work_date=d) for t,d in sorted(self.polr_selected)])
+                for row in self.polr_proposal['reviewed_rows']:
+                    k=(row['task_id'],row['work_date'])
+                    if k in self.polr_acks:args['acknowledgements'].append(dict(task_id=k[0],work_date=k[1],suggested_quarters=row['suggested_quarters'],reviewed_prior_batch_id=row['prior_batch_id'],reviewed_prior_quarters=row['prior_quarters']))
+            elif self.mode=='confirmation_manual':
+                c=self.polr_context
+                args.update(mode='manual',manual_cells=[dict(task_id=c['task_id'],work_date=c['work_date'],confirmed_quarters=parse_hours(self.polr_hours.get()),prior_batch_id=c['current_batch_id'],prior_quarters=c['confirmed_quarters'])])
+            else:return False
+            return self.owner._polr_submit(self,args)
+        except Exception as exc:return self.polr_failure(exc,retain_review=True)
+
+    def polr_result(self,result):
+        from .records import StaleState
+        if result.status=='committed':
+            self.polr_status.configure(text=f"Committed confirmation {result.result['batch_id']}. This records your statement, not independent POL-R verification.")
+            if self.mode in ('confirmation_source','confirmation_manual'):
+                submitted=self.owner._polr_submission.request.args()
+                keys=[(r['task_id'],r['work_date']) for r in (submitted['selected_keys'] if submitted['mode']=='source' else submitted['manual_cells'])]
+                self.refresh_polr()
+                if keys:
+                    t,d=keys[0];self._read_polr('polr_day',dict(task_id=t,work_date=d,cutoff_utc_us=to_us(self.owner.now_utc())))
+        else:
+            self.polr_stale=isinstance(result.error,StaleState)
+            self.polr_status.configure(text=f"Confirmation {result.status}: {result.error or ''}. "+('Explicit Refresh review is required.' if self.polr_stale else 'Reviewed inputs retained; no success is claimed.'))
+        self.controls()
+
+    def retry_polr(self):
+        submission=getattr(self.owner,'_polr_submission',None)
+        if self.is_busy() or submission is None or submission.request is not self.owner.pending:return False
+        return self.owner.retry()
+
+    def _show_day_status(self,c):
+        from .polr_allocation import quarter_text,decimal_text
+        confirmed='Unknown' if c['confirmed_quarters'] is None else quarter_text(c['confirmed_quarters'])+' (confirmed)'
+        def signed(v):return ('+' if v>0 else '-' if v<0 else '')+f'{abs(v)//100}.{abs(v)%100:02d}'
+        delta=('Unverified' if c['confirmed_quarters'] is None else 'Unavailable') if c['daily_delta_hundredths'] is None else signed(c['daily_delta_hundredths'])
+        gap='unresolved' if c['suggested_entry_gap_quarters'] is None else signed(c['suggested_entry_gap_quarters']*25)
+        self.polr_detail.configure(state='normal');self.polr_detail.delete('1.0','end')
+        adjustment='Unavailable' if c['full_week_adjustment_us'] is None else str(c['full_week_adjustment_us'])+' µs'
+        actual='Unavailable' if c['actual_us'] is None else str(c['actual_us'])+' µs / '+decimal_text(c['actual_hundredths'])
+        suggested='Unavailable' if c['suggested_quarters'] is None else quarter_text(c['suggested_quarters'])
+        self.polr_detail.insert('1.0',f"{c['task_name']} / {c['task_id']} / {c['work_date']} as of UTC {from_us(c['cutoff_utc_us']).isoformat()}\nActual: {actual}; Suggested: {suggested}; Confirmed: {confirmed}\nCurrent batch: {c['current_batch_id'] or 'Unknown'}; Daily Delta: {delta}; Suggested-entry gap: {gap}; full-week exact upward adjustment: {adjustment}. Differences may reflect weekly allocation.")
+        self.polr_detail.configure(state='disabled')
+        if c.get('calculation_error') is not None:
+            self.polr_status.configure(text='Current Actual/suggestion context unavailable; reviewed confirmation prior remains available.')
+            self.owner._diagnose(c['calculation_error'])
+
+    def load_polr_batch(self):
+        if self.mode!='confirmation_history' or self.is_busy() or not self.can_leave_attempt():return False
+        selected=self.polr_tree.selection()
+        if not selected:return False
+        self.polr_batch_id=selected[0];return self._read_polr('polr_batch',self.polr_batch_id)
+
+    def defer_polr(self):
+        if self.is_busy() or not self.can_leave_attempt():return False
+        self._hide_polr();self.mode=self.polr_return_mode;self.controls();return True
+
+    def polr_failure(self,exc,*,retain_review=False):
+        if not retain_review:self.polr_ready=False
+        submission=getattr(self.owner,'_polr_submission',None)
+        completed=(f"Committed confirmation {submission.outcome.result['batch_id']}. " if submission is not None and submission.outcome is not None and submission.outcome.status=='committed' else '')
+        try:self.polr_status.configure(text=completed+f'Confirmation review/status unavailable: {exc}. Original evidence and any committed result are retained.')
+        except Exception as secondary:exc.add_note(f'Confirmation diagnostic also failed: {secondary!r}')
+        self.owner._diagnose(exc);self.polr_controls();return False
 
     def present(self): self.window.deiconify()
 
@@ -587,4 +900,5 @@ class TimesheetWindow:
             self.disposed,self.presented,self.current = True,False,False
             self.picker = None
             self.preview_token = self.choices_token = None
+            self.polr_tokens.clear()
             if self._constructed: self.owner._timesheet_disposed(self,self._disposal_primary)

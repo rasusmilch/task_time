@@ -921,6 +921,34 @@ No schema/status ledger, automatic retry, reusable consent, Stage 3C confirmatio
 or Stage 3D reconciliation/reminder implementation is authorized. Stage 3B delivery
 requires independent review; Stage 3 remains In Progress and unqualified for pilot.
 
+### Stage 3B acceptance and Stage 3C absolute confirmation approval
+
+**Status:** current. **Provenance:** explicit user GO execution instruction
+“CHRONICLE — STAGE 3C Explicit POL-R Confirmation, Immutable Absolute Batches,
+Frozen-Source Integrity, and Stale-Cell Protection,” against independently verified
+and accepted `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. This later instruction
+accepts Stage 3B, not the earlier implementation receipt itself.
+
+Implement exactly three relational confirmation tables and one atomic absolute
+quarter-hour use case through the existing worker/pending Request/transaction helper.
+Preserve Unknown versus explicit zero and immutable history. Validate the entire
+frozen reviewed source including unchecked/zero rows, positive-only defaults
+including equal values, exact selected priors and individual newer-differing-source
+acknowledgements by committed sequence, not audit clocks. Newer unchecked priors do
+not unnecessarily reject valid checked batches. Manual confirmation is independent
+of an export/current Actual and accepts exact nonnegative decimal quarter values.
+A new explicit equal amount is still new evidence. Old exact retries never reinstall
+superseded values. Reopen proves original receipts, prior chains and latest pointers.
+
+Connect inline source/manual/history controls to the same modal Timesheet. Defer
+writes nothing; uncertain submission retains identical batch/Request and existing
+exceptional-exit protection. Known commitment survives presentation/refresh failure.
+Bounded immediate task/day feedback does not deliver the Stage 3D comprehensive
+dashboard, weekly summaries or reminders. No external POL-R connection, automatic
+confirmation, allocation change, migration or persisted Delta ledger is authorized.
+Stage 3C delivery requires independent review; Stage 3 remains In Progress. External
+redistribution and worked-day zero-entry policy remain unverified before pilot.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

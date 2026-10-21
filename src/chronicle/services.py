@@ -281,11 +281,108 @@ class TimerService:
         return materialize(export_id,destination_path(destination),candidate.report_utf8,candidate.report_sha256,
                            self.store.directory,confirmed_overwrite=confirmed_overwrite,expected_conflict=expected_conflict)
 
+    def confirm_polr_absolute(self, *, batch_id: str, mode: str, source_export_id: str | None,
+                              source_metadata: dict | None, reviewed_rows: list, selected_keys: list,
+                              manual_cells: list, acknowledgements: list, request_id: str, action_utc_us: int) -> Outcome:
+        return self._make('confirm_polr_absolute',request_id,action_utc_us,
+                         dict(batch_id=batch_id,mode=mode,source_export_id=source_export_id,source_metadata=source_metadata,
+                              reviewed_rows=reviewed_rows,selected_keys=selected_keys,manual_cells=manual_cells,acknowledgements=acknowledgements))
+
+    @staticmethod
+    def _export_sequence(c, export_id):
+        return c.execute("""SELECT r.commit_seq FROM timesheet_exports e JOIN committed_requests r
+          ON r.request_id=e.created_request_id WHERE e.export_id=?""",(export_id,)).fetchone()[0]
+
+    def read_polr_confirmation_proposal(self, export_id: str) -> dict:
+        from .polr_confirmation import proposal
+        with self._read_transaction() as c:
+            source=self.store.read_export(c,export_id)
+            current,_=self.store.confirmation_state(c)
+            return proposal(source,current,self._export_sequence(c,export_id))
+
+    def read_polr_current_cells(self, task_date_keys: list) -> list[dict]:
+        from .polr_confirmation import ordered
+        keys=ordered(task_date_keys,'task_id work_date')
+        with self._read_transaction() as c:
+            current,_=self.store.confirmation_state(c)
+            result=[]
+            for task,day in keys:
+                if c.execute('SELECT 1 FROM tasks WHERE task_id=?',(task,)).fetchone() is None:raise ValueError('Unknown task')
+                prior=current.get((task,day))
+                result.append(dict(task_id=task,work_date=day,current_batch_id=prior[0] if prior else None,
+                                   confirmed_quarters=prior[1] if prior else None))
+            return result
+
+    def _polr_day_status(self, c, task_id, work_date, cutoff):
+        from .accounting import calculate_daily
+        from .polr_allocation import allocate_week,actual_hundredths,civil,complete_week,Q
+        uuid_text(task_id);day=civil(work_date);instant(cutoff)
+        task=c.execute('SELECT * FROM tasks WHERE task_id=?',(task_id,)).fetchone()
+        if task is None:raise ValueError('Unknown retained task UUID')
+        first=day-timedelta(days=(day.weekday()-self.store.week_start)%7)
+        last=civil(complete_week(first.isoformat())[-1])
+        tasks=[dict(r) for r in c.execute('SELECT * FROM tasks')]
+        work=[dict(r) for r in c.execute("""SELECT e.task_id,r.* FROM work_entries e JOIN work_revisions r
+          ON r.entry_id=e.entry_id AND r.revision=e.current_revision WHERE r.is_deleted=0""")]
+        row=c.execute('SELECT * FROM active_timer').fetchone()
+        daily=calculate_daily(tasks,work,dict(row) if row else None,cutoff,self.store.zone,first,last)[task_id]
+        values=tuple(((first+timedelta(days=i)).isoformat(),daily.get((first+timedelta(days=i)).isoformat(),0)) for i in range(7))
+        allocation=dict(allocate_week(first.isoformat(),values));actual=daily.get(work_date,0);hundredths=actual_hundredths(actual)
+        current,_=self.store.confirmation_state(c);prior=current.get((task_id,work_date));confirmed=prior[1] if prior else None
+        return dict(task_id=task_id,task_name=task['name'],is_deleted=bool(task['is_deleted']),work_date=work_date,
+                    cutoff_utc_us=cutoff,timezone=self.store.timezone,week_start=self.store.week_start,
+                    actual_us=actual,actual_hundredths=hundredths,suggested_quarters=allocation[work_date],
+                    confirmed_quarters=confirmed,current_batch_id=prior[0] if prior else None,
+                    daily_delta_hundredths=hundredths-25*confirmed if prior else None,
+                    suggested_entry_gap_quarters=allocation[work_date]-confirmed if prior else None,
+                    full_week_adjustment_us=sum(allocation.values())*Q-sum(v for _,v in values))
+
+    def read_polr_day_status(self, task_id: str, work_date: str, *, cutoff_utc_us: int) -> dict:
+        with self._read_transaction() as c:return self._polr_day_status(c,task_id,work_date,cutoff_utc_us)
+
+    def read_polr_manual_context(self, task_id: str, work_date: str, *, cutoff_utc_us: int) -> dict:
+        from .polr_confirmation import key
+        key(dict(task_id=task_id,work_date=work_date));instant(cutoff_utc_us)
+        with self._read_transaction() as c:
+            task=c.execute('SELECT * FROM tasks WHERE task_id=?',(task_id,)).fetchone()
+            if task is None:raise ValueError('Unknown retained task UUID')
+            current,_=self.store.confirmation_state(c);prior=current.get((task_id,work_date))
+            try:return self._polr_day_status(c,task_id,work_date,cutoff_utc_us)
+            except (ValueError,OverflowError) as exc:
+                return dict(task_id=task_id,task_name=task['name'],is_deleted=bool(task['is_deleted']),work_date=work_date,
+                    cutoff_utc_us=cutoff_utc_us,timezone=self.store.timezone,week_start=self.store.week_start,
+                    actual_us=None,actual_hundredths=None,suggested_quarters=None,
+                    confirmed_quarters=prior[1] if prior else None,current_batch_id=prior[0] if prior else None,
+                    daily_delta_hundredths=None,suggested_entry_gap_quarters=None,full_week_adjustment_us=None,calculation_error=exc)
+
+    @staticmethod
+    def _confirmation_batch(c,batch_id):
+        uuid_text(batch_id)
+        row=c.execute("""SELECT b.*,r.commit_seq FROM polr_confirmation_batches b
+          JOIN committed_requests r ON r.request_id=b.created_request_id WHERE b.batch_id=?""",(batch_id,)).fetchone()
+        if row is None:raise ValueError('Unknown confirmation batch')
+        return {**dict(row),'cells':[dict(r) for r in c.execute(
+            'SELECT * FROM polr_confirmation_cells WHERE batch_id=? ORDER BY task_id,work_date',(batch_id,))]}
+
+    def list_polr_confirmation_batches(self) -> list[dict]:
+        with self._read_transaction() as c:
+            return [self._confirmation_batch(c,r[0]) for r in c.execute("""SELECT b.batch_id FROM polr_confirmation_batches b
+              JOIN committed_requests r ON r.request_id=b.created_request_id ORDER BY r.commit_seq""")]
+
+    def read_polr_confirmation_batch(self, batch_id: str) -> dict:
+        with self._read_transaction() as c:return self._confirmation_batch(c,batch_id)
+
     def execute(self, request: Request) -> Outcome:
         # The transaction resolves exact receipts before calling this current-state validator.
         def operation(c):
             a, op, now = request.args(), request.operation, request.action_utc_us
             local_date(now, self.store.zone)
+            if op == 'confirm_polr_absolute':
+                from .polr_confirmation import fields,REQUEST_FIELDS
+                fields(a,REQUEST_FIELDS)
+                source=self.store.read_export(c,a['source_export_id']) if a['source_export_id'] is not None else None
+                seq=self._export_sequence(c,source.export_id) if source else None
+                return self.store.insert_confirmation(c,request,source,seq)
             if op == 'register_timesheet_export':
                 from .timesheet import from_content
                 if set(a) != {'candidate'}:
@@ -406,6 +503,7 @@ class TimerService:
         try:
             c.execute("BEGIN")
             self.store.assert_lifecycle(c)
+            self.store.assert_confirmations(c)
             yield c
             c.execute("COMMIT")
         except BaseException as primary:

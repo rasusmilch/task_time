@@ -59,6 +59,14 @@ class _TimesheetAttempt:
     started: bool = True
 
 
+@dataclass
+class _PolrSubmission:
+    request: Request
+    token: int
+    origin: object
+    outcome: Outcome | None = None
+
+
 class ChronicleApp:
     def __init__(self, root, worker, *, now_utc=utc_now):
         self.root, self.worker, self.now_utc = root, worker, now_utc
@@ -76,6 +84,7 @@ class ChronicleApp:
         self._timesheet_opening = False
         self._timesheet_return = None
         self._timesheet_attempt = None
+        self._polr_submission = None
         self._timesheet_handoff = None
         self._timesheet_dialog_busy = False
         self._history_opening = False
@@ -232,7 +241,9 @@ class ChronicleApp:
         if _origin is not None and _origin is self.history:
             # Correlate before queue/UI effects: accepted work outlives widgets.
             _origin.request, _origin.token, _origin.phase = request, self._pending_token, "executing"
-        if _origin is not None and _origin is self.timesheet:
+        if _origin is not None and _origin is self.timesheet and operation == 'confirm_polr_absolute':
+            self._polr_submission = _PolrSubmission(request,self._pending_token,_origin)
+        if _origin is not None and _origin is self.timesheet and operation == 'register_timesheet_export':
             attempt = self._timesheet_attempt
             attempt.request, attempt.token, attempt.registration = request, self._pending_token, "registering"
         # Invalidate any read that predates this accepted mutation.
@@ -243,7 +254,9 @@ class ChronicleApp:
             self.pending, self.executing, self._pending_token = None, False, None
             if _origin is not None and _origin is self.history:
                 _origin.request, _origin.token, _origin.phase = None, None, "editing" if _origin.edit_fields else "browsing"
-            if _origin is not None and _origin is self.timesheet:
+            if _origin is not None and _origin is self.timesheet and operation == 'confirm_polr_absolute':
+                self._polr_result(request,self._token,Outcome('unavailable',error=exc))
+            if _origin is not None and _origin is self.timesheet and operation == 'register_timesheet_export':
                 attempt.registration, attempt.error = "unavailable", exc
             self.status.configure(text=f"Action not submitted: {exc}")
             self._diagnose(exc)
@@ -581,6 +594,8 @@ class ChronicleApp:
         previous_guard = self._timesheet_opening
         self._timesheet_opening = True
         self.timesheet = None
+        polr=getattr(self,'_polr_submission',None)
+        if polr is not None and polr.origin is sheet and polr.request is not self.pending:self._polr_submission=None
         self._timesheet_detach()
         try:
             self._restore_timesheet_origin()
@@ -631,13 +646,40 @@ class ChronicleApp:
     def _timesheet_read(self, sheet, kind, value):
         if self.timesheet is not sheet or sheet.disposed or not self.alive or self.closing:
             raise ValueError("Timesheet session is no longer current")
-        if kind not in ("timesheet_tasks", "timesheet_preview", "timesheet_exports", "timesheet_export"):
+        if kind not in ("timesheet_tasks", "timesheet_preview", "timesheet_exports", "timesheet_export", "polr_proposal", "polr_manual", "polr_history", "polr_batch", "polr_day"):
             raise ValueError("Unsupported Timesheet view read")
         self._token += 1
         if kind == "timesheet_preview":
             value = dict(value,export_id=str(uuid4()),cutoff_utc_us=to_us(self.now_utc()))
         self.worker.requests.put(Message(kind,self._token,value))
         return self._token,value
+
+    def _polr_submit(self, sheet, arguments):
+        if self.timesheet is not sheet or not sheet.polr_ready or not self.can_mutate(origin=sheet): return False
+        submitted=self._submit('confirm_polr_absolute',_origin=sheet,**arguments)
+        if not submitted and not self.executing:sheet.polr_status.configure(text=self.status.cget('text'))
+        sheet.controls()
+        return submitted
+
+    def _polr_result(self, request, token, result):
+        submission=self._polr_submission
+        if submission is None or submission.request is not request or submission.token!=token:return
+        submission.outcome=result  # Known commitment precedes all widget effects.
+        try:self.status.configure(text=f"Confirmation {result.status}: {result.result.get('batch_id','')}")
+        except Exception as exc:
+            exc.add_note('Authoritative confirmation outcome is already retained.')
+            self._diagnose(exc)
+        if result.error:self._diagnose(result.error)
+        if self.timesheet is submission.origin and not submission.origin.disposed:
+            try:submission.origin.polr_result(result)
+            except Exception as exc:
+                exc.add_note('Confirmation outcome remains retained independently of its presentation.')
+                try:submission.origin.controls()
+                except Exception as secondary:exc.add_note(f'Confirmation controls also failed: {secondary!r}')
+                self._diagnose(exc)
+        elif result.status!='unverified':self._polr_submission=None
+        self._controls()
+        if not self.closing:self.refresh()
 
     def _timesheet_detach(self):
         attempt = self._timesheet_attempt
@@ -1143,6 +1185,11 @@ class ChronicleApp:
             result = message.value
             request = self.pending
             self.executing = False
+            polr = getattr(self,'_polr_submission',None)
+            if polr is not None and polr.request is request and request.operation == 'confirm_polr_absolute':
+                if result.status != 'unverified': self.pending, self._pending_token = None, None
+                self._polr_result(request,message.token,result)
+                return
             attempt = self._timesheet_attempt
             if attempt is not None and attempt.request is request and request.operation == 'register_timesheet_export':
                 if result.status != 'unverified': self.pending, self._pending_token = None, None
@@ -1175,13 +1222,15 @@ class ChronicleApp:
                 self.refresh()
         elif message.kind in ("timesheet_status", "timesheet_publish"):
             self._timesheet_file_result(message)
-        elif message.kind in ("timesheet_tasks", "timesheet_preview", "timesheet_exports", "timesheet_export"):
+        elif message.kind in ("timesheet_tasks", "timesheet_preview", "timesheet_exports", "timesheet_export", "polr_proposal", "polr_manual", "polr_history", "polr_batch", "polr_day"):
             sheet = self.timesheet
             if sheet is not None and not sheet.disposed:
                 if message.kind == "timesheet_tasks":
                     sheet.receive_choices(message.token,message.value)
                 elif message.kind == 'timesheet_preview':
                     sheet.receive_preview(message.token,message.value)
+                elif message.kind.startswith('polr_'):
+                    sheet.receive_polr(message.kind,message.token,message.value)
                 else:
                     sheet.receive_saved(message.kind,message.token,message.value)
         elif message.kind in ("history_snapshot", "revisions"):
@@ -1283,6 +1332,9 @@ class ChronicleApp:
         history = self.history
         if history is not None and history.request is self.pending:
             history.token, history.phase = self._pending_token, "executing"
+        polr = getattr(self,'_polr_submission',None)
+        if polr is not None and polr.request is self.pending:
+            polr.token, polr.outcome = self._pending_token, None
         attempt = self._timesheet_attempt
         if attempt is not None and attempt.request is self.pending:
             attempt.token, attempt.registration = self._pending_token, 'registering'
@@ -1294,6 +1346,8 @@ class ChronicleApp:
                 self._work_editor_result(self.pending, self._pending_token, Outcome("unverified", error=exc))
             if history is not None and history.request is self.pending:
                 history.mutation_result(self.pending, self._pending_token, Outcome("unverified", error=exc))
+            if polr is not None and polr.request is self.pending:
+                self._polr_result(self.pending,self._pending_token,Outcome('unverified',error=exc))
             if attempt is not None and attempt.request is self.pending:
                 attempt.registration, attempt.error = 'unverified', exc
                 self._timesheet_notify()
@@ -1307,6 +1361,7 @@ class ChronicleApp:
             history.status.configure(text="Reconciling the identical request; please wait.")
             history.controls()
         self._timesheet_notify()
+        if polr is not None and self.timesheet is polr.origin: self.timesheet.polr_controls()
         self.status.configure(text="Reconciling the exact saved request…")
         self._controls()
         return True
@@ -1319,6 +1374,10 @@ class ChronicleApp:
         if self._timesheet_dialog_busy: return
         if self.timesheet is not None:
             if self.executing: return
+            polr = getattr(self,'_polr_submission',None)
+            if polr is not None and polr.request is self.pending:
+                self._timesheet_exit()
+                return
             attempt = self._timesheet_attempt
             if attempt is not None and attempt.registration == 'unverified':
                 self._timesheet_exit()

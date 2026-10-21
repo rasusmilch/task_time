@@ -15,8 +15,10 @@ Stage 2A adds connected manual work, typed revision/read services, mixed account
 and persisted week configuration.
 Stage 2B/complete recording is independently accepted. Stage 3A Preview and immutable
 export evidence are independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`.
-Stage 3B connects protected file Save/status and Saved Reports for independent review.
-Confirmation and reconciliation/reminders remain Stage 3C/3D. Earlier
+Stage 3B protected file Save/status and Saved Reports are independently accepted at
+`76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C connects absolute confirmation
+and immutable history for independent review. Comprehensive reconciliation/reminders
+remain Stage 3D. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
 ## Small application and responsibility boundaries
@@ -281,9 +283,11 @@ No UI-settings files, snapshots, exports or per-tick writes are added.
 
 Stage 2A extends the fresh development schema directly for date-only revisions;
 older development signatures refuse, without a migration path. Export
-basis/cells are added in Stage 3A; confirmation batches/current references remain
-future Stage 3 work, preserving stable identities. The current application exposes
-Timesheet Preview, protected file Save/recovery and no confirmation workflow. Stage 1B exercises real SQLite
+basis/cells are added in Stage 3A; three confirmation batch/cell/current-reference
+tables are added in Stage 3C, preserving stable identities. The exact expanded fresh
+schema still uses version 1 and refuses older signatures without conversion. The
+current application exposes Timesheet Preview, protected file Save/recovery and
+explicit absolute confirmation. Stage 1B exercises real SQLite
 process death at transaction/receipt/commit boundaries, atomic Switch, historical
 exact retries, active restart/calendar continuity, ordinary ownership races and
 rollback-journal pre-COMMIT and post-cleanup boundaries. These bounded local
@@ -517,8 +521,8 @@ export/dataset/cutoff checks reject late/mismatched results. Complete content is
 prepared before rendering. Partial installation hides untrusted output, preserves
 the original diagnostic and allows explicit recovery. Read-only exact text remains
 scrollable/copyable. Close can discard outstanding reads and volatile candidates
-before registration. Stage 3A is independently accepted; the Stage 3B extensions
-below are delivered for independent review. Stage 3 remains incomplete.
+before registration. Stage 3A/3B are independently accepted; Stage 3C below is
+delivered for independent review. Stage 3 remains incomplete.
 
 ### Connected Stage 3B protected Save and recovery
 
@@ -590,7 +594,87 @@ alternate paths survive only this handoff, not restart policy. Exit warns for cu
 unfinished registered attempt/handoff, never undoes evidence/files or writes recovery
 state. Forced destruction/crash is not a promise to preserve volatile context.
 No Save/open/status operation confirms POL-R, stops/resets timers or dismisses a
-reminder. Confirmation and reconciliation/reminders remain Stage 3C/3D.
+reminder. Stage 3C confirmation is described below; reconciliation/reminders remain
+Stage 3D.
+
+### Connected Stage 3C absolute confirmation
+
+`polr_confirmation` owns pure strict field/type/canonical-order validation, exact
+decimal-text-to-quarter parsing, frozen source metadata/proposals and detached
+`ConfirmationCell` values. Manual quantities are nonnegative signed-64-bit-compatible
+quarter counts with representable decimal hundredths (`MAX_AMOUNT // 25`); no floats,
+rounding or increments. The existing allocation algorithm is unchanged.
+
+Exactly three STRICT tables extend the fresh development schema:
+`polr_confirmation_batches` binds batch/request/audit/source/mode;
+`polr_confirmation_cells` retains selected task/date/absolute quarters, reviewed prior
+identity/amount and individual stale consent; `polr_confirmed_current` retains only
+(task, date, batch) references. FK/UNIQUE/CHECK constraints bind current/prior cells.
+Immutable UPDATE/DELETE guards protect batches/cells; cell INSERTs are sealed after
+the batch receipt exists.
+No duplicated current amount, status ledger or Delta table exists.
+
+`confirm_polr_absolute(*, batch_id, mode, source_export_id, source_metadata,
+reviewed_rows, selected_keys, manual_cells, acknowledgements, request_id,
+action_utc_us) -> Outcome` is the explicit mutation. Every field is present, strict
+and canonical. Source metadata contains export/dataset/date/scope/selected UUIDs,
+cutoff/timezone/week/digest and frozen task associations in UUID order. Source rows
+contain all and only in-scope task/date/name/suggested quarters plus reviewed priors
+and actual-bool stale flags, in task/date order. Context-only basis dates are excluded.
+Manual mode has no source/review/selection/acknowledgement fields beyond null/empty;
+its nonempty cells bind task/date/absolute quarters and reviewed prior identity/amount.
+
+The existing BEGIN IMMEDIATE helper resolves exact receipts before stale checks.
+New batches validate complete immutable source coverage (including unchecked/zero),
+selected current prior identity/amount and exactly selected newer-differing conflicts
+using source/prior committed sequence. Reviewed unchecked prior evidence may be old,
+but retains valid shape, history and truthful stale classification; it need not
+remain current. Every selected prior is freshly matched; even equal-value intervening
+confirmation is stale review. Individual acknowledgements bind exact task/date,
+frozen proposal and reviewed prior, never blanket consent. Insert master, selected
+cells and current references, then the existing helper inserts the exact receipt.
+Receipt-dependent whole-batch/chain/current-pointer checks run before COMMIT.
+Failure rolls back all; uncertainty uses independent committed-state reconciliation.
+An old exact retry returns its receipt without reinstalling prior values.
+
+Reopen and confirmation reads validate all immutable batch receipts in commit_seq
+order, reconstruct historical expected priors for validation, compare complete stored
+cells/source/acknowledgements/results with their original Request, then prove every
+current pointer identifies the latest committed cell. Ordinary reads join those
+current references to immutable amounts. Damaged/missing/extra evidence refuses;
+there is no repair/replay ledger or authoritative retained Python projection.
+
+Worker-owned reads are `read_polr_confirmation_proposal(export_id)`,
+`read_polr_manual_context(task_id, work_date, *, cutoff_utc_us)`,
+`list_polr_confirmation_batches()`, `read_polr_confirmation_batch(batch_id)`,
+`read_polr_current_cells(task_date_keys)` and
+`read_polr_day_status(task_id, work_date, *, cutoff_utc_us)`.
+Manual context always validates task/date/cutoff and reviews the current prior;
+optional current accounting failure is reported with unavailable quantities and its
+original diagnostic, without inventing values or blocking independent manual entry.
+Immediate day feedback reuses shared exact accounting and the Stage 3A allocator
+under one explicit cutoff/committed weekday, including full-week adjustment. It is
+not a Stage 3D dashboard or coverage/reminder implementation.
+
+The same owned Timesheet window has inline source review, one-cell manual entry
+and read-only confirmation history. Source amounts cannot be edited. Positive-only
+defaults include equal values; zero is explicit. Scrollable source/acknowledgement/
+history areas retain exact UUID/date context. Selected conflicts get independent
+unchecked controls; unchecking removes consent, and Refresh review clears it.
+Manual task/date changes invalidate prior readiness; decimal validation retains
+drafts. Defer clears volatile review only and writes nothing.
+
+Worker read kinds `polr_proposal`, `polr_manual`, `polr_day`, `polr_history`,
+`polr_batch` use separate view tokens and identity checks. Mutations use the existing
+owner pending Request/mutate/reconcile path. One temporary `_PolrSubmission` aliases
+that same Request/token/origin and retains the authoritative Outcome before any
+widget effect; it is not another coordinator. Executing/uncertain submissions lock
+review changes and ordinary abandonment. Known rollback/unavailability preserves
+review; stale prior requires explicit Refresh. Exact Retry/Reconcile freezes batch,
+request and content even if the originating widget disappears. The existing owned
+default-No exceptional exit remains available; no exit undoes possible commitment.
+Known success survives result/read/control failure, permits Close/renewed review,
+and refreshes current review/status without rewriting old exports or Actual.
 
 ## Frozen files and core POL-R
 

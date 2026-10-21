@@ -19,8 +19,10 @@ check original committed request content and exact bytes/digest without current
 Actual or a later renderer. Stage 3A is independently accepted at
 `d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Preview itself writes nothing. Stage 3B
 connects protected materialization, fresh status, one-call overwrite consent and
-Saved Reports recovery for independent review. Confirmation remains Stage 3C and
-reconciliation/reminders Stage 3D; no Confirm action is exposed.
+Saved Reports recovery, independently accepted at
+`76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C connects explicit source/manual
+absolute confirmation and immutable history for independent review. Comprehensive
+reconciliation, weekly summaries and reminders remain Stage 3D.
 
 **SQLite supersedes the earlier mandatory JSONL envelope, segment manifest,
 physical replay order, fsync/synchronize-journal and Python projection mechanisms.**
@@ -307,6 +309,16 @@ Keep immutable prior history and current references, not additive balances or a
 persisted Delta/rounding ledger. A source proves frozen provenance, not independent
 POL-R verification. When workflow relies on a report copy, verify its current
 bytes; historical confirmation does not depend on that file remaining available.
+
+The SQLite implementation stores exactly three confirmation tables: immutable
+`polr_confirmation_batches`, immutable selected `polr_confirmation_cells`, and
+mutable `polr_confirmed_current(task_id, work_date, batch_id)` references joining
+those cells. Committed request `commit_seq` establishes order, not audit clocks.
+Prior IDs/amounts, source association and individual stale consent remain immutable.
+Current reference absence means Unknown; a zero cell has an explicit batch identity.
+Source/manual confirmation is independent of file existence and never changes
+Actual, frozen export cells/text or external copies. See the concrete transaction
+and API boundary in [Architecture](ARCHITECTURE.md#connected-stage-3c-absolute-confirmation).
 
 ## Reviewed source integrity and default selection
 

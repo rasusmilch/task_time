@@ -49,10 +49,12 @@ Stage 2B and complete Stage 2 functional recording are independently accepted at
 `adc09ba0935e8718c4ad2101057af9c6022074cc`, as reported in the later explicit Stage 3A
 execution approval. Stage 3A allocation, Preview and immutable export evidence are
 independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e` under the later
-Stage 3B approval. Stage 3B connects protected file Save, explicit one-call overwrite,
-fresh file-status inspection and Saved Reports recovery for independent review.
-Stage 3 remains In Progress: confirmation (3C) and reconciliation/reminders (3D)
-remain pending.
+Stage 3B approval. Stage 3B protected file Save/status/recovery is independently
+accepted at `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57` under the later Stage 3C
+approval. Stage 3C connects immutable absolute quarter-hour confirmation,
+whole/checked/manual review, exact stale acknowledgements and confirmation history
+for independent review. Stage 3 remains In Progress: comprehensive reconciliation,
+weekly summaries and reminders (3D) remain mandatory and pending.
 Subsequent execution stays bounded and independently reviewed, using substantial
 coherent slices without microtasks.
 The fresh rewrite

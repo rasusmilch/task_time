@@ -21,7 +21,9 @@ Stage 2A is independently accepted at `7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`
 Stage 2B/complete recording is independently accepted at
 `adc09ba0935e8718c4ad2101057af9c6022074cc`, as reported by the later Stage 3A approval.
 Stage 3A is independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`.
-Stage 3B protected file Save/recovery is delivered for independent review.
+Stage 3B protected file Save/recovery is independently accepted at
+`76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C confirmation is delivered for
+independent review.
 Native Windows source operation
 is required before deployment/pilot, not an unavailable executable-build gate.
 
@@ -106,17 +108,18 @@ Stage 3 POL-R workflow and is not pilot-ready.
 
 ## Stage 3 — Core frozen Timesheet AND POL-R reconciliation
 
-**IN PROGRESS — Stage 3A accepted; Stage 3B delivered for independent review.**
+**IN PROGRESS — Stage 3A/3B accepted; Stage 3C delivered for independent review.**
 This week/Last week/Custom preview, independent All/Selected UUID scope, exact
 full-week suggestions and immutable SQLite registration/list/read are connected.
 Preview writes no evidence. Stage 3B adds verified Save/Retry/Copy, owned one-call
 overwrite consent, fresh status and Saved Reports recovery without retained widgets.
-Registration precedes publication; uncertainty retains the exact request. No Confirm
-control exists. Remaining bounded slices: Stage 3C implements absolute confirmation; Stage 3D
-implements reconciliation/reminders. Core still requires explicit whole/checked/manual absolute
-quarter-hour confirmation, defer/later review, daily Actual/Suggested/Confirmed,
-Daily Delta, suggested-entry gap, exact weekly adjustment, Unknown/zero,
-stale-prior safety, weekly summaries and required reminder scheduling. Use the
+Registration precedes publication; uncertainty retains the exact request.
+Stage 3C implements whole/checked/manual absolute quarter confirmations, Unknown/zero,
+complete frozen source and fresh selected-prior validation, individual stale consent,
+atomic immutable batches/current references, history and bounded immediate task/day
+feedback. Defer writes nothing; uncertainty retains the same Request. Stage 3D remains:
+comprehensive daily/weekly reconciliation, cross-task summaries, coverage/completeness,
+stale-current-proposal warnings, full rounding explanations and required reminders. Use the
 single [full-week allocation contract](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation),
 including partial Custom and provisional current weeks, not daily Actual rounding
 as submission input. This is core submission distribution, not optional budgets.

@@ -34,7 +34,12 @@ Preview writes no evidence or files. Save freezes the chosen original destinatio
 registers the reviewed candidate, then publishes and verifies its exact bytes.
 Retry Save, Save Copy As, Check File Status and Saved Reports reuse registered
 evidence. Conflicting regular files require separate default-No Overwrite consent;
-ordinary Save never overwrites. Confirm remains pending.
+ordinary Save never overwrites. The same modal window provides Review POL-R
+Confirmation, Manual POL-R Confirmation and Confirmation History. Explicit checked
+source cells use frozen suggestions, positive-only defaults include already-equal
+values, zero requires explicit choice, and selected stale conflicts need individual
+acknowledgement. Confirmed amounts are absolute quarter counts, separate from Actual.
+Unknown is distinct from confirmed zero. No external POL-R verification is claimed.
 Main shows own-task Today/This week; mini shows active or selected task Today.
 One database worker supplies coordinated integer-microsecond accounting while Tk
 continues events. Exact committed request retries precede stale checks; uncertain
@@ -134,14 +139,19 @@ No Reset controls/counters or synthetic work are added.
 Stage 3 is In Progress. Stage 3A connected frozen Preview, exact weekly suggestions
 and immutable SQLite registration/recovery are independently accepted at
 `d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B protected file Save/status and
-Saved Reports recovery are delivered for independent review. Registration stores
+Saved Reports recovery are independently accepted at
+`76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C confirmation is delivered for
+independent review. Registration stores
 the reviewed labels, full-week basis, scoped cells
 and exact UTF-8 text/digest atomically with its request receipt; later work cannot
 rewrite them. Registered reports remain recoverable after restart without a retained
 window, current Actual or a later renderer. File status is freshly inspected, never
 persisted; alternate copy paths do not rewrite the original destination.
-Stage 3C absolute whole/checked/manual confirmation,
-Unknown versus zero, and Stage 3D daily/weekly reconciliation/reminders remain pending.
+Three new SQLite tables retain immutable absolute batches/cells and latest current
+references. Exact requests, complete frozen source coverage and selected reviewed
+priors are transactionally validated; uncertain commits reconcile the same Request.
+Confirmation never changes work, exports or files. Stage 3D comprehensive daily/
+weekly reconciliation, summaries and reminders remain pending.
 Exact Actual, displayed hundredths and quarter units remain distinct. The single algorithm lives in the export contract;
 there is no duplicate timer-display rounding implementation. External redistribution
 and worked-day zero-entry rules need validation before affected official reporting.

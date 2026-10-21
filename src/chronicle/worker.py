@@ -55,6 +55,16 @@ class DatabaseWorker(Thread):
                         value = service.inspect_registered_export_destination(**message.value)
                     elif message.kind == "timesheet_publish":
                         value = service.materialize_registered_timesheet_export(**message.value)
+                    elif message.kind == "polr_proposal":
+                        value = service.read_polr_confirmation_proposal(message.value)
+                    elif message.kind == "polr_manual":
+                        value = service.read_polr_manual_context(**message.value)
+                    elif message.kind == "polr_day":
+                        value = service.read_polr_day_status(**message.value)
+                    elif message.kind == "polr_history":
+                        value = service.list_polr_confirmation_batches()
+                    elif message.kind == "polr_batch":
+                        value = service.read_polr_confirmation_batch(message.value)
                     elif message.kind == "mutate":
                         value = service.execute(message.value)
                     elif message.kind == "reconcile":

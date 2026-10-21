@@ -85,8 +85,8 @@ source evidence is a deployment/pilot gate, not an executable-build prerequisite
 or a permanent blocker to Stage 2 development. See [roadmap](docs/ROADMAP.md) and
 [testing strategy](docs/TESTING_STRATEGY.md). Stage 2A is independently accepted;
 Stage 2B/complete recording is independently accepted at `adc09ba0935e8718c4ad2101057af9c6022074cc`.
-Stage 3A preview/evidence is independently accepted. Stage 3B file Save/recovery is
-connected for independent review; Stage 3 remains incomplete.
+Stage 3A preview/evidence and Stage 3B file Save/recovery are independently accepted.
+Stage 3C confirmation is connected for independent review; Stage 3 remains incomplete.
 
 ## Manual work and week configuration
 
@@ -139,7 +139,36 @@ Close discards an unsaved preview or completed view. A registered unfinished fil
 attempt requires default-No confirmation, then disposes the window; a small session
 handoff retains its UUID/current path. Reopening starts fresh; Saved Reports recovers
 the old report explicitly. Exit warns before losing volatile attempt context; neither
-exit nor failure undoes evidence/files. Timers continue. Confirmed values and
-reconciliation/reminders remain unavailable.
+exit nor failure undoes evidence/files. Timers continue. Comprehensive daily/weekly
+reconciliation, summaries and reminders remain unavailable.
+
+## Explicit POL-R confirmation
+
+Load a registered export in Saved Reports (or use one just registered), then choose
+Review POL-R Confirmation. File availability is separate from source evidence.
+The review shows frozen suggested amounts, current Confirmed or Unknown, prior
+identities and stale conflicts. Every positive suggestion is initially checked,
+including equal values; zero is initially unchecked. Click Select cells or Select
+all positive suggestions, then Confirm checked. Empty selection is an error.
+Each selected newer-differing conflict requires its own unchecked acknowledgement;
+review the exact task/date, old identity/value and frozen proposal before choosing it.
+Refresh review discards old consent. Defer / Review later writes nothing.
+
+Manual POL-R Confirmation requires no report: choose a retained task UUID, type a
+civil date, Review current, then enter absolute decimal hours in exact 0.25 increments
+(e.g. 0.00, 1.25, 2.5). Confirm absolute amount replaces that task/day value; it does
+not add a Delta. Unknown is not zero. Invalid input retains the draft. A changed
+reviewed prior requires explicit Refresh review; an unverified commit locks the
+submitted inputs and offers Retry/Reconcile or default-No exceptional application
+exit. A new explicit equal-value confirmation still records new immutable evidence.
+
+Confirmation History reads complete immutable selected cells by batch UUID. Immediate
+task/day feedback separates Actual, current Suggested, Confirmed, Daily Delta,
+suggested-entry gap and full-week exact upward adjustment. Optional calculation
+failure is visible and does not fabricate numbers or hide the reviewed confirmation
+prior. Confirmation records your entered POL-R values; it does not query or verify
+POL-R. It never edits a report, stops a timer, submits externally or dismisses a
+reminder. Employer/customer redistribution and worked-day zero-entry treatment
+still require external validation before official reporting/pilot.
 Current-week suggestions may change; Preview is not external submission or
 employer/customer policy qualification.

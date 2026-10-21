@@ -55,9 +55,15 @@ receipts or commits. No release or production qualification is implied below.
   file status is freshly derived, never persisted. Dispose incomplete registered
   views only after confirmation, retaining a minimal session UUID/path handoff;
   fresh opening requires Preview and uncertain registration retains its exact Request.
-  Stage 3A is independently accepted; Stage 3B awaits independent review. Confirmation
-  and reconciliation/reminders, native Windows source/actual suspend qualification
-  and complete-core pilot remain pending.
+  Stage 3A/3B are independently accepted. Connect explicit whole/checked/manual
+  absolute quarter-hour confirmation through immutable SQLite batches/cells and
+  latest current references: preserve Unknown versus zero, complete frozen source
+  coverage, positive defaults including equal values, fresh selected-prior rejection
+  and exact individual stale consent by committed receipt order. Retain exact
+  uncertain requests, immutable history and bounded task/day feedback without
+  changing work, exports or files. Stage 3C awaits independent review. Comprehensive
+  reconciliation/summaries/reminders, native Windows source/actual suspend
+  qualification and complete-core pilot remain pending.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete
@@ -70,7 +76,8 @@ receipts or commits. No release or production qualification is implied below.
   reviewed source coverage including unchecked cells, positive-default selection
   including already-equal values, and exact selected stale acknowledgements.
   Stage 3A implements allocation/preview/evidence and Stage 3B connects protected
-  file Save/recovery; confirmation and reconciliation/reminder rules remain pending.
+  file Save/recovery; Stage 3C connects confirmation. Comprehensive reconciliation,
+  weekly summaries and reminder rules remain pending.
   Retained JSONL source is unshipped; it is not a parallel runtime.
   External redistribution/zero-entry policy needs validation before official
   reporting/pilot. Allocation budgets/conveniences remain optional and separately

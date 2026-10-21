@@ -23,9 +23,9 @@ rewrite, not a Qt/PySide6 frontend and not incremental JSONL compatibility work.
 Stage 1A delivers the connected SQLite timer foundation. Stage 2A adds connected
 manual work, revision/read services, mixed accounting and week configuration.
 Stage 2B/complete Stage 2 recording and Stage 3A Preview/allocation/immutable export
-evidence are independently accepted. Stage 3B connects protected file Save, fresh
-status and Saved Reports recovery for independent review. Confirmation and
-reconciliation/reminders remain later Stage 3 gates; this is not
+evidence and Stage 3B file Save/recovery are independently accepted. Stage 3C connects
+whole/checked/manual absolute quarter confirmations and immutable history for
+independent review. Comprehensive reconciliation/reminders remain Stage 3D gates; this is not
 complete core/pilot readiness.
 
 ## SELECTED — Replacement installation and data boundary
@@ -534,11 +534,20 @@ All/explicit UUIDs including deleted tasks, draft-only calendars and explicit
 Preview/Refresh. It retains immutable full-week basis, in-scope cells, exact text
 and digest without writes during Preview. Stage 3A is independently accepted at
 `d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B now connects verified protected
-Save/retry/copy, default-No one-call overwrite, fresh status and Saved Reports for
-independent review. Exact committed registration precedes file publication; unknown
+Save/retry/copy, default-No one-call overwrite, fresh status and Saved Reports.
+Exact committed registration precedes file publication; unknown
 commit cannot publish. Recovery reads immutable evidence independently of widgets.
-There is no Confirm control. Stage 3 remains In Progress pending absolute
-confirmation (3C) and reconciliation/reminders (3D). Retained JSONL services do not satisfy those
+Stage 3B is independently accepted at `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`.
+Stage 3C connects inline source/manual confirmation and read-only immutable history
+through the existing owner/worker. Positive frozen defaults include equal values;
+zero is explicit, unchecked cells stay unchanged, complete source coverage and fresh
+selected priors are validated atomically with exact individual stale consent.
+Current references join immutable absolute quarter cells; Unknown has no reference.
+Immediate task/day feedback is delivered, with optional unavailable calculation
+context shown truthfully. Source/manual drafts and exact uncertain Requests remain
+protected; committed confirmation cannot be undone by display failure.
+Stage 3C awaits independent review. Stage 3 remains In Progress pending comprehensive
+reconciliation, weekly summaries and reminders (3D). Retained JSONL services do not satisfy those
 gates. Earlier Phase 2 acceptance remains bounded
 historical evidence. This timer foundation is not complete core/pilot readiness.
 
@@ -577,6 +586,6 @@ foundation, independently accepted at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`
 Stage 1B portable reliability and Stage 1 functionality are accepted after Stage 1C
 source/runtime simplification; native Windows source
 qualification is separate and remains required before real deployment/pilot.
-Stage 2 recording and Stage 3A are independently accepted. Stage 3B is delivered
-for independent review; Stage 3C/3D remain approved, unimplemented core work. Open policies stay
+Stage 2 recording and Stage 3A/3B are independently accepted. Stage 3C is delivered
+for independent review; Stage 3D remains approved, unimplemented core work. Open policies stay
 reserved before their affected work.
