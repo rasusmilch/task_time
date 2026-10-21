@@ -26,11 +26,15 @@ Stage 2B connects Work History for the selected task: Current week/Custom/All,
 draft-only inline calendars, session date direction, complete-entry inline editing,
 confirmed deletion and immutable revision/deleted-entry details. One modal owner
 blocks main/mini input while timers and worker delivery continue.
-Timesheet / POL-R opens one read-only modal preview: This week/Last week/Custom,
+Timesheet / POL-R opens one modal preview/save workflow: This week/Last week/Custom,
 All or explicit task UUIDs (including deleted tasks), draft-only calendars and
 explicit Preview/Refresh. Actual HH:MM/decimal and suggested quarter-hour amounts
 are separate, with complete-week target/adjustment context for partial views.
-Preview writes no evidence or files; no Save or Confirm control is exposed yet.
+Preview writes no evidence or files. Save freezes the chosen original destination,
+registers the reviewed candidate, then publishes and verifies its exact bytes.
+Retry Save, Save Copy As, Check File Status and Saved Reports reuse registered
+evidence. Conflicting regular files require separate default-No Overwrite consent;
+ordinary Save never overwrites. Confirm remains pending.
 Main shows own-task Today/This week; mini shows active or selected task Today.
 One database worker supplies coordinated integer-microsecond accounting while Tk
 continues events. Exact committed request retries precede stale checks; uncertain
@@ -127,12 +131,16 @@ configurable, initially Sunday. Main/mini and
 Current week history reads use committed metadata, with no historical-work rewrite.
 No Reset controls/counters or synthetic work are added.
 
-Stage 3 is In Progress. Stage 3A delivers connected frozen Preview, exact weekly
-suggestions and immutable SQLite registration/recovery services for independent
-review. Registration stores the reviewed labels, full-week basis, scoped cells
+Stage 3 is In Progress. Stage 3A connected frozen Preview, exact weekly suggestions
+and immutable SQLite registration/recovery are independently accepted at
+`d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B protected file Save/status and
+Saved Reports recovery are delivered for independent review. Registration stores
+the reviewed labels, full-week basis, scoped cells
 and exact UTF-8 text/digest atomically with its request receipt; later work cannot
-rewrite them. There is no external publication or saved-report UI yet.
-Stage 3B file Save/retry/recovery, Stage 3C absolute whole/checked/manual confirmation,
+rewrite them. Registered reports remain recoverable after restart without a retained
+window, current Actual or a later renderer. File status is freshly inspected, never
+persisted; alternate copy paths do not rewrite the original destination.
+Stage 3C absolute whole/checked/manual confirmation,
 Unknown versus zero, and Stage 3D daily/weekly reconciliation/reminders remain pending.
 Exact Actual, displayed hundredths and quarter units remain distinct. The single algorithm lives in the export contract;
 there is no duplicate timer-display rounding implementation. External redistribution

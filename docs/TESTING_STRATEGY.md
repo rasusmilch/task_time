@@ -60,7 +60,7 @@ qualification remain distinct.
 
 ## Connected SQLite timer evidence
 
-The Stage 1A/1B/1C, Stage 2A/2B and Stage 3A suites below exercise the shipped `chronicle` source with disposable
+The Stage 1A/1B/1C, Stage 2A/2B and Stage 3A/3B suites below exercise the shipped `chronicle` source with disposable
 SQLite datasets. This inventory describes assertions, not an automatic passing
 result or native qualification; current command outcomes belong in receipts.
 
@@ -87,7 +87,10 @@ result or native qualification; current command outcomes belong in receipts.
 | [test_polr_allocation.py](../tests/rewrite/test_polr_allocation.py) | Independent C–G, exact/sub-minute/zero weeks, rank/tie/conservation, permutation independence, seven calendar starts, strict integer/date/overflow bounds, HALF_UP ties, cell-summed display versus rerounded aggregate and exact quarter text. Pure arithmetic, no external-policy qualification. |
 | [test_timesheet_candidate.py](../tests/rewrite/test_timesheet_candidate.py) | Actual SQLite mixed work through one consistent read context/cutoff, full-week basis with Tuesday-only C and multiple weeks, seven settings, Selected UUID rejection, retained deleted tasks, duplicate names/projects, safe Unicode/control text, future dates, running precision, corrections/deletions, DST/non-hour/year/leap boundaries and no preview writes. |
 | [test_timesheet_registration.py](../tests/rewrite/test_timesheet_registration.py) | Four real immutable relational tables, sealed children, complete coverage/text/digest validation, atomic exact receipt, later-work/label/week independence, detached reopen recovery without a future renderer, malformed/corrupt evidence rejection, pre/post-COMMIT faults and uncertain lookup/exact retry. Disposable child processes die at task/basis/cell/master/receipt/pre-COMMIT/post-COMMIT barriers; independent reopen checks atomicity. These are bounded process-death experiments, not hardware power-loss proof. |
-| [test_chronicle_timesheet_ui.py](../tests/rewrite/test_chronicle_timesheet_ui.py) | Actual application/worker/SQLite preview, no opening preparation, defaults/read-only exact text, independent scope, calendars/drafts/readiness, empty/error/partial-render recovery, original diagnostics and obsolete-session/attempt rejection. Callback faults cover launch/return/liveness/competing grabs and root cleanup; separate server-delivered XTest input exercises the production Timesheet control, main/mini blocking, period/scope selection, typed Custom dates, picker selection/Escape, explicit Preview and ordinary Close while events/timers continue. Registration/list/read worker foundations are separate from UI, which has no Save/Confirm. Linux focus depends on the window manager; no Windows/NTFS, external publication, confirmation or release qualification. |
+| [test_chronicle_timesheet_ui.py](../tests/rewrite/test_chronicle_timesheet_ui.py) | Actual application/worker/SQLite preview, no opening preparation, defaults/read-only exact text, independent scope, calendars/drafts/readiness, empty/error/partial-render recovery, original diagnostics and obsolete-session/attempt rejection. Callback faults cover launch/return/liveness/competing grabs and root cleanup; separate server-delivered XTest input exercises the production Timesheet control, main/mini blocking, period/scope selection, typed Custom dates, picker selection/Escape, explicit Preview and ordinary Close while events/timers continue. This suite retains Preview coverage; connected Save/file evidence is owned by the new suites below. Linux focus depends on the window manager; no Windows/NTFS, confirmation or release qualification. |
+| [test_timesheet_files.py](../tests/rewrite/test_timesheet_files.py) | Actual SQLite registration gate and frozen-byte publication: five fresh states, full matching reuse without rewrite, exclusive absent publication, strict consent/typed conflicts, dataset paths/resolved aliases, unsuitable objects, incomplete/unstable/unreadable inspections, owned staging write/flush/fsync/close/content/cleanup and link/replace/final-verification faults. Target real changes plus injected final ctime (other compared metadata preserved) exercise the actual replacement decision; no native ctime advancement assumption. Narrow native FIFO/symlink capability skips affect only setup, unexpected failures remain failures. Separate barrier-controlled child deaths immediately before/after link/replace independently reopen registered evidence and retry exact bytes; no automatic orphan cleanup or power-loss/hostile-directory claim. |
+| [test_timesheet_save_ui.py](../tests/rewrite/test_timesheet_save_ui.py) | Actual Tk/app/worker/SQLite callback fault coverage: readiness/path cancellation/draft recheck, original preferred-path metadata, exact registration-before-publication, uncertainty both injected and actual committed-but-unprobed receipt, unchanged Request reconciliation, overwrite default-No/reentry/one-call gates, alternate paths, restart recovery without renderer/current labels, current status after removal, known completion before presentation, close/exit confirmations, busy/obsolete deliveries, destroyed views and primary/secondary diagnostics. Read-only recovery render failure cannot offer unreviewed publication. These direct callbacks isolate effects, not server-input evidence. |
+| [test_timesheet_file_operator.py](../tests/rewrite/test_timesheet_file_operator.py) | Server-delivered XTest input through production Timesheet → explicit Preview → Save/cancel → Saved Reports/load → Check READY/MISSING → Retry → native default-No/affirmative Overwrite → Copy/cancel → New Preview/Close. Actual modal ownership blocks enabled main/mini probes; scheduled processing and the running timer continue. Frozen text/UUID and work evidence survive retry; fresh Preview has a new identity and current labels. File chooser decisions are doubled; overwrite confirmation uses actual toolkit buttons with bounded server input. Linux local-grab evidence is distinct from window-manager focus, native Windows/NTFS and release qualification. |
 
 A usable display is required for `real_tk` cases. Linux Xorg/XTest evidence does
 not establish native Windows/NTFS or actual suspend/resume. The actual Python,
@@ -99,8 +102,9 @@ Stage 1 functionality and Stage 2A are independently accepted under the later
 Stage 2B approval. Native Windows source/NTFS/Tk and actual suspend/resume
 remain deployment/pilot evidence, not an executable-build requirement or permanent
 Stage 2 blocker. The later Stage 3A approval independently accepts Stage 2B/complete
-recording at `adc09ba0935e8718c4ad2101057af9c6022074cc`. Stage 3A preview/evidence
-results remain independent implementation evidence, not complete POL-R acceptance.
+recording at `adc09ba0935e8718c4ad2101057af9c6022074cc`. Stage 3A is independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`.
+Stage 3B publication/recovery tests remain implementation evidence for independent
+review, not complete POL-R acceptance.
 
 ## Retained legacy test inventory and limits
 
@@ -266,9 +270,11 @@ clock/restart or dataset-timezone-change behavior.
 
 ## Frozen exports and core POL-R workflow
 
-Stage 3A allocation, candidate, registration and preview evidence is inventoried
-above. File publication/recovery UI, confirmation and reconciliation/reminder
-obligations below remain future checks. An inventory is not a current passing result.
+Stage 3A allocation/candidate/registration/preview and Stage 3B protected
+publication/recovery evidence are inventoried above. Confirmation and
+reconciliation/reminder obligations below remain future checks; file checks describe
+the implemented boundary and continuing qualification obligations. An inventory
+is not a current passing result.
 Follow the single [precision/allocation owner](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
 without duplicating accounting or approving policy through assertions.
 
@@ -387,7 +393,8 @@ Status is freshly derived per destination; no persisted READY/history registry.
 
 Native FIFO/symlink cases remain capability-dependent with narrow setup skips,
 not evidence that a service rejected an object that setup failed to create.
-Current [overwrite tests](../tests/test_timesheet_overwrite.py) include deterministic
+Rewrite [file tests](../tests/rewrite/test_timesheet_files.py) and retained historical
+[overwrite tests](../tests/test_timesheet_overwrite.py) include deterministic
 same-size/restored-mtime evidence injecting changed change-time only at the actual
 final recheck. Preserve that distinction from native filesystem evidence; do not
 assume Windows creation/change-time semantics or claim detection when every
@@ -402,8 +409,9 @@ Native Windows source operation is required before actual deployment/complete co
 pilot: actual Python/built-in SQLite/Tk, offline IANA rules, writable NTFS ownership,
 persisted timers, main/mini, active-start correction, modal input/focus, exceptions
 and ordinary close/reopen, manual timed/date-only entry and week-start persistence.
-Actual suspend/resume needs native evidence. Later inline History, Timesheet/POL-R, reminders, publication and backup/restore require
-native validation when delivered. A source launch without core POL-R is not a
+Actual suspend/resume needs native evidence. Delivered History/Timesheet Preview
+and file Save/recovery require native validation; pending POL-R confirmation,
+reminders and backup/restore require native validation when delivered. A source launch without core POL-R is not a
 qualified complete pilot. There is no executable-package qualification requirement.
 
 Inspect [RUNNING.md](../RUNNING.md), [run.ps1](../scripts/run.ps1) and metadata before

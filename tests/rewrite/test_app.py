@@ -315,6 +315,8 @@ def test_stale_read_rejected_but_closed_origin_commit_handled():
     app.history = None
     app.timesheet = None
     app._timesheet_opening = False
+    app._timesheet_attempt = app._timesheet_handoff = None
+    app._timesheet_dialog_busy = False
     app._pending_token = 2
     app.executing = True
     app._controls = lambda: None

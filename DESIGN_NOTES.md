@@ -14,10 +14,11 @@ inline whole-entry correction/deletion and immutable revision/deleted-entry deta
 reusing that owner/worker path. Its consistent snapshots, draft-only standard-library
 calendar and session sorting are described in Architecture. The later Stage 3A
 approval accepts Stage 2B/complete recording at `adc09ba0935e8718c4ad2101057af9c6022074cc`.
-Stage 3A now connects a read-only modal Timesheet Preview, pure exact weekly
-allocation and immutable relational export registration/list/read for independent
-review. Preview does not register evidence or publish files. Save/recovery UI,
-confirmation and reconciliation/reminders remain Stage 3B/3C/3D. Architecture
+Stage 3A Preview, exact weekly allocation and immutable relational export evidence
+are independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B
+connects protected Save/retry/copy, explicit overwrite consent, fresh file inspection
+and Saved Reports for independent review. Preview itself writes nothing. Confirmation
+and reconciliation/reminders remain Stage 3C/3D. Architecture
 owns these SQLite contracts; the retained JSONL workflows below are not active.
 These changes do not qualify the retained JSONL implementation.
 Its active-start recovery retains the modal draft through asynchronous failure and
@@ -41,8 +42,8 @@ The selected [quarter-hour contract](docs/EXPORT_EVIDENCE_CONTRACT.md#full-week-
 remains mandatory for later core completion. Retained JSONL confirmations use
 hundredths/Actual-as-Enter; they do not implement that contract. SQLite recording
 is delivered and independently accepted with Stage 2A/2B. Stage 3A allocation,
-preview and evidence are delivered for review; remaining Stage 3 and native release
-qualification remain pending.
+preview and evidence are independently accepted; Stage 3B file Save/recovery is
+delivered for review. Remaining Stage 3 and native release qualification are pending.
 
 ## Architecture
 

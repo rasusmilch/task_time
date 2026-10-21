@@ -266,6 +266,21 @@ class TimerService:
         with self._read_transaction() as c:
             return self.store.read_export(c,export_id)
 
+    def inspect_registered_export_destination(self, export_id: str, destination=None):
+        from .timesheet_files import destination_path, inspect, protect
+        candidate = self.read_registered_timesheet_export(export_id)
+        selected = candidate.preferred_destination if destination is None else destination
+        target = destination_path(selected) if selected is not None else None
+        if target is not None: protect(target,self.store.directory)
+        return inspect(target,candidate.report_utf8,candidate.report_sha256)
+
+    def materialize_registered_timesheet_export(self, export_id: str, destination, *,
+                                              confirmed_overwrite=False, expected_conflict=None):
+        from .timesheet_files import destination_path, materialize
+        candidate = self.read_registered_timesheet_export(export_id)
+        return materialize(export_id,destination_path(destination),candidate.report_utf8,candidate.report_sha256,
+                           self.store.directory,confirmed_overwrite=confirmed_overwrite,expected_conflict=expected_conflict)
+
     def execute(self, request: Request) -> Outcome:
         # The transaction resolves exact receipts before calling this current-state validator.
         def operation(c):

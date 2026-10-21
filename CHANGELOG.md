@@ -45,9 +45,19 @@ receipts or commits. No release or production qualification is implied below.
   atomic request registration, exact uncertainty reconciliation and detached
   recovery independent of later work or renderer changes. Preview writes no
   evidence/files; draft changes invalidate readiness and stale/failed reads cannot
-  establish current output. File Save/recovery UI, confirmation and reconciliation/
-  reminders remain pending, as do native Windows source/actual suspend qualification
-  and independent Stage 3A review.
+  establish current output. Connect Save/Retry/Copy through verified immutable
+  registration and protected worker-owned publication: reuse exact matching copies,
+  exclusively create absent files, and permit stable regular-file replacement only
+  after separate default-No one-call consent bound to reviewed metadata. Protect all
+  active dataset paths/aliases; verify owned staging and complete final bytes/digest,
+  preserve truthful postpublication uncertainty and never roll back final output.
+  Saved Reports loads frozen context/text after restart without current accounting;
+  file status is freshly derived, never persisted. Dispose incomplete registered
+  views only after confirmation, retaining a minimal session UUID/path handoff;
+  fresh opening requires Preview and uncertain registration retains its exact Request.
+  Stage 3A is independently accepted; Stage 3B awaits independent review. Confirmation
+  and reconciliation/reminders, native Windows source/actual suspend qualification
+  and complete-core pilot remain pending.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete
@@ -59,8 +69,8 @@ receipts or commits. No release or production qualification is implied below.
   suggestions/context; never redistribute historical confirmations. Restore full
   reviewed source coverage including unchecked cells, positive-default selection
   including already-equal values, and exact selected stale acknowledgements.
-  Stage 3A implements the allocation/preview/evidence slice; remaining confirmation,
-  file publication/recovery UI and reconciliation/reminder rules are still pending.
+  Stage 3A implements allocation/preview/evidence and Stage 3B connects protected
+  file Save/recovery; confirmation and reconciliation/reminder rules remain pending.
   Retained JSONL source is unshipped; it is not a parallel runtime.
   External redistribution/zero-entry policy needs validation before official
   reporting/pilot. Allocation budgets/conveniences remain optional and separately

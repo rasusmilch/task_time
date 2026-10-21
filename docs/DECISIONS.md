@@ -892,6 +892,35 @@ or prematurely selected unfinished-Save lifecycle. Stage 3A delivery is for
 independent review, not Stage 3/pilot completion or external-policy qualification.
 Earlier integrity guarantees, fresh-data protection and Open matters remain binding.
 
+### Stage 3A acceptance and Stage 3B protected publication approval
+
+**Status:** current. **Provenance:** explicit user GO execution instruction
+“CHRONICLE — STAGE 3B Protected Timesheet File Publication, Verified Save, and
+Saved-Report Recovery,” against independently accepted Stage 3A
+`d1e775c33982f109337ec237e3c78e8dc7b56f2e`. This later approval accepts Stage 3A;
+it does not attribute acceptance to the prior implementation receipt.
+
+Connect Save to the exact reviewed Candidate through existing atomic registration
+and exact-request reconciliation, then worker-owned protected materialization.
+An absent original preferred destination may be filled with the first chosen path
+as metadata only before registration; alternate paths do not change immutable
+content/identity. Unknown registration cannot publish. Matching files are reused,
+absent paths use exclusive publication and stable regular-file conflicts require
+owned default-No one-call overwrite consent tied to the inspected target. Protect
+all dataset paths/aliases even when absent. Stage/final full verification and
+truthful postpublication diagnostics remain binding; no final-file rollback.
+
+Saved Reports recovers frozen text/context after restart without current Actual,
+renderer or retained widget. File status is fresh, not persisted. Executing work
+blocks Close/exit. Unverified registration retains the existing pending Request;
+registered incomplete file Save can close after confirmation into a minimal session
+UUID/path handoff, disposing the widget. Fresh opening still requires Preview;
+explicit recovery replaces former legacy retained-window assumptions. Application
+exit warns before losing volatile context without undoing evidence/files.
+No schema/status ledger, automatic retry, reusable consent, Stage 3C confirmation
+or Stage 3D reconciliation/reminder implementation is authorized. Stage 3B delivery
+requires independent review; Stage 3 remains In Progress and unqualified for pilot.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

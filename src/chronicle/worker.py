@@ -51,6 +51,10 @@ class DatabaseWorker(Thread):
                         value = service.list_registered_timesheet_exports()
                     elif message.kind == "timesheet_export":
                         value = service.read_registered_timesheet_export(message.value)
+                    elif message.kind == "timesheet_status":
+                        value = service.inspect_registered_export_destination(**message.value)
+                    elif message.kind == "timesheet_publish":
+                        value = service.materialize_registered_timesheet_export(**message.value)
                     elif message.kind == "mutate":
                         value = service.execute(message.value)
                     elif message.kind == "reconcile":
@@ -59,6 +63,8 @@ class DatabaseWorker(Thread):
                             value = service.execute(message.value)  # Explicit retry, exact same request.
                     else:
                         raise ValueError("Unknown worker operation")
+                    if message.kind in ('timesheet_status','timesheet_publish'):
+                        value = {'export_id':message.value['export_id'],'destination':message.value.get('destination'),'result':value}
                 except Exception as exc:
                     value = Outcome("unverified" if message.kind in ("mutate", "reconcile") else "unavailable", error=exc)
                 self.results.put(Message(message.kind, message.token, value))

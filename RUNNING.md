@@ -85,7 +85,8 @@ source evidence is a deployment/pilot gate, not an executable-build prerequisite
 or a permanent blocker to Stage 2 development. See [roadmap](docs/ROADMAP.md) and
 [testing strategy](docs/TESTING_STRATEGY.md). Stage 2A is independently accepted;
 Stage 2B/complete recording is independently accepted at `adc09ba0935e8718c4ad2101057af9c6022074cc`.
-Stage 3A preview/evidence is connected for independent review; Stage 3 remains incomplete.
+Stage 3A preview/evidence is independently accepted. Stage 3B file Save/recovery is
+connected for independent review; Stage 3 remains incomplete.
 
 ## Manual work and week configuration
 
@@ -111,7 +112,7 @@ actions. Details includes earlier revisions and Deleted entries. Save waits for
 the worker result; unverified work retains exact Retry/Reconcile inputs. Close
 History before using main/mini.
 
-## Timesheet / POL-R Preview
+## Timesheet / POL-R Preview, Save and Saved Reports
 
 Close History or another work form, then choose Timesheet / POL-R. Fresh openings
 start This week/All tasks and require Preview. Last week uses the committed week
@@ -121,8 +122,24 @@ hierarchy. Retained deleted tasks remain available. Preview observes a running
 timer without stopping it and shows Actual separately from suggested POL-R.
 Full-week target/adjustment context includes dates outside a partial report.
 Changed inputs require a fresh Preview even after changing back. Older output is
-labeled previous. Close discards the volatile draft; running work continues.
-No Save, file publication, confirmed values or reconciliation/reminders are
-available in Stage 3A. Registration/recovery services are backend foundations only.
+labeled previous. Save Timesheet opens an owned .txt destination dialog. Cancel
+writes nothing. Registration must be verified before publication; an uncertain
+registration retains the exact request for Retry/Reconcile and blocks ordinary
+abandonment. A registered report can be retried or copied without recalculation.
+Default Save protects existing files; Overwrite is offered only after a verified
+regular-file content conflict, names the exact path and defaults to No. It permits
+one replacement call. Active dataset paths/aliases are always protected.
+
+Saved Reports lists frozen UUID/date/cutoff/scope/label context and loads exact stored
+text, including after restart. Check File Status explicitly inspects the selected
+path; READY is only that observation. A missing copy can be restored with Retry Save;
+Save Copy As chooses a new destination without changing the original preferred path.
+New Preview deliberately starts another identity. No automatic retry occurs.
+Close discards an unsaved preview or completed view. A registered unfinished file
+attempt requires default-No confirmation, then disposes the window; a small session
+handoff retains its UUID/current path. Reopening starts fresh; Saved Reports recovers
+the old report explicitly. Exit warns before losing volatile attempt context; neither
+exit nor failure undoes evidence/files. Timers continue. Confirmed values and
+reconciliation/reminders remain unavailable.
 Current-week suggestions may change; Preview is not external submission or
 employer/customer policy qualification.

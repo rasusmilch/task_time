@@ -16,9 +16,11 @@ connected read-only modal Timesheet Preview. Four immutable SQLite tables retain
 master context, frozen tasks, full-week basis and scoped cells through the existing
 atomic registration/receipt service. Detached list/read and restart validation
 check original committed request content and exact bytes/digest without current
-Actual or a later renderer. Preview itself writes nothing. File Save/materialization,
-status/overwrite and recovery UI remain Stage 3B; confirmation is Stage 3C and
-reconciliation/reminders Stage 3D. No Stage 3A UI Save/Confirm action is exposed.
+Actual or a later renderer. Stage 3A is independently accepted at
+`d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Preview itself writes nothing. Stage 3B
+connects protected materialization, fresh status, one-call overwrite consent and
+Saved Reports recovery for independent review. Confirmation remains Stage 3C and
+reconciliation/reminders Stage 3D; no Confirm action is exposed.
 
 **SQLite supersedes the earlier mandatory JSONL envelope, segment manifest,
 physical replay order, fsync/synchronize-journal and Python projection mechanisms.**
@@ -172,10 +174,15 @@ independent Tuesday ceiling. E creates no carryover to the next week.
    scope/context and a stable candidate identity. Show Actual and suggested POL-R
    separately; no later recalculation belongs in Save.
 3. Changed drafts invalidate readiness; Save requires the reviewed current candidate.
-4. Commit the exact snapshot/cells/request receipt atomically in SQLite, with
+4. The first selected destination may populate an absent preferred destination as
+   metadata only before registration; it cannot alter any reviewed amounts, text,
+   digest, cells, basis or identity. After registration it is immutable. Alternate
+   paths are explicit materialization arguments, never new evidence or remembered
+   restart policy.
+5. Commit the exact snapshot/cells/request receipt atomically in SQLite, with
    validation and authoritative same-request reconciliation.
-5. Only after registration is verified, materialize its exact frozen bytes.
-6. Verify complete final bytes and digest before reporting successful Save.
+6. Only after registration is verified, materialize its exact frozen bytes.
+7. Verify complete final bytes and digest before reporting successful Save.
 
 Registration uncertainty prohibits publication. Reconcile the same request/export
 identity; never generate a second event because a response was lost. Commit is
@@ -200,7 +207,9 @@ reused; initially absent destinations still use exclusive creation.
 
 Reject directories, symlinks, unsupported objects, unstable/incomplete reads and
 inspection failures as replacement authorization. Protect the active dataset tree,
-including resolved aliases, before replacement staging. Use complete owned staging
+including lexical and resolved aliases, before any publication staging, even for
+absent destinations. Do not prohibit unrelated paths through substring matching.
+Use complete owned staging
 then `os.replace()`, never unlink first, truncate or write directly to target.
 Recheck the target's regular-file type, identity, size, modification/change metadata
 against its stable observation immediately before replacement. Detected changes
@@ -242,6 +251,24 @@ publication or deletion. File failure leaves committed evidence for same-report
 retry; a deliberate later export has a new identity/cutoff. No file registry,
 publication ledger, durable READY state, automatic recovery writer or separate
 authority is selected.
+
+The connected modal Timesheet exposes explicit Save, Retry Save, Save Copy As,
+Check File Status and Saved Reports. Saved Reports loads complete frozen text and
+context after restart, never current accounting/rendering. Overwrite confirmation
+is titled “Overwrite existing timesheet?”, defaults to No and is tied to a fresh
+complete conflict observation for that one service call. Known verified completion
+is recorded before presentation; later UI failure cannot revoke it. A later status
+check may show MISSING/CONFLICT without pretending the earlier Save never completed.
+
+Before registration, Close discards the preview. During registration/file/dialog
+execution, Close/exit cannot interrupt. Unverified registration blocks ordinary
+abandonment and retains the exact existing pending Request for reconciliation or
+default-cancel exceptional application exit. A registered incomplete file attempt
+can close only after default-No confirmation; dispose its window and retain only
+an ephemeral UUID/current-path handoff. Fresh opening never resumes automatically;
+Saved Reports explicitly recovers immutable evidence. Application exit warns before
+losing that volatile context, never rolls back evidence/files. No stored recovery
+format, hidden retained window or reusable overwrite permission is introduced.
 
 ## Transaction interruption and idempotency
 

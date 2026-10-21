@@ -22,10 +22,10 @@ Selected does not mean implemented. This documentation selects a clean Tkinter
 rewrite, not a Qt/PySide6 frontend and not incremental JSONL compatibility work.
 Stage 1A delivers the connected SQLite timer foundation. Stage 2A adds connected
 manual work, revision/read services, mixed accounting and week configuration.
-Stage 2B/complete Stage 2 recording is independently accepted. Stage 3A connects
-read-only Timesheet Preview, exact weekly suggestions and immutable SQLite export
-registration/recovery services for independent review. File Save/recovery UI,
-confirmation and reconciliation/reminders remain later Stage 3 gates; this is not
+Stage 2B/complete Stage 2 recording and Stage 3A Preview/allocation/immutable export
+evidence are independently accepted. Stage 3B connects protected file Save, fresh
+status and Saved Reports recovery for independent review. Confirmation and
+reconciliation/reminders remain later Stage 3 gates; this is not
 complete core/pilot readiness.
 
 ## SELECTED — Replacement installation and data boundary
@@ -376,14 +376,30 @@ Default Save/Retry protects existing files, reuses fully verified matching copie
 and creates absent files exclusively. A stable regular-file content conflict
 allows a separate default-cancel confirmation naming the destination; Overwrite
 permission is for that call only. Reject unsuitable/unreadable/unstable objects
-and protect the dataset tree/aliases from replacement. Preserve exact frozen
+and protect the dataset tree/aliases from all publication, including absent paths.
+Preserve exact frozen
 bytes/digest, staging-only cleanup and truthful post-publication diagnostics;
 see [file rules](EXPORT_EVIDENCE_CONTRACT.md#materialization-and-byte-verification).
 
 Export never stops/resets timers, confirms POL-R, submits legacy markers,
 deletes tasks or dismisses reminders. Saving and later explicit confirmation are
-distinct. General new-runtime saved-report recovery belongs in the core workflow;
-the current retained-window implementation is not the target recovery mechanism.
+distinct. Save Timesheet, Retry Save, Save Copy As, Check File Status and Saved
+Reports are explicit actions. The first selected path can populate absent original
+preferred-destination metadata before registration without changing reviewed values
+or text; later paths never rewrite it. Recovery loads frozen context/text by UUID,
+including after restart, without current accounting or a later renderer. READY is
+an observation, never persisted proof or permanent success status.
+
+Before registration, Close discards the preview; after verified completion it permits
+a fresh opening. Executing Save/dialogs block Close/exit/reentrant actions. Unverified
+registration retains the exact Request and prohibits ordinary abandonment; explicit
+reconciliation or the existing default-cancel exceptional application exit remain.
+Registered but unfinished file Save requires default-No Close confirmation, then
+disposes the window and retains only an in-memory UUID/current-path handoff. Fresh
+openings remain This week/All and require Preview; use Saved Reports explicitly to
+recover. Exit warns before losing volatile context without implying evidence/files
+are removed. No hidden retained window, persisted recovery state or automatic retry
+is selected. Overwrite permission is one-call only, never a frozen field.
 
 ## SELECTED — Explicit POL-R confirmation workflow
 
@@ -516,11 +532,13 @@ accepted at `adc09ba0935e8718c4ad2101057af9c6022074cc`.
 Stage 3A connects Timesheet / POL-R from the main window: This week/Last week/Custom,
 All/explicit UUIDs including deleted tasks, draft-only calendars and explicit
 Preview/Refresh. It retains immutable full-week basis, in-scope cells, exact text
-and digest without writes during Preview. The modal window has no Save or Confirm.
-Immutable SQLite registration, exact-request reconciliation and detached registered
-export list/read are service foundations, not a file-save workflow. Stage 3 remains
-In Progress pending file publication/recovery UI (3B), absolute confirmation (3C)
-and reconciliation/reminders (3D). Retained JSONL services do not satisfy those
+and digest without writes during Preview. Stage 3A is independently accepted at
+`d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B now connects verified protected
+Save/retry/copy, default-No one-call overwrite, fresh status and Saved Reports for
+independent review. Exact committed registration precedes file publication; unknown
+commit cannot publish. Recovery reads immutable evidence independently of widgets.
+There is no Confirm control. Stage 3 remains In Progress pending absolute
+confirmation (3C) and reconciliation/reminders (3D). Retained JSONL services do not satisfy those
 gates. Earlier Phase 2 acceptance remains bounded
 historical evidence. This timer foundation is not complete core/pilot readiness.
 
@@ -559,6 +577,6 @@ foundation, independently accepted at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`
 Stage 1B portable reliability and Stage 1 functionality are accepted after Stage 1C
 source/runtime simplification; native Windows source
 qualification is separate and remains required before real deployment/pilot.
-Stage 2 recording is independently accepted. Stage 3A is delivered for independent
-review; Stage 3B/3C/3D remain approved, unimplemented core work. Open policies stay
+Stage 2 recording and Stage 3A are independently accepted. Stage 3B is delivered
+for independent review; Stage 3C/3D remain approved, unimplemented core work. Open policies stay
 reserved before their affected work.

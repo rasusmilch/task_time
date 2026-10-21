@@ -20,7 +20,9 @@ superseded by Stage 1C's standard sqlite3 DELETE/EXTRA and source-only deploymen
 Stage 2A is independently accepted at `7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`.
 Stage 2B/complete recording is independently accepted at
 `adc09ba0935e8718c4ad2101057af9c6022074cc`, as reported by the later Stage 3A approval.
-Stage 3A is delivered for independent review. Native Windows source operation
+Stage 3A is independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`.
+Stage 3B protected file Save/recovery is delivered for independent review.
+Native Windows source operation
 is required before deployment/pilot, not an unavailable executable-build gate.
 
 Each stage can contain several substantial, independently reviewed tasks. Do not
@@ -104,12 +106,13 @@ Stage 3 POL-R workflow and is not pilot-ready.
 
 ## Stage 3 — Core frozen Timesheet AND POL-R reconciliation
 
-**IN PROGRESS — Stage 3A delivered for independent review.** Connected read-only
+**IN PROGRESS — Stage 3A accepted; Stage 3B delivered for independent review.**
 This week/Last week/Custom preview, independent All/Selected UUID scope, exact
-full-week suggestions and immutable SQLite registration/list/read are implemented.
-Preview writes no evidence and exposes no Save/Confirm. Remaining bounded slices:
-Stage 3B connects verified file Save, protected publication, one-call overwrite and
-saved-report recovery UI; Stage 3C implements absolute confirmation; Stage 3D
+full-week suggestions and immutable SQLite registration/list/read are connected.
+Preview writes no evidence. Stage 3B adds verified Save/Retry/Copy, owned one-call
+overwrite consent, fresh status and Saved Reports recovery without retained widgets.
+Registration precedes publication; uncertainty retains the exact request. No Confirm
+control exists. Remaining bounded slices: Stage 3C implements absolute confirmation; Stage 3D
 implements reconciliation/reminders. Core still requires explicit whole/checked/manual absolute
 quarter-hour confirmation, defer/later review, daily Actual/Suggested/Confirmed,
 Daily Delta, suggested-entry gap, exact weekly adjustment, Unknown/zero,

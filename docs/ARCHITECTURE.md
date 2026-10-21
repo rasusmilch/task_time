@@ -13,9 +13,10 @@ to [ROADMAP.md](ROADMAP.md); validation to [TESTING_STRATEGY.md](TESTING_STRATEG
 Stage 1A implements the connected SQLite timer/worker/main/mini foundation;
 Stage 2A adds connected manual work, typed revision/read services, mixed accounting
 and persisted week configuration.
-Stage 2B/complete recording is independently accepted. Stage 3A connects read-only
-Timesheet Preview and immutable export evidence for independent review. File Save,
-confirmation and reconciliation/reminders remain Stage 3B/3C/3D. Earlier
+Stage 2B/complete recording is independently accepted. Stage 3A Preview and immutable
+export evidence are independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`.
+Stage 3B connects protected file Save/status and Saved Reports for independent review.
+Confirmation and reconciliation/reminders remain Stage 3C/3D. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
 ## Small application and responsibility boundaries
@@ -282,7 +283,7 @@ Stage 2A extends the fresh development schema directly for date-only revisions;
 older development signatures refuse, without a migration path. Export
 basis/cells are added in Stage 3A; confirmation batches/current references remain
 future Stage 3 work, preserving stable identities. The current application exposes
-read-only Timesheet Preview, with no file Save or confirmation workflow. Stage 1B exercises real SQLite
+Timesheet Preview, protected file Save/recovery and no confirmation workflow. Stage 1B exercises real SQLite
 process death at transaction/receipt/commit boundaries, atomic Switch, historical
 exact retries, active restart/calendar continuity, ordinary ownership races and
 rollback-journal pre-COMMIT and post-cleanup boundaries. These bounded local
@@ -515,12 +516,81 @@ and obsolete delivery; changing back cannot resurrect a candidate. Tokens plus
 export/dataset/cutoff checks reject late/mismatched results. Complete content is
 prepared before rendering. Partial installation hides untrusted output, preserves
 the original diagnostic and allows explicit recovery. Read-only exact text remains
-scrollable/copyable. Close can discard outstanding reads and volatile candidates;
-there is no unfinished-Save lifecycle in Stage 3A.
+scrollable/copyable. Close can discard outstanding reads and volatile candidates
+before registration. Stage 3A is independently accepted; the Stage 3B extensions
+below are delivered for independent review. Stage 3 remains incomplete.
 
-Stage 3A has no Save/Export/Confirm control, external publication or recovery UI.
-Its registration/list/read services are automated-test foundations for Stage 3B,
-not a misleading SQLite-only file-save action. Stage 3 remains incomplete.
+### Connected Stage 3B protected Save and recovery
+
+`timesheet_files` accepts only registered frozen bytes/digest, never accounting or a
+renderer. Frozen `Inspection`, `ContentConflict` and `Publication` values distinguish
+fresh destination status, eligible stable content conflict and publication phase.
+`TimerService.inspect_registered_export_destination(export_id, destination=None)`
+validates complete committed evidence first, then inspects the explicit path or
+original preferred destination (no path yields PENDING).
+`materialize_registered_timesheet_export(export_id, destination, *,
+confirmed_overwrite=False, expected_conflict=None)` validates the same authority and
+publishes its exact bytes. Consent requires an actual bool and complete typed
+conflict observation. No schema change or file-status persistence belongs here.
+
+Dataset lexical/resolved aliases are protected before all staging, even for missing
+paths. Complete stable regular-file reads compare bytes and digest; unsuitable
+objects or incomplete/unstable/unreadable observations never authorize replacement.
+Matching files are reused without rewriting. Absent destinations use exclusive
+hard-link publication from private same-directory O_EXCL staging: complete write,
+flush/fsync, successful close, ownership and byte verification. Explicit confirmed
+replacement rechecks reviewed target type/identity/size/mtime/ctime, then os.replace,
+never unlink/truncate/direct-write. Final complete verification precedes success.
+Cleanup touches only still-owned staging. Failures retain original traceback/notes,
+distinguish prepublication/attempted/returned/verified phases and never roll back
+final files. Checks assume trusted directories and serialized ownership, not atomic
+compare-and-replace, arbitrary hostile concurrency or hardware power-loss proof.
+
+`ChronicleApp` retains one ephemeral `_TimesheetAttempt` with the frozen Candidate,
+current destination, existing Request reference/token, committed outcome, file token,
+latest inspection and successful-call path. It is not another request coordinator or
+persisted authority. Initial Save temporarily locks preview through an owned .txt
+file dialog (`confirmoverwrite=False`); cancel has no service effects. Recheck the
+same ready candidate afterward. Populate only an absent preferred_destination,
+freeze the exact Request through existing mutate/reconcile, and keep fields/Preview
+locked after its first registration attempt. Unknown commitment cannot publish.
+Verified expected export UUID/digest queues file work; exact retry reconciles that
+same Request. Registered retries/copies use the committed export UUID, never prepare,
+recalculate or create another receipt.
+
+Worker kinds `timesheet_status` and `timesheet_publish` run file I/O on the existing
+serialized worker. Their dedicated owner tokens plus echoed export/destination
+reject stale delivery independently of SQLite mutation tokens. Tk/dialogs stay on
+UI thread; no report file inspection/publication occurs there. Executing service
+work and owned dialogs guard duplicate Save/open/Close/exit. Busy protection covers
+confirmation and path selection before they process events. Return restores only
+eligible Timesheet local grab/focus, never another live/global grab.
+
+The same window exposes Save Timesheet, Retry Save, Save Copy As, Check File Status,
+explicit Overwrite, Saved Reports and New Preview. Overwrite is available only for
+a fresh eligible conflict; its owned exact-path default-No confirmation authorizes
+one call. New attempts clear old eligibility; cancel preserves the previous attempt.
+Known completion/saved_path is installed before presentation. It records a completed
+call, not permanent READY; status can subsequently report missing/changed output.
+
+Saved Reports lists detached registered UUID/date/cutoff/scope/historical-label
+context and loads exact text without current work or renderer. A failed render hides
+untrusted output and cannot enable publication. Explicit Check/Retry/Copy/Overwrite
+revalidates evidence/files on the worker. New Preview deliberately clears the view
+and starts This week/All with no calculation until Preview.
+
+Supported Close discards an unregistered preview or completed view. Unverified
+registration blocks ordinary abandonment; existing default-cancel exceptional exit
+explains possible prior commitment and loss of volatile Request inputs. A registered
+incomplete file attempt requires separate default-No confirmation; dispose the
+widget and retain only one detached session `(export_id, current destination)`
+handoff. Fresh opening never automatically loads/retries it. Saved Reports recovers
+it explicitly, including after restart from SQLite and the immutable preferred path;
+alternate paths survive only this handoff, not restart policy. Exit warns for current
+unfinished registered attempt/handoff, never undoes evidence/files or writes recovery
+state. Forced destruction/crash is not a promise to preserve volatile context.
+No Save/open/status operation confirms POL-R, stops/resets timers or dismisses a
+reminder. Confirmation and reconciliation/reminders remain Stage 3C/3D.
 
 ## Frozen files and core POL-R
 

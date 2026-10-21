@@ -42,6 +42,23 @@ class _WorkEditor:
     extra_selectors: tuple = ()
 
 
+@dataclass
+class _TimesheetAttempt:
+    """One detached operation, never a second receipt/file authority."""
+    candidate: object
+    destination: str | None
+    request: Request | None = None  # Alias of the owner's frozen pending request.
+    registration: str = "not attempted"
+    token: int | None = None
+    file_token: int | None = None
+    file_kind: str | None = None
+    file_destination: str | None = None
+    inspection: object = None
+    saved_path: str | None = None
+    error: Exception | None = None
+    started: bool = True
+
+
 class ChronicleApp:
     def __init__(self, root, worker, *, now_utc=utc_now):
         self.root, self.worker, self.now_utc = root, worker, now_utc
@@ -58,6 +75,9 @@ class ChronicleApp:
         self.timesheet = None
         self._timesheet_opening = False
         self._timesheet_return = None
+        self._timesheet_attempt = None
+        self._timesheet_handoff = None
+        self._timesheet_dialog_busy = False
         self._history_opening = False
         self._history_return = None
         self._history_newest_first = True
@@ -141,10 +161,11 @@ class ChronicleApp:
         owns_editor = (origin is not None and origin is self._work_editor
                        and self.editor is origin.window and origin.phase == "editing")
         owns_history = origin is not None and origin is self.history and origin.mutation_allowed()
+        owns_timesheet = origin is not None and origin is self.timesheet and origin.mutation_allowed()
         return (self.alive and self.ready and not self.closing and self.pending is None
                 and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor)
                 and not self._history_opening and (self.history is None or owns_history)
-                and not self._timesheet_opening and self.timesheet is None)
+                and not self._timesheet_opening and (self.timesheet is None or owns_timesheet))
 
     def selected_task_id(self):
         if not self.alive:
@@ -211,6 +232,9 @@ class ChronicleApp:
         if _origin is not None and _origin is self.history:
             # Correlate before queue/UI effects: accepted work outlives widgets.
             _origin.request, _origin.token, _origin.phase = request, self._pending_token, "executing"
+        if _origin is not None and _origin is self.timesheet:
+            attempt = self._timesheet_attempt
+            attempt.request, attempt.token, attempt.registration = request, self._pending_token, "registering"
         # Invalidate any read that predates this accepted mutation.
         self._read_again = True
         try:
@@ -219,6 +243,8 @@ class ChronicleApp:
             self.pending, self.executing, self._pending_token = None, False, None
             if _origin is not None and _origin is self.history:
                 _origin.request, _origin.token, _origin.phase = None, None, "editing" if _origin.edit_fields else "browsing"
+            if _origin is not None and _origin is self.timesheet:
+                attempt.registration, attempt.error = "unavailable", exc
             self.status.configure(text=f"Action not submitted: {exc}")
             self._diagnose(exc)
             self._controls()
@@ -507,6 +533,7 @@ class ChronicleApp:
             self._timesheet_disposed(self.timesheet)
         if not self.can_mutate():
             return False
+        self._timesheet_detach()
         from .timesheet_window import TimesheetWindow, widget_live
         self._timesheet_opening = True
         sheet = None
@@ -554,6 +581,7 @@ class ChronicleApp:
         previous_guard = self._timesheet_opening
         self._timesheet_opening = True
         self.timesheet = None
+        self._timesheet_detach()
         try:
             self._restore_timesheet_origin()
         except Exception as exc:
@@ -603,13 +631,173 @@ class ChronicleApp:
     def _timesheet_read(self, sheet, kind, value):
         if self.timesheet is not sheet or sheet.disposed or not self.alive or self.closing:
             raise ValueError("Timesheet session is no longer current")
-        if kind not in ("timesheet_tasks", "timesheet_preview"):
+        if kind not in ("timesheet_tasks", "timesheet_preview", "timesheet_exports", "timesheet_export"):
             raise ValueError("Unsupported Timesheet view read")
         self._token += 1
         if kind == "timesheet_preview":
             value = dict(value,export_id=str(uuid4()),cutoff_utc_us=to_us(self.now_utc()))
         self.worker.requests.put(Message(kind,self._token,value))
         return self._token,value
+
+    def _timesheet_detach(self):
+        attempt = self._timesheet_attempt
+        if attempt is None or self.executing or self.pending is not None:
+            return
+        if attempt.registration == "committed" and attempt.started and attempt.saved_path is None:
+            self._timesheet_handoff = (attempt.candidate.export_id, attempt.destination)
+        elif attempt.saved_path is not None:
+            self._timesheet_handoff = None
+        self._timesheet_attempt = None
+
+    def _timesheet_notify(self):
+        sheet = self.timesheet
+        if sheet is not None and not sheet.disposed:
+            try: sheet.save_changed()
+            except Exception as exc:
+                exc.add_note("Registration/file outcome is retained independently of presentation.")
+                self._diagnose(exc)
+
+    def _timesheet_recover(self, candidate):
+        if self.executing or self.pending is not None: return False
+        from .timesheet import validate
+        validate(candidate,check_render=False)
+        if candidate.dataset_id != self.dataset_id: raise ValueError('Recovered report belongs to another dataset')
+        destination = candidate.preferred_destination
+        if self._timesheet_handoff is not None and self._timesheet_handoff[0] == candidate.export_id:
+            destination = self._timesheet_handoff[1]
+        self._timesheet_attempt = _TimesheetAttempt(candidate,destination,registration='committed',started=False)
+        return True
+
+    def _timesheet_begin_save(self, sheet, candidate, destination):
+        if self.timesheet is not sheet or not self.can_mutate(origin=sheet):
+            return False
+        self._timesheet_attempt = _TimesheetAttempt(candidate,destination)
+        submitted = self._submit('register_timesheet_export',_origin=sheet,candidate=candidate.content())
+        if not submitted and self._timesheet_attempt.request is None:
+            self._timesheet_attempt = None
+        self._timesheet_notify()
+        return submitted
+
+    def _timesheet_registration_result(self, request, token, result):
+        attempt = self._timesheet_attempt
+        if attempt is None or attempt.request is not request or attempt.token != token:
+            return
+        attempt.registration, attempt.error = result.status, result.error
+        if result.status == 'committed':
+            if result.result != {'export_id':attempt.candidate.export_id,'report_sha256':attempt.candidate.report_sha256}:
+                attempt.registration = 'unverified'
+                self.pending, self._pending_token = request, token
+                attempt.error = ValueError('Registration result did not verify the expected export identity/digest')
+            else:
+                self._timesheet_file('timesheet_publish')
+        if result.error: self._diagnose(result.error)
+        if attempt.error is not None and attempt.error is not result.error: self._diagnose(attempt.error)
+        self._timesheet_notify()
+        if self.timesheet is None: self._timesheet_detach()
+        self._controls()
+        if not self.closing: self.refresh()
+
+    def _timesheet_retry_registration(self):
+        attempt = self._timesheet_attempt
+        if attempt is None or attempt.request is None or self.executing:
+            return False
+        if self.pending is not None and self.pending is not attempt.request:
+            return False
+        self.pending = attempt.request
+        return self.retry()
+
+    def _timesheet_file(self, kind, *, destination=None, confirmed_overwrite=False, expected_conflict=None):
+        attempt = self._timesheet_attempt
+        if (attempt is None or attempt.registration != 'committed' or self.executing
+                or self.pending is not None or self.closing or not self.alive):
+            return False
+        if destination is not None: attempt.destination = destination
+        if kind == 'timesheet_publish': attempt.started = True
+        attempt.inspection, attempt.error = None, None  # Stale conflict cannot authorize another call.
+        self._token += 1
+        attempt.file_token, attempt.file_kind = self._token, kind
+        attempt.file_destination = attempt.destination
+        self.executing = True
+        args = dict(export_id=attempt.candidate.export_id,destination=attempt.destination)
+        if kind == 'timesheet_publish':
+            args.update(confirmed_overwrite=confirmed_overwrite,expected_conflict=expected_conflict)
+        try:
+            self.worker.requests.put(Message(kind,self._token,args))
+        except Exception as exc:
+            attempt.file_token, self.executing, attempt.error = None, False, exc
+            self._diagnose(exc)
+            self._timesheet_notify()
+            return False
+        self._timesheet_notify()
+        self._controls()
+        return True
+
+    def _timesheet_file_result(self, message):
+        from .timesheet_files import Inspection, Publication
+        attempt = self._timesheet_attempt
+        if (attempt is None or attempt.file_token != message.token or attempt.file_kind != message.kind
+                or not self.executing): return
+        value = message.value
+        attempt.file_token, self.executing = None, False
+        if isinstance(value,Outcome):
+            attempt.error = value.error or OSError('File operation unavailable')
+        elif (value.get('export_id') != attempt.candidate.export_id
+              or value.get('destination') != attempt.file_destination):
+            attempt.error = ValueError('File result identity/destination disagrees with this attempt')
+        else:
+            result = value['result']
+            if message.kind == 'timesheet_publish' and type(result) is Publication:
+                attempt.inspection, attempt.error = result.inspection, result.error
+                if result.export_id != attempt.candidate.export_id:
+                    attempt.error = ValueError('Publication returned another export identity')
+                elif result.verified:
+                    attempt.saved_path = result.destination  # Known completion precedes any widget effect.
+                    self._timesheet_handoff = None
+            elif message.kind == 'timesheet_status' and type(result) is Inspection:
+                attempt.inspection, attempt.error = result, result.error
+            else:
+                attempt.error = ValueError('Invalid file operation result')
+        if attempt.error: self._diagnose(attempt.error)
+        self._timesheet_notify()
+        if self.timesheet is None: self._timesheet_detach()
+        self._controls()
+        if not self.closing: self.refresh()
+
+    def _timesheet_exit(self):
+        if self.executing or self._timesheet_dialog_busy: return False
+        previous = self.closing
+        self.closing = True
+        try: return self.exceptional_exit()
+        finally:
+            if not self._shutdown_sent: self.closing = previous
+            self._controls()
+
+    def _timesheet_exit_warning(self):
+        """Registered evidence survives; only the current volatile path context is lost."""
+        if self._timesheet_dialog_busy or self.executing: return False
+        attempt = self._timesheet_attempt
+        handoff = ((attempt.candidate.export_id,attempt.destination) if attempt is not None
+                   and attempt.registration == 'committed' and attempt.started and attempt.saved_path is None else self._timesheet_handoff)
+        if handoff is None: return True
+        sheet = self.timesheet
+        parent = sheet.window if sheet is not None and not sheet.disposed else self.root
+        self._timesheet_dialog_busy = True
+        self.executing = True
+        try:
+            decision = messagebox.askyesno('Unfinished Timesheet file save',
+                f'File Save is unfinished for registered report {handoff[0]}. Exit loses the current session path/status context. '
+                'The report remains in Saved Reports; evidence and any files are not undone. Exit anyway?',parent=parent,default=messagebox.NO)
+        except BaseException as primary:
+            if sheet is not None and not sheet.disposed:
+                try: sheet.restore_modal()
+                except Exception as secondary: primary.add_note(f'Timesheet modal return failed: {secondary!r}')
+            raise
+        else:
+            if not decision and sheet is not None and not sheet.disposed: sheet.restore_modal()
+            return decision
+        finally:
+            self.executing = False
+            self._timesheet_dialog_busy = False
 
     def open_history(self):
         # Duplicate/reentrant requests do not inspect drafts, clocks or task arguments.
@@ -955,6 +1143,11 @@ class ChronicleApp:
             result = message.value
             request = self.pending
             self.executing = False
+            attempt = self._timesheet_attempt
+            if attempt is not None and attempt.request is request and request.operation == 'register_timesheet_export':
+                if result.status != 'unverified': self.pending, self._pending_token = None, None
+                self._timesheet_registration_result(request,message.token,result)
+                return
             if result.status == "unverified":
                 self.status.configure(text="Registration not verified; operation may have committed. Retry/Reconcile uses the same request.")
             else:
@@ -980,13 +1173,17 @@ class ChronicleApp:
                 self._advance_close()
             else:
                 self.refresh()
-        elif message.kind in ("timesheet_tasks", "timesheet_preview"):
+        elif message.kind in ("timesheet_status", "timesheet_publish"):
+            self._timesheet_file_result(message)
+        elif message.kind in ("timesheet_tasks", "timesheet_preview", "timesheet_exports", "timesheet_export"):
             sheet = self.timesheet
             if sheet is not None and not sheet.disposed:
                 if message.kind == "timesheet_tasks":
                     sheet.receive_choices(message.token,message.value)
-                else:
+                elif message.kind == 'timesheet_preview':
                     sheet.receive_preview(message.token,message.value)
+                else:
+                    sheet.receive_saved(message.kind,message.token,message.value)
         elif message.kind in ("history_snapshot", "revisions"):
             history = self.history
             if history is not None and not history.disposed:
@@ -1086,6 +1283,9 @@ class ChronicleApp:
         history = self.history
         if history is not None and history.request is self.pending:
             history.token, history.phase = self._pending_token, "executing"
+        attempt = self._timesheet_attempt
+        if attempt is not None and attempt.request is self.pending:
+            attempt.token, attempt.registration = self._pending_token, 'registering'
         try:
             self.worker.requests.put(Message("reconcile", self._pending_token, self.pending))
         except Exception as exc:
@@ -1094,6 +1294,9 @@ class ChronicleApp:
                 self._work_editor_result(self.pending, self._pending_token, Outcome("unverified", error=exc))
             if history is not None and history.request is self.pending:
                 history.mutation_result(self.pending, self._pending_token, Outcome("unverified", error=exc))
+            if attempt is not None and attempt.request is self.pending:
+                attempt.registration, attempt.error = 'unverified', exc
+                self._timesheet_notify()
             self.status.configure(text=f"Reconciliation not submitted; original request retained. {exc}")
             self._diagnose(exc)
             self._controls()
@@ -1103,6 +1306,7 @@ class ChronicleApp:
             # which was never dispatched, or lose the correlated exact retry.
             history.status.configure(text="Reconciling the identical request; please wait.")
             history.controls()
+        self._timesheet_notify()
         self.status.configure(text="Reconciling the exact saved request…")
         self._controls()
         return True
@@ -1112,8 +1316,21 @@ class ChronicleApp:
             return
         if self._history_opening or self._timesheet_opening:
             return
+        if self._timesheet_dialog_busy: return
         if self.timesheet is not None:
-            return  # Close the read-only modal preview before ordinary root exit.
+            if self.executing: return
+            attempt = self._timesheet_attempt
+            if attempt is not None and attempt.registration == 'unverified':
+                self._timesheet_exit()
+                return
+            if attempt is None or attempt.registration != 'committed' or not attempt.started or attempt.saved_path is not None:
+                return  # Close the modal Timesheet before ordinary root exit.
+            if not self._timesheet_exit_warning(): return
+            self.closing = True
+            self.timesheet.close(force=True)
+        elif self._timesheet_handoff is not None and not self.executing:
+            if not self._timesheet_exit_warning(): return
+
         if self.history is not None:
             if self.history.phase == "unverified" and not self.executing:
                 self.history.exceptional_exit()
@@ -1160,12 +1377,17 @@ class ChronicleApp:
         session = self._work_editor
         parent = session.window if session is not None and self.editor is session.window else self.root
         history = self.history
+        sheet = self.timesheet
+        if sheet is not None and not sheet.disposed: parent = sheet.window
         if history is not None and not history.disposed:
             parent = history.window
         try:
             confirmed = messagebox.askyesno("Unresolved save", "The operation may already have committed. Exit loses this session's retry inputs. No work or evidence is undone. Exit anyway?",
                                            parent=parent, default=messagebox.NO)
         except BaseException as primary:
+            if sheet is not None and self.timesheet is sheet:
+                try: sheet.restore_modal()
+                except Exception as secondary: primary.add_note(f'Timesheet modal return also failed: {secondary!r}')
             if history is not None and self.history is history:
                 try:
                     history.restore_modal()
@@ -1177,6 +1399,10 @@ class ChronicleApp:
         if confirmed:
             # No executing operation is interrupted. The worker still closes orderly.
             self.pending = None
+            self._timesheet_attempt = None
+            if sheet is not None and self.timesheet is sheet:
+                try: sheet.close(force=True)
+                except Exception as exc: self._diagnose(exc)
             if session is not None and self.editor is session.window:
                 try:
                     self._dispose_editor(session.window)
@@ -1189,6 +1415,7 @@ class ChronicleApp:
                     self._diagnose(exc)
             self._advance_close()
         else:
+            if sheet is not None and self.timesheet is sheet: sheet.restore_modal()
             if history is not None and self.history is history:
                 history.restore_modal()
             self._controls()
