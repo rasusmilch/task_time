@@ -61,6 +61,7 @@ class TimesheetWindow:
 
     def _build(self):
         bar = ttk.Frame(self.window)
+        self.preview_bar=bar
         bar.grid(row=0,column=0,sticky='ew',padx=8,pady=6)
         self.period = tk.StringVar(bar,'This week')
         self.period_control = ttk.Combobox(bar,textvariable=self.period,values=('This week','Last week','Custom'),state='readonly',width=13)
@@ -93,7 +94,7 @@ class TimesheetWindow:
         horizontal = ttk.Scrollbar(holder,orient='horizontal',command=self.tasks.xview)
         horizontal.grid(row=1,column=0,sticky='ew'); self.tasks.configure(xscrollcommand=horizontal.set)
         self.tasks.bind('<<TreeviewSelect>>',lambda event:self.selection_changed())
-        self.context = ttk.Label(self.window,text='Not previewed. Preview only; no file is saved and no POL-R value is confirmed.',wraplength=940)
+        self.context = ttk.Label(self.window,text='Not previewed. Preview only; no file is saved and no POL-R value is confirmed.',wraplength=740)
         self.context.grid(row=2,column=0,sticky='ew',padx=8,pady=4)
         report = ttk.Frame(self.window)
         report.grid(row=3,column=0,sticky='nsew',padx=8)
@@ -104,7 +105,7 @@ class TimesheetWindow:
             scroll = ttk.Scrollbar(report,orient=orient,command=command)
             scroll.grid(row=row,column=column,sticky='ns' if orient=='vertical' else 'ew')
             self.report.configure(**{('yscrollcommand' if orient=='vertical' else 'xscrollcommand'):scroll.set})
-        self.status = ttk.Label(self.window,text='',wraplength=940)
+        self.status = ttk.Label(self.window,text='',wraplength=740)
         self.status.grid(row=4,column=0,sticky='ew',padx=8,pady=4)
         self.save_bar = ttk.Frame(self.window)
         self.save_bar.grid(row=5,column=0,sticky='w',padx=8,pady=5)
@@ -133,8 +134,9 @@ class TimesheetWindow:
         self.load_saved_button.grid(row=2,column=0,sticky='w')
         self.saved_panel.grid_remove()
         self._build_polr()
+        self._build_reconciliation()
         self.close_button = ttk.Button(self.window,text='Close',command=self.close)
-        self.close_button.grid(row=7,column=0,sticky='e',padx=8,pady=6)
+        self.close_button.grid(row=6,column=0,sticky='e',padx=8,pady=6)
         for var in (self.period,self.start,self.end,self.scope):
             var.trace_add('write',lambda *args:self.draft_changed())
         self.controls()
@@ -153,7 +155,7 @@ class TimesheetWindow:
         busy = self.is_busy()
         from .timesheet_files import FileState
         registered = attempt is not None and attempt.registration=='committed'
-        active = not busy and self.saved_token is None and not self.mode.startswith('confirmation_')
+        active = not busy and self.saved_token is None and not self.mode.startswith('confirmation_') and self.mode!='reconciliation'
         for button,allowed in ((self.save_button,active and not locked and self.current),
                                (self.retry_save_button,active and attempt is not None and (attempt.saved_path is None or (attempt.inspection is not None and attempt.inspection.state!=FileState.READY))),
                                (self.copy_button,active and registered), (self.check_button,active and registered),
@@ -167,6 +169,7 @@ class TimesheetWindow:
         self.load_saved_button.configure(state='normal' if active and self.mode=='saved' else 'disabled')
         if not custom: self.close_picker()
         self.polr_controls()
+        self.reconciliation_controls()
 
     def selection_changed(self):
         selected = tuple(sorted(self.tasks.selection()))
@@ -255,6 +258,7 @@ class TimesheetWindow:
             if value['dataset_id'] != self.owner.dataset_id: raise ValueError('Task choices belong to another dataset')
             rows = [(t['task_id'],(f"{t['name']} / {t['task_id']}",t['project_name'],'Deleted' if t['is_deleted'] else 'Active')) for t in value['tasks']]
             for key,values in rows: self.tasks.insert('', 'end',iid=key,values=values)
+            self._reconciliation_choices()
         except Exception as exc: self.failure(exc)
 
     def failure(self,exc):
@@ -426,6 +430,7 @@ class TimesheetWindow:
             parent=self.window,default=messagebox.NO)))
 
     def saved_reports(self):
+        if self.mode=='reconciliation' and not self.leave_reconciliation():return False
         if self.is_busy() or not self.can_leave_attempt(): return False
         try:
             if not self.confirm_leave(): return False
@@ -490,6 +495,7 @@ class TimesheetWindow:
             self.save_failure(exc)
 
     def new_preview(self):
+        if self.mode=='reconciliation' and not self.leave_reconciliation():return False
         if self.is_busy() or not self.can_leave_attempt(): return False
         try:
             if not self.confirm_leave(): return False
@@ -512,7 +518,9 @@ class TimesheetWindow:
         self.review_polr_button=ttk.Button(bar,text='Review POL-R Confirmation',command=self.review_polr)
         self.manual_polr_button=ttk.Button(bar,text='Manual POL-R Confirmation',command=self.manual_polr)
         self.polr_history_button=ttk.Button(bar,text='Confirmation History',command=self.confirmation_history)
-        for i,b in enumerate((self.review_polr_button,self.manual_polr_button,self.polr_history_button)):b.grid(row=0,column=i,padx=2)
+        self.reconciliation_button=ttk.Button(bar,text='Reconciliation',command=self.open_reconciliation)
+        self.compare_reconciliation_button=ttk.Button(bar,text='Compare loaded report with current reconciliation',command=lambda:self.open_reconciliation(compare=True))
+        for i,b in enumerate((self.review_polr_button,self.manual_polr_button,self.polr_history_button,self.reconciliation_button,self.compare_reconciliation_button)):b.grid(row=i//3,column=i%3,padx=2)
         self.polr_panel=ttk.Frame(self.window);self.polr_panel.grid(row=3,column=0,sticky='nsew',padx=8)
         self.polr_panel.columnconfigure(0,weight=1);self.polr_panel.rowconfigure(2,weight=1)
         ttk.Label(self.polr_panel,text='Confirmation records your entered POL-R values; it does not query or verify POL-R.',wraplength=750).grid(row=0,column=0,sticky='w')
@@ -536,6 +544,7 @@ class TimesheetWindow:
             self.polr_tree.configure(**{('yscrollcommand' if orient=='vertical' else 'xscrollcommand'):b.set})
         self.polr_tree.bind('<Button-1>',self._polr_click,add='+')
         ack_holder=ttk.Frame(self.polr_panel);ack_holder.grid(row=3,column=0,sticky='ew');ack_holder.columnconfigure(0,weight=1)
+        self.polr_ack_holder=ack_holder
         ack_canvas=tk.Canvas(ack_holder,height=85,highlightthickness=0);ack_canvas.grid(row=0,column=0,sticky='ew')
         self.polr_ack_frame=ttk.Frame(ack_canvas);ack_canvas.create_window(0,0,window=self.polr_ack_frame,anchor='nw')
         self.polr_ack_frame.bind('<Configure>',lambda event:ack_canvas.configure(scrollregion=ack_canvas.bbox('all')))
@@ -567,7 +576,8 @@ class TimesheetWindow:
         pending=self._polr_pending();active=not self.is_busy() and self.can_leave_attempt()
         a=self.owner._timesheet_attempt
         for b,allowed in ((self.review_polr_button,active and a is not None and a.registration=='committed'),
-                          (self.manual_polr_button,active),(self.polr_history_button,active)):
+                          (self.manual_polr_button,active),(self.polr_history_button,active),(self.reconciliation_button,active),
+                          (self.compare_reconciliation_button,active and a is not None and a.registration=='committed')):
             b.configure(state='normal' if allowed else 'disabled')
         source=self.mode=='confirmation_source';manual=self.mode=='confirmation_manual';history=self.mode=='confirmation_history'
         for b,allowed in ((self.polr_positive_button,active and source and self.polr_ready),
@@ -582,6 +592,7 @@ class TimesheetWindow:
 
     def _show_polr(self,mode):
         if self.is_busy() or not self.can_leave_attempt():return False
+        if self.mode=='reconciliation':self.leave_reconciliation()
         if not self.mode.startswith('confirmation_'):self.polr_return_mode=self.mode
         self.polr_tokens.clear();self.polr_ready=False;self.polr_stale=False
         self.saved_token=self.preview_token=None  # Abandon earlier view reads, never their worker operations.
@@ -590,6 +601,7 @@ class TimesheetWindow:
         self.polr_confirm_button.configure(text='Confirm absolute amount' if mode=='confirmation_manual' else 'Confirm checked')
         self.polr_defer_button.configure(text='Cancel' if mode=='confirmation_manual' else 'Defer / Review later')
         self.polr_manual.grid() if mode=='confirmation_manual' else self.polr_manual.grid_remove()
+        self.polr_ack_holder.grid() if mode=='confirmation_source' else self.polr_ack_holder.grid_remove()
         self.polr_detail.configure(state='normal');self.polr_detail.delete('1.0','end');self.polr_detail.configure(state='disabled')
         self.polr_status.configure(text='Read-only review; nothing confirmed.')
         self.polr_tree.delete(*self.polr_tree.get_children());self.polr_mapping={};self._draw_polr_acks()
@@ -803,6 +815,240 @@ class TimesheetWindow:
         except Exception as secondary:exc.add_note(f'Confirmation diagnostic also failed: {secondary!r}')
         self.owner._diagnose(exc);self.polr_controls();return False
 
+    def _build_reconciliation(self):
+        self.reconciliation_token=None
+        self.reconciliation_result=None
+        self.reconciliation_current=False
+        self.reconciliation_source=None
+        self.reconciliation_return_mode='preview'
+        self.reconciliation_mapping={}
+        self.reconciliation_panel=ttk.Frame(self.window)
+        panel=self.reconciliation_panel
+        panel.grid(row=0,column=0,rowspan=5,sticky='nsew',padx=8)
+        panel.columnconfigure(0,weight=1);panel.rowconfigure(4,weight=1);panel.rowconfigure(5,weight=1)
+        bar=ttk.Frame(panel);bar.grid(row=0,column=0,sticky='w')
+        ttk.Label(bar,text='Reconciliation').grid(row=0,column=0,sticky='w')
+        self.reconciliation_period=tk.StringVar(panel,'This week')
+        self.reconciliation_scope=tk.StringVar(panel,'All tasks')
+        self.reconciliation_start=tk.StringVar(panel,'');self.reconciliation_end=tk.StringVar(panel,'')
+        self.reconciliation_controls_list=[]
+        for i,(var,values) in enumerate(((self.reconciliation_period,('This week','Last week','Custom')),(self.reconciliation_scope,('All tasks','Selected tasks')))):
+            field=ttk.Combobox(bar,textvariable=var,values=values,state='readonly',width=16)
+            field.grid(row=0,column=i+1,padx=3);self.reconciliation_controls_list.append(field)
+        self.reconciliation_date_controls=[]
+        for i,(label,var) in enumerate((('Start',self.reconciliation_start),('End',self.reconciliation_end))):
+            ttk.Label(bar,text=label).grid(row=1,column=i*3)
+            field=ttk.Entry(bar,textvariable=var,width=12);field.grid(row=1,column=i*3+1)
+            button=ttk.Button(bar,text='Calendar',command=lambda v=var:self.open_picker(v));button.grid(row=1,column=i*3+2)
+            self.reconciliation_date_controls.extend((field,button))
+        self.reconciliation_calendar_area=ttk.Frame(panel);self.reconciliation_calendar_area.grid(row=1,column=0,sticky='w')
+        tasks=ttk.Frame(panel);tasks.grid(row=2,column=0,sticky='ew');tasks.columnconfigure(0,weight=1)
+        self.reconciliation_tasks=ttk.Treeview(tasks,columns=('task',),show='headings',height=2,selectmode='extended')
+        self.reconciliation_tasks.heading('task',text='Independent task UUIDs (Ctrl/Shift for Selected tasks; retained deleted tasks included)')
+        self.reconciliation_tasks.grid(row=0,column=0,sticky='ew')
+        scroll=ttk.Scrollbar(tasks,orient='vertical',command=self.reconciliation_tasks.yview);scroll.grid(row=0,column=1,sticky='ns')
+        self.reconciliation_tasks.configure(yscrollcommand=scroll.set)
+        self.reconciliation_tasks.bind('<<TreeviewSelect>>',lambda e:self._reconciliation_selection())
+        self._reconciliation_selected=()
+        self.reconciliation_context=ttk.Label(panel,text='Current reconciliation only.',wraplength=740)
+        self.reconciliation_context.grid(row=3,column=0,sticky='w')
+        holder=ttk.Frame(panel);holder.grid(row=4,column=0,sticky='nsew');holder.columnconfigure(0,weight=1);holder.rowconfigure(0,weight=1)
+        self.reconciliation_tree=ttk.Treeview(holder,show='headings',height=5,selectmode='browse')
+        self.reconciliation_tree.grid(row=0,column=0,sticky='nsew')
+        self.reconciliation_tree.bind('<<TreeviewSelect>>',lambda e:self.reconciliation_controls())
+        for orient,row,col,command in (('vertical',0,1,self.reconciliation_tree.yview),('horizontal',1,0,self.reconciliation_tree.xview)):
+            scroll=ttk.Scrollbar(holder,orient=orient,command=command);scroll.grid(row=row,column=col,sticky='ns' if orient=='vertical' else 'ew')
+            self.reconciliation_tree.configure(**{('yscrollcommand' if orient=='vertical' else 'xscrollcommand'):scroll.set})
+        holder=ttk.Frame(panel);holder.grid(row=5,column=0,sticky='nsew');holder.columnconfigure(0,weight=1);holder.rowconfigure(0,weight=1)
+        self.reconciliation_summary=tk.Text(holder,state='disabled',height=6,wrap='none')
+        self.reconciliation_summary.grid(row=0,column=0,sticky='nsew')
+        for orient,row,col,command in (('vertical',0,1,self.reconciliation_summary.yview),('horizontal',1,0,self.reconciliation_summary.xview)):
+            scroll=ttk.Scrollbar(holder,orient=orient,command=command);scroll.grid(row=row,column=col,sticky='ns' if orient=='vertical' else 'ew')
+            self.reconciliation_summary.configure(**{('yscrollcommand' if orient=='vertical' else 'xscrollcommand'):scroll.set})
+        self.reconciliation_status=ttk.Label(panel,text='',wraplength=740);self.reconciliation_status.grid(row=6,column=0,sticky='w')
+        actions=ttk.Frame(panel);actions.grid(row=7,column=0,sticky='w')
+        self.reconciliation_apply=ttk.Button(actions,text='Apply / Refresh',command=self.refresh_reconciliation)
+        self.reconciliation_copy=ttk.Button(actions,text='Copy Suggested',command=self.copy_suggested)
+        self.reconciliation_saved=ttk.Button(actions,text='Review saved report',command=self.saved_reports)
+        self.reconciliation_confirm=ttk.Button(actions,text='Review current POL-R confirmation',command=self.review_current_confirmation)
+        self.reconciliation_manual=ttk.Button(actions,text='Manual POL-R confirmation',command=self.reconciliation_manual_action)
+        self.reconciliation_return=ttk.Button(actions,text='Return to Timesheet',command=self.leave_reconciliation)
+        for i,b in enumerate((self.reconciliation_apply,self.reconciliation_copy,self.reconciliation_saved,
+                               self.reconciliation_confirm,self.reconciliation_manual,self.reconciliation_return)):
+            b.grid(row=i//3,column=i%3,padx=2,pady=2)
+        for var in (self.reconciliation_period,self.reconciliation_scope,self.reconciliation_start,self.reconciliation_end):
+            var.trace_add('write',lambda *a:self.reconciliation_dirty())
+        panel.grid_remove()
+
+    def reconciliation_dirty(self):
+        if self.mode=='reconciliation' and self.reconciliation_period.get()!='Custom':self.close_picker()
+        self.reconciliation_token=None;self.reconciliation_current=False
+        if self.reconciliation_result:
+            self.reconciliation_status.configure(text='Previous reconciliation remains as of its displayed observation; inputs changed. Apply required.')
+        self.reconciliation_controls()
+
+    def _reconciliation_selection(self):
+        selection=tuple(sorted(self.reconciliation_tasks.selection()))
+        if selection!=self._reconciliation_selected:
+            self._reconciliation_selected=selection;self.reconciliation_dirty()
+
+    def reconciliation_controls(self):
+        if not hasattr(self,'reconciliation_panel') or self.disposed:return
+        active=self.mode=='reconciliation' and not self.is_busy() and self.can_leave_attempt()
+        for b in self.reconciliation_controls_list:b.configure(state='readonly' if active else 'disabled')
+        for b in self.reconciliation_date_controls:b.configure(state='normal' if active and self.reconciliation_period.get()=='Custom' else 'disabled')
+        self.reconciliation_tasks.state(['!disabled'] if active else ['disabled'])
+        for b in (self.reconciliation_apply,self.reconciliation_saved,self.reconciliation_manual,self.reconciliation_return):b.configure(state='normal' if active else 'disabled')
+        selected=self.reconciliation_tree.selection()
+        row=self.reconciliation_mapping.get(selected[0]) if selected else None
+        known=self.reconciliation_current and row is not None and row['current_batch_id'] is not None
+        self.reconciliation_confirm.configure(state='normal' if active and known else 'disabled')
+        self.reconciliation_copy.configure(state='normal' if active and self.reconciliation_current else 'disabled')
+
+    def open_reconciliation(self, *, period=None, compare=False):
+        if self.disposed or not self.presented or self.is_busy() or not self.can_leave_attempt():return False
+        if self.mode!='reconciliation':self.reconciliation_return_mode=self.mode if not self.mode.startswith('confirmation_') else self.polr_return_mode
+        a=self.owner._timesheet_attempt
+        if compare and (a is None or a.registration!='committed'):return False
+        self.reconciliation_source=a.candidate.export_id if compare else None
+        self.saved_token=self.preview_token=None
+        self._hide_polr();self.mode='reconciliation';self.close_picker()
+        for w in (self.preview_bar,self.tasks.master,self.saved_panel,self.context,self.report.master,self.status):w.grid_remove()
+        self.reconciliation_panel.grid()
+        if period is not None:self.reconciliation_period.set(period)
+        self._reconciliation_choices()
+        self.controls()
+        return self.refresh_reconciliation()
+
+    def _reconciliation_choices(self):
+        for key in self.tasks.get_children():
+            values=self.tasks.item(key,'values')
+            if not self.reconciliation_tasks.exists(key):
+                self.reconciliation_tasks.insert('','end',iid=key,values=(f'{values[0]} / {values[1]} / {values[2]}',))
+
+    def refresh_reconciliation(self):
+        if self.disposed or self.mode!='reconciliation' or self.is_busy() or not self.can_leave_attempt():return False
+        self._reconciliation_selection();self.reconciliation_current=False;self.reconciliation_token=None
+        try:
+            period={'This week':'this_week','Last week':'last_week','Custom':'custom'}[self.reconciliation_period.get()]
+            scope={'All tasks':'all','Selected tasks':'selected'}[self.reconciliation_scope.get()]
+            selected=tuple(sorted(self.reconciliation_tasks.selection())) if scope=='selected' else ()
+            if scope=='selected' and not selected:raise ValueError('Select at least one task UUID')
+            args=dict(period=period,scope_kind=scope,task_ids=selected,source_export_id=self.reconciliation_source)
+            if period=='custom':args.update(start_date=self.reconciliation_start.get(),end_date=self.reconciliation_end.get())
+            self.reconciliation_token,self.reconciliation_request=self.owner._timesheet_read(self,'polr_reconciliation',args)
+            self.reconciliation_status.configure(text='Loading current reconciliation; any previous display retains its old as-of observation.')
+            self.controls();return True
+        except Exception as exc:return self.reconciliation_failure(exc)
+
+    @staticmethod
+    def _signed(value):
+        return 'Unknown' if value is None else ('+' if value>0 else '-' if value<0 else '')+f'{abs(value)//100}.{abs(value)%100:02d}'
+
+    def receive_reconciliation(self,token,value):
+        if self.disposed or self.mode!='reconciliation' or token!=self.reconciliation_token:return
+        self.reconciliation_token=None
+        try:
+            if isinstance(value,Outcome):raise value.error or ValueError('Reconciliation unavailable')
+            request=self.reconciliation_request
+            comparison=value['source_comparison']
+            if (value['dataset_id']!=self.owner.dataset_id or value['cutoff_utc_us']!=request['cutoff_utc_us']
+                    or value['period']!=request['period'] or value['scope_kind']!=request['scope_kind']
+                    or value['selected_task_ids']!=list(request['task_ids'])
+                    or (None if comparison is None else comparison['export_id'])!=request['source_export_id']
+                    or (request['period']=='custom' and (value['start_date'],value['end_date'])!=(parse_date(request['start_date']).isoformat(),parse_date(request['end_date']).isoformat()))):
+                raise ValueError('Reconciliation session/observation/scope changed')
+            from .polr_allocation import decimal_text,quarter_text
+            from .reconciliation import adjustment_text
+            from .timekeeping import format_duration
+            statuses={'UNKNOWN':'Unknown','MATCH':'Matching allocation','MISMATCH':'Allocation mismatch','NOT_APPLICABLE':'Not applicable','UNAVAILABLE':'Unavailable'}
+            comparison=value['source_comparison'];compared={} if comparison is None else {(r['task_id'],r['work_date']):r for r in comparison['cells']}
+            rows=[];mapping={}
+            for i,r in enumerate(value['daily_cells']):
+                k=(r['task_id'],r['work_date']);c=compared.get(k)
+                data=[f"{r['task_name']} / {r['task_id']}"+(' [Deleted]' if r['is_deleted'] else ''),r['work_date'],format_duration(r['exact_actual_us']),decimal_text(r['actual_hundredths']),quarter_text(r['suggested_quarters']),
+                      'Unknown' if r['confirmed_quarters'] is None else quarter_text(r['confirmed_quarters'])+' (confirmed)',self._signed(r['daily_delta_hundredths']),self._signed(None if r['suggested_gap_quarters'] is None else r['suggested_gap_quarters']*25),statuses[r['classification']]]
+                if comparison is not None:data.extend(['Outside frozen scope' if c is None else quarter_text(c['frozen_suggested_quarters']),'' if c is None else ', '.join(c['flags'])])
+                handle=f'r{i}';rows.append((handle,data));mapping[handle]=deepcopy(r)
+            lines=['Weekly upward POL-R rounding adjustment — not Actual work. Full seven-day basis; partial visible suggestions need not sum to the full-week target.']
+            for w in value['task_weeks']+value['cross_task_weeks']:
+                count=w['coverage'];label=w.get('task_name','All included tasks')+' / '+w.get('task_id','')
+                lines.append(f"{label} | {w['week_start_date']} to {w['week_end_date']} | {'Complete scope' if w['full_scope'] else 'Partial scope'} | {'Complete reconciliation' if w['review_complete'] else 'Incomplete review/reconciliation'}\nExact Actual {w['exact_actual_us']} µs; displayed Actual {decimal_text(w['actual_hundredths'])}; target {quarter_text(w['weekly_target_quarters'])}; adjustment {adjustment_text(w['weekly_adjustment_us'])}; known confirmed {'total' if w['confirmed_subtotal_is_complete'] else 'subtotal (incomplete)'} {quarter_text(w['known_confirmed_quarters'])}; applicable {count['applicable']}, matching {count['MATCH']}, mismatching {count['MISMATCH']}, Unknown {count['UNKNOWN']}, unavailable {count['UNAVAILABLE']}.")
+                if 'allocation' in w:lines.append('Full-week context only (not extra selectable report cells): '+', '.join(f"{a['work_date']}: {quarter_text(a['suggested_quarters'])}" for a in w['allocation']))
+            if comparison is not None:
+                lines.append(f"Frozen report {comparison['export_id']}: frozen week starts {calendar.day_name[comparison['frozen_week_start']]}; current week starts {calendar.day_name[comparison['current_week_start']]}. Immutable frozen scope {comparison['start_date']} to {comparison['end_date']}.")
+                for c in comparison['cells']:
+                    confirmed='Unknown' if c['confirmed_quarters'] is None else quarter_text(c['confirmed_quarters'])+' (confirmed)'
+                    lines.append(f"Frozen comparison {c['task_id']} / {c['work_date']}: frozen Suggested {quarter_text(c['frozen_suggested_quarters'])}, current Suggested {quarter_text(c['current_suggested_quarters'])}, current Confirmed {confirmed}, batch {c['current_batch_id'] or 'Unknown'}; {', '.join(c['flags']) or 'No source difference'}")
+            context=f"Applied {value['start_date']} to {value['end_date']}; as of UTC {from_us(value['cutoff_utc_us']).isoformat()}; {value['timezone']}; week starts {calendar.day_name[value['week_start']]}. "+('Current reconciliation only.' if comparison is None else 'Current versus explicitly loaded frozen report.')
+            columns=('task','date','actual_clock','actual','suggested','confirmed','delta','gap','status')+(('frozen','flags') if comparison is not None else ())
+            headings=('Task / UUID','Date','Actual HH:MM','Actual decimal','Suggested POL-R','Confirmed POL-R','Daily Delta','Suggested-entry gap','Status')+(('Frozen suggested','Source comparison flags') if comparison is not None else ())
+        except Exception as exc:return self.reconciliation_failure(exc)
+        try:
+            tree=self.reconciliation_tree
+            tree.configure(columns=columns);tree.delete(*tree.get_children())
+            for key,label in zip(columns,headings):tree.heading(key,text=label);tree.column(key,width=180 if key=='task' else 120,minwidth=80)
+            for handle,data in rows:tree.insert('','end',iid=handle,values=data)
+            self.reconciliation_summary.configure(state='normal');self.reconciliation_summary.delete('1.0','end');self.reconciliation_summary.insert('1.0','\n\n'.join(lines));self.reconciliation_summary.configure(state='disabled')
+            self.reconciliation_context.configure(text=context)
+            self.reconciliation_status.configure(text=f"Current coverage: {value['coverage']['applicable']} applicable; {value['coverage']['UNKNOWN']} Unknown; {value['coverage']['MISMATCH']} mismatching. Explicit confirmation is separate; copying is not submission.")
+            tree.master.grid();self.reconciliation_summary.master.grid()
+        except Exception as primary:
+            try:tree.master.grid_remove();self.reconciliation_summary.master.grid_remove()
+            except Exception as secondary:primary.add_note(f'Unable to hide untrusted reconciliation: {secondary!r}')
+            return self.reconciliation_failure(primary)
+        self.reconciliation_result=deepcopy(value);self.reconciliation_mapping=mapping;self.reconciliation_current=True
+        self.controls()
+
+    def reconciliation_failure(self,exc):
+        self.reconciliation_current=False
+        try:self.reconciliation_status.configure(text=f'Reconciliation unavailable: {exc}. Previous trusted results, if visible, retain their old as-of observation; Refresh required.')
+        except Exception as secondary:exc.add_note(f'Reconciliation diagnostic presentation failed: {secondary!r}')
+        self.owner._diagnose(exc);self.reconciliation_controls();return False
+
+    def copy_suggested(self):
+        if self.mode!='reconciliation' or not self.reconciliation_current or self.is_busy():return False
+        selected=self.reconciliation_tree.selection()
+        r=self.reconciliation_mapping.get(selected[0]) if selected else None
+        if r is None:return False
+        try:
+            from .polr_allocation import quarter_text
+            text=quarter_text(r['suggested_quarters'])
+            self.window.clipboard_clear();self.window.clipboard_append(text)
+            self.reconciliation_status.configure(text=f'Copied absolute suggestion {text}; no external submission or confirmation recorded.')
+            return True
+        except Exception as exc:return self.reconciliation_failure(exc)
+
+    def leave_reconciliation(self):
+        if self.mode!='reconciliation' or self.is_busy() or not self.can_leave_attempt():return False
+        self.reconciliation_token=None;self.reconciliation_panel.grid_remove();self.mode=self.reconciliation_return_mode
+        self.preview_bar.grid();self.context.grid();self.report.master.grid();self.status.grid()
+        (self.saved_panel if self.mode=='saved' else self.tasks.master).grid()
+        self.controls();return True
+
+    def review_current_confirmation(self):
+        if self.mode!='reconciliation' or not self.reconciliation_current or self.is_busy() or not self.can_leave_attempt():return False
+        selected=self.reconciliation_tree.selection()
+        row=self.reconciliation_mapping.get(selected[0]) if selected else None
+        if row is None or row['current_batch_id'] is None:return False
+        batch_id=row['current_batch_id']
+        if not self.confirmation_history():return False
+        self.polr_batch_id=batch_id
+        return self._read_polr('polr_batch',batch_id)
+
+    def reconciliation_manual_action(self):
+        selected=self.reconciliation_tree.selection()
+        row=self.reconciliation_mapping.get(selected[0]) if selected else None
+        if not self.manual_polr():return False
+        if row:
+            self.polr_task_control.current(self.polr_task_choices.index(row['task_id']));self.polr_date.set(row['work_date'])
+            return self.refresh_polr()
+        return True
+
+    def reconciliation_committed(self):
+        if self.mode=='reconciliation':self.refresh_reconciliation()
+        elif self.reconciliation_result is not None:self.reconciliation_current=False
+
     def present(self): self.window.deiconify()
 
     def _mapped(self,event):
@@ -818,18 +1064,23 @@ class TimesheetWindow:
             self.close_button.focus_set()
             self.owner._timesheet_presented(self)
             self.choices_token,_ = self.owner._timesheet_read(self,'timesheet_tasks',None)
+            if hasattr(self,'_reminder_period'):self.open_reconciliation(period=self._reminder_period)
         except Exception as primary:
             self.owner._timesheet_launch_failed(self,primary)
 
     def open_picker(self,variable):
-        if self.disposed or self.period.get()!='Custom' or self.is_locked(): return False
+        reconciliation=self.mode=='reconciliation'
+        if self.disposed or self.is_busy():return False
+        if reconciliation:
+            if self.reconciliation_period.get()!='Custom' or not self.can_leave_attempt():return False
+        elif self.period.get()!='Custom' or self.is_locked():return False
         try: seed = parse_date(variable.get())
         except ValueError:
             if self.observation is None:
                 self.observation = to_us(self.owner.now_utc())  # Explicit picker seed only, never a report cutoff.
             seed = from_us(self.observation).astimezone(self.owner.zone).date()
         self.close_picker()
-        self.picker = ttk.LabelFrame(self.calendar_area,text='Choose a draft date')
+        self.picker = ttk.LabelFrame(self.reconciliation_calendar_area if reconciliation else self.calendar_area,text='Choose a draft date')
         self.picker.grid()
         self._picker_variable,self._picker_month = variable,seed.replace(day=1)
         self._draw_calendar()

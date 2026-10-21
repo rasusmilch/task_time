@@ -253,12 +253,7 @@ def from_content(value, *, check_render=True):
     return validate(Candidate(**data), check_render=check_render)
 
 
-def prepare(*, export_id, dataset_id, cutoff_utc_us, timezone, week_start, tasks, projects, work, active,
-            period="this_week", start_date=None, end_date=None, scope_kind="all", task_ids=()):
-    uuid_text(export_id); uuid_text(dataset_id); instant(cutoff_utc_us)
-    integer(week_start,"Week start",0,6)
-    zone = load_zone(timezone)
-    first,last,weeks = resolve_period(period,start_date,end_date,cutoff_utc_us,zone,week_start)
+def scope_labels(tasks, projects, scope_kind, task_ids):
     if type(task_ids) not in (tuple,list) or scope_kind not in ('all','selected'):
         raise ValueError("Explicit All/Selected scope required")
     for key in task_ids: uuid_text(key)
@@ -271,20 +266,44 @@ def prepare(*, export_id, dataset_id, cutoff_utc_us, timezone, week_start, tasks
     labels = [TaskLabel(t['task_id'],t['name'],t['project_id'],
                         project_names[t['project_id']] if t['project_id'] else 'Unassigned',bool(t['is_deleted']),0) for t in chosen]
     labels = tuple(replace(t,ordinal=i) for i,t in enumerate(sorted(labels,key=lambda t:(t.project_name,t.name,t.task_id))))
-    # Read only selected work while retaining strict attribution for every exposed type.
+    return labels,chosen
+
+
+def calculate_scope(*, cutoff_utc_us, timezone, week_start, tasks, projects, work, active,
+            period="this_week", start_date=None, end_date=None, scope_kind="all", task_ids=()):
+    instant(cutoff_utc_us)
+    integer(week_start,"Week start",0,6)
+    zone = load_zone(timezone)
+    first,last,weeks = resolve_period(period,start_date,end_date,cutoff_utc_us,zone,week_start)
+    labels,chosen = scope_labels(tasks,projects,scope_kind,task_ids)
+    basis = scope_basis(labels,chosen,work,active,cutoff_utc_us,zone,weeks)
+    cells = tuple(Cell(b.task_id,b.work_date,b.week_start_date,b.actual_us,actual_hundredths(b.actual_us),b.suggested_quarters)
+                  for b in basis if first.isoformat()<=b.work_date<=last.isoformat())
+    return first.isoformat(),last.isoformat(),labels,basis,cells
+
+
+def scope_basis(labels, chosen, work, active, cutoff, zone, weeks):
+    """Shared attribution once; allocate only the requested complete context weeks."""
     selected = {t.task_id for t in labels}
     daily = calculate_daily(chosen,[r for r in work if r['task_id'] in selected],
                             active if active and active['task_id'] in selected else None,
-                            cutoff_utc_us,zone,civil(weeks[0]),civil(weeks[-1])+timedelta(days=6))
-    basis,cells = [],[]
+                            cutoff,zone,civil(weeks[0]),civil(weeks[-1])+timedelta(days=6))
+    basis = []
     for task in labels:
         for week in weeks:
             values = tuple((d,daily[task.task_id].get(d,0)) for d in complete_week(week))
             for (day,actual),(d,quarters) in zip(values,allocate_week(week,values)):
                 basis.append(Basis(task.task_id,week,day,actual,quarters))
-                if first.isoformat() <= day <= last.isoformat():
-                    cells.append(Cell(task.task_id,day,week,actual,actual_hundredths(actual),quarters))
-    c = Candidate(export_id,dataset_id,first.isoformat(),last.isoformat(),cutoff_utc_us,timezone,week_start,
-                  scope_kind,tuple(sorted(task_ids)),labels,tuple(basis),tuple(cells),'','')
+    return tuple(basis)
+
+
+def prepare(*, export_id, dataset_id, cutoff_utc_us, timezone, week_start, tasks, projects, work, active,
+            period="this_week", start_date=None, end_date=None, scope_kind="all", task_ids=()):
+    uuid_text(export_id); uuid_text(dataset_id)
+    first,last,labels,basis,cells = calculate_scope(cutoff_utc_us=cutoff_utc_us,timezone=timezone,
+        week_start=week_start,tasks=tasks,projects=projects,work=work,active=active,period=period,
+        start_date=start_date,end_date=end_date,scope_kind=scope_kind,task_ids=task_ids)
+    c = Candidate(export_id,dataset_id,first,last,cutoff_utc_us,timezone,week_start,
+                  scope_kind,tuple(sorted(task_ids)),labels,basis,cells,'','')
     text = render(c)
     return validate(replace(c,report_text=text,report_sha256=hashlib.sha256(text.encode('utf-8')).hexdigest()))

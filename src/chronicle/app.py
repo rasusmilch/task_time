@@ -85,6 +85,11 @@ class ChronicleApp:
         self._timesheet_return = None
         self._timesheet_attempt = None
         self._polr_submission = None
+        self.reminder = self._reminder_error = None
+        self._reminder_dismissed_date = None  # Observed metadata only; SQLite remains authoritative.
+        self._reminder_token = 0
+        self._reminder_inflight = self._reminder_cutoff = self._reminder_date = None
+        self._reminder_again = False
         self._timesheet_handoff = None
         self._timesheet_dialog_busy = False
         self._history_opening = False
@@ -164,6 +169,16 @@ class ChronicleApp:
         self.retry_button = ttk.Button(self.recovery, text="Retry/Reconcile", command=self.retry)
         self.exit_button = ttk.Button(self.recovery, text="Exit despite unresolved save", command=self.exceptional_exit)
         self.cancel_close_button = ttk.Button(self.recovery, text="Cancel exit", command=self.cancel_close)
+        self.reminder_banner = ttk.Frame(self.root)
+        self.reminder_banner.grid(row=8,column=0,sticky='ew',padx=8,pady=3)
+        self.reminder_label=ttk.Label(self.reminder_banner,text='',wraplength=680)
+        self.reminder_label.grid(row=0,column=0,columnspan=2,sticky='w')
+        self.reminder_open=ttk.Button(self.reminder_banner,text='Open Timesheet',command=self.open_reminder_timesheet)
+        self.reminder_dismiss=ttk.Button(self.reminder_banner,text='Dismiss for today',command=self.dismiss_polr_today)
+        self.reminder_open.grid(row=1,column=0,sticky='w');self.reminder_dismiss.grid(row=1,column=1,sticky='w')
+        self.reminder_banner.grid_remove()
+        self.buttons['Recheck POL-R']=ttk.Button(actions,text='Recheck POL-R',command=self.recheck_polr)
+        self.buttons['Recheck POL-R'].grid(row=2,column=0,sticky='w',padx=3)
         self._controls()
 
     def can_mutate(self, *, origin=None):
@@ -221,6 +236,7 @@ class ChronicleApp:
                 widget.pack_forget()
         if self.mini is not None:
             self.mini.render()
+        self._render_reminder()
 
     def _selection_changed(self):
         self._controls()
@@ -230,6 +246,7 @@ class ChronicleApp:
             return False
         try:
             accepted = to_us(self.now_utc())  # Exactly one action observation, on the Tk thread.
+            if operation=='dismiss_polr_reminder_today':arguments=dict(local_date=local_date(accepted,self.zone).isoformat())
             request = Request.make(str(uuid4()), self.dataset_id, operation, accepted, **arguments)
         except Exception as exc:
             self.status.configure(text=f"Action rejected: {exc}")
@@ -248,6 +265,7 @@ class ChronicleApp:
             attempt.request, attempt.token, attempt.registration = request, self._pending_token, "registering"
         # Invalidate any read that predates this accepted mutation.
         self._read_again = True
+        if self._reminder_inflight is not None:self._reminder_again=True
         try:
             self.worker.requests.put(Message("mutate", self._token, request))
         except Exception as exc:
@@ -535,6 +553,92 @@ class ChronicleApp:
         return self._submit("set_week_start", week_start=self.week_selector.current(),
                             expected_week_start=self.state["week_start"])
 
+    def recheck_polr(self, *, cutoff_utc_us=None):
+        """Coalesce latest observation; ticks call only on a local-date transition."""
+        if not self.alive or not self.ready or self.closing:return False
+        try:
+            cutoff=to_us(self.now_utc()) if cutoff_utc_us is None else cutoff_utc_us
+            self._reminder_date=local_date(cutoff,self.zone).isoformat()
+            self._reminder_cutoff=cutoff
+            self._reminder_again=True
+            return self._queue_reminder() is not False
+        except Exception as exc:return self._reminder_failure(exc)
+
+    def _queue_reminder(self):
+        if (not self.alive or self.closing or not self._reminder_again
+                or self._reminder_inflight is not None or self.executing or self.pending is not None):return
+        self._reminder_token+=1
+        token=self._reminder_token
+        self._reminder_again=False
+        try:self.worker.requests.put(Message('polr_reminder',token,self._reminder_cutoff))
+        except Exception as exc:return self._reminder_failure(exc)
+        self._reminder_inflight=token
+        return True
+
+    def _receive_reminder(self, message):
+        if not self.alive or message.token!=self._reminder_inflight:return
+        self._reminder_inflight=None
+        if self.closing:
+            self._reminder_again=True  # A cancelled exit must not retain an already-delivered read token.
+            return
+        if self._reminder_again or self.executing or self.pending is not None:
+            self._reminder_again=True
+            self._queue_reminder()
+            return
+        value=message.value
+        if isinstance(value,Outcome):return self._reminder_failure(value.error or ValueError('Reminder evaluation unavailable'))
+        if value['dataset_id']!=self.dataset_id or value['cutoff_utc_us']!=self._reminder_cutoff:return
+        self._reminder_dismissed_date=value['dismissed_local_date']
+        if value['evaluation_status']!='AVAILABLE':return self._reminder_failure(value.get('calculation_error') or ValueError('Authoritative reminder evaluation unavailable'))
+        self.reminder=deepcopy(value)
+        self._reminder_error=None
+        self._render_reminder()
+
+    def _reminder_failure(self, exc):
+        self._reminder_error=exc
+        try:
+            self.status.configure(text=f'POL-R reminder evaluation unavailable: {exc}. Recheck POL-R to retry.')
+            self._render_reminder()
+        except Exception as secondary:exc.add_note(f'Reminder diagnostic presentation failed: {secondary!r}')
+        self._diagnose(exc)
+        return False
+
+    def _render_reminder(self):
+        if not self.alive:return
+        value=self.reminder
+        if self._reminder_dismissed_date is not None and self._reminder_dismissed_date==self._reminder_date:
+            self.reminder_banner.grid_remove();return
+        if self._reminder_error is not None:
+            text='POL-R reminder evaluation unavailable. Recheck POL-R to retry.'
+            if value and value['reminder_due']:text+=f" Previous trusted warning remains (as of {from_us(value['cutoff_utc_us']).isoformat()} UTC): "+self._reminder_context(value)
+        elif value and value['reminder_due']:
+            text='POL-R reconciliation needs review. '+self._reminder_context(value)
+        else:
+            self.reminder_banner.grid_remove();return
+        self.reminder_label.configure(text=text)
+        self.reminder_banner.grid()
+        enabled=self.can_mutate()
+        self.reminder_open.configure(state='normal' if enabled else 'disabled')
+        self.reminder_dismiss.configure(state='normal' if enabled else 'disabled')
+
+    @staticmethod
+    def _reminder_context(value):
+        lines=[f"Previous week: {value['previous_week_outstanding_counts']['outstanding']} unresolved task/day cells"]
+        if value['current_week_checked']:lines.append(f"Current week: {value['current_week_outstanding_counts']['outstanding']} unresolved task/day cells")
+        return '; '.join(lines)
+
+    def dismiss_polr_today(self):
+        # The accepted action instant also supplies its date; no second clock capture.
+        return self._submit('dismiss_polr_reminder_today')
+
+    def open_reminder_timesheet(self):
+        # Canonical ownership handles active, reentrant and stale references.
+        value=self.reminder
+        period='Last week' if value is None or value['previous_week_outstanding_counts']['outstanding'] else 'This week'
+        if not self.open_timesheet():return False
+        self.timesheet._reminder_period=period
+        return True
+
     def open_timesheet(self):
         # Duplicate/reentrant requests do not inspect drafts, clocks or task arguments.
         if self._timesheet_opening:
@@ -646,9 +750,11 @@ class ChronicleApp:
     def _timesheet_read(self, sheet, kind, value):
         if self.timesheet is not sheet or sheet.disposed or not self.alive or self.closing:
             raise ValueError("Timesheet session is no longer current")
-        if kind not in ("timesheet_tasks", "timesheet_preview", "timesheet_exports", "timesheet_export", "polr_proposal", "polr_manual", "polr_history", "polr_batch", "polr_day"):
+        if kind not in ("timesheet_tasks", "timesheet_preview", "timesheet_exports", "timesheet_export", "polr_proposal", "polr_manual", "polr_history", "polr_batch", "polr_day", "polr_reconciliation"):
             raise ValueError("Unsupported Timesheet view read")
         self._token += 1
+        if kind == "polr_reconciliation":
+            value={**value,"cutoff_utc_us":to_us(self.now_utc())}
         if kind == "timesheet_preview":
             value = dict(value,export_id=str(uuid4()),cutoff_utc_us=to_us(self.now_utc()))
         self.worker.requests.put(Message(kind,self._token,value))
@@ -665,6 +771,7 @@ class ChronicleApp:
         submission=self._polr_submission
         if submission is None or submission.request is not request or submission.token!=token:return
         submission.outcome=result  # Known commitment precedes all widget effects.
+        if result.status=='committed' and not self.closing:self.recheck_polr()
         try:self.status.configure(text=f"Confirmation {result.status}: {result.result.get('batch_id','')}")
         except Exception as exc:
             exc.add_note('Authoritative confirmation outcome is already retained.')
@@ -679,7 +786,11 @@ class ChronicleApp:
                 self._diagnose(exc)
         elif result.status!='unverified':self._polr_submission=None
         self._controls()
-        if not self.closing:self.refresh()
+        if not self.closing:
+            self.refresh()
+            if result.status=='committed':
+                if self.timesheet is not None:self.timesheet.reconciliation_committed()
+            else:self._queue_reminder()
 
     def _timesheet_detach(self):
         attempt = self._timesheet_attempt
@@ -1176,6 +1287,7 @@ class ChronicleApp:
                                         f"foreign_keys={self.runtime['foreign_keys']}"))
             self._controls()
             self.refresh()
+            self.recheck_polr()
         elif message.kind == "startup_failed":
             self.status.configure(text=f"Unable to open dataset: {message.value}")
             self._diagnose(message.value)
@@ -1200,6 +1312,8 @@ class ChronicleApp:
             else:
                 self.pending = None
                 self._pending_token = None
+                if result.status in ('committed','unchanged') and request.operation!='register_timesheet_export' and not self.closing:
+                    self.recheck_polr()  # Authoritative completion schedules reads before optional presentation.
                 self.status.configure(text={"committed": "Saved.", "unchanged": "Unchanged; nothing written.",
                                             "rejected": "Action rejected.", "rolled_back": "Operation rolled back.",
                                             "unavailable": "Database unavailable; operation did not begin."}.get(result.status, result.status))
@@ -1220,15 +1334,22 @@ class ChronicleApp:
                 self._advance_close()
             else:
                 self.refresh()
+                if result.status in ('committed','unchanged') and request.operation!='register_timesheet_export':
+                    if self.timesheet is not None:self.timesheet.reconciliation_committed()
+                else:self._queue_reminder()
+        elif message.kind == 'polr_reminder':
+            self._receive_reminder(message)
         elif message.kind in ("timesheet_status", "timesheet_publish"):
             self._timesheet_file_result(message)
-        elif message.kind in ("timesheet_tasks", "timesheet_preview", "timesheet_exports", "timesheet_export", "polr_proposal", "polr_manual", "polr_history", "polr_batch", "polr_day"):
+        elif message.kind in ("timesheet_tasks", "timesheet_preview", "timesheet_exports", "timesheet_export", "polr_proposal", "polr_manual", "polr_history", "polr_batch", "polr_day", "polr_reconciliation"):
             sheet = self.timesheet
             if sheet is not None and not sheet.disposed:
                 if message.kind == "timesheet_tasks":
                     sheet.receive_choices(message.token,message.value)
                 elif message.kind == 'timesheet_preview':
                     sheet.receive_preview(message.token,message.value)
+                elif message.kind=='polr_reconciliation':
+                    sheet.receive_reconciliation(message.token,message.value)
                 elif message.kind.startswith('polr_'):
                     sheet.receive_polr(message.kind,message.token,message.value)
                 else:
@@ -1301,6 +1422,9 @@ class ChronicleApp:
         if not self.closing:
             try:
                 cutoff = to_us(self.now_utc())
+                if self.ready and local_date(cutoff,self.zone).isoformat()!=self._reminder_date:
+                    self.recheck_polr(cutoff_utc_us=cutoff)
+                self._queue_reminder()
                 active = self.state.get("active")
                 if active:
                     elapsed = cutoff - active["start_utc_us"]
@@ -1311,6 +1435,7 @@ class ChronicleApp:
                 self.refresh(cutoff_utc_us=cutoff)
             except Exception as exc:
                 self._unavailable(exc)
+                self._reminder_failure(exc)
         self._tick_id = self.root.after(1000, self._tick)
 
     def retry(self):

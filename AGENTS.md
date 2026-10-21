@@ -51,10 +51,12 @@ execution approval. Stage 3A allocation, Preview and immutable export evidence a
 independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e` under the later
 Stage 3B approval. Stage 3B protected file Save/status/recovery is independently
 accepted at `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57` under the later Stage 3C
-approval. Stage 3C connects immutable absolute quarter-hour confirmation,
-whole/checked/manual review, exact stale acknowledgements and confirmation history
-for independent review. Stage 3 remains In Progress: comprehensive reconciliation,
-weekly summaries and reminders (3D) remain mandatory and pending.
+approval. The later explicit Stage 3D GO instruction independently accepts Stage 3C
+absolute confirmation for functional development. Stage 3D connects current daily/
+weekly reconciliation, coverage, current/frozen comparison and local-calendar
+reminders with durable explicit Dismiss for today, for independent review.
+Stage 3 functional completeness still requires independent adjudication; native
+qualification, Stage 4 stabilization and Stage 5 pilot remain separate.
 Subsequent execution stays bounded and independently reviewed, using substantial
 coherent slices without microtasks.
 The fresh rewrite

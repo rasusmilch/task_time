@@ -18,9 +18,11 @@ Stage 3A Preview, exact weekly allocation and immutable relational export eviden
 are independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B
 protected Save/retry/copy, explicit overwrite consent, fresh file inspection and
 Saved Reports are independently accepted at `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`.
-Stage 3C connects immutable absolute quarter confirmations, whole/checked/manual
-review, individual stale consent and read-only history for independent review.
-Preview itself writes nothing. Comprehensive reconciliation/reminders remain Stage 3D. Architecture
+Stage 3C immutable absolute confirmation is independently accepted for functional
+development by the later Stage 3D GO instruction. Stage 3D connects derived daily/
+weekly reconciliation, current/frozen comparison, coverage and previous/current
+calendar reminders with explicit durable Dismiss for today, for independent review.
+Preview and reconciliation write no evidence. Architecture
 owns these SQLite contracts; the retained JSONL workflows below are not active.
 These changes do not qualify the retained JSONL implementation.
 Its active-start recovery retains the modal draft through asynchronous failure and
@@ -45,8 +47,9 @@ remains mandatory for later core completion. Retained JSONL confirmations use
 hundredths/Actual-as-Enter; they do not implement that contract. SQLite recording
 is delivered and independently accepted with Stage 2A/2B. Stage 3A allocation,
 preview/evidence and Stage 3B file Save/recovery are independently accepted.
-Stage 3C confirmation is delivered for review; Stage 3D and native release
-qualification remain pending.
+Stage 3C confirmation is independently accepted for functional development.
+Stage 3D is delivered for independent review; Stage 3 completeness, native release
+qualification and pilot are not established by implementation alone.
 
 ## Architecture
 

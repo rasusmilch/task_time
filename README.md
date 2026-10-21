@@ -39,7 +39,14 @@ Confirmation, Manual POL-R Confirmation and Confirmation History. Explicit check
 source cells use frozen suggestions, positive-only defaults include already-equal
 values, zero requires explicit choice, and selected stale conflicts need individual
 acknowledgement. Confirmed amounts are absolute quarter counts, separate from Actual.
-Unknown is distinct from confirmed zero. No external POL-R verification is claimed.
+Unknown is distinct from confirmed zero. Reconciliation shows current task/day
+Actual, Suggested and Confirmed, signed Delta/gap, coverage and full-week summaries.
+Partial Custom views retain complete-week rounding context. Compare a loaded report
+without rewriting it; Copy Suggested copies the absolute quarter amount, not Delta.
+The main banner checks previous week every used local day and current week Monday/
+Friday. Open Timesheet navigates to reconciliation; explicit Dismiss for today
+survives same-day restart and changes no work or confirmation. Recheck POL-R is
+available after read failures. No external POL-R verification is claimed.
 Main shows own-task Today/This week; mini shows active or selected task Today.
 One database worker supplies coordinated integer-microsecond accounting while Tk
 continues events. Exact committed request retries precede stale checks; uncertain
@@ -140,8 +147,9 @@ Stage 3 is In Progress. Stage 3A connected frozen Preview, exact weekly suggesti
 and immutable SQLite registration/recovery are independently accepted at
 `d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B protected file Save/status and
 Saved Reports recovery are independently accepted at
-`76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C confirmation is delivered for
-independent review. Registration stores
+`76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C is independently accepted for functional development under the later
+Stage 3D GO instruction. Stage 3D is delivered for independent review, not automatic
+Stage 3 acceptance or release qualification. Registration stores
 the reviewed labels, full-week basis, scoped cells
 and exact UTF-8 text/digest atomically with its request receipt; later work cannot
 rewrite them. Registered reports remain recoverable after restart without a retained
@@ -150,8 +158,10 @@ persisted; alternate copy paths do not rewrite the original destination.
 Three new SQLite tables retain immutable absolute batches/cells and latest current
 references. Exact requests, complete frozen source coverage and selected reviewed
 priors are transactionally validated; uncertain commits reconcile the same Request.
-Confirmation never changes work, exports or files. Stage 3D comprehensive daily/
-weekly reconciliation, summaries and reminders remain pending.
+Confirmation never changes work, exports or files. Current reconciliation and
+weekly summaries are derived reads. Dismissal stores only one nullable local date
+in metadata through the existing atomic Request/receipt boundary; reads and ticks
+never persist reconciliation truth.
 Exact Actual, displayed hundredths and quarter units remain distinct. The single algorithm lives in the export contract;
 there is no duplicate timer-display rounding implementation. External redistribution
 and worked-day zero-entry rules need validation before affected official reporting.

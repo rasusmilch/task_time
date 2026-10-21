@@ -65,6 +65,10 @@ class DatabaseWorker(Thread):
                         value = service.list_polr_confirmation_batches()
                     elif message.kind == "polr_batch":
                         value = service.read_polr_confirmation_batch(message.value)
+                    elif message.kind == 'polr_reconciliation':
+                        value = service.read_polr_reconciliation(**message.value)
+                    elif message.kind == 'polr_reminder':
+                        value = service.read_polr_reminder_status(cutoff_utc_us=message.value)
                     elif message.kind == "mutate":
                         value = service.execute(message.value)
                     elif message.kind == "reconcile":

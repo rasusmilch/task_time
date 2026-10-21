@@ -20,9 +20,9 @@ Actual or a later renderer. Stage 3A is independently accepted at
 `d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Preview itself writes nothing. Stage 3B
 connects protected materialization, fresh status, one-call overwrite consent and
 Saved Reports recovery, independently accepted at
-`76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C connects explicit source/manual
-absolute confirmation and immutable history for independent review. Comprehensive
-reconciliation, weekly summaries and reminders remain Stage 3D.
+`76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C explicit source/manual absolute confirmation is independently accepted for
+functional development under the later Stage 3D GO instruction. Stage 3D connects
+derived reconciliation, weekly summaries and reminders for independent review.
 
 **SQLite supersedes the earlier mandatory JSONL envelope, segment manifest,
 physical replay order, fsync/synchronize-journal and Python projection mechanisms.**
@@ -431,6 +431,16 @@ reviewed-prior/stale protections above.
 Daily/weekly summaries and required previous-week/application-used-day plus
 current-Friday/Monday reminders retain cell-level Unknown, coverage and allocation
 mismatches even when weekly sums agree. Open/Save never dismisses or confirms.
+Stage 3D implements those reads and actions in the existing modal Timesheet.
+NOT_APPLICABLE has no work/suggestion/confirmation; positive-work or positive-suggestion
+cells without confirmation are UNKNOWN. Known equal/differing suggestions are
+MATCH/MISMATCH regardless of Daily Delta. UNAVAILABLE is not a clean result.
+Full-week summaries count individual applicable cells, retain all seven allocation
+dates as context and label partial visible scope. Frozen/current comparison flags
+suggestion changes separately from newer-differing confirmation conflicts; it never
+invalidates/reinterprets immutable evidence or bypasses Stage 3C acknowledgement.
+Only explicit Dismiss for today changes the one metadata date, through atomic
+request/receipt reconciliation. It is not confirmation or a stored completion flag.
 External unavailability does not block Actual. This is mandatory core Stage 3
 before pilot, not optional allocation-budget Stage 6 work.
 

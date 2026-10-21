@@ -61,9 +61,16 @@ receipts or commits. No release or production qualification is implied below.
   coverage, positive defaults including equal values, fresh selected-prior rejection
   and exact individual stale consent by committed receipt order. Retain exact
   uncertain requests, immutable history and bounded task/day feedback without
-  changing work, exports or files. Stage 3C awaits independent review. Comprehensive
-  reconciliation/summaries/reminders, native Windows source/actual suspend
-  qualification and complete-core pilot remain pending.
+  changing work, exports or files. Stage 3C is independently accepted for functional
+  development. Connect current daily/weekly reconciliation, cell-based coverage,
+  complete-week/partial-scope summaries, immutable frozen/current comparison and
+  copyable absolute suggestions in the same modal Timesheet. Add coalesced local-date
+  previous-week/daily and current-week/Monday-and-Friday reminder reads, Open Timesheet
+  navigation and explicit same-day durable dismissal through one metadata date and
+  the existing atomic receipt. No read/tick/Save confirms or dismisses. Stage 3D and
+  Stage 3 functional completeness await independent review; native Windows source/
+  actual suspend qualification, Stage 4 stabilization and complete-core pilot remain
+  separate.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete
@@ -76,8 +83,8 @@ receipts or commits. No release or production qualification is implied below.
   reviewed source coverage including unchecked cells, positive-default selection
   including already-equal values, and exact selected stale acknowledgements.
   Stage 3A implements allocation/preview/evidence and Stage 3B connects protected
-  file Save/recovery; Stage 3C connects confirmation. Comprehensive reconciliation,
-  weekly summaries and reminder rules remain pending.
+  file Save/recovery; Stage 3C connects confirmation and Stage 3D connects derived
+  reconciliation, summaries and calendar reminders for independent review.
   Retained JSONL source is unshipped; it is not a parallel runtime.
   External redistribution/zero-entry policy needs validation before official
   reporting/pilot. Allocation budgets/conveniences remain optional and separately

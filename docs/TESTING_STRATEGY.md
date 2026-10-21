@@ -60,7 +60,7 @@ qualification remain distinct.
 
 ## Connected SQLite timer evidence
 
-The Stage 1A/1B/1C, Stage 2A/2B and Stage 3A/3B/3C suites below exercise the shipped `chronicle` source with disposable
+The Stage 1A/1B/1C, Stage 2A/2B and Stage 3A/3B/3C/3D suites below exercise the shipped `chronicle` source with disposable
 SQLite datasets. This inventory describes assertions, not an automatic passing
 result or native qualification; current command outcomes belong in receipts.
 
@@ -94,6 +94,10 @@ result or native qualification; current command outcomes belong in receipts.
 | [test_polr_confirmation.py](../tests/rewrite/test_polr_confirmation.py) | Real three-table SQLite confirmation: exact quarter parsing/bounds, Unknown/explicit zero, new equal-value evidence, whole/checked/manual batches, complete source including unchecked/zero, canonical metadata/names/selection, individual stale acknowledgements, selected identity changes versus unchecked newer priors, commit_seq precedence independent of audit time, duplicate/deleted tasks, partial-source basis exclusion, mandatory A/B/F, immutable exports/files/work, and optional unavailable manual calculation context. UPDATE/DELETE guards, current/prior/source/receipt corruption, exact old retries, partial SQL/COMMIT/independent-probe faults and barrier-controlled child death at batch/cell/current/receipt/pre/post-COMMIT establish atomicity/reopen refusal. Disposable process kills are not hardware power-loss proof. |
 | [test_polr_confirmation_ui.py](../tests/rewrite/test_polr_confirmation_ui.py) | Actual app/Timesheet/worker/SQLite source subset and manual replacement, checked zero, defer/read purity, invalid retained decimal drafts, stale prior requiring explicit refresh, individual consent reset, known rollback/unavailability, actual committed-but-unprobed uncertainty/exact Request retry, exceptional-exit cancellation, busy/destroyed origins/late responses, restart source/manual reads, optional unavailable context, worker/UI thread instrumentation and known commitment despite read/widget failure. Direct callbacks isolate these faults; server-input evidence is separate. |
 | [test_polr_confirmation_operator.py](../tests/rewrite/test_polr_confirmation_operator.py) | Server-delivered XTest task/work/timer → Timesheet Preview/Save → source review/defer → checked subset and explicit zero → manual invalid/valid decimal → individual stale acknowledgement → immutable history/Close. Actual source/manual/history controls, positive defaults, native keyboard decimal input, enabled main/mini probes blocked by local modality and scheduled timer processing are exercised. File chooser decisions are doubled; no external POL-R connection, native Windows/NTFS or complete pilot qualification is claimed. |
+| [test_reconciliation.py](../tests/rewrite/test_reconciliation.py) | Pure classifier and actual SQLite current projection: A/B/F, Unknown/known zero, opposing gaps, explained Delta, full-week/partial scope, cell-rounded rollups, independent task ceilings/deleted work, all weekdays, exact microseconds, DST/non-hour transitions, running/future work, one read/no writes, current/frozen reallocation and committed-sequence flags. Shared basis is calculated once, not a second allocator. |
+| [test_polr_reminders.py](../tests/rewrite/test_polr_reminders.py) | All seven local weekdays × seven week conventions, previous-daily/current-Monday-and-Friday eligibility, worked-zero/explained differences, canonical dismissal/date validation, same-day restart/new date/absence, read/reopen refusal, no-op/exact receipt retry, actual failed-COMMIT and committed-but-unprobed reconciliation. These use disposable real SQLite data; not native suspend or power-loss proof. |
+| [test_reconciliation_ui.py](../tests/rewrite/test_reconciliation_ui.py) | Actual app/worker/Timesheet/SQLite callbacks: defaults, explicit Custom/calendar drafts, copy, current/frozen/known-zero navigation and current-batch review without an export, manual confirmation, failure-preserved as-of state, hidden partial rendering/recovery, stale/closed-view reads, coalesced startup/commit/rollover/recheck, no per-tick reminder query, banner navigation, queue failure without automatic retry, same-day suppression despite calculation failure before/after Dismiss or startup, date rollover during an unresolved dismissal, known rollback/committed presentation failure, exact uncertain dismissal and same-day restart, UI/worker thread separation and orderly queued-read shutdown. Callback faults are distinct from desktop event evidence. |
+| [test_reconciliation_operator.py](../tests/rewrite/test_reconciliation_operator.py) | XTest mouse/keyboard through real banner → Reconciliation → frozen Preview/Save → checked confirmation → manual mismatch → History correction → fresh reconciliation → explicit Dismiss. Exercises actual Selected UUID controls, typed Custom/calendar Apply/cancel, worked zero-suggestion Unknown/copy, current-batch and loaded frozen comparison navigation, weekly explanation/coverage, immutable file/evidence, blocked enabled main/mini probes, running timer and scheduled processing. File chooser decisions are doubled; no external POL-R/Windows/NTFS/pilot claim. |
 
 A usable display is required for `real_tk` cases. Linux Xorg/XTest evidence does
 not establish native Windows/NTFS or actual suspend/resume. The actual Python,
@@ -107,8 +111,9 @@ remain deployment/pilot evidence, not an executable-build requirement or permane
 Stage 2 blocker. The later Stage 3A approval independently accepts Stage 2B/complete
 recording at `adc09ba0935e8718c4ad2101057af9c6022074cc`. Stage 3A is independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`.
 Stage 3B is independently accepted at `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`.
-Stage 3C confirmation tests remain implementation evidence for independent review,
-not complete POL-R acceptance.
+The later explicit Stage 3D GO instruction independently accepts Stage 3C for
+functional development. Stage 3D tests remain implementation evidence for independent
+review/Stage 3 completeness adjudication, not complete pilot or external acceptance.
 
 ## Retained legacy test inventory and limits
 
@@ -276,7 +281,8 @@ clock/restart or dataset-timezone-change behavior.
 
 Stage 3A allocation/candidate/registration/preview and Stage 3B protected
 publication/recovery and Stage 3C confirmation evidence are inventoried above.
-Comprehensive Stage 3D reconciliation/reminder obligations remain future checks; file checks describe
+Stage 3D reconciliation/reminder evidence is inventoried above; continuing qualification
+obligations remain. File checks describe
 the implemented boundary and continuing qualification obligations. An inventory
 is not a current passing result.
 Follow the single [precision/allocation owner](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
@@ -371,8 +377,10 @@ claim of complete reconciliation. External zero/omitted-entry behavior needs
 validation before affected Stage 3 official workflow and pilot. Simulated external
 interaction/math tests do not establish employer/customer redistribution approval.
 
-Current Stage 3C real-Tk evidence covers bounded immediate feedback and explicit
-confirmation; Stage 3D still requires comprehensive summaries/coverage/reminders.
+Stage 3C real-Tk evidence covers bounded immediate feedback and explicit confirmation;
+Stage 3D adds connected summaries/coverage/reminders and separate server-input evidence.
+Representative bounded reconciliation/reminder timing is engineering evidence only;
+no persistent cache or new integrity validator is justified by hypothetical scale.
 Affected real-Tk workflow evidence must distinguish Actual/Suggested/Confirmed,
 Daily Delta/gap/adjustment/coverage and frozen versus current proposals. Exercise
 whole/checked/manual confirmation, zero, defer/review, stale errors, fresh preview
@@ -416,9 +424,8 @@ pilot: actual Python/built-in SQLite/Tk, offline IANA rules, writable NTFS owner
 persisted timers, main/mini, active-start correction, modal input/focus, exceptions
 and ordinary close/reopen, manual timed/date-only entry and week-start persistence.
 Actual suspend/resume needs native evidence. Delivered History/Timesheet Preview
-and file Save/recovery/explicit confirmation require native validation; pending
-comprehensive reconciliation, reminders and backup/restore require native validation
-when delivered. A source launch without core POL-R is not a
+and file Save/recovery/explicit confirmation/reconciliation/reminders require native
+validation; pending backup/restore requires native validation when delivered. A source launch without core POL-R is not a
 qualified complete pilot. There is no executable-package qualification requirement.
 
 Inspect [RUNNING.md](../RUNNING.md), [run.ps1](../scripts/run.ps1) and metadata before

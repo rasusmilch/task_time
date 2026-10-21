@@ -320,6 +320,7 @@ def test_stale_read_rejected_but_closed_origin_commit_handled():
     app._pending_token = 2
     app.executing = True
     app._controls = lambda: None
+    app.recheck_polr = lambda: None  # This double isolates owner completion, not reminder reads.
     app._handle(Message("mutate", 2, Outcome("committed", {"entry_id": "retained"})))
     assert app.pending is None and app.status.text == "Saved."
 

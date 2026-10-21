@@ -16,9 +16,9 @@ and persisted week configuration.
 Stage 2B/complete recording is independently accepted. Stage 3A Preview and immutable
 export evidence are independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`.
 Stage 3B protected file Save/status and Saved Reports are independently accepted at
-`76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C connects absolute confirmation
-and immutable history for independent review. Comprehensive reconciliation/reminders
-remain Stage 3D. Earlier
+`76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C confirmation is independently accepted for functional development under
+the later Stage 3D GO instruction. Stage 3D connects derived daily/weekly
+reconciliation and reminders for independent review. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
 ## Small application and responsibility boundaries
@@ -63,7 +63,7 @@ complete behavioral slices follow the roadmap, not optional post-pilot bolt-ons:
 | Absolute confirmation batches/cells | Immutable batch identity/audit/source and selected task/day absolute integer quarter counts, reviewed prior identity and exact cell-specific acknowledgement. One batch is atomic. No arbitrary hundredth confirmations. |
 | Current confirmed references | Each known task/day points to its latest committed immutable confirmation cell/batch; absence means Unknown, an explicit zero row means known zero. No additive confirmed balance. |
 | Committed request receipts | Unique request identity, strictly comparable request content and committed result, atomically tied to the use case. Not file-availability state. |
-| Dataset metadata | Schema version, explicit IANA timezone and selected week convention. Future upgrades protect new-runtime data; no legacy import. |
+| Dataset metadata | Schema version, explicit IANA timezone, selected week convention and one nullable canonical reminder-dismissed local date. No computed status/summary ledger. Future upgrades protect new-runtime data; no legacy import. |
 
 Use enforced foreign keys and appropriate STRICT, CHECK and UNIQUE constraints;
 validate bounded integer/date ranges and shapes in services as well. Stage 1A SQL
@@ -287,7 +287,10 @@ basis/cells are added in Stage 3A; three confirmation batch/cell/current-referen
 tables are added in Stage 3C, preserving stable identities. The exact expanded fresh
 schema still uses version 1 and refuses older signatures without conversion. The
 current application exposes Timesheet Preview, protected file Save/recovery and
-explicit absolute confirmation. Stage 1B exercises real SQLite
+explicit absolute confirmation and derived reconciliation/reminders. Stage 3D adds
+only `dataset_meta.polr_reminder_dismissed_local_date TEXT NULL`, SQL shape checks
+plus real civil-date validation on read/reopen. The exact fresh schema signature
+changes directly; no migration/conversion or automatic dataset recreation. Stage 1B exercises real SQLite
 process death at transaction/receipt/commit boundaries, atomic Switch, historical
 exact retries, active restart/calendar continuity, ordinary ownership races and
 rollback-journal pre-COMMIT and post-cleanup boundaries. These bounded local
@@ -521,8 +524,9 @@ export/dataset/cutoff checks reject late/mismatched results. Complete content is
 prepared before rendering. Partial installation hides untrusted output, preserves
 the original diagnostic and allows explicit recovery. Read-only exact text remains
 scrollable/copyable. Close can discard outstanding reads and volatile candidates
-before registration. Stage 3A/3B are independently accepted; Stage 3C below is
-delivered for independent review. Stage 3 remains incomplete.
+before registration. Stage 3A/3B/3C are independently accepted for functional
+development; Stage 3D below is delivered for independent review, not self-accepted
+Stage 3 completeness.
 
 ### Connected Stage 3B protected Save and recovery
 
@@ -594,8 +598,8 @@ alternate paths survive only this handoff, not restart policy. Exit warns for cu
 unfinished registered attempt/handoff, never undoes evidence/files or writes recovery
 state. Forced destruction/crash is not a promise to preserve volatile context.
 No Save/open/status operation confirms POL-R, stops/resets timers or dismisses a
-reminder. Stage 3C confirmation is described below; reconciliation/reminders remain
-Stage 3D.
+reminder. Stage 3C confirmation and Stage 3D reconciliation/reminders are described
+below; Save remains independent of both.
 
 ### Connected Stage 3C absolute confirmation
 
@@ -675,6 +679,101 @@ request and content even if the originating widget disappears. The existing owne
 default-No exceptional exit remains available; no exit undoes possible commitment.
 Known success survives result/read/control failure, permits Close/renewed review,
 and refreshes current review/status without rewriting old exports or Actual.
+
+### Connected Stage 3D reconciliation and calendar reminders
+
+`timesheet.scope_labels`, `calculate_scope` and `scope_basis` extract the existing pure UUID
+selection/full-week basis calculation shared by frozen preparation and current
+reconciliation. They use the existing `accounting.calculate_daily` and unchanged
+`polr_allocation.allocate_week`; no new Candidate, renderer, UUID, clock or file
+inspection belongs in reconciliation. `reconciliation.project` composes detached
+current facts, stable project/name/UUID/date ordering and joined latest confirmation
+references. One accounting pass covers visible and optional frozen scopes, with allocation
+only for their distinct required weeks; intervening unrequested weeks are not
+allocated. Context dates never become extra selectable report cells.
+
+`TimerService.read_polr_reconciliation(*, cutoff_utc_us, period="this_week",
+start_date=None, end_date=None, scope_kind="all", task_ids=(), source_export_id=None)`
+uses one existing read transaction to capture dataset/zone/week, retained task/project
+metadata, effective mixed work, active timer, latest immutable confirmation amounts
+and optional validated registered source/committed sequence. It reuses existing
+integrity validation once, adding no second full-history validator. Pure projection
+follows that snapshot with the explicit cutoff and no further observation.
+
+The detached result carries applied dates/scope, daily cells, task/week and cross-task
+summaries, visible totals, coverage/outstanding counts and optional source comparison.
+The [semantic owner](EXPORT_EVIDENCE_CONTRACT.md#displayed-reconciliation) defines
+classification/precision. Unknown retains NULL amount/identity; explicit zero keeps
+its batch. Weekly coverage counts individual applicable cells, not net gaps. Every
+intersecting task/week retains seven-date context, exact target/adjustment and known
+confirmed subtotal; partial scope cannot claim a complete-week review. Cross-task
+summaries sum task targets/adjustments and cell-rounded Actual, never re-round a
+combined week or add project groups. No derived status is persisted.
+
+Source comparison retains the export's original scope/labels/amounts/basis. Current
+suggestions use the current convention, displaying both week starts if changed.
+`CURRENT_SUGGESTION_DIFFERS_FROM_FROZEN` and `NEWER_DIFFERING_CONFIRMATION` are
+additional flags; they neither replace base daily classification nor invalidate
+immutable exports or bypass existing Stage 3C stale-source acknowledgement rules.
+
+The same owned modal Timesheet contains Reconciliation with independent This week/
+Last week/Custom, All/Selected UUID drafts, owned inline calendars and explicit
+Apply/Refresh. Read tokens, dataset/cutoff/scope/source checks reject obsolete results.
+Draft edits invalidate readiness immediately. Complete strings are prepared before
+widget replacement; partial output is hidden/untrusted, with original diagnostics.
+A failed read can retain previous trusted rows only under their previous as-of label.
+Scrollable daily and full-week summaries distinguish current/frozen/confirmed values,
+precise adjustment, partial scope and incomplete known subtotals. Copy Suggested
+copies an absolute two-place quarter value on Tk, not Delta or submission evidence.
+Navigation reuses saved-report/source/manual confirmation interfaces. Review current
+confirmation reads the selected known cell's immutable batch, including manual/zero
+confirmations without an export; no new editor,
+Toplevel, mainloop or pending-request coordinator. Close remains reachable at the
+supported minimum size. Timers and normal worker delivery continue under modality.
+
+`read_polr_reminder_status(*, cutoff_utc_us)` captures the same facts and dismissal
+metadata in one read transaction. It uses the same projection/classifier: previous
+reporting week on every dataset-local day; current reporting week only on civil
+Monday/Friday, independently of the committed reporting-week start. Empty unused
+cells require no invented confirmation; worked zero-suggestion Unknown and opposing
+daily mismatches remain outstanding. Failure is unavailable, not proof of all-clear. If the metadata snapshot is
+readable but calculation fails, the result preserves that date/context and original
+diagnostic with unavailable counts/due (NULL), never fabricated zeros. Unreadable
+authoritative snapshots remain read errors. This permits truthful same-day
+dismissal suppression across restart independently of calculation availability.
+
+`dismiss_polr_reminder_today(local_date, *, request_id, action_utc_us) -> Outcome`
+validates a canonical real date against the accepted instant in the dataset zone,
+then updates the sole metadata field through existing BEGIN IMMEDIATE/receipt/
+COMMIT handling. Same-date no-op creates no receipt. Exact old retry resolves its
+receipt before reapplying; uncertain commitment retains the original pending Request.
+No work, confirmation, export, file or timezone mutation occurs. New dates expire
+suppression by comparison, never by cleanup writes or absent-day notification replay.
+
+`ChronicleApp` adds the compact Open Timesheet / Dismiss for today banner and explicit
+Recheck POL-R. Startup readiness, relevant committed mutations, local-date transitions
+and recheck queue worker kind `polr_reminder`. One in-flight token plus a latest
+requested observation coalesces superseded reads; older/session-mismatched results
+cannot replace current status. The ordinary tick detects date changes without
+per-second reconciliation queries. Failures preserve previous trusted warnings,
+label unavailable evaluation and permit explicit retry while Actual controls remain
+independent. Known committed outcomes schedule the authoritative reread before
+optional result presentation, so a widget failure cannot suppress that evaluation.
+A verified reminder metadata read supplies one ordinary observed dismissal-date
+view value, independent of calculation availability. Historical receipt results do
+not overwrite that current metadata observation. It suppresses the same-day banner even when calculation fails before or after the
+action; the ordinary status still reports unavailability, never clean truth.
+Unverified pending mutations defer reminder delivery until resolution, retaining
+the trusted state. No separate scheduler/thread/cache is introduced. Dismissal is
+reflected only from authoritative metadata reads, never queue acceptance.
+Opening/Save/confirmation do not dismiss. Banner opening prefers outstanding previous week, otherwise current
+week, and presents Reconciliation through the existing single modal owner with a
+fresh observation; other modals prevent competing construction.
+
+Stage 3C is independently accepted for functional development by the later explicit
+Stage 3D approval. This delivery requires independent review and Stage 3 functional
+completeness adjudication. It establishes no external verification, native Windows,
+suspend/power-loss, Stage 4 stabilization or Stage 5 pilot qualification.
 
 ## Frozen files and core POL-R
 

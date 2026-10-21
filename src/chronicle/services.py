@@ -372,11 +372,66 @@ class TimerService:
     def read_polr_confirmation_batch(self, batch_id: str) -> dict:
         with self._read_transaction() as c:return self._confirmation_batch(c,batch_id)
 
+    def _reconciliation_facts(self, c):
+        tasks=[dict(r) for r in c.execute('SELECT * FROM tasks ORDER BY task_id')]
+        projects=[dict(r) for r in c.execute('SELECT * FROM projects ORDER BY project_id')]
+        work=[dict(r) for r in c.execute('''SELECT e.task_id,r.* FROM work_entries e JOIN work_revisions r
+          ON r.entry_id=e.entry_id AND r.revision=e.current_revision WHERE r.is_deleted=0''')]
+        row=c.execute('SELECT * FROM active_timer').fetchone()
+        current={}
+        for r in c.execute('''SELECT p.task_id,p.work_date,p.batch_id,v.confirmed_quarters,r.commit_seq
+          FROM polr_confirmed_current p JOIN polr_confirmation_cells v USING(batch_id,task_id,work_date)
+          JOIN polr_confirmation_batches b USING(batch_id) JOIN committed_requests r ON r.request_id=b.created_request_id'''):
+            current[(r['task_id'],r['work_date'])]=dict(batch_id=r['batch_id'],quarters=r['confirmed_quarters'],seq=r['commit_seq'])
+        return dict(dataset_id=self.store.dataset_id,timezone=self.store.timezone,week_start=self.store.week_start,
+                    tasks=tasks,projects=projects,work=work,active=dict(row) if row else None,current=current)
+
+    def read_polr_reconciliation(self, *, cutoff_utc_us: int, period: str='this_week',
+                                 start_date: str | None=None, end_date: str | None=None,
+                                 scope_kind: str='all', task_ids: tuple[str,...]=(),
+                                 source_export_id: str | None=None) -> dict:
+        from .reconciliation import project
+        instant(cutoff_utc_us)
+        with self._read_transaction() as c:
+            facts=self._reconciliation_facts(c)
+            source=self.store.read_export(c,source_export_id) if source_export_id is not None else None
+            seq=self._export_sequence(c,source_export_id) if source is not None else None
+        return project(**facts,cutoff_utc_us=cutoff_utc_us,period=period,start_date=start_date,
+                       end_date=end_date,scope_kind=scope_kind,task_ids=task_ids,source=source,source_seq=seq)
+
+    def read_polr_reminder_status(self, *, cutoff_utc_us: int) -> dict:
+        from .reconciliation import project,reminder_periods,reminder_status,reminder_context
+        instant(cutoff_utc_us)
+        with self._read_transaction() as c:
+            facts=self._reconciliation_facts(c)
+            dismissed=self.store.dismissed_date(c)
+        today,previous,end,first,last,checked=reminder_periods(cutoff_utc_us,self.store.zone,facts['week_start'])
+        context=reminder_context(dataset_id=facts['dataset_id'],cutoff_utc_us=cutoff_utc_us,
+            timezone=facts['timezone'],week_start=facts['week_start'],dismissed_local_date=dismissed)
+        try:
+            report=project(**facts,cutoff_utc_us=cutoff_utc_us,period='custom',start_date=previous.isoformat(),
+                           end_date=(last if checked else end).isoformat())
+        except (ValueError,OverflowError) as exc:
+            context['calculation_error']=exc
+            return context
+        return reminder_status(report,dismissed)
+
+    def dismiss_polr_reminder_today(self, local_date: str, *, request_id: str, action_utc_us: int) -> Outcome:
+        return self._make('dismiss_polr_reminder_today',request_id,action_utc_us,dict(local_date=local_date))
+
     def execute(self, request: Request) -> Outcome:
         # The transaction resolves exact receipts before calling this current-state validator.
         def operation(c):
             a, op, now = request.args(), request.operation, request.action_utc_us
             local_date(now, self.store.zone)
+            if op == 'dismiss_polr_reminder_today':
+                from .polr_allocation import civil
+                if set(a)!={'local_date'}:raise ValueError('Dismissal requires one local date')
+                day=civil(a['local_date'])
+                if day!=local_date(now,self.store.zone):raise StaleState('Dismissal date differs from accepted dataset-local observation')
+                if self.store.dismissed_date(c)==day.isoformat():return None
+                c.execute('UPDATE dataset_meta SET polr_reminder_dismissed_local_date=? WHERE singleton=1',(day.isoformat(),))
+                return dict(local_date=day.isoformat())
             if op == 'confirm_polr_absolute':
                 from .polr_confirmation import fields,REQUEST_FIELDS
                 fields(a,REQUEST_FIELDS)

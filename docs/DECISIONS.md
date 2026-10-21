@@ -949,6 +949,36 @@ confirmation, allocation change, migration or persisted Delta ledger is authoriz
 Stage 3C delivery requires independent review; Stage 3 remains In Progress. External
 redistribution and worked-day zero-entry policy remain unverified before pilot.
 
+### Stage 3C functional acceptance and Stage 3D reconciliation/reminder approval
+
+**Status:** current. **Provenance:** the later explicit user GO execution instruction
+“CHRONICLE — STAGE 3D Complete Daily/Weekly POL-R Reconciliation, Coverage,
+Current-Source Comparison, and Reminder Workflow” independently accepts Stage 3C
+for functional development. This is later approval, not an earlier receipt's claim.
+
+Use one read-only current reconciliation projection, shared accounting/allocation,
+latest immutable confirmation references and explicit cutoff. Preserve Unknown,
+known zero, daily allocation mismatches despite net equality, explained Delta,
+complete-week rounding and partial visible scope. Compare immutable frozen source
+with current suggestions/convention separately from newer-differing confirmation
+flags. Keep all confirmation/file rules and Open external-policy questions intact.
+
+Connect one Reconciliation section within the existing modal Timesheet, with
+explicit draft Apply/Refresh, copyable absolute suggestions and existing source/
+manual/history navigation. Previous week is checked every used dataset-local day;
+current week on civil Monday/Friday. Startup, rollover, relevant commits and recheck
+coalesce reads on the existing worker, never per-second reconciliation polling.
+One explicit Dismiss for today persists a nullable canonical local date in metadata
+through the existing exact-request receipt transaction; it survives same-day restart
+and suppresses both categories even after later work. A new date expires it by
+comparison. Opening/Save never dismisses or confirms. Unavailable is not all-clear.
+No new datastore, scheduler, summary ledger, migration or external API is authorized.
+
+Stage 3D delivery and Stage 3 functional completeness require independent review.
+Native qualification, external redistribution/worked-day zero policy, Stage 4
+stabilization and Stage 5 pilot remain separate. This approval does not authorize
+later stages, merge or release.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

@@ -33,7 +33,9 @@ SCHEMA = f"""
 CREATE TABLE dataset_meta (
  singleton INTEGER PRIMARY KEY CHECK(singleton=1), dataset_id TEXT NOT NULL UNIQUE {uuid_constraint('dataset_id')},
  timezone TEXT NOT NULL CHECK(length(timezone)>0),
- week_start INTEGER NOT NULL CHECK(week_start BETWEEN 0 AND 6)
+ week_start INTEGER NOT NULL CHECK(week_start BETWEEN 0 AND 6),
+ polr_reminder_dismissed_local_date TEXT CHECK(polr_reminder_dismissed_local_date IS NULL OR
+   (length(polr_reminder_dismissed_local_date)=10 AND polr_reminder_dismissed_local_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'))
 ) STRICT;
 CREATE TABLE projects (
  project_id TEXT PRIMARY KEY {uuid_constraint('project_id')}, name TEXT NOT NULL CHECK(length(trim(name))>0),
@@ -381,10 +383,19 @@ class SQLiteStore:
             raise ValueError("Dataset metadata is incomplete")
         uuid_text(meta[0]["dataset_id"])
         load_zone(meta[0]["timezone"])
+        SQLiteStore.dismissed_date(c)
         SQLiteStore.assert_lifecycle(c)
         for row in c.execute("SELECT export_id FROM timesheet_exports"):
             SQLiteStore.read_export(c, row[0])
         SQLiteStore.assert_confirmations(c)
+
+    @staticmethod
+    def dismissed_date(c):
+        from .polr_allocation import civil
+        value = c.execute('SELECT polr_reminder_dismissed_local_date FROM dataset_meta').fetchone()[0]
+        if value is not None:
+            civil(value)
+        return value
 
     @staticmethod
     def assert_lifecycle(c):

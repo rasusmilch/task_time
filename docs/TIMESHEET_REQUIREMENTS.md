@@ -23,10 +23,10 @@ rewrite, not a Qt/PySide6 frontend and not incremental JSONL compatibility work.
 Stage 1A delivers the connected SQLite timer foundation. Stage 2A adds connected
 manual work, revision/read services, mixed accounting and week configuration.
 Stage 2B/complete Stage 2 recording and Stage 3A Preview/allocation/immutable export
-evidence and Stage 3B file Save/recovery are independently accepted. Stage 3C connects
-whole/checked/manual absolute quarter confirmations and immutable history for
-independent review. Comprehensive reconciliation/reminders remain Stage 3D gates; this is not
-complete core/pilot readiness.
+evidence, Stage 3B file Save/recovery and Stage 3C absolute confirmation are
+independently accepted for functional development. Stage 3D connects comprehensive
+reconciliation/reminders for independent review; this is not complete core/pilot
+readiness or independent acceptance of Stage 3 functional completeness.
 
 ## SELECTED — Replacement installation and data boundary
 
@@ -319,6 +319,16 @@ Show distinct task/day values:
   weekly Actual, accurately expressed in minutes/seconds or compatible exact units.
   It is nonnegative and less than 15 minutes per task/week, not extra work.
 
+Base daily classifications are NOT_APPLICABLE (zero work/suggestion with no
+confirmation), UNKNOWN (positive work or suggestion without confirmation), MATCH
+(known confirmation equals suggestion), MISMATCH (known differing amount), and
+UNAVAILABLE (required evidence/calculation cannot be established). Known zero has
+identity and may match zero. Coverage includes positive work/suggestion/confirmation
+and explicit known zero, but does not demand confirmation for unused dates.
+UNKNOWN and MISMATCH are actionable; unavailable is never all-clear. A complete
+week requires all applicable individual cells to be known and matching. Inclusive
+partial Custom views preserve full-week context and are not complete-week reviews.
+
 Distinguish Unknown/not confirmed, matching suggestion/confirmation, known daily
 allocation mismatch, incomplete review/confirmation coverage, explained upward
 rounding and stale proposals after subsequent work/correction/confirmation.
@@ -478,9 +488,16 @@ Friday and Monday. Use task/day allocation agreement and review/confirmation
 coverage, not a weekly net that hides opposing mismatches or unexplained Unknown.
 Daily Actual-minus-Confirmed rounding differences alone do not establish an
 allocation mismatch. Banner actions are Open Timesheet and explicit Dismiss for today.
-Opening or saving does not dismiss or confirm. Required reminders and daily/weekly
-reconciliation are complete before pilot; current monthly prompts are legacy,
-not the selected replacement schedule.
+Opening or saving does not dismiss or confirm. Dismiss for today persists one
+canonical nullable dataset-local date, suppressing both categories across same-day
+restart even after later work. A new date expires suppression by comparison, with
+no cleanup write or replay of absent-day notifications. Friday/Monday are civil
+weekdays independent of the configured reporting-week start. Startup, date rollover,
+relevant committed work/confirmation/week changes and explicit Recheck trigger
+coalesced worker reads; numeric ticks do not query reconciliation each second.
+Evaluation failure is unavailable, never proof of a clean week. Required reminders
+and daily/weekly reconciliation are complete before pilot; monthly prompts belong
+to retained legacy source, not the shipped schedule.
 
 ## SELECTED — Optional weekly allocations; implementation DEFERRED
 
@@ -546,10 +563,17 @@ Current references join immutable absolute quarter cells; Unknown has no referen
 Immediate task/day feedback is delivered, with optional unavailable calculation
 context shown truthfully. Source/manual drafts and exact uncertain Requests remain
 protected; committed confirmation cannot be undone by display failure.
-Stage 3C awaits independent review. Stage 3 remains In Progress pending comprehensive
-reconciliation, weekly summaries and reminders (3D). Retained JSONL services do not satisfy those
-gates. Earlier Phase 2 acceptance remains bounded
-historical evidence. This timer foundation is not complete core/pilot readiness.
+The later explicit Stage 3D GO instruction independently accepts Stage 3C for
+functional development. Stage 3D supplies read-only daily classifications
+NOT_APPLICABLE/UNKNOWN/MATCH/MISMATCH/UNAVAILABLE, cell-based coverage, full-task/week
+and cross-task summaries, partial-scope explanation, current/frozen comparison and
+copyable absolute suggestions in the existing modal Timesheet. Work corrections
+change current suggestions, never immutable reports or confirmations. The main
+banner uses the selected local-calendar schedule and explicit durable Dismiss for
+today. Unverified dismissal retains the exact Request; queue acceptance is not
+suppression. Stage 3D and Stage 3 functional completeness await independent review.
+Retained JSONL services do not satisfy these gates. Earlier Phase 2 acceptance
+remains bounded historical evidence. No core/pilot or native qualification follows.
 
 ## OPEN — Reserved user/ChatGPT decisions
 
@@ -586,6 +610,7 @@ foundation, independently accepted at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`
 Stage 1B portable reliability and Stage 1 functionality are accepted after Stage 1C
 source/runtime simplification; native Windows source
 qualification is separate and remains required before real deployment/pilot.
-Stage 2 recording and Stage 3A/3B are independently accepted. Stage 3C is delivered
-for independent review; Stage 3D remains approved, unimplemented core work. Open policies stay
+Stage 2 recording and Stage 3A/3B/3C are independently accepted for functional
+development. Stage 3D is delivered for independent review; Stage 4 stabilization,
+Stage 5 pilot and native qualification are not delivered. Open policies stay
 reserved before their affected work.

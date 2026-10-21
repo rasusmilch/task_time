@@ -86,7 +86,9 @@ or a permanent blocker to Stage 2 development. See [roadmap](docs/ROADMAP.md) an
 [testing strategy](docs/TESTING_STRATEGY.md). Stage 2A is independently accepted;
 Stage 2B/complete recording is independently accepted at `adc09ba0935e8718c4ad2101057af9c6022074cc`.
 Stage 3A preview/evidence and Stage 3B file Save/recovery are independently accepted.
-Stage 3C confirmation is connected for independent review; Stage 3 remains incomplete.
+Stage 3C confirmation is independently accepted for functional development under
+the later Stage 3D GO instruction. Stage 3D reconciliation/reminders are connected
+for independent review; Stage 3 functional completeness is not self-adjudicated.
 
 ## Manual work and week configuration
 
@@ -139,8 +141,9 @@ Close discards an unsaved preview or completed view. A registered unfinished fil
 attempt requires default-No confirmation, then disposes the window; a small session
 handoff retains its UUID/current path. Reopening starts fresh; Saved Reports recovers
 the old report explicitly. Exit warns before losing volatile attempt context; neither
-exit nor failure undoes evidence/files. Timers continue. Comprehensive daily/weekly
-reconciliation, summaries and reminders remain unavailable.
+exit nor failure undoes evidence/files. Timers continue. Reconciliation and
+calendar reminders are described below; Save does not alter either confirmation
+or reminder dismissal.
 
 ## Explicit POL-R confirmation
 
@@ -172,3 +175,31 @@ reminder. Employer/customer redistribution and worked-day zero-entry treatment
 still require external validation before official reporting/pilot.
 Current-week suggestions may change; Preview is not external submission or
 employer/customer policy qualification.
+
+## Reconciliation and reminders
+
+Open Timesheet / POL-R, then Reconciliation. This week/Last week/Custom and
+All/Selected task UUIDs are independent drafts. Typed dates and Calendar choices
+need Apply / Refresh; the as-of label always identifies the applied observation.
+Scroll the daily table horizontally for Actual, Suggested, Confirmed, signed
+Delta/gap and status. Unknown is not zero. Copy Suggested copies the absolute
+amount for the selected task/date; copying is not external submission.
+
+Weekly summaries show complete seven-day targets, precise upward adjustment
+(not extra Actual), known confirmed subtotals and coverage. Partial scope is not
+a complete-week review. Equal weekly sums cannot hide opposing daily mismatches;
+an explained nonzero Delta may still match the suggestion. Compare loaded report
+with current reconciliation preserves the historical report, shows frozen/current
+week conventions and source differences. Review saved report, source confirmation
+and manual absolute confirmation use the existing interfaces. No read confirms work.
+
+The main banner checks previous week on every application-used local date and
+current week on local Monday/Friday, independently of the selected week start.
+Open Timesheet chooses the outstanding period (previous week first). It does not
+dismiss. Dismiss for today is explicit, persists across same-day restart and
+suppresses both reminder categories only for that dataset-local date. Later work
+that day does not undo dismissal; the next date is reevaluated without a cleanup
+write. Recheck POL-R explicitly retries unavailable evaluation. Failure is not an
+all-clear. Running timers continue through all views. Saving never dismisses or
+confirms. External redistribution/zero-entry policy and native deployment still
+need qualification.
