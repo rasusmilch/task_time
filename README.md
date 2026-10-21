@@ -1,7 +1,7 @@
 # Chronicle
 
-A small local Python + Tkinter/ttk task timer **and, when the core is complete,
-explicit absolute POL-R reconciliation**. SQLite is the sole replacement authority.
+A small local Python + Tkinter/ttk task timer with **explicit absolute POL-R
+reconciliation**. SQLite is the sole replacement authority.
 
 ## Product authority and implementation status
 
@@ -112,9 +112,16 @@ version restriction is removed. Old development profiles refuse without automati
 conversion or deletion; no production SQLite migration is needed. Offline IANA
 rules come from `tzdata==2026.5`; the dataset zone cannot be changed by this UI.
 
-Do not copy a live database as a backup. Supported backup/restore and future
-rewritten-data upgrades belong to Stage 4; unknown schemas refuse rather than
-being reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
+Backup Chronicle creates a consistent worker-owned SQLite image at an explicit
+new external path. Independent schema/evidence/full-integrity and final-byte
+verification are required; existing files are never overwritten. Verify with
+`python run_chronicle.py --verify-backup BACKUP_PATH`; cold restore with
+`python run_chronicle.py --restore-from BACKUP_PATH --data-dir NEW_DATA_DIR`, then
+launch normally with that directory. Restore does not start Tk and accepts only
+a previously nonexistent directory. Original data remains untouched; do not run
+original/clone as competing authorities. No live-file copying or in-place restore.
+Stage 4A is delivered for review; future protected upgrades remain separate and
+unknown schemas refuse rather than being reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
 source launch, troubleshooting and native Windows source validation. Initial pip
 installation needs internet or an approved local wheel source and available IT
 permission; ordinary Chronicle operation is offline and never installs packages.
@@ -143,13 +150,15 @@ configurable, initially Sunday. Main/mini and
 Current week history reads use committed metadata, with no historical-work rewrite.
 No Reset controls/counters or synthetic work are added.
 
-Stage 3 is In Progress. Stage 3A connected frozen Preview, exact weekly suggestions
+Stage 3 is functionally accepted under the later explicit Stage 4A GO instruction.
+Stage 4A backup/cold restore is delivered for independent review; Stage 4 remains
+In Progress. Stage 3A connected frozen Preview, exact weekly suggestions
 and immutable SQLite registration/recovery are independently accepted at
 `d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B protected file Save/status and
 Saved Reports recovery are independently accepted at
 `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C is independently accepted for functional development under the later
-Stage 3D GO instruction. Stage 3D is delivered for independent review, not automatic
-Stage 3 acceptance or release qualification. Registration stores
+Stage 3D GO instruction. Later Stage 4A approval records Stage 3 functional
+acceptance, not release or pilot qualification. Registration stores
 the reviewed labels, full-week basis, scoped cells
 and exact UTF-8 text/digest atomically with its request receipt; later work cannot
 rewrite them. Registered reports remain recoverable after restart without a retained

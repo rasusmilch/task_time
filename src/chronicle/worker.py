@@ -27,6 +27,7 @@ class DatabaseWorker(Thread):
         try:
             store = SQLiteStore(self.directory, create=self.create, timezone=self.timezone)
             service = TimerService(store)
+            unresolved = None
             self.results.put(Message("ready", value={"dataset_id": store.dataset_id,
                                                      "timezone": store.timezone, "zone": store.zone,
                                                      "runtime": store.info, "week_start": store.week_start}))
@@ -69,6 +70,12 @@ class DatabaseWorker(Thread):
                         value = service.read_polr_reconciliation(**message.value)
                     elif message.kind == 'polr_reminder':
                         value = service.read_polr_reminder_status(cutoff_utc_us=message.value)
+                    elif message.kind == 'backup':
+                        from .records import uuid_text
+                        uuid_text(message.value['request_id'])
+                        if unresolved is not None:
+                            raise RuntimeError('Backup refused while a mutation is unresolved')
+                        value = store.backup(message.value['destination'])
                     elif message.kind == "mutate":
                         value = service.execute(message.value)
                     elif message.kind == "reconcile":
@@ -81,6 +88,13 @@ class DatabaseWorker(Thread):
                         value = {'export_id':message.value['export_id'],'destination':message.value.get('destination'),'result':value}
                 except Exception as exc:
                     value = Outcome("unverified" if message.kind in ("mutate", "reconcile") else "unavailable", error=exc)
+                if message.kind in ('mutate', 'reconcile'):
+                    if value.status == 'unverified':
+                        unresolved = message.value.request_id
+                    elif unresolved == message.value.request_id:
+                        unresolved = None
+                if message.kind == 'backup':
+                    value = {'request_id': message.value['request_id'], 'result': value}
                 self.results.put(Message(message.kind, message.token, value))
         except Exception as exc:
             partial = getattr(exc, "_chronicle_cleanup_store", None)

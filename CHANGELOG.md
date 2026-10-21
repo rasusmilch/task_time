@@ -67,10 +67,19 @@ receipts or commits. No release or production qualification is implied below.
   copyable absolute suggestions in the same modal Timesheet. Add coalesced local-date
   previous-week/daily and current-week/Monday-and-Friday reminder reads, Open Timesheet
   navigation and explicit same-day durable dismissal through one metadata date and
-  the existing atomic receipt. No read/tick/Save confirms or dismisses. Stage 3D and
-  Stage 3 functional completeness await independent review; native Windows source/
-  actual suspend qualification, Stage 4 stabilization and complete-core pilot remain
-  separate.
+  the existing atomic receipt. No read/tick/Save confirms or dismisses. Stage 3 is
+  functionally accepted under the later Stage 4A approval. Connect Backup Chronicle
+  through the existing serialized SQLite worker and supported consistent backup API:
+  independently validate complete schema/evidence/integrity and final bytes before
+  verified completion, exclusively publish absent external destinations, protect
+  dataset aliases and retain truthful publication/cleanup diagnostics. Add explicit
+  read-only verification and cold restore into new directories before any Tk/app/
+  worker construction. Preserve original data, active timer, all immutable work/
+  export/confirmation/receipt evidence and reminder metadata; normal later startup
+  creates a fresh session. No live restore, migration, schema/backup ledger or report
+  auto-publication. Stage 4A is delivered for independent review; remaining Stage 4,
+  native Windows source/NTFS/actual suspend qualification and complete-core pilot
+  remain separate.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete

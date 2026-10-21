@@ -23,7 +23,9 @@ Stage 2B/complete recording is independently accepted at
 Stage 3A is independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`.
 Stage 3B protected file Save/recovery is independently accepted at
 `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C confirmation is independently accepted for functional development by the
-later Stage 3D GO instruction. Stage 3D is delivered for independent review.
+later Stage 3D GO instruction. The later explicit Stage 4A GO instruction records
+independent Stage 3 functional acceptance, including Stage 3D. Stage 4A is delivered
+for independent review; Stage 4 remains In Progress.
 Native Windows source operation
 is required before deployment/pilot, not an unavailable executable-build gate.
 
@@ -108,8 +110,9 @@ Stage 3 POL-R workflow and is not pilot-ready.
 
 ## Stage 3 — Core frozen Timesheet AND POL-R reconciliation
 
-**IN PROGRESS — Stage 3A/3B/3C functionally accepted; Stage 3D delivered for
-independent review and Stage 3 functional-completeness adjudication.**
+**FUNCTIONALLY ACCEPTED — independent acceptance recorded by the later explicit
+Stage 4A GO instruction, including Stage 3D.** Native/external-policy and pilot
+qualification remain separate.
 This week/Last week/Custom preview, independent All/Selected UUID scope, exact
 full-week suggestions and immutable SQLite registration/list/read are connected.
 Preview writes no evidence. Stage 3B adds verified Save/Retry/Copy, owned one-call
@@ -123,8 +126,8 @@ connects comprehensive daily/weekly reconciliation, cross-task summaries, covera
 current/frozen comparison, full rounding explanations and required reminders in
 the same modal Timesheet. Explicit Dismiss for today persists one local date;
 startup/relevant commits/rollover/manual recheck coalesce reads, without per-second
-reconciliation polling. Delivery is not independent acceptance of Stage 3, native
-qualification or permission to begin Stage 4/5. Use the
+reconciliation polling. Functional acceptance does not establish native
+qualification or authorize Stage 5 pilot. Stage 4A is separately approved. Use the
 single [full-week allocation contract](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation),
 including partial Custom and provisional current weeks, not daily Actual rounding
 as submission input. This is core submission distribution, not optional budgets.
@@ -155,10 +158,16 @@ protection and separately confirmed overwrite both need connected evidence.
 
 ## Stage 4 — Stabilization
 
-**Selected / not implemented.** Interruption/restart, storage faults, second-instance
-refusal, supported SQLite backup/independent restore validation, protected schema
-upgrades, queued response/shutdown behavior, native Tk and Windows source operation.
-Exercise timer → frozen export → absolute confirmation → correction → reconciliation.
+**IN PROGRESS — Stage 4A delivered for independent review.** Online worker-owned
+SQLite backup, independent complete image validation and cold restore into new
+absent directories are connected. Restore exits before Tk/worker construction;
+normal later startup creates a fresh session and preserves the active timer and
+all immutable work/export/confirmation/receipt evidence. The original is untouched.
+No live/in-place restore, schema change, migration, schedule or registry is added.
+Remaining stabilization includes broader interruption/restart/storage faults,
+protected future schema upgrades, queued shutdown behavior and actual native
+Windows source/NTFS qualification. Exercise timer → frozen export → absolute
+confirmation → correction → reconciliation → backup → cold restore/new session.
 
 Gate: complete core integrity, recovery and restore demonstrated, no data-loss
 blocker, truthful uncertain outcomes, no obsolete callback installation after

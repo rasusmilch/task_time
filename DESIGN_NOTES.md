@@ -21,7 +21,12 @@ Saved Reports are independently accepted at `76df4d5bc3b5d0796a269b8c9d23d1d3ac6
 Stage 3C immutable absolute confirmation is independently accepted for functional
 development by the later Stage 3D GO instruction. Stage 3D connects derived daily/
 weekly reconciliation, current/frozen comparison, coverage and previous/current
-calendar reminders with explicit durable Dismiss for today, for independent review.
+calendar reminders with explicit durable Dismiss for today. The later Stage 4A GO
+instruction records independent Stage 3 functional acceptance. Stage 4A connects
+worker-owned SQLite backup, independent full image validation and cold restore into
+new directories for independent review. The original remains untouched; later normal
+startup creates fresh Tk/app/worker/session ownership. No live restore, migration,
+backup ledger or automatic external report publication is implemented.
 Preview and reconciliation write no evidence. Architecture
 owns these SQLite contracts; the retained JSONL workflows below are not active.
 These changes do not qualify the retained JSONL implementation.
@@ -48,8 +53,10 @@ hundredths/Actual-as-Enter; they do not implement that contract. SQLite recordin
 is delivered and independently accepted with Stage 2A/2B. Stage 3A allocation,
 preview/evidence and Stage 3B file Save/recovery are independently accepted.
 Stage 3C confirmation is independently accepted for functional development.
-Stage 3D is delivered for independent review; Stage 3 completeness, native release
-qualification and pilot are not established by implementation alone.
+Stage 3 functional completeness is independently accepted under the later Stage 4A
+GO instruction. Stage 4A delivery, native release qualification and pilot still
+require their own review/evidence; retained JSONL backup details below do not
+implement the SQLite recovery contract.
 
 ## Architecture
 

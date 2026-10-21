@@ -55,8 +55,10 @@ approval. The later explicit Stage 3D GO instruction independently accepts Stage
 absolute confirmation for functional development. Stage 3D connects current daily/
 weekly reconciliation, coverage, current/frozen comparison and local-calendar
 reminders with durable explicit Dismiss for today, for independent review.
-Stage 3 functional completeness still requires independent adjudication; native
-qualification, Stage 4 stabilization and Stage 5 pilot remain separate.
+The later explicit Stage 4A GO instruction records independent Stage 3 functional
+acceptance. Stage 4A delivers worker-owned consistent SQLite backup, independent
+image validation and cold restore into new directories for independent review.
+Stage 4 remains In Progress; native qualification and Stage 5 pilot remain separate.
 Subsequent execution stays bounded and independently reviewed, using substantial
 coherent slices without microtasks.
 The fresh rewrite

@@ -25,8 +25,10 @@ manual work, revision/read services, mixed accounting and week configuration.
 Stage 2B/complete Stage 2 recording and Stage 3A Preview/allocation/immutable export
 evidence, Stage 3B file Save/recovery and Stage 3C absolute confirmation are
 independently accepted for functional development. Stage 3D connects comprehensive
-reconciliation/reminders for independent review; this is not complete core/pilot
-readiness or independent acceptance of Stage 3 functional completeness.
+reconciliation/reminders; this is not deployment/pilot readiness.
+The later explicit Stage 4A GO instruction records independent Stage 3
+functional acceptance; backup/cold restore is delivered for independent review,
+without completing Stage 4 or authorizing pilot.
 
 ## SELECTED — Replacement installation and data boundary
 
@@ -571,9 +573,37 @@ copyable absolute suggestions in the existing modal Timesheet. Work corrections
 change current suggestions, never immutable reports or confirmations. The main
 banner uses the selected local-calendar schedule and explicit durable Dismiss for
 today. Unverified dismissal retains the exact Request; queue acceptance is not
-suppression. Stage 3D and Stage 3 functional completeness await independent review.
+suppression. The later explicit Stage 4A GO instruction records independent Stage 3
+functional acceptance. Stage 4A connects consistent SQLite backup, full independent
+validation and cold restore to new directories; it remains subject to independent
+review and does not complete Stage 4.
 Retained JSONL services do not satisfy these gates. Earlier Phase 2 acceptance
 remains bounded historical evidence. No core/pilot or native qualification follows.
+
+## SELECTED — Consistent backup and cold restore
+
+Backup Chronicle explicitly captures committed SQLite facts through the existing
+worker and supported backup API, without changing work or stopping timers. It
+publishes one independently validated ordinary SQLite image to an absent external
+file; all existing objects and active-dataset paths/aliases are protected. No
+backup overwrite, schedule, registry or persisted operation status is selected.
+A failed/uncertain publication is not success or proof of absence; final output is
+never deleted as rollback. Only proven-owned staging may be removed.
+
+Explicit backup validation is read-only. Cold restore first validates complete
+schema, work/audit/receipt, frozen export and confirmation evidence, then installs
+through private staging/exclusive publication into a previously nonexistent local
+dataset directory. Existing directories, even empty, refuse. Restore exits before
+application construction; a later normal launch creates fresh Tk/app/worker/read
+sessions. No live connection swap or in-place overwrite is allowed.
+
+The original remains untouched. Restored dataset UUID, timezone/week/dismissal,
+active timer and immutable identities/bytes remain unchanged. Original and clone
+must not be operated as competing live authorities for the same work. External
+report copies are not bundled or written on restore; existing recovery can publish
+them explicitly. No restoration confirms POL-R, reconciles work or dismisses a
+reminder. Stage 4A delivers this slice for review; native qualification and the
+remaining Stage 4 gate precede complete pilot.
 
 ## OPEN — Reserved user/ChatGPT decisions
 
@@ -611,6 +641,7 @@ Stage 1B portable reliability and Stage 1 functionality are accepted after Stage
 source/runtime simplification; native Windows source
 qualification is separate and remains required before real deployment/pilot.
 Stage 2 recording and Stage 3A/3B/3C are independently accepted for functional
-development. Stage 3D is delivered for independent review; Stage 4 stabilization,
+development. Stage 3 is functionally accepted under the later Stage 4A approval;
+remaining Stage 4 stabilization,
 Stage 5 pilot and native qualification are not delivered. Open policies stay
 reserved before their affected work.

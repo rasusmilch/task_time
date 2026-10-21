@@ -18,7 +18,8 @@ export evidence are independently accepted at `d1e775c33982f109337ec237e3c78e8dc
 Stage 3B protected file Save/status and Saved Reports are independently accepted at
 `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C confirmation is independently accepted for functional development under
 the later Stage 3D GO instruction. Stage 3D connects derived daily/weekly
-reconciliation and reminders for independent review. Earlier
+reconciliation and reminders. The later explicit Stage 4A GO instruction records
+Stage 3 functional acceptance; Stage 4A recovery is delivered for independent review. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
 ## Small application and responsibility boundaries
@@ -139,11 +140,69 @@ cleanup. Development datasets are disposable, but incompatible/damaged/unknown
 files are refused, not recreated, repaired or converted. No production SQLite
 datasets exist and no migration/compatibility workflow is needed. Schema stays 1.
 
-Future Stage 4 backup/restore uses SQLite's supported consistent backup API,
-independent validation and serialized ownership. A live main-file copy is not a
-supported backup. Restore protects current new-runtime data and invalidates old
-sessions/results/callbacks. Future protected rewritten-data upgrades are distinct
-from this development simplification; exact release paths/cutover remain Open.
+Stage 4A implements online consistent backup on the existing worker-owned source
+connection through `sqlite3.Connection.backup()`. A live main-file copy is never a
+backup. Cold restore installs a validated image only into a previously nonexistent
+directory and exits before Tk/worker/session construction. Future protected schema
+upgrades remain separate; exact release paths/cutover remain Open.
+
+### Consistent backup and cold recovery
+
+`SQLiteStore.backup(destination)` refuses an unhealthy or transactional connection;
+the worker also refuses backup while a mutation outcome is unresolved. The main
+Backup Chronicle command owns one callback-driven local-modal dialog. Construction
+and destination cancellation write nothing. The application retains the accepted
+request UUID/token, destination and outcome independently of the view. Busy I/O
+blocks duplicate requests, destination edits, ordinary Close/exit and competing
+mutations; normal Tk/timer observation continues. Worker serialization captures
+committed facts without a Stop, work mutation or backup receipt.
+
+`backup_restore.validate_image(path)` independently opens a stable regular image
+read-only, checks the SQLite header/journal profile before opening (WAL must not
+create sidecars), then requires DELETE, full `integrity_check`, foreign keys and
+`SQLiteStore._verify`. `SQLiteStore.verify_receipts` additionally checks canonical
+request/result content and work/creation/revision/active-correction associations
+against their immutable inputs. Existing complete export and confirmation validators
+remain authoritative, including whole prior chains/current references. There is no
+competing schema, renderer, repair, persisted status or validation cache.
+
+The ordinary SQLite image contains all dataset metadata, work/revisions, active
+timer, committed requests, frozen reports/basis/scoped cells, confirmation batches
+and current references. External text copies are not bundled. Private O_EXCL staging
+in the chosen existing parent receives the SQLite backup, successful connection
+close and file fsync. Complete independent validation and stable identity/digest
+checks precede exclusive hard-link publication. Final independent validation,
+complete byte comparison/digest and stability checks precede verified completion.
+All existing destinations and active-dataset paths/resolved aliases are rejected;
+there is no matching reuse, overwrite consent or unsafe fallback for backups.
+
+Operation phases are volatile NOT_STARTED, STAGING, VALIDATING,
+PUBLICATION_ATTEMPTED, PUBLISHED_UNVERIFIED and VERIFIED. A lost publication
+acknowledgement triggers diagnostic reinspection, never deletion of final output
+or a false claim of absence/success. Cleanup removes only proven-owned staging;
+cleanup faults attach to the primary diagnostic. A verified image with failed
+cleanup retains that fact but the overall operation reports the error. Explicit
+`--verify-backup` can inspect a possibly published image later.
+
+`--restore-from BACKUP --data-dir NEW` validates stable source evidence/digest before
+reserving the absent directory, acquires DatasetLock, backs up read-only source
+into private staging, validates again, rechecks source stability, syncs and publishes
+the database filename exclusively. Unexpected objects abort; unknown files and the
+reserved directory are never swept away. Final independent validation precedes
+ownership release and a ready result. `--verify-backup` validates only. Both modes
+reject create/timezone combinations; neither constructs a root, worker or app.
+A subsequent ordinary launch creates fresh owners, connections and tokens, with no
+prior pending request, callbacks, preview or confirmation draft. The persisted
+active timer resumes unchanged, including its existing clock-warning behavior.
+
+Restore retains the dataset UUID and every immutable identity/value; the original
+and clone must not be operated as competing live authorities. It does not remove
+the original, rematerialize reports, confirm POL-R or alter dismissal dates.
+Existing file-status/republication and date-derived reminder rules still apply.
+These bounded local-disk identity/metadata checks and supported hard links do not
+promise hostile-directory, network-filesystem, atomic compare-and-publish or
+hardware power-loss protection. Native Windows/NTFS and remaining Stage 4
+stabilization still require qualification; no in-place/live restore is selected.
 
 ## Time and one accounting implementation
 
@@ -295,8 +354,9 @@ process death at transaction/receipt/commit boundaries, atomic Switch, historica
 exact retries, active restart/calendar continuity, ordinary ownership races and
 rollback-journal pre-COMMIT and post-cleanup boundaries. These bounded local
 experiments are not arbitrary power-loss,
-hostile/multiwriter or native Windows evidence. Supported backup/restore/upgrades
-remain Stage 4; native Windows source operation remains a deployment qualification.
+hostile/multiwriter or native Windows evidence. Stage 4A supplies consistent backup
+and cold restore for review; protected upgrades and remaining stabilization are
+separate. Native Windows source operation remains a deployment qualification.
 
 The supported deployment is ordinary Python 3.11+ source execution through
 `run_chronicle.py` → `chronicle.bootstrap.main`, without task_timer fallback.
@@ -525,8 +585,8 @@ prepared before rendering. Partial installation hides untrusted output, preserve
 the original diagnostic and allows explicit recovery. Read-only exact text remains
 scrollable/copyable. Close can discard outstanding reads and volatile candidates
 before registration. Stage 3A/3B/3C are independently accepted for functional
-development; Stage 3D below is delivered for independent review, not self-accepted
-Stage 3 completeness.
+development. The later Stage 4A GO instruction records independent acceptance of
+Stage 3 functional completeness, including Stage 3D below; native/pilot gates remain.
 
 ### Connected Stage 3B protected Save and recovery
 
@@ -771,9 +831,9 @@ week, and presents Reconciliation through the existing single modal owner with a
 fresh observation; other modals prevent competing construction.
 
 Stage 3C is independently accepted for functional development by the later explicit
-Stage 3D approval. This delivery requires independent review and Stage 3 functional
-completeness adjudication. It establishes no external verification, native Windows,
-suspend/power-loss, Stage 4 stabilization or Stage 5 pilot qualification.
+Stage 3D approval. The later Stage 4A GO instruction records independent Stage 3
+functional acceptance. That acceptance establishes no external verification, native
+Windows, suspend/power-loss, complete Stage 4 stabilization or Stage 5 pilot qualification.
 
 ## Frozen files and core POL-R
 

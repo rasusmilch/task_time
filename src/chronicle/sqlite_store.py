@@ -333,6 +333,13 @@ class SQLiteStore:
         conn.row_factory = sqlite3.Row
         return conn
 
+    def backup(self, destination):
+        """Serialized worker operation; never recover an uncertain connection here."""
+        if self.connection is None or self._retired is not None or self.connection.in_transaction:
+            raise RuntimeError('Backup requires a healthy connection with no unresolved transaction')
+        from .backup_restore import backup_connection
+        return backup_connection(self.connection, destination, self.directory)
+
     def _profile(self):
         c = self.connection
         if c.in_transaction:
@@ -388,6 +395,127 @@ class SQLiteStore:
         for row in c.execute("SELECT export_id FROM timesheet_exports"):
             SQLiteStore.read_export(c, row[0])
         SQLiteStore.assert_confirmations(c)
+
+    @staticmethod
+    def verify_receipts(c):
+        """Validate detached receipt content and persisted work associations.
+
+        Export and confirmation whole-content validation remains in _verify;
+        this adds no second renderer, replay authority or mutation path.
+        """
+        from .timekeeping import local_date, parse_duration, resolve_minute, resolve_start
+        meta = c.execute('SELECT dataset_id,timezone FROM dataset_meta').fetchone()
+        dataset, zone = meta[0], load_zone(meta[1])
+        receipts = {}
+        for row in c.execute('SELECT * FROM committed_requests ORDER BY commit_seq'):
+            content = json.loads(row['request_bytes'])
+            if (type(content) is not dict or set(content) != {'format','dataset_id','operation','action_utc_us','arguments'}
+                    or type(content['format']) is not int or content['format'] != 1
+                    or content['dataset_id'] != dataset or content['operation'] != row['operation']
+                    or content['action_utc_us'] != row['action_utc_us'] or type(content['arguments']) is not dict):
+                raise ValueError('Invalid committed request receipt content')
+            request = Request.make(row['request_id'], dataset, row['operation'], row['action_utc_us'], **content['arguments'])
+            result = json.loads(row['result_bytes'])
+            if request.content() != row['request_bytes'] or type(result) is not dict or canonical(result) != row['result_bytes']:
+                raise ValueError('Noncanonical committed request receipt')
+            receipts[request.request_id] = (request, result)
+            a, op = request.args(), request.operation
+            for key in ('expected_version','expected_task_version','expected_active_version','expected_revision'):
+                if key in a and (type(a[key]) is not int or not 1 <= a[key] <= 2**63-1):
+                    raise ValueError('Invalid reviewed version in receipt')
+            if op in ('create_task','rename_task','assign_task_to_project','create_project','rename_project'):
+                entity = 'project' if op.endswith('project') and op != 'assign_task_to_project' else 'task'
+                key = a.get(f'{entity}_id')
+                expected = 1 if op.startswith('create_') else a['expected_version']+1
+                fact = c.execute(f'SELECT version FROM {entity}s WHERE {entity}_id=?', (key,)).fetchone()
+                if fact is None or fact[0] < expected or canonical(result) != canonical({f'{entity}_id':key,'version':expected}):
+                    raise ValueError('Entity receipt relationship differs')
+            elif op == 'set_week_start':
+                if (type(a.get('week_start')) is not int or not 0 <= a['week_start'] <= 6
+                        or type(a.get('expected_week_start')) is not int or not 0 <= a['expected_week_start'] <= 6
+                        or canonical(result) != canonical({'week_start':a['week_start']})):
+                    raise ValueError('Week setting receipt differs')
+            elif op == 'dismiss_polr_reminder_today':
+                if a != {'local_date':local_date(request.action_utc_us,zone).isoformat()} or result != a:
+                    raise ValueError('Reminder receipt differs')
+            elif op in ('register_timesheet_export','confirm_polr_absolute'):
+                pass  # Complete content/coverage/prior validation is in _verify.
+            elif op in ('start_timer','switch_timer','add_timed_work','add_date_only_work'):
+                key = a.get('next_entry_id' if op == 'switch_timer' else 'entry_id')
+                if c.execute('SELECT 1 FROM work_entries WHERE entry_id=? AND created_request_id=?',(key,request.request_id)).fetchone() is None:
+                    raise ValueError('Creation receipt has no owning work identity')
+            elif op in ('stop_timer','edit_closed_timed_work','edit_date_only_work','delete_work_entry'):
+                if c.execute('SELECT 1 FROM work_revisions WHERE request_id=?',(request.request_id,)).fetchone() is None:
+                    raise ValueError('Work receipt has no immutable revision')
+            elif op == 'correct_active_start':
+                if c.execute('SELECT 1 FROM active_start_corrections WHERE request_id=?',(request.request_id,)).fetchone() is None:
+                    raise ValueError('Correction receipt has no audit evidence')
+            else:
+                raise ValueError('Unsupported committed receipt operation')
+        for entry in c.execute('SELECT * FROM work_entries'):
+            request, result = receipts[entry['created_request_id']]
+            a = request.args()
+            switched = request.operation == 'switch_timer'
+            if (request.operation not in ('start_timer','switch_timer','add_timed_work','add_date_only_work')
+                    or a.get('next_entry_id' if switched else 'entry_id') != entry['entry_id']
+                    or a.get('next_task_id' if switched else 'task_id') != entry['task_id']
+                    or result.get('entry_id') != entry['entry_id']):
+                raise ValueError('Work identity/creation receipt relationship differs')
+            if request.operation in ('start_timer','switch_timer'):
+                if (entry['kind'] != 'timed' or entry['original_start_utc_us'] != request.action_utc_us
+                        or canonical(result) != canonical({'entry_id':entry['entry_id'],'version':1,
+                           **({'closed_entry_id':a['expected_active_entry_id']} if switched else {})})):
+                    raise ValueError('Timer creation differs from accepted action')
+        for row in c.execute('SELECT * FROM work_revisions'):
+            request, result = receipts[row['request_id']]
+            op, a = request.operation, request.args()
+            expected_entry = a.get('expected_active_entry_id' if op == 'switch_timer' else 'entry_id')
+            if (op not in ('stop_timer','switch_timer','add_timed_work','add_date_only_work',
+                           'edit_closed_timed_work','edit_date_only_work','delete_work_entry')
+                    or expected_entry != row['entry_id'] or request.action_utc_us != row['audit_utc_us']):
+                raise ValueError('Work revision/receipt relationship differs')
+            if op == 'switch_timer':
+                if result.get('closed_entry_id') != row['entry_id'] or row['revision'] != 1:
+                    raise ValueError('Switch revision receipt differs')
+            elif canonical(result) != canonical({'entry_id':row['entry_id'], 'revision':row['revision']}):
+                raise ValueError('Work revision result differs')
+            if op.startswith('edit_') or op == 'delete_work_entry':
+                if a.get('expected_revision') != row['revision']-1:
+                    raise ValueError('Revision receipt prior differs')
+            elif row['revision'] != 1:
+                raise ValueError('Initial revision receipt differs')
+            if bool(row['is_deleted']) != (op == 'delete_work_entry'):
+                raise ValueError('Deleted revision receipt kind differs')
+            if op not in ('stop_timer','switch_timer'):
+                owner = c.execute('SELECT task_id FROM work_entries WHERE entry_id=?',(row['entry_id'],)).fetchone()[0]
+                if a['task_id'] != owner or a.get('comment', '').strip() != row['comment']:
+                    raise ValueError('Revision request ownership/comment differs')
+            if op in ('stop_timer','switch_timer'):
+                if row['stop_utc_us'] != request.action_utc_us or row['kind'] != 'timed':
+                    raise ValueError('Stopped revision differs from accepted action')
+            elif op != 'delete_work_entry':
+                if row['kind'] == 'date_only':
+                    if (row['work_date'],row['duration_us']) != (parse_date(a['work_date']).isoformat(),parse_duration(a['duration_text'])):
+                        raise ValueError('Dated revision differs from frozen input')
+                else:
+                    prior = c.execute('SELECT * FROM work_revisions WHERE entry_id=? AND revision=?',
+                                      (row['entry_id'],row['revision']-1)).fetchone()
+                    start = resolve_minute(a['start_date'],a['start_time'],a['start_occurrence'],zone,
+                                           original=prior['start_utc_us'] if prior else None)
+                    stop = resolve_minute(a['end_date'],a['end_time'],a['end_occurrence'],zone,
+                                          original=prior['stop_utc_us'] if prior else None)
+                    if (start,stop) != (row['start_utc_us'],row['stop_utc_us']) or stop > request.action_utc_us:
+                        raise ValueError('Timed revision differs from frozen input')
+        for row in c.execute('SELECT * FROM active_start_corrections'):
+            request, result = receipts[row['request_id']]
+            a = request.args()
+            if (request.operation != 'correct_active_start' or a.get('entry_id') != row['entry_id']
+                    or a.get('expected_version') != row['version']-1 or request.action_utc_us != row['audit_utc_us']
+                    or result != {'entry_id':row['entry_id'], 'version':row['version']}):
+                raise ValueError('Active-start correction receipt differs')
+            if (resolve_start(row['prior_start_utc_us'],a['date_text'],a['time_text'],a['occurrence'],zone)
+                    != row['corrected_start_utc_us'] or row['comment'] != a['comment'].strip()):
+                raise ValueError('Active-start evidence differs from frozen input')
 
     @staticmethod
     def dismissed_date(c):

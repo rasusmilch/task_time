@@ -8,7 +8,7 @@ from queue import Empty
 import time
 import traceback
 import tkinter as tk
-from tkinter import messagebox, simpledialog, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 from uuid import uuid4
 
 from .mini_mode import MiniModeWindow
@@ -67,6 +67,16 @@ class _PolrSubmission:
     outcome: Outcome | None = None
 
 
+@dataclass
+class _BackupOperation:
+    request_id: str
+    token: int
+    destination: str
+    dialog: object
+    result: object = None
+    busy: bool = True
+
+
 class ChronicleApp:
     def __init__(self, root, worker, *, now_utc=utc_now):
         self.root, self.worker, self.now_utc = root, worker, now_utc
@@ -100,6 +110,10 @@ class ChronicleApp:
         self._shutdown_sent = False
         self._worker_stopped = False
         self._cleanup_failed = False
+        self.backup_dialog = None
+        self._backup_opening = False
+        self._backup_return = None
+        self._backup_operation = None
         self._build()
         root.protocol("WM_DELETE_WINDOW", self.request_close)
         root.bind("<Destroy>", self._destroyed, add="+")
@@ -179,6 +193,8 @@ class ChronicleApp:
         self.reminder_banner.grid_remove()
         self.buttons['Recheck POL-R']=ttk.Button(actions,text='Recheck POL-R',command=self.recheck_polr)
         self.buttons['Recheck POL-R'].grid(row=2,column=0,sticky='w',padx=3)
+        self.buttons['Backup Chronicle'] = ttk.Button(actions, text='Backup Chronicle', command=self.open_backup)
+        self.buttons['Backup Chronicle'].grid(row=2, column=1, sticky='w', padx=3)
         self._controls()
 
     def can_mutate(self, *, origin=None):
@@ -189,7 +205,137 @@ class ChronicleApp:
         return (self.alive and self.ready and not self.closing and self.pending is None
                 and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor)
                 and not self._history_opening and (self.history is None or owns_history)
+                and not self._backup_opening and self.backup_dialog is None and not self._backup_busy()
                 and not self._timesheet_opening and (self.timesheet is None or owns_timesheet))
+
+    def _backup_busy(self):
+        operation = self._backup_operation
+        return operation is not None and operation.busy
+
+    def open_backup(self):
+        if self._backup_opening or self.backup_dialog is not None or not self.can_mutate():
+            return False
+        from .history_window import widget_live
+        self._backup_opening = True
+        dialog = None
+        try:
+            if not widget_live(self.root):
+                raise ValueError('Backup origin is no longer live')
+            grab = self.root.grab_current()
+            if grab is not None and (grab is not self.root or grab.grab_status() != 'local'):
+                raise ValueError('Backup cannot replace an unrelated or global grab')
+            self._backup_return = (grab, self.root.focus_get())
+            dialog = BackupDialog(self)
+            self.backup_dialog = dialog  # Publish before Map/ordinary event delivery.
+            self._controls()
+            dialog.window.deiconify()
+            return True
+        except Exception as primary:
+            if dialog is not None:
+                try:
+                    dialog.close(force=True)
+                except Exception as secondary:
+                    primary.add_note(f'Backup construction cleanup failed: {secondary!r}')
+            self._backup_opening = False
+            self._backup_return = None
+            try:
+                if self.alive and widget_live(self.status):
+                    self.status.configure(text=f'Unable to open Backup Chronicle: {primary}')
+                self._controls()
+            except Exception as secondary:
+                primary.add_note(f'Backup launch-error presentation also failed: {secondary!r}')
+            self._diagnose(primary)
+            return False
+
+    def _backup_disposed(self, dialog):
+        if self.backup_dialog is not dialog:
+            return
+        self.backup_dialog = None
+        self._backup_opening = True
+        context, self._backup_return = self._backup_return, None
+        try:
+            from .history_window import widget_live
+            if context is not None and self.alive and not self.closing and widget_live(self.root):
+                previous, focus = context
+                current = self.root.grab_current()
+                if current is None or (current is self.root and current.grab_status() == 'local'):
+                    if previous is self.root and current is not previous:
+                        previous.grab_set()
+                    target = focus if widget_live(focus) and focus.winfo_toplevel() is self.root else self.root
+                    target.focus_set()
+        except Exception as exc:
+            self._diagnose(exc)
+        finally:
+            self._backup_opening = False
+            try:
+                if self.alive and widget_live(self.tree):
+                    self._controls()
+            except Exception as exc:
+                self._diagnose(exc)
+
+    def _start_backup(self, dialog):
+        if (self.backup_dialog is not dialog or dialog.disposed or dialog._dialog_busy or self._backup_busy()
+                or not self.alive or not self.ready or self.closing or self.pending is not None or self.executing):
+            return False
+        try:
+            # Path shape only on Tk; filesystem inspection belongs to the worker.
+            from .timesheet_files import destination_path
+            destination = str(destination_path(dialog.destination.get()))
+            self._token += 1
+            operation = _BackupOperation(str(uuid4()), self._token, destination, dialog)
+            self._backup_operation = operation
+            dialog.controls()
+            dialog.status.configure(text='Creating and independently validating backup; please wait…')
+            self.worker.requests.put(Message('backup', operation.token,
+                                           {'request_id': operation.request_id, 'destination': destination}))
+        except Exception as exc:
+            if self._backup_operation is not None and self._backup_operation.dialog is dialog:
+                self._backup_operation.busy = False
+                self._backup_operation.result = Outcome('unavailable', error=exc)
+            try:
+                if not dialog.disposed:
+                    dialog.status.configure(text=f'Backup did not complete: {exc}')
+                    dialog.controls()
+            except Exception as secondary:
+                exc.add_note(f'Backup submission-error presentation also failed: {secondary!r}')
+            self._diagnose(exc)
+            return False
+        return True
+
+    def _backup_result(self, message):
+        operation = self._backup_operation
+        if (operation is None or not operation.busy or operation.token != message.token
+                or message.value['request_id'] != operation.request_id):
+            return
+        # Owner records completion before optional UI effects, even after destruction.
+        result = message.value['result']
+        operation.result, operation.busy = result, False
+        error = result.error
+        verified = getattr(result, 'verified', False)
+        from .backup_restore import BackupPhase
+        cleanup_failed = getattr(result, 'phase', None) == BackupPhase.VERIFIED and error is not None
+        text = (f'Backup verified.\n{operation.destination}\nDataset: {result.image.dataset_id}\n'
+                'No work or timer state was changed.' if verified else
+                f'Backup not verified. {getattr(result, "phase", "NOT_STARTED")}\n{error or "Choose another destination."}')
+        if cleanup_failed:
+            text = f'Backup file verified; temporary cleanup did not complete.\n{operation.destination}\n{error}'
+        try:
+            self.status.configure(text=('Backup verified.' if verified else
+                                       'Backup cleanup did not complete; review details.' if cleanup_failed else
+                                       'Backup not verified; review backup details and diagnostics.'))
+            dialog = operation.dialog
+            if self.backup_dialog is dialog and not dialog.disposed:
+                dialog.status.configure(text=text)
+                dialog.controls()
+            self._controls()
+        except Exception as exc:
+            exc.add_note(f'Backup operation outcome was recorded; verified completion: {verified}.')
+            if error:
+                error.add_note(f'Backup presentation also failed: {exc!r}')
+            else:
+                self._diagnose(exc)
+        if error:
+            self._diagnose(error)
 
     def selected_task_id(self):
         if not self.alive:
@@ -1274,7 +1420,9 @@ class ChronicleApp:
         self._controls()
 
     def _handle(self, message):
-        if message.kind == "ready":
+        if message.kind == 'backup':
+            self._backup_result(message)
+        elif message.kind == "ready":
             self.ready = True
             self.dataset_id, self.timezone = message.value["dataset_id"], message.value["timezone"]
             self.zone = message.value["zone"]
@@ -1494,6 +1642,8 @@ class ChronicleApp:
     def request_close(self):
         if not self.alive:
             return
+        if self._backup_opening or self._backup_busy() or self.backup_dialog is not None:
+            return  # Close the owned dialog first; never interrupt accepted backup I/O.
         if self._history_opening or self._timesheet_opening:
             return
         if self._timesheet_dialog_busy: return
@@ -1614,3 +1764,146 @@ class ChronicleApp:
             if not self._shutdown_sent:
                 self._shutdown_sent = True
                 self.worker.requests.put(Message("shutdown"))
+
+
+class BackupDialog:
+    """Small owned backup view. The application retains accepted I/O/results."""
+
+    def __init__(self, owner):
+        self.owner = owner
+        self.window = None
+        self.disposed = self.presented = self._dialog_busy = False
+        try:
+            self.window = tk.Toplevel(owner.root)
+            self.window.withdraw()
+            self.window.title('Backup Chronicle')
+            self.window.transient(owner.root)
+            self.window.minsize(540, 270)
+            self.window.columnconfigure(0, weight=1)
+            ttk.Label(self.window, text='Capture committed SQLite data consistently.\nRunning timers continue; existing files are never overwritten.').grid(row=0, column=0, columnspan=2, padx=12, pady=12, sticky='w')
+            self.destination = tk.StringVar(self.window, '')
+            self.path_entry = ttk.Entry(self.window, textvariable=self.destination, width=65)
+            self.path_entry.grid(row=1, column=0, sticky='ew', padx=12)
+            self.choose_button = ttk.Button(self.window, text='Choose destination', command=self.choose)
+            self.choose_button.grid(row=1, column=1, padx=8)
+            self.create_button = ttk.Button(self.window, text='Create Backup', command=self.create)
+            self.create_button.grid(row=2, column=0, sticky='w', padx=12, pady=8)
+            self.status = ttk.Label(self.window, text='Choose a new backup file outside the dataset directory.', wraplength=570)
+            self.status.grid(row=3, column=0, columnspan=2, sticky='w', padx=12, pady=8)
+            self.close_button = ttk.Button(self.window, text='Close', command=self.close)
+            self.close_button.grid(row=4, column=0, sticky='e', padx=12, pady=8)
+            self.window.protocol('WM_DELETE_WINDOW', self.close)
+            self.window.bind('<Escape>', lambda event: self.close())
+            self.window.bind('<Map>', self._mapped, add='+')
+            self.window.bind('<Destroy>', self._destroyed, add='+')
+        except BaseException as primary:
+            if self.window is not None:
+                try:
+                    self.close(force=True)
+                except Exception as secondary:
+                    primary.add_note(f'Backup dialog cleanup also failed: {secondary!r}')
+            raise
+
+    def _mapped(self, event):
+        if event.widget is not self.window or self.disposed or self.presented:
+            return
+        try:
+            if self.owner.backup_dialog is not self or not self.owner.alive:
+                return
+            if not self.restore_modal():
+                raise ValueError('Backup modal ownership could not be acquired')
+            self.presented = True
+            self.owner._backup_opening = False
+            self.owner._controls()
+        except Exception as primary:
+            try:
+                self.close(force=True)
+            except Exception as secondary:
+                primary.add_note(f'Backup failed-presentation cleanup also failed: {secondary!r}')
+            self.owner._backup_opening = False
+            self.owner._diagnose(primary)
+
+    def restore_modal(self):
+        from .history_window import widget_live
+        if (self.disposed or self.owner.backup_dialog is not self or not widget_live(self.window)
+                or not widget_live(self.owner.root) or not self.window.winfo_ismapped()):
+            return False
+        grab = self.window.grab_current()
+        if grab is not None and (grab not in (self.owner.root, self.window) or grab.grab_status() != 'local'):
+            return False  # Never steal unrelated or global ownership.
+        if grab is not self.window:
+            self.window.grab_set()
+        self.close_button.focus_set()
+        return True
+
+    def busy(self):
+        return self._dialog_busy or self.owner._backup_busy()
+
+    def controls(self):
+        if self.disposed:
+            return
+        state = 'disabled' if self.busy() else 'normal'
+        for widget in (self.path_entry, self.choose_button, self.create_button, self.close_button):
+            widget.configure(state=state)
+
+    def choose(self):
+        if self.disposed or self.busy() or self.owner.backup_dialog is not self:
+            return False
+        self._dialog_busy = True
+        primary = None
+        try:
+            self.controls()
+            selected = filedialog.asksaveasfilename(parent=self.window, title='Choose a new Chronicle backup file',
+                                                   defaultextension='.sqlite3', confirmoverwrite=False,
+                                                   filetypes=(('SQLite backup', '*.sqlite3'), ('All files', '*')))
+            if selected and not self.disposed:
+                self.destination.set(selected)
+            return bool(selected)
+        except Exception as exc:
+            primary = exc
+            try:
+                if not self.disposed:
+                    self.status.configure(text=f'Unable to choose destination: {exc}')
+            except Exception as secondary:
+                exc.add_note(f'Backup chooser-error presentation also failed: {secondary!r}')
+            self.owner._diagnose(exc)
+            return False
+        finally:
+            self._dialog_busy = False
+            try:
+                self.restore_modal()
+                self.controls()
+            except Exception as secondary:
+                if primary:
+                    primary.add_note(f'Backup chooser modal return also failed: {secondary!r}')
+                else:
+                    self.owner._diagnose(secondary)
+
+    def create(self):
+        return self.owner._start_backup(self)
+
+    def close(self, *, force=False):
+        if self.disposed:
+            return True
+        if not force and self.busy():
+            return False
+        primary = None
+        try:
+            if self.window.grab_current() is self.window:
+                self.window.grab_release()
+        except Exception as exc:
+            primary = exc
+        try:
+            self.window.destroy()
+        except Exception as secondary:
+            if primary is None:
+                raise
+            primary.add_note(f'Backup destruction also failed: {secondary!r}')
+        if primary:
+            raise primary
+        return True
+
+    def _destroyed(self, event):
+        if event.widget is self.window and not self.disposed:
+            self.disposed, self.presented = True, False
+            self.owner._backup_disposed(self)

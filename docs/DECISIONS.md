@@ -979,6 +979,35 @@ Native qualification, external redistribution/worked-day zero policy, Stage 4
 stabilization and Stage 5 pilot remain separate. This approval does not authorize
 later stages, merge or release.
 
+### Stage 3 functional acceptance and Stage 4A recovery approval
+
+**Status:** selected. **Provenance:** the later explicit user GO instruction,
+“Stage 4A — Consistent SQLite Backup, Independent Restore Validation, and Safe
+Recovery Startup,” records ChatGPT's independent Stage 3 functional acceptance and
+authorizes this bounded stabilization slice. Earlier delivery/review statements
+above preserve their original chronology; they are not claims of pending current
+Stage 3 acceptance.
+
+The user selects online `Connection.backup()` on the existing worker-owned source,
+private same-directory staging, independent full SQLite/Chronicle validation and
+exclusive hard-link publication to an absent external file. A running timer stays
+active. No raw live-file copy, overwrite/reuse, schedule, registry, extra datastore,
+schema change or persisted backup status is authorized. Publication/verification
+uncertainty preserves primary diagnostics and never rolls back final files.
+
+Cold restore validates the source before reserving a new absent local directory,
+uses DatasetLock plus SQLite backup/staging/independent verification, then exits
+without constructing Tk/app/worker. A later ordinary launch creates a fresh session;
+no old requests, view tokens or callbacks survive. The original remains untouched.
+The restored dataset retains its UUID and all exact evidence, so original/clone must
+not operate as competing authorities. External report copies are not bundled or
+automatically materialized. Only proven-owned temporary artifacts may be cleaned;
+unknown objects and partial directories are protected.
+
+Stage 4A is delivered for independent review, not complete Stage 4 or pilot approval.
+No live/in-place restore, migration or automatic repair is selected. Native source/
+NTFS, suspend, hostile filesystem and power-loss qualification remain separate.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

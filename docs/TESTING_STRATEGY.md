@@ -60,7 +60,7 @@ qualification remain distinct.
 
 ## Connected SQLite timer evidence
 
-The Stage 1A/1B/1C, Stage 2A/2B and Stage 3A/3B/3C/3D suites below exercise the shipped `chronicle` source with disposable
+The Stage 1A/1B/1C, Stage 2A/2B, Stage 3A/3B/3C/3D and Stage 4A suites below exercise the shipped `chronicle` source with disposable
 SQLite datasets. This inventory describes assertions, not an automatic passing
 result or native qualification; current command outcomes belong in receipts.
 
@@ -99,6 +99,10 @@ result or native qualification; current command outcomes belong in receipts.
 | [test_reconciliation_ui.py](../tests/rewrite/test_reconciliation_ui.py) | Actual app/worker/Timesheet/SQLite callbacks: defaults, explicit Custom/calendar drafts, copy, current/frozen/known-zero navigation and current-batch review without an export, manual confirmation, failure-preserved as-of state, hidden partial rendering/recovery, stale/closed-view reads, coalesced startup/commit/rollover/recheck, no per-tick reminder query, banner navigation, queue failure without automatic retry, same-day suppression despite calculation failure before/after Dismiss or startup, date rollover during an unresolved dismissal, known rollback/committed presentation failure, exact uncertain dismissal and same-day restart, UI/worker thread separation and orderly queued-read shutdown. Callback faults are distinct from desktop event evidence. |
 | [test_reconciliation_operator.py](../tests/rewrite/test_reconciliation_operator.py) | XTest mouse/keyboard through real banner → Reconciliation → frozen Preview/Save → checked confirmation → manual mismatch → History correction → fresh reconciliation → explicit Dismiss. Exercises actual Selected UUID controls, typed Custom/calendar Apply/cancel, worked zero-suggestion Unknown/copy, current-batch and loaded frozen comparison navigation, weekly explanation/coverage, immutable file/evidence, blocked enabled main/mini probes, running timer and scheduled processing. File chooser decisions are doubled; no external POL-R/Windows/NTFS/pilot claim. |
 
+| [test_backup_restore.py](../tests/rewrite/test_backup_restore.py) | Actual worker-owned SQLite backup, independent read-only full integrity/production semantic validation and cold new-directory restore. Compares every fact table and exact immutable receipt/report bytes across source/image/restore; retains active corrections, revisions, deleted work, full-week basis, source/manual/zero confirmations, latest references and dismissal. Covers empty/rich images, logical rather than page-layout equality, exclusive conflict/alias/type protection, source/stage changes, unknown object retention, actual page-progress interruption, connect/close/fsync/validation/link/acknowledgement/final-comparison/cleanup faults, exact uncertain-request gate and later worker operation/shutdown. FIFO/symlink setup skips only unavailable native capabilities; unexpected setup failures remain failures. CLI subprocesses verify/restore without a display; invalid combinations/source refuse before target/session construction. Corruption bypasses guards only in isolated fixtures. Not hardware power-loss or hostile-directory qualification. |
+| [test_backup_ui.py](../tests/rewrite/test_backup_ui.py) | Actual App/worker/SQLite callbacks plus separate XTest controls: empty construction, owned chooser/cancellation, modal/busy/reentry/close guards, live local/global competitor refusal, retained primary diagnostics and outcome despite destroyed view or presentation failure, stale/duplicate completions, verified-file versus cleanup-only failure, timer observation while backup is blocked, enabled main/mini probes excluded by local grab, explicit failure recovery and ordinary/forced-root shutdown. Connected saved/confirmed/dismissed recovery scenario preserves work, active identity, frozen bytes, current references and reminder metadata. Callback faults do not substitute for server input; file decisions may be doubled. |
+| [test_backup_startup.py](../tests/rewrite/test_backup_startup.py) | Separate cold CLI restore followed by an actual root-source-launch subprocess, fresh Tk/App/worker ready state, preserved active timer and immutable evidence, explicit new restored work and orderly close. Original/image bytes remain unchanged. No live-session swap or old callback handoff; native Windows is separate. |
+
 A usable display is required for `real_tk` cases. Linux Xorg/XTest evidence does
 not establish native Windows/NTFS or actual suspend/resume. The actual Python,
 SQLite source/compile options and DELETE/EXTRA/FK settings are recorded; the GUI
@@ -112,8 +116,9 @@ Stage 2 blocker. The later Stage 3A approval independently accepts Stage 2B/comp
 recording at `adc09ba0935e8718c4ad2101057af9c6022074cc`. Stage 3A is independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`.
 Stage 3B is independently accepted at `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`.
 The later explicit Stage 3D GO instruction independently accepts Stage 3C for
-functional development. Stage 3D tests remain implementation evidence for independent
-review/Stage 3 completeness adjudication, not complete pilot or external acceptance.
+functional development. The later Stage 4A GO instruction records independent
+Stage 3 functional acceptance. Stage 4A evidence remains subject to independent
+review; no complete stabilization, native pilot or external acceptance follows.
 
 ## Retained legacy test inventory and limits
 
@@ -239,9 +244,13 @@ slot, new request ID or visible widget/file as authority for uncertain results.
 
 Verify one worker owns its connection and database/file I/O, no arbitrary sharing
 or `check_same_thread=False`, and bounded lock handling. Test supported SQLite
-backup captures committed facts consistently, independently validates, restores and
-reopens all work/export/confirmation history. Do not test a live main-file copy
-as a valid backup. Protect future rewritten-data schema upgrades and reject
+backup captures committed facts consistently, independently validates, cold-restores
+and reopens all work/export/confirmation/receipt history, including current references
+and reminder metadata. Compare complete logical values/associations, not counts or
+physical page layout. Exercise absent/existing/alias paths, staging and publication
+failures, no overwrite and owned-only cleanup. CLI validation/restore constructs no
+Tk root/worker; normal later launch creates a fresh session. Do not test a live
+main-file copy or in-place/live replacement as a valid backup/restore. Protect future rewritten-data schema upgrades and reject
 unsupported versions truthfully. No legacy import/compatibility fixture obligation.
 Linux fault injection does not prove arbitrary concurrent-writer, power-loss or
 native Windows/NTFS safety.
@@ -425,7 +434,7 @@ persisted timers, main/mini, active-start correction, modal input/focus, excepti
 and ordinary close/reopen, manual timed/date-only entry and week-start persistence.
 Actual suspend/resume needs native evidence. Delivered History/Timesheet Preview
 and file Save/recovery/explicit confirmation/reconciliation/reminders require native
-validation; pending backup/restore requires native validation when delivered. A source launch without core POL-R is not a
+validation; delivered backup/cold restore also requires native source/NTFS validation. A source launch without core POL-R is not a
 qualified complete pilot. There is no executable-package qualification requirement.
 
 Inspect [RUNNING.md](../RUNNING.md), [run.ps1](../scripts/run.ps1) and metadata before
@@ -442,8 +451,8 @@ Use disposable temporary datasets only. Do not initialize services against
 `~/.task_timer_data`, read actual user settings for source investigation, import
 old history, delete user files or change installation paths. Fresh rewrite scope
 removes migration/compatibility obligations, not data protection. Exact release
-cutover/cleanup remains Open; future new-runtime backup/restore/upgrades require
-integrity evidence. No arbitrary startup deletion is authorized.
+cutover/cleanup remains Open; new-runtime backup/cold restore and future protected
+upgrades require integrity evidence. No arbitrary startup deletion is authorized.
 
 ## Commands and evidence classification
 

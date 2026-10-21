@@ -88,7 +88,45 @@ Stage 2B/complete recording is independently accepted at `adc09ba0935e8718c4ad21
 Stage 3A preview/evidence and Stage 3B file Save/recovery are independently accepted.
 Stage 3C confirmation is independently accepted for functional development under
 the later Stage 3D GO instruction. Stage 3D reconciliation/reminders are connected
-for independent review; Stage 3 functional completeness is not self-adjudicated.
+and independently accepted for functional development by the later Stage 4A GO
+instruction. Stage 4A backup/cold restore is delivered for independent review,
+not complete stabilization or native/pilot qualification.
+
+## Backup and cold recovery
+
+Close other modal views, then choose **Backup Chronicle**. Choose a new file outside
+the dataset and click Create Backup. Opening/canceling writes nothing. Timers
+continue; wait for **Backup verified** before treating the operation as complete.
+Existing files are never overwritten. Failure retains the path/diagnostic; choose
+another path or explicitly validate a possibly published image. No automatic
+backup/retry or cleanup of final files occurs.
+
+Validate without opening the application:
+
+    python run_chronicle.py --verify-backup BACKUP_PATH
+
+Restore into a directory that does not yet exist, with an existing local parent:
+
+    python run_chronicle.py --restore-from BACKUP_PATH --data-dir NEW_DATA_DIR
+
+Restore validates before reserving that directory, uses consistent SQLite staging,
+and exits without Tk/worker construction. It refuses existing directories, including
+empty ones. Do not add --create or --timezone. Then start a fresh normal session:
+
+    python run_chronicle.py --data-dir NEW_DATA_DIR
+
+The original and backup remain untouched. A clone retains the same dataset identity:
+**do not operate original and restored copies as competing live work authorities**.
+Active timers resume without a Stop; dismissal uses the restored date and normal
+current-date evaluation. Registered report text/basis and confirmation evidence
+survive exactly. External text files are not bundled; use Saved Reports explicitly
+if a copy is missing. A partially reserved directory is not automatically removed
+or repaired; choose another new directory after reviewing the diagnostic.
+
+Use supported local-disk directories. Hard-link publication must be available;
+there is no unsafe fallback, overwrite or in-place/live restore. These engineering
+checks do not qualify Windows/NTFS, hostile concurrent changes or hardware power
+loss. Native source recovery qualification remains required before pilot.
 
 ## Manual work and week configuration
 
