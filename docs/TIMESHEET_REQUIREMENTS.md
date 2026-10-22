@@ -28,8 +28,9 @@ independently accepted for functional development. Stage 3D connects comprehensi
 reconciliation/reminders; this is not deployment/pilot readiness.
 The later explicit Stage 4A GO instruction records independent Stage 3
 functional acceptance. The later Stage 4B GO independently accepts backup/cold
-restore. Stage 4B portable operational evidence and bounded reliability repairs
-are delivered for independent review, without completing Stage 4 or authorizing pilot.
+restore. The later Stage 4C GO independently accepts Stage 4B portable reliability.
+Stage 4C delivers cold compatibility inspection/refusal for independent review,
+without completing Stage 4 or authorizing pilot.
 
 ## SELECTED — Replacement installation and data boundary
 
@@ -577,7 +578,8 @@ today. Unverified dismissal retains the exact Request; queue acceptance is not
 suppression. The later explicit Stage 4A GO instruction records independent Stage 3
 functional acceptance. Stage 4A connects consistent SQLite backup, full independent
 validation and cold restore to new directories, independently accepted by the later
-Stage 4B GO. Stage 4B adds portable transaction/file/backup interruption and queued
+Stage 4B GO; the later Stage 4C GO independently accepts Stage 4B. Stage 4B adds
+portable transaction/file/backup interruption and queued
 shutdown evidence, retains failed-probe cleanup ownership and guards authoritative
 outcome delivery against UI faults and mismatched replies. It does not complete
 Stage 4.
@@ -606,9 +608,40 @@ active timer and immutable identities/bytes remain unchanged. Original and clone
 must not be operated as competing live authorities for the same work. External
 report copies are not bundled or written on restore; existing recovery can publish
 them explicitly. No restoration confirms POL-R, reconciles work or dismisses a
-reminder. Stage 4A is independently accepted under the later Stage 4B GO; portable
-operational qualification is delivered for review. Native qualification and the
-remaining Stage 4 gate precede complete pilot.
+reminder. Stage 4A is independently accepted under the later Stage 4B GO; Stage 4B
+portable operational reliability is independently accepted under the later Stage 4C
+GO. Native qualification and the remaining Stage 4 gate precede complete pilot.
+
+## SELECTED — Schema compatibility and future upgrade safety
+
+Current production schema remains version 1 with the same application identity.
+A healthy complete current dataset permits ordinary work; older/newer markers,
+same-version differing schema, foreign identity, unsupported profile and damaged or
+unavailable inspection refuse without conversion, recreation or automatic repair.
+A lower marker does not establish an authentic older Chronicle schema.
+
+`--inspect-dataset DATA_DIR` is an explicit cold read-only diagnostic, not an upgrade
+command. Close other sessions first; inspection creates no lock, Tk root, worker,
+backup, receipt or persisted status. It returns detached compatibility diagnostics,
+with trustworthy observations only. Supported current results require complete
+independent integrity, schema, metadata, audit, work, frozen export, confirmation
+and receipt validation plus successful cleanup and final source-stability checks.
+Detected changes, unsafe paths or outstanding journals/sidecars make inspection
+unavailable rather than authorizing recovery. Existing files are never removed or
+repaired to force acceptance. Backup/restore retain their complete current-schema
+validation and protected destination contracts.
+
+Future upgrades require separately approved exact source/target definitions,
+version-specific transformation, preservation/adjudication of all immutable evidence,
+independent validation, ownership and failure/install/recovery tests. The selected
+safe default is cold transformation into a previously nonexistent directory outside
+an active application/worker session, protecting the original. Validate the target
+before ordinary startup; do not operate original/upgraded clones as competing work
+authorities. No target version, automatic upgrade/downgrade, in-place replacement,
+source retirement/deletion or migration engine is active. The [technical safety
+contract](ARCHITECTURE.md#cold-compatibility-inspection-and-future-transition-boundary)
+owns the concrete boundary. Stage 4C is delivered for independent review; Stage 4
+remains In Progress and no pilot is authorized.
 
 ## OPEN — Reserved user/ChatGPT decisions
 

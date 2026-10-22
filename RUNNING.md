@@ -93,9 +93,9 @@ Stage 3C confirmation is independently accepted for functional development under
 the later Stage 3D GO instruction. Stage 3D reconciliation/reminders are connected
 and independently accepted for functional development by the later Stage 4A GO
 instruction. The later Stage 4B GO independently accepts Stage 4A backup/cold
-restore. Stage 4B portable reliability evidence and bounded delivery/cleanup repairs
-are delivered for independent review, not complete stabilization or native/pilot
-qualification.
+restore. The later Stage 4C GO independently accepts Stage 4B portable reliability.
+Stage 4C cold compatibility inspection is delivered for independent review, not
+complete stabilization or native/pilot qualification.
 
 ## Backup and cold recovery
 
@@ -132,6 +132,44 @@ Use supported local-disk directories. Hard-link publication must be available;
 there is no unsafe fallback, overwrite or in-place/live restore. These engineering
 checks do not qualify Windows/NTFS, hostile concurrent changes or hardware power
 loss. Native source recovery qualification remains required before pilot.
+
+## Cold dataset inspection
+
+Close other Chronicle sessions first. On trusted local storage, inspect an existing
+dataset without opening the application:
+
+    python run_chronicle.py --inspect-dataset DATA_DIR
+
+This command creates no Tk root, worker, writable connection or lock file. Do not
+combine it with --data-dir, --create, --timezone, --verify-backup or --restore-from.
+It reports only compatibility and validation diagnostics, not task/work contents.
+A permitted result describes this completed cold inspection, not durable READY
+status or exclusion of future external writes. Ordinary startup still revalidates
+the dataset and acquires its normal ownership lock.
+
+| Exit | Classification / meaning |
+| --- | --- |
+| 0 | SUPPORTED_CURRENT: complete version-1 schema, integrity and evidence verified; ordinary current-version startup permitted. |
+| 2 | OLDER_UNSUPPORTED / NEWER_UNSUPPORTED: trustworthy observed version marker differs; no automatic migration or downgrade. A lower marker does not authenticate a historical Chronicle schema. |
+| 3 | FOREIGN_DATABASE / UNSUPPORTED_LAYOUT / UNSUPPORTED_PROFILE: wrong application identity, differing current-version DDL or unsupported SQLite format/profile. |
+| 4 | UNSAFE_OR_UNAVAILABLE: safe identity/integrity or successful inspection/cleanup/reporting could not be established. |
+
+Argument-parser errors also use exit 2 and print usage. Schema version 1 and the
+application identity remain unchanged. No upgrade is currently available.
+
+Missing/unreadable/unstable files, symlinks (including directory aliases), unsuitable
+objects and explicit network paths refuse. WAL-format headers refuse before SQLite
+can create shared-memory sidecars. Any outstanding journal/WAL/SHM sidecar makes
+cold inspection unavailable; this is not proof of corruption. The inspector neither
+recovers nor deletes it. Ordinary startup keeps its separate recovery/refusal rules.
+Do not delete sidecars or change permissions to force inspection. Metadata/digest
+checks are bounded observations, not reliable exclusion of another writer or
+hostile-directory protection. Use Backup Chronicle for a consistent live image.
+
+A future approved transition requires its own exact source/target definitions,
+transformation and evidence-preservation tests. The selected default is cold
+transformation into a new nonexistent directory with independent target validation;
+the original stays untouched. No such transformation or migration engine exists now.
 
 ## Manual work and week configuration
 

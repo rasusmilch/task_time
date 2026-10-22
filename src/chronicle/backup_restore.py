@@ -15,8 +15,46 @@ import stat
 from uuid import uuid4
 
 from .dataset_lock import DatasetLock
-from .sqlite_store import BUSY_MS, DATABASE, SQLiteStore, runtime_info
+from .sqlite_store import (APPLICATION_ID, SCHEMA_VERSION, BUSY_MS, DATABASE,
+                           SQLiteStore, UnsupportedSchemaLayout, runtime_info)
 from .timesheet_files import destination_path, metadata, protect, _owned, _remove_owned
+
+
+class Compatibility(str, Enum):
+    SUPPORTED_CURRENT = 'SUPPORTED_CURRENT'
+    OLDER_UNSUPPORTED = 'OLDER_UNSUPPORTED'
+    NEWER_UNSUPPORTED = 'NEWER_UNSUPPORTED'
+    UNSUPPORTED_LAYOUT = 'UNSUPPORTED_LAYOUT'
+    FOREIGN_DATABASE = 'FOREIGN_DATABASE'
+    UNSUPPORTED_PROFILE = 'UNSUPPORTED_PROFILE'
+    UNSAFE_OR_UNAVAILABLE = 'UNSAFE_OR_UNAVAILABLE'
+
+
+class UnsupportedImageProfile(ValueError):
+    def __init__(self, message, profile):
+        super().__init__(message)
+        self.profile = profile
+
+
+@dataclass(frozen=True)
+class CompatibilityResult:
+    classification: Compatibility
+    candidate_path: Path | None
+    observed_application_id: int | None = None
+    observed_user_version: int | None = None
+    supported_schema_version: int = SCHEMA_VERSION
+    observed_journal_profile: str | None = None
+    full_validation_completed: bool = False
+    ordinary_startup_permitted: bool = False
+    explanation: str = ''
+    error: Exception | None = None
+
+    @property
+    def exit_status(self):
+        if self.classification == Compatibility.SUPPORTED_CURRENT: return 0
+        if self.classification in (Compatibility.OLDER_UNSUPPORTED, Compatibility.NEWER_UNSUPPORTED): return 2
+        if self.classification == Compatibility.UNSAFE_OR_UNAVAILABLE: return 4
+        return 3
 
 
 class BackupPhase(str, Enum):
@@ -82,8 +120,11 @@ def _fingerprint(path):
         # Reject WAL images before SQLite can create/read WAL shared-memory
         # sidecars, even through a read-only connection. Schema validation still
         # belongs exclusively to SQLiteStore; this is format/profile selection.
-        if header[:16] != b'SQLite format 3\x00' or header[18:20] != b'\x01\x01':
-            raise ValueError('A supported SQLite image with DELETE journal profile is required')
+        if header[:16] != b'SQLite format 3\x00' or len(header) != 20:
+            raise sqlite3.DatabaseError('A supported SQLite image header is required')
+        if header[18:20] != b'\x01\x01':
+            raise UnsupportedImageProfile('A supported SQLite image with DELETE journal profile is required',
+                                          'wal' if header[18:20] == b'\x02\x02' else 'unsupported')
         result = metadata(observed), digest.hexdigest()
     except BaseException as primary:
         try:
@@ -127,11 +168,7 @@ def validate_image(value) -> Image:
         c.execute('BEGIN')
         if c.execute('PRAGMA journal_mode').fetchone()[0] != 'delete':
             raise ValueError('Backup requires the supported DELETE journal profile')
-        if [r[0] for r in c.execute('PRAGMA integrity_check')] != ['ok']:
-            raise ValueError('Full SQLite integrity check failed')
-        SQLiteStore._verify(c)
-        # Receipt shape and relationships are owned by SQLiteStore as well.
-        SQLiteStore.verify_receipts(c)
+        SQLiteStore._verify_complete(c)
         meta = c.execute('SELECT * FROM dataset_meta').fetchone()
         result = Image(path, meta['dataset_id'], meta['timezone'], meta['week_start'], before, digest)
         c.execute('COMMIT')
@@ -143,6 +180,117 @@ def validate_image(value) -> Image:
     if _fingerprint(path) != (before, digest):
         raise OSError('SQLite image changed during independent validation')
     return result
+
+
+def _cold_directory(directory):
+    observed = directory.lstat()
+    if not stat.S_ISDIR(observed.st_mode) or directory.is_symlink():
+        raise ValueError('Inspection requires an existing local directory, not a symlink')
+    # Also reject an alias in an ancestor rather than silently resolving it.
+    if directory.resolve() != directory:
+        raise ValueError('Inspection does not follow directory aliases')
+    return metadata(observed)
+
+
+def _cold_sidecars(directory):
+    for suffix in ('-journal', '-wal', '-shm'):
+        try: (directory / (DATABASE + suffix)).lstat()
+        except FileNotFoundError: continue
+        raise OSError('A SQLite journal/sidecar is present; close other sessions. A clean cold image cannot be established without recovery.')
+
+
+def inspect_dataset(value) -> CompatibilityResult:
+    """Cold diagnostic only; no lock, writable connection, conversion or retry."""
+    kind, path, error = Compatibility.UNSAFE_OR_UNAVAILABLE, None, None
+    c = None
+    application_id = version = profile = None
+    complete = False
+    phase = 'source path/header inspection'
+    explanation = 'Identity and integrity could not be established; no repair was attempted.'
+    try:
+        runtime_info()
+        if isinstance(value, (str, Path)) and str(value).startswith(('\\\\', '//')):
+            raise ValueError('Inspection requires local storage, not a network path')
+        directory = destination_path(value)
+        path = directory / DATABASE
+        directory_before = _cold_directory(directory)
+        before, digest = _fingerprint(path)
+        _cold_sidecars(directory)
+        phase = 'read-only connection and identity/version inspection'
+        c = _readonly(path)
+        try:
+            c.execute('BEGIN')
+            profile = c.execute('PRAGMA journal_mode').fetchone()[0]
+            application_id = c.execute('PRAGMA application_id').fetchone()[0]
+            version = c.execute('PRAGMA user_version').fetchone()[0]
+            if profile != 'delete':
+                raise UnsupportedImageProfile('Inspection requires DELETE journaling; no conversion is available.', profile)
+            phase = 'independent schema and evidence validation'
+            if application_id == APPLICATION_ID and version == SCHEMA_VERSION:
+                try:
+                    SQLiteStore._verify_complete(c)
+                except UnsupportedSchemaLayout as exc:
+                    kind, error = Compatibility.UNSUPPORTED_LAYOUT, exc
+                    explanation = 'Current version marker has an unsupported schema definition; no automatic repair/upgrade.'
+                else:
+                    kind, complete = Compatibility.SUPPORTED_CURRENT, True
+                    explanation = 'Complete current-schema integrity verified. No upgrade was performed or is available.'
+            else:
+                # SQLite integrity precedes any foreign/unsupported-version claim.
+                # Current Chronicle semantics are never applied to an unknown version.
+                if [r[0] for r in c.execute('PRAGMA integrity_check')] != ['ok'] or list(c.execute('PRAGMA foreign_key_check')):
+                    raise ValueError('SQLite integrity could not be established')
+                if application_id != APPLICATION_ID:
+                    kind = Compatibility.FOREIGN_DATABASE
+                    explanation = 'SQLite application identity is not Chronicle; ordinary startup is not permitted.'
+                elif version < SCHEMA_VERSION:
+                    kind = Compatibility.OLDER_UNSUPPORTED
+                    explanation = 'Observed lower version marker only; authenticity of an older Chronicle schema is not established. No automatic migration.'
+                else:
+                    kind = Compatibility.NEWER_UNSUPPORTED
+                    explanation = 'Observed newer version is unsupported; no downgrade or automatic migration is available.'
+            c.execute('COMMIT')
+        except BaseException as primary:
+            if error is not None and error is not primary:
+                error.add_note(f'Read transaction finalization also failed: {primary!r}')
+                primary = error
+            try:
+                c.close()
+            except Exception as secondary:
+                primary.add_note(f'SQLite connection close also failed: {secondary!r}')
+            else:
+                c = None
+            raise primary
+        else:
+            phase = 'read-only connection cleanup'
+            try:
+                _close(c)
+            except Exception as secondary:
+                if error is not None:
+                    error.add_note(f'SQLite connection close also failed: {secondary!r}')
+                    raise error from secondary
+                raise
+            c = None
+        phase = 'final source stability verification'
+        if _fingerprint(path) != (before, digest) or _cold_directory(directory) != directory_before:
+            raise OSError('Dataset changed during inspection; a clean cold image cannot be established')
+        _cold_sidecars(directory)
+    except UnsupportedImageProfile as exc:
+        unsafe = c is not None or phase == 'final source stability verification'
+        kind = Compatibility.UNSAFE_OR_UNAVAILABLE if unsafe else Compatibility.UNSUPPORTED_PROFILE
+        error, complete = exc, False
+        application_id = version = None
+        profile = None if unsafe else exc.profile
+        explanation = ('Source changed or read-only cleanup is unverified; a safe cold image was not established.' if unsafe else
+                       'Unsupported SQLite operational profile; no conversion was attempted.')
+    except Exception as exc:
+        if error is not None and error is not exc:
+            exc.add_note(f'Earlier inspection diagnostic: {error!r}')
+        kind, error, complete = Compatibility.UNSAFE_OR_UNAVAILABLE, exc, False
+        application_id = version = profile = None  # Do not publish potentially unstable observations.
+        explanation = f'Could not complete {phase} ({type(exc).__name__}). A safe clean cold image was not established; no recovery or repair was attempted.'
+    return CompatibilityResult(kind, path, application_id, version, SCHEMA_VERSION, profile,
+                               complete, complete and kind == Compatibility.SUPPORTED_CURRENT, explanation, error)
 
 
 def _absent(path):

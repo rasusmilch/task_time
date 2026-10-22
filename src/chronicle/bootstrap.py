@@ -14,6 +14,17 @@ from .app import ChronicleApp
 from .worker import DatabaseWorker
 
 
+def _present_inspection(result):
+    """Concise diagnostics only; never print dataset facts or receipt contents."""
+    lines = [f'Chronicle dataset inspection: {result.classification.value}',
+             f'Schema version: {result.observed_user_version if result.observed_user_version is not None else "unverified"}; supported: {result.supported_schema_version}',
+             f'Integrity: {"verified" if result.full_validation_completed else "not fully verified"}',
+             f'Ordinary current-version startup: {"permitted" if result.ordinary_startup_permitted else "not permitted"}',
+             result.explanation,
+             'No upgrade was performed. Original data was not intentionally modified.']
+    print('\n'.join(lines))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Chronicle task timer and manual work")
     parser.add_argument("--data-dir", type=Path)
@@ -22,7 +33,24 @@ def main(argv=None):
     recovery = parser.add_mutually_exclusive_group()
     recovery.add_argument('--verify-backup', type=Path)
     recovery.add_argument('--restore-from', type=Path)
+    recovery.add_argument('--inspect-dataset')
     args = parser.parse_args(argv)
+    if args.inspect_dataset is not None:
+        if args.create or args.timezone is not None or args.data_dir is not None:
+            parser.error('--inspect-dataset cannot use --create, --timezone or --data-dir')
+        from .backup_restore import inspect_dataset
+        result = inspect_dataset(args.inspect_dataset)
+        try:
+            _present_inspection(result)
+        except Exception as exc:
+            # Presentation cannot retroactively establish inspection success.
+            import traceback
+            import sys
+            traceback.print_exception(exc, file=sys.stderr)
+            parser.exit(4, 'Inspection reporting did not complete. No upgrade was performed.\n')
+        if result.exit_status:
+            parser.exit(result.exit_status)
+        return result
     if args.verify_backup is not None or args.restore_from is not None:
         if args.create or args.timezone is not None:
             parser.error('Backup verification/restore cannot use --create or --timezone')

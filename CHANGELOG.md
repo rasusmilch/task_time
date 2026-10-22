@@ -84,9 +84,18 @@ receipts or commits. No release or production qualification is implied below.
   completion despite main-status failure, reject mismatched Request/file results
   without consuming pending work and retain uncertainty after definitive worker
   stop. Measure small/medium/larger workloads with full confirmation validation
-  intact. Stage 4B is delivered for independent review; remaining Stage 4, native
-  Windows source/NTFS/actual suspend qualification and complete-core pilot
-  remain separate.
+  intact. Stage 4B is independently accepted under the later Stage 4C GO. Add cold
+  read-only dataset inspection with detached current/older/newer/layout/foreign/
+  profile/unsafe diagnostics and deterministic headless CLI statuses. Reuse complete
+  current-schema/evidence validation for inspection, backup images and startup;
+  preserve quoted DDL literals and refuse WAL headers before startup can create
+  sidecars. Reject unsupported/damaged sources without conversion, lock creation
+  during inspection, recreation or repair. Keep schema/application identity and
+  version 1 unchanged; require separately approved future cold source-to-new-target
+  transformations, original protection and independent evidence validation. No
+  upgrade engine or target schema is active. Stage 4C is delivered for independent
+  review; remaining Stage 4, native Windows source/NTFS/actual suspend qualification
+  and complete-core pilot remain separate.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete

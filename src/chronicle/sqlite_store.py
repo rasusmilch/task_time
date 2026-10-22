@@ -228,6 +228,10 @@ def runtime_info() -> dict:
             "feature_floor": "3.37.0", "supported_floor": "3.37.0"}
 
 
+class UnsupportedSchemaLayout(ValueError):
+    """Current version marker has a different relational schema definition."""
+
+
 class SQLiteStore:
     def __init__(self, directory: Path, *, create: bool = False, timezone: str | None = None):
         runtime_info()
@@ -293,14 +297,18 @@ class SQLiteStore:
             raise
 
     def _validate_existing(self, timezone):
+        from .backup_restore import _fingerprint
+        before = _fingerprint(self.path)  # Refuse WAL before SQLite can create shared-memory sidecars.
         probe = self._probe()
         try:
-            self._verify(probe)
+            probe.execute("BEGIN")
+            self._verify_complete(probe)
             # Refuse unsupported development profiles; never convert an existing dataset.
             if probe.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
                 raise ValueError("Unsupported dataset journal mode; DELETE is required; no automatic conversion")
             if timezone is not None and probe.execute("SELECT timezone FROM dataset_meta").fetchone()[0] != timezone:
                 raise ValueError("Explicit timezone conflicts with this dataset")
+            probe.execute("COMMIT")
         except BaseException as primary:
             try:
                 probe.close()
@@ -316,6 +324,8 @@ class SQLiteStore:
                 self._retired = probe
                 primary._chronicle_cleanup_store = self
                 raise  # A failed close is still a real startup failure.
+        if _fingerprint(self.path) != before:
+            raise OSError('Dataset changed during startup validation; refusing ordinary operation')
 
     @property
     def week_start(self):
@@ -363,30 +373,9 @@ class SQLiteStore:
         if (c.execute("PRAGMA application_id").fetchone()[0] != APPLICATION_ID or
                 c.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION):
             raise ValueError("Not a supported Chronicle schema; no automatic repair/upgrade")
+        SQLiteStore._verify_schema(c)
         if c.execute("PRAGMA quick_check").fetchone()[0] != "ok" or list(c.execute("PRAGMA foreign_key_check")):
             raise ValueError("Dataset integrity check failed")
-        normalize = lambda text: " ".join(text.lower().split()).rstrip(";")
-        definitions = {r[0]: normalize(r[1]) for r in c.execute("SELECT name,sql FROM sqlite_schema WHERE sql IS NOT NULL")}
-        expected_names = set()
-        for statement in schema_statements():
-            name = re.match(r"CREATE (?:TABLE|INDEX|TRIGGER) (\w+)", statement)[1]
-            expected_names.add(name)
-            if definitions.get(name) != normalize(statement):
-                raise ValueError(f"Schema definition differs: {name}")
-        if {name for name in definitions if not name.startswith("sqlite_")} != expected_names:
-            raise ValueError("Unexpected schema objects; no automatic repair/upgrade")
-        tables = {r[1]: r for r in c.execute("PRAGMA table_list")}
-        for name in ("dataset_meta", "projects", "tasks", "committed_requests", "work_entries",
-                     "work_revisions", "active_timer", "active_start_corrections", *EXPORT_TABLES, *CONFIRMATION_TABLES):
-            if name not in tables or tables[name][5] != 1:
-                raise ValueError(f"Missing STRICT table: {name}")
-        required = {"work_identity_immutable", "work_identity_retained", "active_only_open",
-                    "active_identity_immutable", "closed_not_active", "revision_successor", "current_revision_forward", "correction_active_only"}
-        required |= {f"immutable_{table}_{verb}" for table in
-                     ("work_revisions", "active_start_corrections", "committed_requests") for verb in ("update", "delete")}
-        present = {r[0] for r in c.execute("SELECT name FROM sqlite_schema WHERE type='trigger'")}
-        if not required <= present:
-            raise ValueError("Required evidence/lifecycle guards are missing")
         meta = list(c.execute("SELECT * FROM dataset_meta"))
         if len(meta) != 1:
             raise ValueError("Dataset metadata is incomplete")
@@ -397,6 +386,45 @@ class SQLiteStore:
         for row in c.execute("SELECT export_id FROM timesheet_exports"):
             SQLiteStore.read_export(c, row[0])
         SQLiteStore.assert_confirmations(c)
+
+    @staticmethod
+    def _verify_schema(c):
+        """Single exact current DDL/STRICT authority, separate from evidence health."""
+        def normalize(text):
+            # Ignore spelling/spacing of SQL tokens, never quoted literal content.
+            tokens = re.findall(r"'(?:(?:'')|[^'])*'|\"(?:(?:\"\")|[^\"])*\"|`(?:(?:``)|[^`])*`|\[[^]]*\]|\w+|[^\s]",
+                                text.strip().rstrip(';'))
+            return tuple(token if token.startswith(("'", '"', '`', '[')) else token.lower()
+                         for token in tokens)
+        definitions = {r[0]: normalize(r[1]) for r in c.execute("SELECT name,sql FROM sqlite_schema WHERE sql IS NOT NULL")}
+        expected_names = set()
+        for statement in schema_statements():
+            name = re.match(r"CREATE (?:TABLE|INDEX|TRIGGER) (\w+)", statement)[1]
+            expected_names.add(name)
+            if definitions.get(name) != normalize(statement):
+                raise UnsupportedSchemaLayout(f"Schema definition differs: {name}")
+        if {name for name in definitions if not name.startswith("sqlite_")} != expected_names:
+            raise UnsupportedSchemaLayout("Unexpected schema objects; no automatic repair/upgrade")
+        tables = {r[1]: r for r in c.execute("PRAGMA table_list")}
+        for name in ("dataset_meta", "projects", "tasks", "committed_requests", "work_entries",
+                     "work_revisions", "active_timer", "active_start_corrections", *EXPORT_TABLES, *CONFIRMATION_TABLES):
+            if name not in tables or tables[name][5] != 1:
+                raise UnsupportedSchemaLayout(f"Missing STRICT table: {name}")
+        required = {"work_identity_immutable", "work_identity_retained", "active_only_open",
+                    "active_identity_immutable", "closed_not_active", "revision_successor", "current_revision_forward", "correction_active_only"}
+        required |= {f"immutable_{table}_{verb}" for table in
+                     ("work_revisions", "active_start_corrections", "committed_requests") for verb in ("update", "delete")}
+        present = {r[0] for r in c.execute("SELECT name FROM sqlite_schema WHERE type='trigger'")}
+        if not required <= present:
+            raise UnsupportedSchemaLayout("Required evidence/lifecycle guards are missing")
+
+    @classmethod
+    def _verify_complete(cls, c):
+        """Independent-image/startup gate; ordinary reads keep their existing checks."""
+        if [r[0] for r in c.execute('PRAGMA integrity_check')] != ['ok']:
+            raise ValueError('Full SQLite integrity check failed')
+        cls._verify(c)
+        cls.verify_receipts(c)
 
     @staticmethod
     def verify_receipts(c):

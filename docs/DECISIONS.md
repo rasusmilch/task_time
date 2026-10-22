@@ -1030,6 +1030,33 @@ measurements do not establish an arbitrary SLA or native Windows performance.
 Stage 4B is delivered for independent review. Native Windows/NTFS, actual suspend,
 power-loss limitations, protected future upgrades and complete pilot remain separate.
 
+### Stage 4B acceptance and Stage 4C schema safety approval
+
+**Status:** selected. **Provenance:** the later explicit user GO instruction,
+“Stage 4C — Protected Schema Compatibility, Upgrade Readiness, and Non-Destructive
+Unsupported-Version Refusal,” independently accepts Stage 4B and authorizes this
+bounded diagnostic/refusal outcome. Earlier delivery statements preserve chronology.
+
+The user keeps the current schema/application identity and version 1 unchanged.
+Select cold read-only `--inspect-dataset`, complete current-image validation and
+separate supported/older/newer/layout/foreign/profile/unsafe diagnostics. Inspection
+must not create a lock/application/worker, recover journals, convert profiles, repair
+evidence or persist results. Unknown version markers authorize no transformation;
+lower markers are not proof of legitimate older schemas. Ordinary startup, backup
+validation and cold restore remain strict and non-destructive.
+
+Any future transition requires separately approved exact source/target definitions,
+version-specific transformations and evidence-preservation/adjudication, independent
+validation, ownership, installation/failure and backup/restore tests, including old
+application refusal. The selected default is cold transformation into a new absent
+directory outside an application/worker session, protecting the original. No
+in-place replacement or automatic source retirement is selected; original/upgraded
+clones must not operate as competing authorities. No version 2, migration engine,
+registry, callback mechanism or active upgrade action is approved now.
+
+Stage 4C is delivered for independent review. Stage 4 remains In Progress; native
+Windows/NTFS, suspend, power-loss limits, deployment and complete pilot are separate.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

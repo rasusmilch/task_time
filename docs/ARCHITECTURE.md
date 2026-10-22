@@ -20,7 +20,8 @@ Stage 3B protected file Save/status and Saved Reports are independently accepted
 the later Stage 3D GO instruction. Stage 3D connects derived daily/weekly
 reconciliation and reminders. The later explicit Stage 4A GO instruction records
 Stage 3 functional acceptance. The later Stage 4B GO independently accepts Stage 4A
-recovery; portable operational evidence and bounded repairs are delivered for review. Earlier
+recovery. The later Stage 4C GO independently accepts Stage 4B portable reliability;
+cold compatibility inspection/refusal is delivered for review, with schema 1 unchanged. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
 ## Small application and responsibility boundaries
@@ -139,7 +140,8 @@ New databases start in DELETE mode. A rollback journal may exist during a write;
 orderly DELETE commit removes it. Never delete journals/sidecars as application
 cleanup. Development datasets are disposable, but incompatible/damaged/unknown
 files are refused, not recreated, repaired or converted. No production SQLite
-datasets exist and no migration/compatibility workflow is needed. Schema stays 1.
+datasets exist; no migration or old-schema compatibility is provided. Schema stays 1.
+Cold compatibility inspection below is diagnostic only, not a conversion route.
 
 Stage 4A implements online consistent backup on the existing worker-owned source
 connection through `sqlite3.Connection.backup()`. A live main-file copy is never a
@@ -161,7 +163,8 @@ committed facts without a Stop, work mutation or backup receipt.
 `backup_restore.validate_image(path)` independently opens a stable regular image
 read-only, checks the SQLite header/journal profile before opening (WAL must not
 create sidecars), then requires DELETE, full `integrity_check`, foreign keys and
-`SQLiteStore._verify`. `SQLiteStore.verify_receipts` additionally checks canonical
+the shared `SQLiteStore._verify_complete` gate: full integrity, `_verify` and
+`verify_receipts`. The latter additionally checks canonical
 request/result content and work/creation/revision/active-correction associations
 against their immutable inputs. Existing complete export and confirmation validators
 remain authoritative, including whole prior chains/current references. There is no
@@ -204,6 +207,63 @@ These bounded local-disk identity/metadata checks and supported hard links do no
 promise hostile-directory, network-filesystem, atomic compare-and-publish or
 hardware power-loss protection. Native Windows/NTFS and remaining Stage 4
 stabilization still require qualification; no in-place/live restore is selected.
+
+### Cold compatibility inspection and future transition boundary
+
+`backup_restore.inspect_dataset(directory) -> CompatibilityResult` uses one separate
+read-only/query-only SQLite connection and a read transaction. It never acquires
+DatasetLock, starts Tk/worker, changes schema/metadata or performs recovery. The
+operator must close other sessions. It rejects explicit network paths, source or
+ancestor directory aliases, database symlinks, unsuitable objects and present
+journal/WAL/SHM sidecars. The header/fingerprint path rejects WAL before SQLite
+can create sidecars. Bounded regular-file reads, before/after directory/file
+metadata and complete digest checks reject detected changes; they are not writer
+exclusion or arbitrary hostile-filesystem protection. Supported storage is trusted
+local disk; these observations do not qualify unknown network mounts.
+
+Detached results contain classification, candidate path, trustworthy observed
+application/version/profile, supported version, completed-validation/startup flags,
+concise explanation and original diagnostic. No cursor/connection is returned as
+an API field and no result is persisted. Failed close prevents completion; original
+errors keep secondary cleanup notes. No replacement connection conceals uncertainty.
+The CLI reports deterministic statuses documented in [RUNNING.md](../RUNNING.md#cold-dataset-inspection).
+
+| Classification | Required observation |
+| --- | --- |
+| SUPPORTED_CURRENT | Chronicle identity/version 1, supported profile, exact DDL/STRICT/guards, complete SQLite/FK and all Chronicle evidence/receipt validation, successful close and stable final fingerprint. |
+| OLDER_UNSUPPORTED / NEWER_UNSUPPORTED | Chronicle identity and differing version marker after generic SQLite integrity/FK checks; current Chronicle semantics are not applied to an unknown version. A lower marker does not prove an authentic older schema. |
+| UNSUPPORTED_LAYOUT | Current identity/version with a different DDL signature. `_verify_schema` is the sole existing schema authority, now separated from semantic checks; token comparison preserves quoted literals. |
+| FOREIGN_DATABASE | A trustworthy SQLite application identity differs. |
+| UNSUPPORTED_PROFILE | An identifiable unsupported operational format/profile, including WAL header selection; full Chronicle integrity is not claimed. |
+| UNSAFE_OR_UNAVAILABLE | Unsuitable/unstable/unreadable source, outstanding sidecar, integrity/evidence failure or inspection/cleanup uncertainty. A damaged lower-marker file is not accepted as an older schema. |
+
+Normal startup remains a separate owner path. It fingerprints before `_probe`
+opens SQLite, then runs `_verify_complete` in a read transaction before writable
+open/profile configuration, and rechecks the fingerprint. Complete validation
+includes exact committed receipt content/associations as well as existing metadata,
+lifecycle, work revisions, exports and whole confirmation history. Startup retains
+its failed-probe cleanup handoff and refuses unknown/changed sources without
+recreation. Backup image validation reuses the same complete gate; cold restore
+still validates before directory reservation. No schema definitions or version
+markers are changed, and no fallback or migration registry exists.
+
+A future transition requires a separately approved version-specific contract:
+
+1. Exact accepted source and target schemas/versions and transformation rules.
+2. Preservation or explicit adjudication of every persisted identity and immutable
+   work/export/confirmation/receipt association, with no lost/duplicated/reordered evidence.
+3. Independent complete source and target verification and applicable backup/restore.
+4. Protection of the original and explicit source/target ownership/startup rules.
+5. An atomic or recoverable installation boundary with truthful failure behavior
+   before and after publication, and refusal by older application versions.
+
+The selected default is a **cold transformation into a new nonexistent dataset
+directory**, outside ChronicleApp/DatabaseWorker. The original remains untouched;
+independently validate the target before ordinary use. Original and upgraded clones
+must not operate as competing live authorities. No in-place replacement, automatic
+source retirement/deletion, target version 2, transformation callback or runtime
+upgrade is implemented or authorized by Stage 4C. No UPGRADE_AVAILABLE result exists.
+Native qualification and the complete Stage 4 gate remain separate.
 
 ## Time and one accounting implementation
 

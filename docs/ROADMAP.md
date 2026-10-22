@@ -25,8 +25,9 @@ Stage 3B protected file Save/recovery is independently accepted at
 `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C confirmation is independently accepted for functional development by the
 later Stage 3D GO instruction. The later explicit Stage 4A GO instruction records
 independent Stage 3 functional acceptance, including Stage 3D. The later Stage 4B
-GO independently accepts Stage 4A. Stage 4B portable reliability evidence and bounded
-repairs are delivered for independent review; Stage 4 remains In Progress.
+GO independently accepts Stage 4A. The later Stage 4C GO independently accepts
+Stage 4B portable reliability. Stage 4C compatibility inspection and protected
+refusal are delivered for independent review; Stage 4 remains In Progress.
 Native Windows source operation
 is required before deployment/pilot, not an unavailable executable-build gate.
 
@@ -159,7 +160,7 @@ protection and separately confirmed overwrite both need connected evidence.
 
 ## Stage 4 — Stabilization
 
-**IN PROGRESS — Stage 4A independently accepted; Stage 4B delivered for review.** Online worker-owned
+**IN PROGRESS — Stage 4A/4B independently accepted; Stage 4C delivered for review.** Online worker-owned
 SQLite backup, independent complete image validation and cold restore into new
 absent directories are connected. Restore exits before Tk/worker construction;
 normal later startup creates a fresh session and preserves the active timer and
@@ -172,8 +173,14 @@ delivery survives main-status faults and rejects mismatched Request/file context
 Definitive worker stop retains uncertainty without queueing a dead-worker retry.
 Representative small/medium/larger measurements preserve complete confirmation
 validation; see the [testing inventory](TESTING_STRATEGY.md#portable-operational-measurements).
-Remaining stabilization includes protected future schema upgrades and actual native
-Windows source/NTFS, suspend and deployment qualification. Exercise timer → frozen export → absolute
+Stage 4C adds cold read-only compatibility inspection, exact current-schema/literal
+signatures, complete startup receipt validation and protected refusal before adoption,
+backup verification or restore reservation. Schema stays version 1. Its future
+upgrade safety contract selects separately approved source/target transformations
+into new cold directories, not an active migration engine or invented version 2.
+Remaining stabilization and the complete gate include actual native Windows source/
+NTFS, suspend and deployment qualification. A future real schema transition still
+requires separate version-specific approval and evidence. Exercise timer → frozen export → absolute
 confirmation → correction → reconciliation → backup → cold restore/new session.
 
 Gate: complete core integrity, recovery and restore demonstrated, no data-loss
