@@ -237,6 +237,7 @@ class SQLiteStore:
         self.path = self.directory / DATABASE
         self.connection = None
         self._retired = None
+        self._reconciliation_probe = None
         self.lock = DatasetLock(self.directory)
         if create:
             if timezone is None:
@@ -335,7 +336,8 @@ class SQLiteStore:
 
     def backup(self, destination):
         """Serialized worker operation; never recover an uncertain connection here."""
-        if self.connection is None or self._retired is not None or self.connection.in_transaction:
+        if (self.connection is None or self._retired is not None or self._reconciliation_probe is not None
+                or self.connection.in_transaction):
             raise RuntimeError('Backup requires a healthy connection with no unresolved transaction')
         from .backup_restore import backup_connection
         return backup_connection(self.connection, destination, self.directory)
@@ -723,6 +725,9 @@ class SQLiteStore:
         return json.loads(row["result_bytes"])
 
     def _recover_connection(self):
+        if self._reconciliation_probe is not None:
+            self._reconciliation_probe.close()
+            self._reconciliation_probe = None
         if self._retired is not None:
             self._retired.close()
             self._retired = None
@@ -747,7 +752,11 @@ class SQLiteStore:
             return Outcome("rejected", error=ValueError("Wrong dataset identity"))
         try:
             # Always independent, committed-state evidence; never a poisoned transaction view.
+            if self._reconciliation_probe is not None:
+                self._reconciliation_probe.close()
+                self._reconciliation_probe = None
             c = self._probe()
+            self._reconciliation_probe = c  # Retain cleanup ownership even after failed close.
             try:
                 c.execute("BEGIN")
                 self._verify(c)
@@ -758,9 +767,12 @@ class SQLiteStore:
                     c.close()
                 except Exception as secondary:
                     primary.add_note(f"Reconciliation close failed: {secondary!r}")
+                else:
+                    self._reconciliation_probe = None
                 raise
             else:
                 c.close()
+                self._reconciliation_probe = None
             if result is not None:
                 return Outcome("committed", result)
             if self._retired is not None or (self.connection is not None and self.connection.in_transaction):
@@ -837,13 +849,15 @@ class SQLiteStore:
 
     def close(self):
         errors = []
-        for c in (self.connection, self._retired):
+        for c in (self.connection, self._retired, self._reconciliation_probe):
             if c is not None:
                 try:
                     c.close()
                 except Exception as exc:
                     errors.append(exc)
         if errors:
+            for secondary in errors[1:]:
+                errors[0].add_note(f'Additional connection cleanup failed: {secondary!r}')
             raise errors[0]  # Retain ownership if the connection could still be executing.
-        self.connection = self._retired = None
+        self.connection = self._retired = self._reconciliation_probe = None
         self.lock.close()

@@ -71,6 +71,9 @@ The launcher never discovers or imports `~/.task_timer_data`.
 - Ownership/busy/storage errors: preserve the dataset and original diagnostics;
   do not remove files or infer that an uncertain request failed. Use the existing
   exact-request Retry/Reconcile and explicit cleanup controls as appropriate.
+  A definitively stopped worker cannot reconcile within that session: retain the
+  uncertainty, explicitly exit, and reopen. Failed connection cleanup retains
+  dataset ownership until an explicit cleanup retry succeeds.
 
 Before real Windows deployment/pilot, record native Python, SQLite source/profile,
 Tcl/Tk, offline zone loading and writable NTFS behavior. Exercise create/reopen,
@@ -89,8 +92,10 @@ Stage 3A preview/evidence and Stage 3B file Save/recovery are independently acce
 Stage 3C confirmation is independently accepted for functional development under
 the later Stage 3D GO instruction. Stage 3D reconciliation/reminders are connected
 and independently accepted for functional development by the later Stage 4A GO
-instruction. Stage 4A backup/cold restore is delivered for independent review,
-not complete stabilization or native/pilot qualification.
+instruction. The later Stage 4B GO independently accepts Stage 4A backup/cold
+restore. Stage 4B portable reliability evidence and bounded delivery/cleanup repairs
+are delivered for independent review, not complete stabilization or native/pilot
+qualification.
 
 ## Backup and cold recovery
 

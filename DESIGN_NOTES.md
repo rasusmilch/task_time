@@ -24,7 +24,13 @@ weekly reconciliation, current/frozen comparison, coverage and previous/current
 calendar reminders with explicit durable Dismiss for today. The later Stage 4A GO
 instruction records independent Stage 3 functional acceptance. Stage 4A connects
 worker-owned SQLite backup, independent full image validation and cold restore into
-new directories for independent review. The original remains untouched; later normal
+new directories, independently accepted by the later explicit Stage 4B GO.
+Stage 4B portable interruption/storage/shutdown evidence and bounded repairs are
+delivered for independent review. Independent reconciliation probes retain cleanup
+ownership after failed close; matching immutable Request context accompanies
+mutation delivery, and optional status rendering cannot lose a committed editor
+outcome. Definitive worker stop preserves uncertainty and refuses dead-worker retry.
+The original remains untouched; later normal
 startup creates fresh Tk/app/worker/session ownership. No live restore, migration,
 backup ledger or automatic external report publication is implemented.
 Preview and reconciliation write no evidence. Architecture
@@ -54,8 +60,9 @@ is delivered and independently accepted with Stage 2A/2B. Stage 3A allocation,
 preview/evidence and Stage 3B file Save/recovery are independently accepted.
 Stage 3C confirmation is independently accepted for functional development.
 Stage 3 functional completeness is independently accepted under the later Stage 4A
-GO instruction. Stage 4A delivery, native release qualification and pilot still
-require their own review/evidence; retained JSONL backup details below do not
+GO instruction. Stage 4A is independently accepted by the later Stage 4B GO;
+Stage 4B delivery, native release qualification and pilot still require their own
+review/evidence; retained JSONL backup details below do not
 implement the SQLite recovery contract.
 
 ## Architecture

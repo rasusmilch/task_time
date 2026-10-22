@@ -19,7 +19,8 @@ Stage 3B protected file Save/status and Saved Reports are independently accepted
 `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C confirmation is independently accepted for functional development under
 the later Stage 3D GO instruction. Stage 3D connects derived daily/weekly
 reconciliation and reminders. The later explicit Stage 4A GO instruction records
-Stage 3 functional acceptance; Stage 4A recovery is delivered for independent review. Earlier
+Stage 3 functional acceptance. The later Stage 4B GO independently accepts Stage 4A
+recovery; portable operational evidence and bounded repairs are delivered for review. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
 ## Small application and responsibility boundaries
@@ -301,7 +302,11 @@ state, attempts rollback/close and isolates the connection. Independent healthy
 committed reads establish receipts; an uncommitted same-connection row cannot prove
 success. Failed rollback/close plus healthy absence remains unverified while that
 transaction may live. Preserve primary/secondary diagnostics, including a failed
-validation-probe close.
+validation-probe close. An independently opened reconciliation probe is retained
+by the store until its close succeeds. Recovery closes it before reuse; backup
+refuses it, and store shutdown cannot release DatasetLock while its close remains
+unestablished. Cleanup retries remain on the existing worker, without a new
+connection coordinator.
 If initialization cleanup fails, a temporary exception handoff lets the worker
 retain the partial store solely for cleanup; it removes that explicit handoff before
 reporting the original error to Tk. Failed close never means stopped or releases
@@ -330,7 +335,15 @@ Unverified correction retains the exact immutable Request and offers Retry/Recon
 and exceptional exit inside the modal editor. Reconciliation delegates to the
 owner/worker; each dispatch has a new delivery token while request UUID, accepted
 instant and content stay unchanged. Duplicate/old results cannot settle a later
-attempt or editor. Root Close cannot interrupt executing work; idle unverified
+attempt or editor. Mutation/reconciliation replies echo the original immutable
+Request as well as their unique delivery token; mismatched dataset/operation/content
+cannot consume pending work. File replies also validate export/destination context
+before consuming an accepted operation. The app records the matching Outcome
+before optional main-status rendering and still delivers it to the owning editor
+after a status failure. A definitive stopped worker retains an unresolved Request
+as unverified, clears executing state, disables main Retry and refuses another
+queue submission; explicit exceptional exit/reopen is required. This is not a
+watchdog or automatic worker restart. Root Close cannot interrupt executing work; idle unverified
 correction reaches the same default-cancel exit warning, parented to the editor.
 Canceled exit retains its session; confirmed exit closes orderly without undoing
 possible commitment. External editor destruction clears widget references only;
@@ -355,8 +368,12 @@ exact retries, active restart/calendar continuity, ordinary ownership races and
 rollback-journal pre-COMMIT and post-cleanup boundaries. These bounded local
 experiments are not arbitrary power-loss,
 hostile/multiwriter or native Windows evidence. Stage 4A supplies consistent backup
-and cold restore for review; protected upgrades and remaining stabilization are
-separate. Native Windows source operation remains a deployment qualification.
+and cold restore, independently accepted by the later Stage 4B GO. Stage 4B adds
+complete-fact transaction faults, reminder/file/backup barrier-controlled child
+interruptions, queued Start/Stop/Switch exit and a connected uncertain-save/backup/
+cold-restore/new-session scenario. Measured full-history validation cost is retained
+without caches or weaker evidence checks; [timings and limits](TESTING_STRATEGY.md#portable-operational-measurements)
+are engineering evidence. Protected upgrades and remaining stabilization are separate. Native Windows source operation remains a deployment qualification.
 
 The supported deployment is ordinary Python 3.11+ source execution through
 `run_chronicle.py` → `chronicle.bootstrap.main`, without task_timer fallback.

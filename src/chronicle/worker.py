@@ -14,6 +14,7 @@ class Message:
     kind: str
     token: int = 0
     value: object = None
+    request: Request | None = None
 
 
 class DatabaseWorker(Thread):
@@ -95,7 +96,8 @@ class DatabaseWorker(Thread):
                         unresolved = None
                 if message.kind == 'backup':
                     value = {'request_id': message.value['request_id'], 'result': value}
-                self.results.put(Message(message.kind, message.token, value))
+                self.results.put(Message(message.kind, message.token, value,
+                                         message.value if message.kind in ('mutate','reconcile') else None))
         except Exception as exc:
             partial = getattr(exc, "_chronicle_cleanup_store", None)
             if partial is not None:

@@ -27,8 +27,9 @@ evidence, Stage 3B file Save/recovery and Stage 3C absolute confirmation are
 independently accepted for functional development. Stage 3D connects comprehensive
 reconciliation/reminders; this is not deployment/pilot readiness.
 The later explicit Stage 4A GO instruction records independent Stage 3
-functional acceptance; backup/cold restore is delivered for independent review,
-without completing Stage 4 or authorizing pilot.
+functional acceptance. The later Stage 4B GO independently accepts backup/cold
+restore. Stage 4B portable operational evidence and bounded reliability repairs
+are delivered for independent review, without completing Stage 4 or authorizing pilot.
 
 ## SELECTED — Replacement installation and data boundary
 
@@ -575,8 +576,11 @@ banner uses the selected local-calendar schedule and explicit durable Dismiss fo
 today. Unverified dismissal retains the exact Request; queue acceptance is not
 suppression. The later explicit Stage 4A GO instruction records independent Stage 3
 functional acceptance. Stage 4A connects consistent SQLite backup, full independent
-validation and cold restore to new directories; it remains subject to independent
-review and does not complete Stage 4.
+validation and cold restore to new directories, independently accepted by the later
+Stage 4B GO. Stage 4B adds portable transaction/file/backup interruption and queued
+shutdown evidence, retains failed-probe cleanup ownership and guards authoritative
+outcome delivery against UI faults and mismatched replies. It does not complete
+Stage 4.
 Retained JSONL services do not satisfy these gates. Earlier Phase 2 acceptance
 remains bounded historical evidence. No core/pilot or native qualification follows.
 
@@ -602,7 +606,8 @@ active timer and immutable identities/bytes remain unchanged. Original and clone
 must not be operated as competing live authorities for the same work. External
 report copies are not bundled or written on restore; existing recovery can publish
 them explicitly. No restoration confirms POL-R, reconciles work or dismisses a
-reminder. Stage 4A delivers this slice for review; native qualification and the
+reminder. Stage 4A is independently accepted under the later Stage 4B GO; portable
+operational qualification is delivered for review. Native qualification and the
 remaining Stage 4 gate precede complete pilot.
 
 ## OPEN — Reserved user/ChatGPT decisions

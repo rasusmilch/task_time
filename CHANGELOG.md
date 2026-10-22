@@ -77,8 +77,15 @@ receipts or commits. No release or production qualification is implied below.
   worker construction. Preserve original data, active timer, all immutable work/
   export/confirmation/receipt evidence and reminder metadata; normal later startup
   creates a fresh session. No live restore, migration, schema/backup ledger or report
-  auto-publication. Stage 4A is delivered for independent review; remaining Stage 4,
-  native Windows source/NTFS/actual suspend qualification and complete-core pilot
+  auto-publication. Stage 4A is independently accepted under the later Stage 4B GO.
+  Qualify portable transaction, reminder, report/backup interruption and queued
+  shutdown with independent reopen, exact retries and complete-fact comparisons.
+  Retain failed reconciliation-probe ownership through cleanup, preserve editor
+  completion despite main-status failure, reject mismatched Request/file results
+  without consuming pending work and retain uncertainty after definitive worker
+  stop. Measure small/medium/larger workloads with full confirmation validation
+  intact. Stage 4B is delivered for independent review; remaining Stage 4, native
+  Windows source/NTFS/actual suspend qualification and complete-core pilot
   remain separate.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,

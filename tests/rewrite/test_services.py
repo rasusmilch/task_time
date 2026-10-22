@@ -256,3 +256,26 @@ def test_rollback_journal_commit_busy_cannot_publish_own_receipt(service, store,
     assert service.execute(frozen).status == "committed"
     assert service.execute(frozen).result == service.reconcile_request(frozen).result
     assert store.connection.execute("SELECT count(*) FROM active_timer").fetchone()[0] == 1
+
+
+def test_reconciliation_probe_close_failure_retains_dataset_ownership(store,service,task,make_request,monkeypatch):
+    from chronicle.dataset_lock import DatasetLock
+    request=make_request('start_timer',task_id=task,entry_id=uid(),expected_task_version=1)
+    assert service.execute(request).status=='committed'
+    probe=store._probe();original=store._probe;blocked=[True]
+    class Probe:
+        def __getattr__(self,name):return getattr(probe,name)
+        def close(self):
+            if blocked[0]:raise OSError('probe ownership still uncertain')
+            probe.close()
+    monkeypatch.setattr(store,'_probe',lambda:Probe())
+    try:
+        assert store.reconcile(request).status=='unverified'
+        with pytest.raises(OSError,match='probe ownership'):store.close()
+        competitor=DatasetLock(store.directory)
+        with pytest.raises(OSError):competitor.acquire()
+    finally:
+        blocked[0]=False;monkeypatch.setattr(store,'_probe',original)
+        store.close()
+    with pytest.raises(sqlite3.ProgrammingError):probe.execute('SELECT 1')
+    competitor.acquire();competitor.close()

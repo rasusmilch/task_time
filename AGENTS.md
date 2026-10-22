@@ -57,8 +57,10 @@ weekly reconciliation, coverage, current/frozen comparison and local-calendar
 reminders with durable explicit Dismiss for today, for independent review.
 The later explicit Stage 4A GO instruction records independent Stage 3 functional
 acceptance. Stage 4A delivers worker-owned consistent SQLite backup, independent
-image validation and cold restore into new directories for independent review.
-Stage 4 remains In Progress; native qualification and Stage 5 pilot remain separate.
+image validation and cold restore into new directories. The later explicit Stage 4B
+GO instruction independently accepts Stage 4A. Stage 4B adds portable operational
+evidence and bounded cleanup/delivery repairs for independent review. Stage 4 remains
+In Progress; native qualification and Stage 5 pilot remain separate.
 Subsequent execution stays bounded and independently reviewed, using substantial
 coherent slices without microtasks.
 The fresh rewrite

@@ -120,7 +120,10 @@ verification are required; existing files are never overwritten. Verify with
 launch normally with that directory. Restore does not start Tk and accepts only
 a previously nonexistent directory. Original data remains untouched; do not run
 original/clone as competing authorities. No live-file copying or in-place restore.
-Stage 4A is delivered for review; future protected upgrades remain separate and
+Stage 4A is independently accepted under the later Stage 4B GO instruction;
+portable interruption, storage-fault and queued-shutdown evidence and bounded
+cleanup/delivery repairs are delivered as Stage 4B for independent review.
+Future protected upgrades remain separate and
 unknown schemas refuse rather than being reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
 source launch, troubleshooting and native Windows source validation. Initial pip
 installation needs internet or an approved local wheel source and available IT
@@ -151,8 +154,9 @@ Current week history reads use committed metadata, with no historical-work rewri
 No Reset controls/counters or synthetic work are added.
 
 Stage 3 is functionally accepted under the later explicit Stage 4A GO instruction.
-Stage 4A backup/cold restore is delivered for independent review; Stage 4 remains
-In Progress. Stage 3A connected frozen Preview, exact weekly suggestions
+Stage 4A backup/cold restore is independently accepted by the later Stage 4B approval.
+Stage 4B portable operational qualification is delivered for independent review;
+Stage 4 remains In Progress. Stage 3A connected frozen Preview, exact weekly suggestions
 and immutable SQLite registration/recovery are independently accepted at
 `d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B protected file Save/status and
 Saved Reports recovery are independently accepted at

@@ -1008,6 +1008,28 @@ Stage 4A is delivered for independent review, not complete Stage 4 or pilot appr
 No live/in-place restore, migration or automatic repair is selected. Native source/
 NTFS, suspend, hostile filesystem and power-loss qualification remain separate.
 
+### Stage 4A acceptance and Stage 4B portable reliability approval
+
+**Status:** selected. **Provenance:** the later explicit user GO instruction,
+“Stage 4B — Portable Operational Reliability, Interruption Recovery,
+Storage-Failure Integrity, and Queued Shutdown Qualification,” records independent
+Stage 4A acceptance and authorizes bounded qualification and demonstrated repairs.
+Earlier delivery/review statements preserve their original chronology.
+
+The existing SQLite profile, worker/Request/Outcome path, local modality, exact
+retry, immutable evidence and cold-restore boundary remain selected. Reuse existing
+fault and process barriers; add complete-fact comparisons, queued shutdown and a
+connected recovery scenario. Retain failed probe cleanup ownership and definitive
+uncertainty, and prevent optional rendering or unrelated replies from consuming
+known outcomes. No watchdog, persistent request ledger, automatic worker restart,
+new schema or recovery framework is selected.
+
+Measure representative small/medium/larger workloads through actual supported APIs,
+including whole confirmation-history validation. Preserve integrity semantics;
+measurements do not establish an arbitrary SLA or native Windows performance.
+Stage 4B is delivered for independent review. Native Windows/NTFS, actual suspend,
+power-loss limitations, protected future upgrades and complete pilot remain separate.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

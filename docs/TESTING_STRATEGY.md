@@ -60,18 +60,18 @@ qualification remain distinct.
 
 ## Connected SQLite timer evidence
 
-The Stage 1A/1B/1C, Stage 2A/2B, Stage 3A/3B/3C/3D and Stage 4A suites below exercise the shipped `chronicle` source with disposable
+The Stage 1A/1B/1C, Stage 2A/2B, Stage 3A/3B/3C/3D and Stage 4A/4B suites below exercise the shipped `chronicle` source with disposable
 SQLite datasets. This inventory describes assertions, not an automatic passing
 result or native qualification; current command outcomes belong in receipts.
 
 | Suite | Exercised boundary |
 | --- | --- |
 | [test_schema.py](../tests/rewrite/test_schema.py) | Real DELETE/EXTRA(3)/FK(1), STRICT/CHECK/UUID constraints, readback rejection and transaction-order guards, fresh/reopen/refusal, immutable evidence, active/closed guards and pre-COMMIT orphan postcondition. Version-floor mocks test only gate eligibility, not a substituted SQLite library; real feature tests use the actual linked runtime. Unsupported development journal profiles refuse before writable configuration, without conversion. No hostile database guarantee. |
-| [test_services.py](../tests/rewrite/test_services.py) | Independent UUID task/project operations, atomic same-instant Switch/rollback, exact receipt reuse before stale checks, changed-content rejection, bounded busy including a real shared-reader-blocked rollback-journal COMMIT, failed COMMIT with open transaction, failed rollback/close, independent committed lookup, lost acknowledgement, unverified retry and immutable active-start audit/precision/DST behavior. Injected failures are not universal power-loss evidence. |
+| [test_services.py](../tests/rewrite/test_services.py) | Independent UUID task/project operations, atomic same-instant Switch/rollback, exact receipt reuse before stale checks, changed-content rejection, bounded busy including a real shared-reader-blocked rollback-journal COMMIT, failed COMMIT with open transaction, failed rollback/close, independent committed lookup, lost acknowledgement, unverified retry and immutable active-start audit/precision/DST behavior. Injected failures are not universal power-loss evidence. A failed independent reconciliation-probe close retains the actual handle and dataset ownership until explicit successful cleanup; a second owner remains refused. |
 | [test_timekeeping.py](../tests/rewrite/test_timekeeping.py) / [test_accounting.py](../tests/rewrite/test_accounting.py) | Integer microseconds, range/type/canonical-date rejection, bundled IANA rules, gaps/repeats/non-hour transitions, local midnight/week, running cutoff, own/deleted work conservation, sleep/forward elapsed and impossible-observation warnings without refresh writes. These suites alone do not exercise date-only creation or quarter-hour allocation; the Stage 2A suites below cover mixed work. |
 | [test_worker.py](../tests/rewrite/test_worker.py) / [test_bootstrap.py](../tests/rewrite/test_bootstrap.py) | Worker-thread connection lifecycle, exact reconciliation, startup failure, actual separate-process exclusion/ordinary directory aliases, committed active restart and abrupt process exit. Native alias cases skip narrowly where unsupported. Process tests are bounded examples, not hostile/multiwriter qualification. |
 | [test_app.py](../tests/rewrite/test_app.py) | Actual main/mini construction and callbacks with real services/worker; server-delivered X11 task selection/buttons, Start/Switch/Stop, active-start correction, shared totals, slow-worker event delivery, duplicate guards and queued shutdown. Correction cases retain exact drafts/occurrences across real service validation, stale conflict, injected COMMIT rollback and pre-execution unavailability; queued work locks Close/fields, unchanged writes nothing, and unverified editor-local retries retain the same Request through absence/committed lookup. Dispatch tokens reject duplicate completions; unexpected view destruction retains owner evidence. Server-delivered keyboard/mouse cases cover rejection-to-success, repeated selection, blocked main/mini, Escape, editor Retry and the actual toolkit default-No exceptional-exit warning. WM Close is separately exercised through its registered handler. Known completion survives numeric/cleanup failure; cancellation/confirmed exit, read purity and late-result handling remain covered. Additional connected cleanup cases use server input for retry, retain lock ownership after failure, prohibit cancel-back-to-editing once cleanup started, and deliver failed-constructor cleanup to the owning worker. Worker exceptions/queued reads/shutdown are separately covered in test_worker.py. Repeated-interpreter test cleanup is UI-thread-owned; doubles alone do not establish desktop interaction. |
-| [test_interruptions.py](../tests/rewrite/test_interruptions.py) | Separate disposable children killed at before-BEGIN, acquired transaction, partial work facts, receipt-before-COMMIT, after-COMMIT/before-ack and inside a subsequent read transaction for Start/Stop/Switch/correction. Independent reopen checks all facts, exact request reuse after newer work, no partial Switch/orphans, active-owner/reopen crashes, written rollback journal immediately before COMMIT and removed journal after COMMIT, interrupted initialization with existing rollback-journal preservation, and accepted-work shutdown. Pipe barriers/bounded waits replace sleep-only timing. The barriers surround SQLite COMMIT; they do not interrupt its internal journal unlink/page flush or establish universal hardware power-loss safety. |
+| [test_interruptions.py](../tests/rewrite/test_interruptions.py) | Separate disposable children killed at before-BEGIN, acquired transaction, partial work facts, receipt-before-COMMIT, after-COMMIT/before-ack and inside a subsequent read transaction for Start/Stop/Switch/correction. Independent reopen checks all facts, exact request reuse after newer work, no partial Switch/orphans, active-owner/reopen crashes, written rollback journal immediately before COMMIT and removed journal after COMMIT, interrupted initialization with existing rollback-journal preservation, and accepted-work shutdown. Pipe barriers/bounded waits replace sleep-only timing. The barriers surround SQLite COMMIT; they do not interrupt its internal journal unlink/page flush or establish universal hardware power-loss safety. Stage 4B adds barrier-controlled reminder dismissal at BEGIN/facts/receipt/post-COMMIT, and actual-worker report link/explicit replace and backup page-progress/validation/link deaths; independent reopen compares complete facts and preserves active identity. Interrupted private stages are not successful backups or automatically cleaned. |
 | [test_operational_lifecycle.py](../tests/rewrite/test_operational_lifecycle.py) | Persisted midnight/week/DST and simulated sleep continuity, repeated corrections/reopen/Stop, no startup/tick writes, separate-process create/owner races and crash release, late unknown-file preservation, partial/profile/schema/header/version refusal and primary validation plus cleanup diagnostics. Native POSIX permission cases skip only where unavailable; they do not establish Windows ACL/NTFS behavior. |
 | [test_source_runtime.py](../tests/rewrite/test_source_runtime.py), [test_root_launcher.py](../tests/test_root_launcher.py) | Replacement-only root import and src resolution without project installation; forbidden legacy/alternative-provider/builder imports, minimal pinned runtime dependency, builtin sqlite3 identity, offline IANA loading and actionable missing Tk/tzdata errors. These are source-runtime tests, not native Windows qualification. |
 | [test_manual_work.py](../tests/rewrite/test_manual_work.py) | Real typed initial timed/date-only facts, UUID/task guards, exact H:MM bounds, invalid/future/DST/non-hour/UTC input, initial identity/revision/reference/receipt fault rollback and exact retry, direct-SQL nullable-kind/FK/active/deletion-successor checks and unknown schema-object refusal. Uses fresh SQLite files, not an old-schema migration. |
@@ -101,6 +101,7 @@ result or native qualification; current command outcomes belong in receipts.
 
 | [test_backup_restore.py](../tests/rewrite/test_backup_restore.py) | Actual worker-owned SQLite backup, independent read-only full integrity/production semantic validation and cold new-directory restore. Compares every fact table and exact immutable receipt/report bytes across source/image/restore; retains active corrections, revisions, deleted work, full-week basis, source/manual/zero confirmations, latest references and dismissal. Covers empty/rich images, logical rather than page-layout equality, exclusive conflict/alias/type protection, source/stage changes, unknown object retention, actual page-progress interruption, connect/close/fsync/validation/link/acknowledgement/final-comparison/cleanup faults, exact uncertain-request gate and later worker operation/shutdown. FIFO/symlink setup skips only unavailable native capabilities; unexpected setup failures remain failures. CLI subprocesses verify/restore without a display; invalid combinations/source refuse before target/session construction. Corruption bypasses guards only in isolated fixtures. Not hardware power-loss or hostile-directory qualification. |
 | [test_backup_ui.py](../tests/rewrite/test_backup_ui.py) | Actual App/worker/SQLite callbacks plus separate XTest controls: empty construction, owned chooser/cancellation, modal/busy/reentry/close guards, live local/global competitor refusal, retained primary diagnostics and outcome despite destroyed view or presentation failure, stale/duplicate completions, verified-file versus cleanup-only failure, timer observation while backup is blocked, enabled main/mini probes excluded by local grab, explicit failure recovery and ordinary/forced-root shutdown. Connected saved/confirmed/dismissed recovery scenario preserves work, active identity, frozen bytes, current references and reminder metadata. Callback faults do not substitute for server input; file decisions may be doubled. |
+| [test_portable_reliability.py](../tests/rewrite/test_portable_reliability.py) | Connected App/worker/real SQLite: complete fact/receipt comparisons across edit, confirmation and Switch BEGIN/fact/evidence/reference/receipt/final/COMMIT/independent-probe faults; committed exact retries after newer state and changed-content rejection. Baseline-failing regressions cover committed editor completion after main-status failure, definitive worker stop retaining uncertainty and mismatched file context not consuming publication. Mutation deliveries require matching immutable Request context, not just tokens. XTest accepted Start/Stop/Switch followed by actual root-close protocol drains queued mutation and independently reopens exact receipts/active state. A rich connected scenario spans projects, Switch, checked/manual/zero confirmations and changed-Actual mismatch, then backup, actual committed-but-unprobed manual Save, exact reconciliation, queued shutdown/reopen, independently validated cold restore and fresh App/worker work while original/image/report stay unchanged. Direct callback faults remain distinct from server input. |
 | [test_backup_startup.py](../tests/rewrite/test_backup_startup.py) | Separate cold CLI restore followed by an actual root-source-launch subprocess, fresh Tk/App/worker ready state, preserved active timer and immutable evidence, explicit new restored work and orderly close. Original/image bytes remain unchanged. No live-session swap or old callback handoff; native Windows is separate. |
 
 A usable display is required for `real_tk` cases. Linux Xorg/XTest evidence does
@@ -117,8 +118,51 @@ recording at `adc09ba0935e8718c4ad2101057af9c6022074cc`. Stage 3A is independent
 Stage 3B is independently accepted at `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`.
 The later explicit Stage 3D GO instruction independently accepts Stage 3C for
 functional development. The later Stage 4A GO instruction records independent
-Stage 3 functional acceptance. Stage 4A evidence remains subject to independent
-review; no complete stabilization, native pilot or external acceptance follows.
+Stage 3 functional acceptance. The later Stage 4B GO independently accepts
+Stage 4A. Stage 4B evidence remains subject to independent review; no complete
+stabilization, native pilot or external acceptance follows.
+
+## Portable operational measurements
+
+Stage 4B uses three disposable Linux datasets, Python 3.12.14 and linked SQLite
+3.53.1, through the production SQLiteStore/TimerService/backup APIs. Three samples
+per operation; cells below are median / maximum **seconds**. Seed sizes are
+3 / 50 / 100 tasks, 12 / 700 / 2,000 date-only entries, 3 / 50 / 200 immutable
+confirmation batches and 1 / 3 / 5 registered full-week exports. Source-linked
+confirmations (every 25th batch where selected) include exact stale acknowledgements;
+other batches include manual absolute values/zero. Each sample adds actual
+Start/Switch/Stop, a date-only revision and a confirmation; thus final files also
+contain six closed timed entries and three additional revisions/batches. Measured
+file sizes were 225,280 / 2,658,304 / 10,248,192 bytes. Setup is not timed as an
+operator action. No measurements/status/cache are persisted in application data.
+
+| Operation | Small | Medium | Larger |
+| --- | --- | --- | --- |
+| Open/validation | 0.0100 / 0.0103 | 0.2860 / 0.2868 | 1.8099 / 2.2883 |
+| Start | 0.0011 / 0.0012 | 0.0553 / 0.0558 | 0.4554 / 0.4606 |
+| Stop | 0.0007 / 0.0009 | 0.0542 / 0.0543 | 0.4401 / 0.4514 |
+| Switch | 0.0008 / 0.0009 | 0.0566 / 0.0578 | 0.4508 / 0.4526 |
+| Manual correction | 0.0008 / 0.0009 | 0.0539 / 0.0549 | 0.4387 / 0.4531 |
+| Confirmation commit | 0.0011 / 0.0012 | 0.1022 / 0.1088 | 0.8711 / 0.9360 |
+| Current state | 0.0008 / 0.0010 | 0.0616 / 0.0624 | 0.4573 / 0.4643 |
+| Timesheet preparation | 0.0016 / 0.0016 | 0.0680 / 0.0687 | 0.4917 / 0.5396 |
+| Reconciliation | 0.0014 / 0.0039 | 0.0602 / 0.0661 | 0.4828 / 0.4837 |
+| Reminder evaluation | 0.0016 / 0.0018 | 0.0664 / 0.0667 | 0.4621 / 0.5157 |
+| Consistent backup | 0.0158 / 0.0172 | 0.4451 / 0.4515 | 2.3780 / 2.7754 |
+| Backup validation | 0.0057 / 0.0070 | 0.1684 / 0.1710 | 0.8973 / 0.9037 |
+| Cold restore | 0.0202 / 0.0217 | 0.5234 / 0.5416 | 2.9250 / 2.9716 |
+
+Complete immutable confirmation-history validation remains enabled on reads,
+commits and reopen. Its growing cost is visible in these results; no integrity
+check was removed and no persistent validation cache added. Backup/restore include
+multiple independent validations and final verification. These bounded measurements
+are not an SLA, cold-cache benchmark, universal scalability claim or native Windows
+performance evidence. The slow-I/O Tk tests independently establish event delivery
+while the serialized worker is occupied; API timing alone does not prove desktop
+responsiveness. Simulated SQLITE_FULL/ENOSPC, read-only and connection faults are
+injected evidence, separate from actual local SQLite/process/permission checks.
+Native Windows/NTFS, real suspend/resume, hardware power loss, hostile concurrent
+filesystem changes, protected future upgrades and complete pilot remain unqualified.
 
 ## Retained legacy test inventory and limits
 

@@ -24,8 +24,9 @@ Stage 3A is independently accepted at `d1e775c33982f109337ec237e3c78e8dc7b56f2e`
 Stage 3B protected file Save/recovery is independently accepted at
 `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C confirmation is independently accepted for functional development by the
 later Stage 3D GO instruction. The later explicit Stage 4A GO instruction records
-independent Stage 3 functional acceptance, including Stage 3D. Stage 4A is delivered
-for independent review; Stage 4 remains In Progress.
+independent Stage 3 functional acceptance, including Stage 3D. The later Stage 4B
+GO independently accepts Stage 4A. Stage 4B portable reliability evidence and bounded
+repairs are delivered for independent review; Stage 4 remains In Progress.
 Native Windows source operation
 is required before deployment/pilot, not an unavailable executable-build gate.
 
@@ -158,15 +159,21 @@ protection and separately confirmed overwrite both need connected evidence.
 
 ## Stage 4 — Stabilization
 
-**IN PROGRESS — Stage 4A delivered for independent review.** Online worker-owned
+**IN PROGRESS — Stage 4A independently accepted; Stage 4B delivered for review.** Online worker-owned
 SQLite backup, independent complete image validation and cold restore into new
 absent directories are connected. Restore exits before Tk/worker construction;
 normal later startup creates a fresh session and preserves the active timer and
 all immutable work/export/confirmation/receipt evidence. The original is untouched.
 No live/in-place restore, schema change, migration, schedule or registry is added.
-Remaining stabilization includes broader interruption/restart/storage faults,
-protected future schema upgrades, queued shutdown behavior and actual native
-Windows source/NTFS qualification. Exercise timer → frozen export → absolute
+Stage 4B extends real transaction/file/backup process-interruption evidence and
+complete-fact failure injection, exact uncertainty reconciliation and queued timer
+shutdown. Failed independent-probe close retains ownership; authoritative outcome
+delivery survives main-status faults and rejects mismatched Request/file context.
+Definitive worker stop retains uncertainty without queueing a dead-worker retry.
+Representative small/medium/larger measurements preserve complete confirmation
+validation; see the [testing inventory](TESTING_STRATEGY.md#portable-operational-measurements).
+Remaining stabilization includes protected future schema upgrades and actual native
+Windows source/NTFS, suspend and deployment qualification. Exercise timer → frozen export → absolute
 confirmation → correction → reconciliation → backup → cold restore/new session.
 
 Gate: complete core integrity, recovery and restore demonstrated, no data-loss

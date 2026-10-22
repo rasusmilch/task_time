@@ -83,6 +83,7 @@ class ChronicleApp:
         self.alive, self.ready, self.closing = True, False, False
         self.executing, self.pending = False, None
         self._pending_token = None
+        self._mutation_outcome = None
         self.state = {"tasks": [], "projects": [], "active": None, "report": None}
         self.dataset_id = self.timezone = None
         self.zone = None
@@ -370,6 +371,7 @@ class ChronicleApp:
             button.configure(state="normal" if allowed else "disabled")
         self.week_selector.configure(state="readonly" if enabled else "disabled")
         if (self.pending is not None or self._cleanup_failed) and not self.executing:
+            self.retry_button.configure(state="disabled" if self._worker_stopped else "normal")
             self.retry_button.pack(side="left", padx=3)
             if self.closing and self.pending is not None:
                 self.exit_button.pack(side="left", padx=3)
@@ -399,6 +401,7 @@ class ChronicleApp:
             self._diagnose(exc)
             return False
         self.pending, self.executing = request, True
+        self._mutation_outcome = None
         self._token += 1
         self._pending_token = self._token
         if _origin is not None and _origin is self.history:
@@ -1037,12 +1040,13 @@ class ChronicleApp:
         if (attempt is None or attempt.file_token != message.token or attempt.file_kind != message.kind
                 or not self.executing): return
         value = message.value
+        if not isinstance(value,Outcome) and (value.get('export_id') != attempt.candidate.export_id
+                or value.get('destination') != attempt.file_destination):
+            self._diagnose(ValueError('File result identity/destination disagrees with this attempt'))
+            return  # An unrelated reply cannot consume the accepted operation.
         attempt.file_token, self.executing = None, False
         if isinstance(value,Outcome):
             attempt.error = value.error or OSError('File operation unavailable')
-        elif (value.get('export_id') != attempt.candidate.export_id
-              or value.get('destination') != attempt.file_destination):
-            attempt.error = ValueError('File result identity/destination disagrees with this attempt')
         else:
             result = value['result']
             if message.kind == 'timesheet_publish' and type(result) is Publication:
@@ -1440,11 +1444,13 @@ class ChronicleApp:
             self.status.configure(text=f"Unable to open dataset: {message.value}")
             self._diagnose(message.value)
         elif message.kind in ("mutate", "reconcile"):
-            if self.pending is None or message.token != self._pending_token or not self.executing:
+            if (self.pending is None or message.token != self._pending_token or not self.executing
+                    or message.request != self.pending):
                 return  # A duplicate completion cannot consume a newer accepted request.
             result = message.value
             request = self.pending
             self.executing = False
+            self._mutation_outcome = result  # Authoritative matching delivery precedes all presentation.
             polr = getattr(self,'_polr_submission',None)
             if polr is not None and polr.request is request and request.operation == 'confirm_polr_absolute':
                 if result.status != 'unverified': self.pending, self._pending_token = None, None
@@ -1455,21 +1461,26 @@ class ChronicleApp:
                 if result.status != 'unverified': self.pending, self._pending_token = None, None
                 self._timesheet_registration_result(request,message.token,result)
                 return
-            if result.status == "unverified":
-                self.status.configure(text="Registration not verified; operation may have committed. Retry/Reconcile uses the same request.")
-            else:
-                self.pending = None
-                self._pending_token = None
-                if result.status in ('committed','unchanged') and request.operation!='register_timesheet_export' and not self.closing:
-                    self.recheck_polr()  # Authoritative completion schedules reads before optional presentation.
-                self.status.configure(text={"committed": "Saved.", "unchanged": "Unchanged; nothing written.",
-                                            "rejected": "Action rejected.", "rolled_back": "Operation rolled back.",
-                                            "unavailable": "Database unavailable; operation did not begin."}.get(result.status, result.status))
-            if request.operation == "set_week_start" and result.status not in ("committed", "unchanged", "unverified"):
-                self.week_selector.current(self.state["week_start"])
+            if result.status != 'unverified':
+                self.pending, self._pending_token = None, None
             if result.error:
-                self.status.configure(text=self.status.cget("text") + " " + str(result.error))
                 self._diagnose(result.error)
+            try:
+                if result.status == "unverified":
+                    self.status.configure(text="Registration not verified; operation may have committed. Retry/Reconcile uses the same request.")
+                else:
+                    if result.status in ('committed','unchanged') and request.operation!='register_timesheet_export' and not self.closing:
+                        self.recheck_polr()  # Authoritative completion schedules reads before optional presentation.
+                    self.status.configure(text={"committed": "Saved.", "unchanged": "Unchanged; nothing written.",
+                                                "rejected": "Action rejected.", "rolled_back": "Operation rolled back.",
+                                                "unavailable": "Database unavailable; operation did not begin."}.get(result.status, result.status))
+                if request.operation == "set_week_start" and result.status not in ("committed", "unchanged", "unverified"):
+                    self.week_selector.current(self.state["week_start"])
+                if result.error:
+                    self.status.configure(text=self.status.cget("text") + " " + str(result.error))
+            except Exception as exc:
+                exc.add_note(f'Authoritative mutation outcome remains {result.status}; status presentation failed.')
+                self._diagnose(exc)
             try:
                 self._work_editor_result(request, message.token, result)
                 if self.history is not None:
@@ -1477,14 +1488,16 @@ class ChronicleApp:
             except Exception as exc:
                 exc.add_note(f"Authoritative work outcome remains {result.status}; presentation/cleanup failed.")
                 self._diagnose(exc)
-            self._controls()
-            if self.closing:
-                self._advance_close()
-            else:
-                self.refresh()
-                if result.status in ('committed','unchanged') and request.operation!='register_timesheet_export':
-                    if self.timesheet is not None:self.timesheet.reconciliation_committed()
-                else:self._queue_reminder()
+            try:
+                self._controls()
+            finally:
+                if self.closing:
+                    self._advance_close()
+                else:
+                    self.refresh()
+                    if result.status in ('committed','unchanged') and request.operation!='register_timesheet_export':
+                        if self.timesheet is not None:self.timesheet.reconciliation_committed()
+                    else:self._queue_reminder()
         elif message.kind == 'polr_reminder':
             self._receive_reminder(message)
         elif message.kind in ("timesheet_status", "timesheet_publish"):
@@ -1538,10 +1551,28 @@ class ChronicleApp:
             self._worker_stopped = True
             self._cleanup_failed = False
             self.ready = False
-            if self.closing:
+            self.executing = False
+            if self.pending is not None:
+                result = Outcome('unverified', error=RuntimeError('Worker stopped before authoritative delivery; operation may have committed. Exit explicitly; this session cannot reconcile.'))
+                self._mutation_outcome = result
+                try:
+                    self._work_editor_result(self.pending, self._pending_token, result)
+                    if self.history is not None:
+                        self.history.mutation_result(self.pending, self._pending_token, result)
+                    if self._polr_submission is not None and self._polr_submission.request is self.pending:
+                        self._polr_result(self.pending, self._pending_token, result)
+                    if self._timesheet_attempt is not None and self._timesheet_attempt.request is self.pending:
+                        self._timesheet_attempt.registration = 'unverified'
+                        self._timesheet_attempt.error = result.error
+                        self._timesheet_notify()
+                finally:
+                    self.status.configure(text=str(result.error))
+                    self._controls()
+            elif self.closing:
                 self.root.destroy()
             else:
-                self.status.configure(text=self.status.cget("text") + " Worker stopped.")
+                self.status.configure(text=self.status.cget("text") + " Worker stopped; close and reopen the application.")
+                self._controls()
 
     def _drain(self):
         self._drain_id = None
@@ -1591,7 +1622,7 @@ class ChronicleApp:
             self.retry_button.pack_forget()
             self._advance_close()
             return True
-        if not self.alive or self.executing or self.pending is None:
+        if not self.alive or self.executing or self.pending is None or self._worker_stopped:
             return False
         self.executing = True
         self._token += 1
