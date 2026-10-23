@@ -48,7 +48,13 @@ receipts or commits. No release or production qualification is implied below.
   establish current output. Connect Save/Retry/Copy through verified immutable
   registration and protected worker-owned publication: reuse exact matching copies,
   exclusively create absent files, and permit stable regular-file replacement only
-  after separate default-No one-call consent bound to reviewed metadata. Protect all
+  after separate default-No one-call consent bound to reviewed metadata and digest,
+  freshly reinspected in full immediately before replacement. Preserve six-field
+  raw observations and complete same-domain stability; share explicit identity and
+  pathname/descriptor binding across startup, backup/restore and report files.
+  Windows creation/change-time and executable-mode handling is a provisional
+  candidate pending native field observations and focused validation, not Windows
+  qualification. Protect all
   active dataset paths/aliases; verify owned staging and complete final bytes/digest,
   preserve truthful postpublication uncertainty and never roll back final output.
   Saved Reports loads frozen context/text after restart without current accounting;

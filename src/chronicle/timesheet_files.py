@@ -76,12 +76,61 @@ def metadata(value):
                  ('st_dev','st_ino','st_mode','st_size','st_mtime_ns','st_ctime_ns'))
 
 
+def same_file_identity(left, right):
+    """Bind observations by usable device/file IDs and suitable file type only.
+
+    Size/timestamps may legitimately change while our stage is written. Unknown
+    or zero IDs cannot authorize ownership, cleanup or cross-domain binding.
+    """
+    a, b = metadata(left), metadata(right)
+    return (all(type(v) is int and v > 0 for v in (*a[:3], *b[:3]))
+            and stat.S_IFMT(a[2]) in (stat.S_IFREG, stat.S_IFDIR)
+            and a[:2] == b[:2] and stat.S_IFMT(a[2]) == stat.S_IFMT(b[2]))
+
+
+def same_domain_metadata(before, after):
+    """All six raw fields must remain stable within path or descriptor reads."""
+    return (same_file_identity(before, after)
+            and all(type(v) is int for v in (*metadata(before), *metadata(after)))
+            and metadata(before) == metadata(after))
+
+
+def path_matches_handle(path_observation, handle_observation, *, windows=None):
+    """Bind an lstat observation to fstat without conflating Windows clocks.
+
+    Provisional Windows contract, pending native field observations: CPython
+    pathname ctime may expose creation time while fstat exposes change time.
+    Keep both clocks in their own complete before/after stability checks. Only
+    pathname synthesis of all executable bits is allowed as a mode difference.
+    Content equality never substitutes for usable, equal device/file identity.
+    The explicit switch permits isolated synthetic tests, not global OS patches.
+    """
+    if windows is None:
+        windows = os.name == 'nt'
+    if not windows:
+        return same_domain_metadata(path_observation, handle_observation)
+    if not same_file_identity(path_observation, handle_observation):
+        return False
+    p, h = metadata(path_observation), metadata(handle_observation)
+    if not all(type(v) is int for v in (*p, *h)) or p[3:5] != h[3:5]:
+        return False
+    if p[2] != h[2] and not (stat.S_ISREG(p[2]) and p[2] == (h[2] | 0o111)):
+        return False
+    birth_path = getattr(path_observation, 'st_birthtime_ns', None)
+    birth_handle = getattr(handle_observation, 'st_birthtime_ns', None)
+    if birth_path is not None and birth_handle is not None:
+        if (type(birth_path) is not int or type(birth_handle) is not int
+                or birth_path < 0 or birth_path != birth_handle):
+            return False
+    return True
+
+
 def _read_regular(target, observed, expected, digest):
     flags = os.O_RDONLY | getattr(os,'O_BINARY',0) | getattr(os,'O_NOFOLLOW',0) | getattr(os,'O_NONBLOCK',0)
     fd = os.open(target, flags)
     try:
         before = os.fstat(fd)
-        if not stat.S_ISREG(before.st_mode) or metadata(before) != metadata(observed):
+        if not stat.S_ISREG(before.st_mode) or not path_matches_handle(observed, before):
             raise OSError('Destination changed before complete inspection')
         total, matches, hasher = 0, True, hashlib.sha256()
         while True:
@@ -93,7 +142,8 @@ def _read_regular(target, observed, expected, digest):
             total += len(chunk); hasher.update(chunk)
             if total > observed.st_size: raise OSError('Destination grew during inspection')
         if total != observed.st_size: raise OSError('Incomplete destination read')
-        if metadata(os.fstat(fd)) != metadata(before) or metadata(target.lstat()) != metadata(before):
+        if (not same_domain_metadata(before, os.fstat(fd))
+                or not same_domain_metadata(observed, target.lstat())):
             raise OSError('Destination changed during complete inspection')
         actual_digest = hasher.hexdigest()
         result = (matches and total==len(expected) and actual_digest==digest), actual_digest
@@ -125,7 +175,7 @@ def inspect(target, expected, digest):
 def _owned(stage, created):
     observed = stage.lstat()
     if (created is None or not stat.S_ISREG(observed.st_mode)
-            or (observed.st_dev,observed.st_ino)!=(created.st_dev,created.st_ino)):
+            or not same_file_identity(observed, created)):
         raise OSError(f'Staging ownership is uncertain; retained {stage}')
     return observed
 
@@ -188,6 +238,13 @@ def materialize(export_id, target, expected, digest, dataset, *, confirmed_overw
         if not matching: raise OSError('Completed staging bytes do not match the frozen report')
         protect(target,dataset)
         if replacing:
+            # Re-read the entire target after staging. Path ctime alone cannot
+            # detect same-size/restored-mtime writes on every supported runtime.
+            reviewed = inspect(target,expected,digest)
+            if reviewed.state != FileState.CONFLICT or reviewed.conflict != expected_conflict:
+                if reviewed.error is not None:
+                    raise reviewed.error
+                raise OSError('Destination changed during final complete reinspection')
             now = target.lstat()
             if not stat.S_ISREG(now.st_mode) or metadata(now)!=expected_conflict.metadata:
                 raise OSError('Destination changed immediately before replacement')
@@ -213,7 +270,7 @@ def materialize(export_id, target, expected, digest, dataset, *, confirmed_overw
             try:
                 descriptor = handle.fileno()
                 current = os.fstat(descriptor)
-                if created and (current.st_dev,current.st_ino)==(created.st_dev,created.st_ino): os.close(descriptor)
+                if created and same_file_identity(current,created): os.close(descriptor)
             except OSError as exc:
                 if error: error.add_note(f'Stage stream cleanup failed: {exc!r}')
                 else: error = exc

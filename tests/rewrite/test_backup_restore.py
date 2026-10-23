@@ -111,6 +111,18 @@ def test_consistent_snapshot_full_evidence_restore_reopen_and_independent_future
     assert not list(tmp_path.glob('.chronicle-backup-*'))
 
 
+def test_minimal_backup_validate_restore_without_rich_report_fixture(store,tmp_path):
+    before=logical(store.path);raw=store.path.read_bytes()
+    result=store.backup(tmp_path/'minimal.sqlite3')
+    assert result.verified,result.error
+    assert br.validate_image(result.destination).dataset_id==store.dataset_id
+    restored=br.restore_image(result.destination,tmp_path/'minimal-restored')
+    assert restored.verified,restored.error
+    assert logical(restored.destination)==before==logical(store.path)
+    assert store.path.read_bytes()==raw
+    assert br.inspect_dataset(tmp_path/'minimal-restored').ordinary_startup_permitted
+
+
 @pytest.mark.parametrize('kind',['file','directory','symlink','dangling','fifo','dataset','alias'])
 def test_backup_never_overwrites_objects_or_dataset_aliases(store, tmp_path, kind):
     target=tmp_path/'target'

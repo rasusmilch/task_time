@@ -149,6 +149,28 @@ backup. Cold restore installs a validated image only into a previously nonexiste
 directory and exits before Tk/worker/session construction. Future protected schema
 upgrades remain separate; exact release paths/cutover remain Open.
 
+Filesystem observations retain the raw six-field tuple (device, inode, mode,
+size, mtime_ns, ctime_ns). Small shared helpers in `timesheet_files` distinguish
+usable nonzero device/file identity plus suitable type, complete same-domain
+stability, and pathname-to-descriptor binding. POSIX binding retains all six
+fields. The provisional Windows binding requires identical device/file IDs,
+type, size and mtime; it permits only pathname synthesis of executable mode bits
+and compares birthtime_ns when both observations expose it. It does not equate
+pathname legacy creation-time ctime with descriptor change-time ctime. Each
+domain still retains all six before/after checks, with bounded complete reads
+and byte/digest verification where required. Unknown identity fails closed;
+content equality cannot establish ownership. Stage creation-to-completion
+ownership checks intentionally compare identity/type rather than changing size
+or timestamps. Startup admission remains bounded, cold inspection retains full
+fingerprints, and native rollback ordering is unchanged.
+
+This comparison candidate follows inspected
+[CPython Windows implementation semantics](https://github.com/python/cpython/blob/v3.15.0/Modules/posixmodule.c)
+and [descriptor metadata implementation](https://github.com/python/cpython/blob/v3.15.0/Python/fileutils.c).
+Actual Windows/NTFS field agreement and focused native behavior remain UNVERIFIED,
+pending the October 26 metadata observations and qualification; Linux and synthetic
+observations do not establish Windows compatibility.
+
 ### Consistent backup and cold recovery
 
 `SQLiteStore.backup(destination)` refuses an unhealthy or transactional connection;
@@ -699,8 +721,12 @@ objects or incomplete/unstable/unreadable observations never authorize replaceme
 Matching files are reused without rewriting. Absent destinations use exclusive
 hard-link publication from private same-directory O_EXCL staging: complete write,
 flush/fsync, successful close, ownership and byte verification. Explicit confirmed
-replacement rechecks reviewed target type/identity/size/mtime/ctime, then os.replace,
-never unlink/truncate/direct-write. Final complete verification precedes success.
+replacement performs a fresh complete stable target inspection after staging,
+requiring the original typed conflict metadata and content digest, then immediately
+rechecks target type/identity/size/mtime/ctime before os.replace. Changed bytes
+reject even when size/mtime and the other observed fields are unchanged. Consent
+is never renewed automatically. Never unlink/truncate/direct-write. Final complete
+verification precedes success.
 Cleanup touches only still-owned staging. Failures retain original traceback/notes,
 distinguish prepublication/attempted/returned/verified phases and never roll back
 final files. Checks assume trusted directories and serialized ownership, not atomic

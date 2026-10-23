@@ -17,7 +17,8 @@ from uuid import uuid4
 from .dataset_lock import DatasetLock
 from .sqlite_store import (APPLICATION_ID, SCHEMA_VERSION, BUSY_MS, DATABASE,
                            SQLiteStore, UnsupportedSchemaLayout, runtime_info)
-from .timesheet_files import destination_path, metadata, protect, _owned, _remove_owned
+from .timesheet_files import (destination_path, metadata, protect, _owned, _remove_owned,
+                             same_file_identity, same_domain_metadata, path_matches_handle)
 
 
 class Compatibility(str, Enum):
@@ -101,7 +102,8 @@ def _fingerprint(path):
     flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
     fd = os.open(path, flags)
     try:
-        if metadata(os.fstat(fd)) != metadata(observed):
+        before = os.fstat(fd)
+        if not path_matches_handle(observed, before):
             raise OSError('SQLite image changed before inspection')
         count, digest, header = 0, hashlib.sha256(), b''
         while True:
@@ -114,8 +116,8 @@ def _fingerprint(path):
             digest.update(block)
             if count > observed.st_size:
                 raise OSError('SQLite image grew during inspection')
-        if (count != observed.st_size or metadata(os.fstat(fd)) != metadata(observed)
-                or metadata(path.lstat()) != metadata(observed)):
+        if (count != observed.st_size or not same_domain_metadata(before, os.fstat(fd))
+                or not same_domain_metadata(observed, path.lstat())):
             raise OSError('SQLite image changed or was incompletely read')
         # Reject WAL images before SQLite can create/read WAL shared-memory
         # sidecars, even through a read-only connection. Schema validation still
@@ -356,9 +358,13 @@ def _sync(stage, created):
     # Windows FlushFileBuffers/_commit. No contents are written or truncated.
     fd = os.open(stage, os.O_RDWR | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0))
     try:
-        if metadata(os.fstat(fd)) != metadata(observed):
+        before = os.fstat(fd)
+        if not path_matches_handle(observed, before):
             raise OSError('Stage changed before sync')
         os.fsync(fd)
+        if (not same_domain_metadata(before, os.fstat(fd))
+                or not same_domain_metadata(observed, _owned(stage, created))):
+            raise OSError('Stage changed during sync')
     except BaseException as primary:
         try:
             os.close(fd)
@@ -372,7 +378,7 @@ def _sync(stage, created):
 def _same_content(stage, target):
     # Digest checks accompany this complete byte comparison; page layout need
     # only agree between this completed stage and its publication, not the source.
-    descriptors, observed = [], []
+    descriptors, observed, handles = [], [], []
     primary = cleanup_error = None
     try:
         for path in (stage, target):
@@ -380,20 +386,23 @@ def _same_content(stage, target):
             fd = os.open(path, os.O_RDONLY | getattr(os, 'O_BINARY', 0)
                          | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
             descriptors.append(fd)
-            observed.append(metadata(value))
-            if metadata(os.fstat(fd)) != metadata(value):
+            observed.append(value)
+            handle = os.fstat(fd)
+            handles.append(handle)
+            if not path_matches_handle(value, handle):
                 raise OSError('Final comparison object changed before opening')
-        if observed[0][3] != observed[1][3]:
+        if observed[0].st_size != observed[1].st_size:
             raise OSError('Final backup size differs from the validated stage')
-        remaining = observed[0][3]
+        remaining = observed[0].st_size
         while remaining:
             a = os.read(descriptors[0], min(65536, remaining))
             b = os.read(descriptors[1], len(a))
             if not a or a != b:
                 raise OSError('Final backup bytes differ from the validated stage')
             remaining -= len(a)
-        for path, fd, value in zip((stage, target), descriptors, observed):
-            if os.read(fd, 1) or metadata(os.fstat(fd)) != value or metadata(path.lstat()) != value:
+        for path, fd, value, handle in zip((stage, target), descriptors, observed, handles):
+            if (os.read(fd, 1) or not same_domain_metadata(handle, os.fstat(fd))
+                    or not same_domain_metadata(value, path.lstat())):
                 raise OSError('Final comparison object changed during reading')
     except BaseException as exc:
         primary = exc
@@ -447,7 +456,7 @@ def _publish(source, target, *, dataset=None, source_image=None, reserved=None):
         os.link(stage, target)  # Exclusive absent-name publication; no fallback.
         phase = BackupPhase.PUBLISHED_UNVERIFIED
         published = _regular(target)
-        if (published.st_dev, published.st_ino) != (created.st_dev, created.st_ino):
+        if not same_file_identity(published, created):
             raise OSError('Published backup identity differs from owned staging')
         final = validate_image(target)
         _same_content(stage, target)
@@ -464,7 +473,7 @@ def _publish(source, target, *, dataset=None, source_image=None, reserved=None):
             try:
                 observed = target.lstat()
                 if (stat.S_ISREG(observed.st_mode) and created is not None
-                        and (observed.st_dev, observed.st_ino) == (created.st_dev, created.st_ino)):
+                        and same_file_identity(observed, created)):
                     phase = BackupPhase.PUBLISHED_UNVERIFIED
                     validate_image(target)
                 else:

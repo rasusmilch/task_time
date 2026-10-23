@@ -14,7 +14,7 @@ from uuid import uuid4
 from .dataset_lock import DatasetLock
 from .records import Outcome, Request, canonical, uuid_text
 from .timekeeping import MIN_US, MAX_US, load_zone, parse_date
-from .timesheet_files import metadata
+from .timesheet_files import metadata, same_domain_metadata, path_matches_handle
 
 SCHEMA_VERSION = 1
 APPLICATION_ID = 0x4348524E
@@ -324,11 +324,12 @@ class SQLiteStore:
         flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
         fd = os.open(self.path, flags)
         try:
-            if metadata(os.fstat(fd)) != metadata(observed):
+            before = os.fstat(fd)
+            if not path_matches_handle(observed, before):
                 raise OSError("Dataset changed before startup admission")
             header = os.read(fd, 100)
-            if (metadata(os.fstat(fd)) != metadata(observed)
-                    or metadata(self.path.lstat()) != metadata(observed)):
+            if (not same_domain_metadata(before, os.fstat(fd))
+                    or not same_domain_metadata(observed, self.path.lstat())):
                 raise OSError("Dataset changed during startup admission")
             if len(header) != 100 or header[:16] != b'SQLite format 3\x00':
                 raise sqlite3.DatabaseError("A supported SQLite image header is required")

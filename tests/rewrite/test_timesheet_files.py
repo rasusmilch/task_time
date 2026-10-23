@@ -257,6 +257,60 @@ def test_final_target_recheck_deterministic_metadata_and_real_changes(registered
     assert not list(path.parent.glob('.chronicle-timesheet-*.tmp'))
 
 
+def test_final_reinspection_checks_bytes_when_all_target_metadata_is_unchanged(registered,monkeypatch):
+    service,store,c,path=registered
+    path.write_bytes(b'old');reviewed=inspect(registered).conflict
+    before=facts(store);evidence=exports(store)
+    owned=files._owned;lstat=Path.lstat;fstat=os.fstat;mutated=[];replacements=[]
+    def staged(stage,created):
+        value=owned(stage,created)
+        if not mutated:
+            old=path.stat();path.write_bytes(b'NEW')
+            os.utime(path,ns=(old.st_atime_ns,old.st_mtime_ns));mutated.append(True)
+        return value
+    def unchanged_metadata(value):
+        # Inject unchanged ctime in both domains, independently of native ctime
+        # semantics. The actual changed bytes must still be completely read.
+        if mutated and (value.st_dev,value.st_ino)==reviewed.metadata[:2]:
+            fields=dict(zip(('st_dev','st_ino','st_mode','st_size','st_mtime_ns','st_ctime_ns'),files.metadata(value)))
+            fields['st_ctime_ns']=reviewed.metadata[5]
+            return SimpleNamespace(**fields)
+        return value
+    with monkeypatch.context() as m:
+        m.setattr(files,'_owned',staged)
+        m.setattr(Path,'lstat',lambda p,*a,**k:unchanged_metadata(lstat(p,*a,**k)))
+        m.setattr(files.os,'fstat',lambda fd:unchanged_metadata(fstat(fd)))
+        m.setattr(files.os,'replace',lambda *a:replacements.append(a))
+        result=publish(registered,confirmed_overwrite=True,expected_conflict=reviewed)
+    assert not result.verified and not replacements and result.error
+    assert path.read_bytes()==b'NEW' and facts(store)==before and exports(store)==evidence
+    assert not list(path.parent.glob('.chronicle-timesheet-*.tmp'))
+
+
+@pytest.mark.parametrize('fault',['read','after_reinspection'])
+def test_final_reinspection_preserves_read_error_and_immediate_metadata_guard(registered,monkeypatch,fault):
+    service,store,c,path=registered;path.write_bytes(b'old');reviewed=inspect(registered).conflict
+    before=facts(store);evidence=exports(store);original=files.inspect;calls=[];replacements=[]
+    primary=PermissionError('final target read denied')
+    def checked(target,*args):
+        calls.append(target)
+        if target==path and len(calls)==2:
+            if fault=='read':return files.Inspection(S.UNVERIFIABLE,str(path),error=primary)
+            result=original(target,*args)
+            path.write_bytes(b'new size after complete reinspection')
+            return result
+        return original(target,*args)
+    with monkeypatch.context() as m:
+        m.setattr(files,'inspect',checked)
+        m.setattr(files.os,'replace',lambda *a:replacements.append(a))
+        result=publish(registered,confirmed_overwrite=True,expected_conflict=reviewed)
+    assert not result.verified and not replacements
+    if fault=='read':assert result.error is primary and path.read_bytes()==b'old'
+    else:assert 'immediately before replacement' in str(result.error)
+    assert facts(store)==before and exports(store)==evidence
+    assert not list(path.parent.glob('.chronicle-timesheet-*.tmp'))
+
+
 @pytest.mark.parametrize('replacement',[False,True])
 def test_postpublication_uncertainty_retry_reuses_without_rewrite(registered,monkeypatch,replacement):
     service,store,c,path=registered
