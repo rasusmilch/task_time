@@ -89,8 +89,11 @@ receipts or commits. No release or production qualification is implied below.
   profile/unsafe diagnostics and deterministic headless CLI statuses. Reuse complete
   current-schema/evidence validation for inspection, backup images and startup;
   preserve quoted DDL literals and refuse WAL headers before startup can create
-  sidecars. Reject unsupported/damaged sources without conversion, lock creation
-  during inspection, recreation or repair. Keep schema/application identity and
+  sidecars. Recover genuine hot DELETE rollback journals only through the owned
+  ordinary SQLite connection, fully validating committed evidence before readiness;
+  preserve cold inspection's read-only/non-recovering boundary and clean invalid
+  candidates' non-mutating refusal. Reject unsupported/damaged sources without
+  conversion, lock creation during inspection, recreation or repair. Keep schema/application identity and
   version 1 unchanged; require separately approved future cold source-to-new-target
   transformations, original protection and independent evidence validation. No
   upgrade engine or target schema is active. Stage 4C is delivered for independent

@@ -237,13 +237,28 @@ The CLI reports deterministic statuses documented in [RUNNING.md](../RUNNING.md#
 | UNSUPPORTED_PROFILE | An identifiable unsupported operational format/profile, including WAL header selection; full Chronicle integrity is not claimed. |
 | UNSAFE_OR_UNAVAILABLE | Unsuitable/unstable/unreadable source, outstanding sidecar, integrity/evidence failure or inspection/cleanup uncertainty. A damaged lower-marker file is not accepted as an older schema. |
 
-Normal startup remains a separate owner path. It fingerprints before `_probe`
-opens SQLite, then runs `_verify_complete` in a read transaction before writable
-open/profile configuration, and rechecks the fingerprint. Complete validation
-includes exact committed receipt content/associations as well as existing metadata,
-lifecycle, work revisions, exports and whole confirmation history. Startup retains
-its failed-probe cleanup handoff and refuses unknown/changed sources without
-recreation. Backup image validation reuses the same complete gate; cold restore
+Normal startup remains a separate owner path. Bounded regular-file/header/profile
+and metadata admission replaces whole-file startup fingerprints. WAL headers and
+unsuitable paths refuse before writable access. Clean, sidecar-free candidates
+still pass non-mutating `_probe`/`_verify_complete` preflight before lock creation,
+preserving unsupported-data refusal without new files or configuration writes.
+An outstanding regular rollback journal defers SQL validation until DatasetLock
+is held: the existing worker-owned `mode=rw` connection lets SQLite natively
+recover the committed image. Admission is repeated under ownership; raw header
+application/version markers are not treated as committed evidence before rollback.
+Chronicle never parses, replays, removes or repairs journals itself.
+
+The owned connection then runs `_verify_complete` in a read transaction, requires
+the actual DELETE profile and checks the recovered identity before configuring
+and verifying DELETE/EXTRA/foreign keys. Complete validation includes full SQLite
+integrity, exact DDL/STRICT/guards, metadata/lifecycle, immutable work revisions,
+frozen exports, whole confirmation history and exact receipt content/associations.
+Only then may the worker publish readiness. Native recovery may change physical
+pages and remove the journal; it does not authorize Chronicle mutations or make
+an unsupported recovered schema/evidence acceptable. Failed probe/ordinary
+connection cleanup retains its existing handoff and ownership until explicit
+worker cleanup succeeds. Cold inspection remains non-recovering with complete
+fingerprints; backup image validation reuses the complete gate and cold restore
 still validates before directory reservation. No schema definitions or version
 markers are changed, and no fallback or migration registry exists.
 

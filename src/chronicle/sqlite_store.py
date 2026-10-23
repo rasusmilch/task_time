@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import stat
 import sys
 from pathlib import Path
 import sqlite3
@@ -12,6 +14,7 @@ from uuid import uuid4
 from .dataset_lock import DatasetLock
 from .records import Outcome, Request, canonical, uuid_text
 from .timekeeping import MIN_US, MAX_US, load_zone, parse_date
+from .timesheet_files import metadata
 
 SCHEMA_VERSION = 1
 APPLICATION_ID = 0x4348524E
@@ -272,9 +275,22 @@ class SQLiteStore:
                 self.connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self.connection.execute("COMMIT")
             else:
-                # Identify before configuring or otherwise writing to an unknown database.
-                self._validate_existing(timezone)
+                # Recheck admission under ownership before any writable open. A
+                # journaled image may need native rollback before identity reads.
+                admitted, _ = self._admit_existing()
                 self.connection = self._connect()
+                self.connection.execute("BEGIN")
+                self._verify_complete(self.connection)
+                if self.connection.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
+                    raise ValueError("Unsupported dataset journal mode; DELETE is required; no automatic conversion")
+                if timezone is not None and self.connection.execute("SELECT timezone FROM dataset_meta").fetchone()[0] != timezone:
+                    raise ValueError("Explicit timezone conflicts with this dataset")
+                self.connection.execute("COMMIT")
+                recovered, _ = self._admit_existing()
+                # Recovery legitimately changes size/timestamps/content, not the
+                # admitted file identity. These are bounded trusted-disk checks.
+                if recovered[:3] != admitted[:3]:
+                    raise OSError("Dataset identity changed during startup")
                 self._profile()
             self._verify(self.connection)
             row = self.connection.execute("SELECT * FROM dataset_meta").fetchone()
@@ -296,9 +312,55 @@ class SQLiteStore:
                 primary._chronicle_cleanup_store = self
             raise
 
+    def _admit_existing(self):
+        """Bounded non-mutating admission, never a cold-image fingerprint.
+
+        Header identity/version are deliberately not interpreted here: native
+        rollback may restore their committed values. WAL cannot enter SQLite.
+        """
+        observed = self.path.lstat()
+        if not stat.S_ISREG(observed.st_mode):
+            raise ValueError("An existing regular Chronicle SQLite dataset is required")
+        flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
+        fd = os.open(self.path, flags)
+        try:
+            if metadata(os.fstat(fd)) != metadata(observed):
+                raise OSError("Dataset changed before startup admission")
+            header = os.read(fd, 100)
+            if (metadata(os.fstat(fd)) != metadata(observed)
+                    or metadata(self.path.lstat()) != metadata(observed)):
+                raise OSError("Dataset changed during startup admission")
+            if len(header) != 100 or header[:16] != b'SQLite format 3\x00':
+                raise sqlite3.DatabaseError("A supported SQLite image header is required")
+            if header[18:20] != b'\x01\x01':
+                from .backup_restore import UnsupportedImageProfile
+                raise UnsupportedImageProfile("DELETE journal profile is required; no automatic conversion",
+                                              'wal' if header[18:20] == b'\x02\x02' else 'unsupported')
+        except BaseException as primary:
+            try:
+                os.close(fd)
+            except Exception as secondary:
+                primary.add_note(f"Admission descriptor cleanup also failed: {secondary!r}")
+            raise
+        else:
+            os.close(fd)
+        journal = False
+        for suffix in ('-journal', '-wal', '-shm'):
+            try:
+                sidecar = Path(str(self.path) + suffix).lstat()
+            except FileNotFoundError:
+                continue
+            if suffix != '-journal' or not stat.S_ISREG(sidecar.st_mode):
+                raise ValueError("Unsupported SQLite sidecar; no automatic conversion or removal")
+            journal = True
+        return metadata(observed), journal
+
     def _validate_existing(self, timezone):
-        from .backup_restore import _fingerprint
-        before = _fingerprint(self.path)  # Refuse WAL before SQLite can create shared-memory sidecars.
+        before, journal = self._admit_existing()
+        if journal:
+            # A read-only connection cannot recover a genuinely hot journal.
+            # Only the owned ordinary connection below may ask SQLite to do so.
+            return
         probe = self._probe()
         try:
             probe.execute("BEGIN")
@@ -324,7 +386,7 @@ class SQLiteStore:
                 self._retired = probe
                 primary._chronicle_cleanup_store = self
                 raise  # A failed close is still a real startup failure.
-        if _fingerprint(self.path) != before:
+        if self._admit_existing() != (before, False):
             raise OSError('Dataset changed during startup validation; refusing ordinary operation')
 
     @property

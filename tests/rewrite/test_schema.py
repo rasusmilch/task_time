@@ -6,6 +6,49 @@ from chronicle.sqlite_store import BUSY_MS, DATABASE, SQLiteStore, runtime_info
 from conftest import NOW, uid
 
 
+def test_ordinary_admission_reads_only_bounded_header_without_image_fingerprint(store, monkeypatch):
+    import chronicle.sqlite_store as module
+    from chronicle import backup_restore
+    directory = store.directory
+    store.close()
+    original = module.os.read
+    reads = []
+    def observe(fd, count):
+        reads.append(count)
+        return original(fd, count)
+    def forbidden(*a): pytest.fail('Ordinary startup used a full cold-image fingerprint')
+    monkeypatch.setattr(backup_restore, '_fingerprint', forbidden)
+    monkeypatch.setattr(module.os, 'read', observe)
+    reopened = SQLiteStore(directory)
+    try:
+        assert reads and set(reads) == {100}
+    finally:
+        reopened.close()
+
+
+@pytest.mark.parametrize('changed', ['wal', 'foreign'])
+def test_startup_rechecks_candidate_after_ownership_before_adoption(store, monkeypatch, changed):
+    from chronicle.dataset_lock import DatasetLock
+    directory, path = store.directory, store.path
+    store.close()
+    acquire = DatasetLock.acquire
+    observed = []
+    def changed_after_lock(self):
+        acquire(self)
+        # Test-only competing change at the admission/ownership boundary.
+        c = sqlite3.connect(path, isolation_level=None)
+        try:
+            c.execute('PRAGMA journal_mode=WAL' if changed == 'wal' else 'PRAGMA application_id=123')
+        finally:
+            c.close()
+        observed.append({p.name:p.read_bytes() for p in directory.iterdir()})
+    def forbidden(*a): pytest.fail('Incompatible candidate reached runtime configuration')
+    monkeypatch.setattr(DatasetLock, 'acquire', changed_after_lock)
+    monkeypatch.setattr(SQLiteStore, '_profile', forbidden)
+    with pytest.raises(ValueError): SQLiteStore(directory)
+    assert observed == [{p.name:p.read_bytes() for p in directory.iterdir()}]
+
+
 def test_fresh_profile_and_reopen(store):
     c = store.connection
     assert c.isolation_level is None

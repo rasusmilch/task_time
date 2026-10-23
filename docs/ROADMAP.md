@@ -175,7 +175,11 @@ Representative small/medium/larger measurements preserve complete confirmation
 validation; see the [testing inventory](TESTING_STRATEGY.md#portable-operational-measurements).
 Stage 4C adds cold read-only compatibility inspection, exact current-schema/literal
 signatures, complete startup receipt validation and protected refusal before adoption,
-backup verification or restore reservation. Schema stays version 1. Its future
+backup verification or restore reservation. Ordinary startup admits genuine hot
+DELETE rollback journals into exclusively owned SQLite-native recovery, then
+requires complete validation before readiness; cold inspection remains read-only
+and non-recovering. This Stage 4C repair remains pending independent review.
+Schema stays version 1. Its future
 upgrade safety contract selects separately approved source/target transformations
 into new cold directories, not an active migration engine or invented version 2.
 Remaining stabilization and the complete gate include actual native Windows source/

@@ -17,8 +17,391 @@ import pytest
 
 from chronicle.records import Request
 from chronicle.services import TimerService
-from chronicle.sqlite_store import SQLiteStore
+from chronicle.sqlite_store import SQLiteStore, EXPORT_TABLES, CONFIRMATION_TABLES
 from conftest import NOW, uid
+from test_backup_restore import rich, logical, cli
+from test_worker import receive
+from test_app import root, click, pump, Clock
+
+
+SPILLED_TRANSACTION_CHILD = r'''
+import sqlite3, sys
+from pathlib import Path
+path = Path(sys.argv[1]) / 'chronicle.sqlite3'
+c = sqlite3.connect(path, isolation_level=None)
+assert c.execute('PRAGMA journal_mode=DELETE').fetchone()[0] == 'delete'
+c.execute('PRAGMA synchronous=EXTRA')
+c.execute('PRAGMA cache_size=1')
+c.execute('PRAGMA cache_spill=ON')
+c.execute('BEGIN IMMEDIATE')
+if sys.argv[2] == 'header':
+    c.execute('PRAGMA application_id=123')
+    c.execute('PRAGMA user_version=99999')
+c.execute("UPDATE tasks SET name=replace(name,'Original','Uncommitted'),version=version+1")
+assert Path(str(path)+'-journal').is_file()
+print('BARRIER', flush=True)
+sys.stdin.readline()
+'''
+
+
+@pytest.fixture
+def hot_dataset(store, service, rich):
+    # Overflow pages force real main-file writes, not just a journal pathname.
+    assert service.create_task(uid(), 'Original' * 12000, request_id=uid(),
+                               action_utc_us=NOW).status == 'committed'
+    before = logical(store.path)
+    directory = store.directory
+    store.close()
+    return directory, before, rich
+
+
+def leave_hot_journal(directory, *, header=False):
+    path = directory / 'chronicle.sqlite3'
+    before = path.read_bytes()
+    with paused_child(SPILLED_TRANSACTION_CHILD, directory, 'header' if header else 'facts'):
+        assert path.read_bytes() != before, 'Fixture did not spill dirty database pages'
+    journal = Path(str(path) + '-journal')
+    assert journal.read_bytes()[:8] == bytes.fromhex('d9d505f920a163d7')
+    # SQLite may hold page 1 until COMMIT even though other pages spill. The
+    # header variant tests rollback of pending markers, not universal page-1 spill.
+    # Independent reproduction of the original startup failure mechanism.
+    c = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, isolation_level=None)
+    try:
+        with pytest.raises(sqlite3.OperationalError, match='readonly'):
+            c.execute('PRAGMA integrity_check').fetchall()
+    finally:
+        c.close()
+
+
+@pytest.mark.parametrize('header', [False, True])
+@pytest.mark.parametrize('owner', ['store', 'worker'])
+def test_genuine_hot_journal_native_startup_preserves_all_committed_evidence(hot_dataset, header, owner):
+    from chronicle import backup_restore as br
+    from chronicle.worker import DatabaseWorker, Message
+    from test_dataset_compatibility import preserved
+    directory, before, rich = hot_dataset
+    report = Path(rich['candidate'].preferred_destination)
+    output = report.read_bytes()
+    leave_hot_journal(directory, header=header)
+    cold = preserved(directory, report)
+    result = br.inspect_dataset(directory)
+    assert result.classification == br.Compatibility.UNSAFE_OR_UNAVAILABLE
+    assert not result.full_validation_completed
+    assert preserved(directory, report) == cold
+    result = cli('--inspect-dataset', directory)
+    assert result.returncode == 4 and 'UNSAFE_OR_UNAVAILABLE' in result.stdout
+    assert preserved(directory, report) == cold
+    if owner == 'worker':
+        worker = DatabaseWorker(directory)
+        worker.start()
+        try:
+            first = worker.results.get(timeout=10)
+            assert first.kind == 'ready', first.value
+            assert first.value['runtime']['journal_mode'] == 'delete'
+            worker.requests.put(Message('read', 1, NOW))
+            assert receive(worker, 'read')['active']['entry_id'] == rich['active']
+        finally:
+            worker.requests.put(Message('shutdown'))
+            worker.join(10)
+            assert not worker.is_alive()
+    recovered = SQLiteStore(directory)
+    try:
+        assert logical(recovered.path) == before
+        assert recovered._profile_values() == {'journal_mode':'delete', 'synchronous':3, 'foreign_keys':1}
+        assert list(recovered.connection.execute('PRAGMA foreign_key_check')) == []
+        assert recovered.connection.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+        assert report.read_bytes() == output
+        assert not Path(str(recovered.path) + '-journal').exists()
+    finally:
+        recovered.close()
+    assert br.inspect_dataset(directory).ordinary_startup_permitted
+    # Repeated reopen changes no evidence, and legitimate new work still commits.
+    reopened = SQLiteStore(directory)
+    try:
+        assert logical(reopened.path) == before
+        service = TimerService(reopened)
+        request = Request.make(uid(), reopened.dataset_id, 'create_task', NOW,
+                               task_id=uid(), name='After recovery', project_id=None)
+        outcome = service.execute(request)
+        assert outcome.status == 'committed'
+        after = logical(reopened.path)
+        assert service.execute(request).result == outcome.result
+        assert service.execute(replace(request, action_utc_us=NOW+1)).status == 'rejected'
+        assert logical(reopened.path) == after
+        for table in ('work_entries','work_revisions','active_timer','active_start_corrections',
+                      *EXPORT_TABLES, *CONFIRMATION_TABLES):
+            assert after[table] == before[table]
+    finally:
+        reopened.close()
+
+
+def test_hot_journal_cold_inspector_never_opens_sqlite_or_owns_session(hot_dataset, monkeypatch):
+    from chronicle import backup_restore as br, bootstrap
+    from chronicle.dataset_lock import DatasetLock
+    from test_dataset_compatibility import preserved
+    directory, _, _ = hot_dataset
+    leave_hot_journal(directory)
+    before = preserved(directory)
+    def forbidden(*a, **kw):
+        pytest.fail('Cold inspection entered application ownership/recovery')
+    with monkeypatch.context() as m:
+        m.setattr(DatasetLock, '__init__', forbidden)
+        m.setattr(bootstrap.tk, 'Tk', forbidden)
+        m.setattr(bootstrap.DatabaseWorker, '__init__', forbidden)
+        m.setattr(br, '_readonly', forbidden)
+        m.setattr(SQLiteStore, '_connect', forbidden)
+        assert br.inspect_dataset(directory).classification == br.Compatibility.UNSAFE_OR_UNAVAILABLE
+    assert preserved(directory) == before
+
+
+def test_hot_journal_competing_owner_prevents_writable_recovery(hot_dataset, monkeypatch):
+    from chronicle.dataset_lock import DatasetLock
+    from test_dataset_compatibility import preserved
+    directory, _, _ = hot_dataset
+    leave_hot_journal(directory)
+    lock = DatasetLock(directory)
+    lock.acquire()
+    before = preserved(directory)
+    def forbidden(*a):
+        pytest.fail('Competing owner reached writable SQLite recovery')
+    try:
+        monkeypatch.setattr(SQLiteStore, '_connect', forbidden)
+        with pytest.raises(OSError):
+            SQLiteStore(directory)
+        assert preserved(directory) == before
+    finally:
+        lock.close()
+
+
+def test_hot_journal_admission_does_not_treat_raw_header_markers_as_committed(hot_dataset, monkeypatch):
+    import chronicle.sqlite_store as module
+    directory, before, _ = hot_dataset
+    leave_hot_journal(directory)
+    original = module.os.read
+    observations = []
+    def header_observation(fd, size):
+        value = original(fd, size)
+        if size == 100 and value.startswith(b'SQLite format 3\x00'):
+            # Inject only the bounded admission observation. Real recovery and
+            # all authoritative SQLite validation still execute on the real file.
+            raw = bytearray(value)
+            raw[60:64] = (99999).to_bytes(4, 'big')
+            raw[68:72] = (123).to_bytes(4, 'big')
+            observations.append(1)
+            return bytes(raw)
+        return value
+    with monkeypatch.context() as m:
+        m.setattr(module.os, 'read', header_observation)
+        recovered = SQLiteStore(directory)
+        try:
+            assert logical(recovered.path) == before
+        finally:
+            recovered.close()
+    assert observations
+
+
+@pytest.mark.parametrize('gate', ['validation', 'profile'])
+def test_hot_journal_worker_ready_waits_for_owned_full_validation_and_profile(hot_dataset, monkeypatch, gate):
+    from queue import Empty
+    from threading import Event, get_ident
+    import chronicle.worker as module
+    from chronicle.dataset_lock import DatasetLock
+    directory, before, _ = hot_dataset
+    leave_hot_journal(directory)
+    entered, release = Event(), Event()
+    calls = []
+    def pause(phase):
+        calls.append((phase, get_ident()))
+        if phase == gate:
+            entered.set()
+            assert release.wait(10), 'Test did not release startup gate'
+    class Observed(SQLiteStore):
+        @classmethod
+        def _verify_complete(cls, c):
+            pause('validation')
+            super()._verify_complete(c)
+        def _profile(self):
+            pause('profile')
+            super()._profile()
+    monkeypatch.setattr(module, 'SQLiteStore', Observed)
+    worker = module.DatabaseWorker(directory)
+    worker.start()
+    try:
+        assert entered.wait(10)
+        with pytest.raises(Empty): worker.results.get_nowait()
+        contender = DatasetLock(directory)
+        with pytest.raises(OSError): contender.acquire()
+        release.set()
+        assert worker.results.get(timeout=10).kind == 'ready'
+        assert calls == [('validation', worker.ident), ('profile', worker.ident)]
+        assert logical(directory/'chronicle.sqlite3') == before
+    finally:
+        release.set()
+        worker.requests.put(module.Message('shutdown'))
+        worker.join(10)
+        assert not worker.is_alive()
+
+
+@pytest.mark.parametrize('kind', ['newer', 'foreign', 'trigger', 'receipt', 'export', 'current', 'timezone'])
+def test_hot_journal_recovery_does_not_adopt_invalid_committed_state(hot_dataset, monkeypatch, kind):
+    from test_dataset_compatibility import damage
+    directory, _, _ = hot_dataset
+    damage(directory, kind)
+    committed = logical(directory/'chronicle.sqlite3')
+    leave_hot_journal(directory)
+    def forbidden(*a): pytest.fail('Invalid recovered state reached runtime configuration')
+    monkeypatch.setattr(SQLiteStore, '_profile', forbidden)
+    with pytest.raises((ValueError, KeyError, sqlite3.Error)):
+        SQLiteStore(directory)
+    # SQLite may have physically rolled back the journal; Chronicle wrote no facts.
+    assert logical(directory/'chronicle.sqlite3') == committed
+    from chronicle.worker import DatabaseWorker
+    worker = DatabaseWorker(directory)
+    worker.start()
+    try:
+        assert worker.results.get(timeout=10).kind == 'startup_failed'
+        assert worker.results.get(timeout=10).kind == 'stopped'
+    finally:
+        worker.join(10)
+        assert not worker.is_alive()
+    assert logical(directory/'chronicle.sqlite3') == committed
+
+
+@pytest.mark.parametrize('fault', ['admission', 'lock', 'open', 'recovery', 'validation', 'profile'])
+def test_hot_journal_startup_faults_preserve_primary_and_never_publish_ready(hot_dataset, monkeypatch, fault):
+    import chronicle.worker as module
+    from chronicle.dataset_lock import DatasetLock
+    from test_dataset_compatibility import preserved
+    directory, before, _ = hot_dataset
+    leave_hot_journal(directory)
+    cold = preserved(directory)
+    primary = sqlite3.OperationalError(f'{fault} boundary failed')
+    def fail(*a, **kw): raise primary
+    class RecoveryFault:
+        def __init__(self, c): self.inner = c
+        def __getattr__(self, name): return getattr(self.inner, name)
+        def execute(self, sql, *args):
+            if sql == 'PRAGMA integrity_check': raise primary
+            return self.inner.execute(sql, *args)
+    if fault == 'lock': monkeypatch.setattr(DatasetLock, 'acquire', fail)
+    class Failed(SQLiteStore):
+        def _admit_existing(self):
+            if fault == 'admission': raise primary
+            return super()._admit_existing()
+        def _connect(self):
+            if fault == 'open': raise primary
+            c = super()._connect()
+            return RecoveryFault(c) if fault == 'recovery' else c
+        @classmethod
+        def _verify_complete(cls, c):
+            super()._verify_complete(c)
+            if fault == 'validation': raise primary
+        def _profile(self):
+            if fault == 'profile': raise primary
+            super()._profile()
+    monkeypatch.setattr(module, 'SQLiteStore', Failed)
+    worker = module.DatabaseWorker(directory)
+    worker.start()
+    try:
+        message = worker.results.get(timeout=10)
+        assert message.kind == 'startup_failed' and message.value is primary
+        assert worker.results.get(timeout=10).kind == 'stopped'
+    finally:
+        worker.join(10)
+        assert not worker.is_alive()
+    if fault in ('admission', 'lock', 'open', 'recovery'):
+        assert preserved(directory) == cold
+    else:
+        assert logical(directory/'chronicle.sqlite3') == before
+
+
+@pytest.mark.parametrize('cleanup', ['connection', 'lock'])
+def test_hot_recovery_failed_close_retains_lock_for_worker_cleanup_retry(hot_dataset, monkeypatch, cleanup):
+    import chronicle.worker as module
+    from chronicle.dataset_lock import DatasetLock
+    directory, before, _ = hot_dataset
+    leave_hot_journal(directory)
+    primary = ValueError('Post-recovery validation fault')
+    attempts = []
+    def fail_close():
+        attempts.append(1)
+        if len(attempts) < 3: raise OSError('Cleanup still uncertain')
+    class CloseFault:
+        def __init__(self, c): self.inner = c
+        def __getattr__(self, name): return getattr(self.inner, name)
+        def close(self):
+            fail_close()
+            self.inner.close()
+    class Failed(SQLiteStore):
+        def _connect(self):
+            c = super()._connect()
+            return CloseFault(c) if cleanup == 'connection' else c
+        @classmethod
+        def _verify_complete(cls, c):
+            super()._verify_complete(c)
+            raise primary
+    close = DatasetLock.close
+    def lock_close(self):
+        if self.path.parent == directory: fail_close()
+        close(self)
+    if cleanup == 'lock': monkeypatch.setattr(DatasetLock, 'close', lock_close)
+    monkeypatch.setattr(module, 'SQLiteStore', Failed)
+    worker = module.DatabaseWorker(directory)
+    worker.start()
+    try:
+        message = worker.results.get(timeout=10)
+        assert message.kind == 'startup_failed' and message.value is primary
+        assert 'Cleanup still uncertain' in '\n'.join(primary.__notes__)
+        assert worker.results.get(timeout=10).kind == 'shutdown_failed'
+        assert worker.is_alive()
+        with pytest.raises(OSError): DatasetLock(directory).acquire()
+        worker.requests.put(module.Message('shutdown'))
+        assert worker.results.get(timeout=10).kind == 'stopped'
+    finally:
+        worker.requests.put(module.Message('shutdown'))
+        worker.join(10)
+        assert not worker.is_alive()
+    assert len(attempts) == 3 and logical(directory/'chronicle.sqlite3') == before
+    with monkeypatch.context() as m:
+        m.setattr(DatasetLock, 'close', close)
+        lock = DatasetLock(directory)
+        lock.acquire()
+        lock.close()
+
+
+def test_real_tk_hot_journal_worker_startup_and_ordinary_timer_close_reopen(hot_dataset, root, click):
+    from chronicle.app import ChronicleApp
+    from chronicle.worker import DatabaseWorker
+    from chronicle import backup_restore as br
+    from test_timesheet_save_ui import exit_settled
+    directory, before, rich = hot_dataset
+    leave_hot_journal(directory)
+    worker = DatabaseWorker(directory)
+    app = ChronicleApp(root, worker, now_utc=Clock())
+    worker.start()
+    try:
+        pump(root, lambda: app.ready and app.state.get('report') is not None)
+        assert app.state['active']['entry_id'] == rich['active']
+        assert logical(directory/'chronicle.sqlite3') == before
+        assert not any('upgrade' in label.lower() for label in app.buttons)
+        click(app.buttons['Stop'])
+        pump(root, lambda: app.pending is None and app.state['active'] is None)
+        app.request_close()
+        exit_settled(app)
+    finally:
+        if app.alive: root.destroy()
+        worker.join(10)
+        assert not worker.is_alive()
+    assert not root.test_errors
+    assert br.inspect_dataset(directory).ordinary_startup_permitted
+    reopened = SQLiteStore(directory)
+    try:
+        assert TimerService(reopened).read_current_state(cutoff_utc_us=NOW)['active'] is None
+        after = logical(reopened.path)
+        for table in (*EXPORT_TABLES, *CONFIRMATION_TABLES):
+            assert after[table] == before[table]
+    finally:
+        reopened.close()
 
 
 @contextmanager

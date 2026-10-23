@@ -161,7 +161,13 @@ Missing/unreadable/unstable files, symlinks (including directory aliases), unsui
 objects and explicit network paths refuse. WAL-format headers refuse before SQLite
 can create shared-memory sidecars. Any outstanding journal/WAL/SHM sidecar makes
 cold inspection unavailable; this is not proof of corruption. The inspector neither
-recovers nor deletes it. Ordinary startup keeps its separate recovery/refusal rules.
+recovers nor deletes it. For a valid DELETE-mode dataset interrupted before COMMIT,
+ordinary startup acquires exclusive dataset ownership and lets SQLite recover its
+committed image, then completely validates it before the application becomes ready.
+Unsupported recovered schemas, evidence and profiles still refuse; recovery is not
+an upgrade or repair. Uncommitted work is rolled back and committed timers/evidence
+remain intact. Cold inspection can be repeated after successful ordinary recovery
+and orderly shutdown.
 Do not delete sidecars or change permissions to force inspection. Metadata/digest
 checks are bounded observations, not reliable exclusion of another writer or
 hostile-directory protection. Use Backup Chronicle for a consistent live image.
