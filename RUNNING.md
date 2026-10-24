@@ -139,7 +139,14 @@ selected/completed node counts, final node outcomes, elapsed time and event age.
 Text heartbeats appear every ten seconds. Progress is indeterminate until collection
 completes; percentages use completed nodes only. Setup/teardown errors classify the
 node as error, rather than adding another completed node. Raw pytest reports, exit
-status and real JUnit remain separate evidence.
+status and real JUnit remain separate evidence. Critical/Storage/Extended only
+report PASS when the final selection manifest, unique node completions, phase
+outcomes and actual pytest JUnit cases agree. Missing, truncated, unrelated or
+unmappable XML/manifest evidence yields EVIDENCE_INCOMPLETE even when pytest exits
+zero. Parametrized nodes count individually; legitimate multiple setup/teardown
+error details do not multiply completed nodes. MetadataProbe expects no JUnit and
+reports OBSERVED, never a Windows compatibility PASS. Its mutation observations
+include the open descriptor and a fresh read-only descriptor after close/reopen.
 
 Defaults are 90 seconds for collection/prerequisites/probe, 120 seconds per whole
 node and 900 seconds for the pytest phase. The genuine-spill recovery family alone
@@ -168,8 +175,27 @@ for manual upload; nothing uploads automatically. It contains source/collector
 identities, environment/profile observations, manifests/deferred cases, arguments,
 flushed events, both logs, real JUnit or explicit missing/partial status, timeout/
 cleanup diagnostics, probe files and final summaries. Hidden artifacts are included;
-reparse links are recorded as omitted, not traversed. ZIP failure leaves the directory
-and diagnostics intact. Crash fixture databases/journals are diagnostic artifacts,
+reparse links are recorded as omitted, not traversed. Unexpected root/child
+enumeration errors fail archiving instead of silently omitting evidence.
+`archive-members.json` and other new receipt names are exclusively created: an
+existing file, directory, hard link or reparse object is a conflict, never something
+to overwrite. Updates to final records use their reserved handles.
+
+`collector-result.json` retains the immutable raw collector/test outcome and
+actual process/pytest exits. `summary.json` and `launcher-result.json` report the
+separate overall and archive-delivery outcome. Directory receipts remain
+pessimistic during archiving; the ZIP serializes the intended completed receipts,
+and directory completion is installed only after archive closure/acknowledgement.
+`archive-completion.json`, when present, is explicitly proposed receipt content,
+not proof of delivery. A failed or timed-out archive, failed status finalization
+or uncertain cleanup produces a nonzero launcher result; a completed underlying
+test run remains visible in the raw record. An unacknowledged/partial ZIP is not
+claimed as delivered. If storage prevents diagnostic/final-status writes, the
+console reports that limitation and exits unsuccessfully; retained records may
+then be incomplete and must not be treated as successful delivery.
+
+ZIP failure leaves the directory and diagnostics intact. No failed archive is
+overwritten or silently retried through another builder. Crash fixture databases/journals are diagnostic artifacts,
 not verified backups. A failed pre-Python launch uses a .NET ZIP fallback.
 
 PowerShell 5.1/7 quoting, visible progress, NTFS observations, native dialog guarding

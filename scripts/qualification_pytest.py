@@ -268,8 +268,30 @@ ADDITIONAL = {'test_accounting.py': ('test_dst_and_midnight_exact',
                             'test_mixed_operations_process_death_keep_atomic_facts')}
 
 
+def json_text(value):
+    return json.dumps(value, ensure_ascii=False, indent=2, default=str)
+
+
+class JsonRecord:
+    """Exclusively reserve one collector record; updates use its owned handle."""
+    def __init__(self, path):
+        self.stream = Path(path).open('x', encoding='utf-8')
+    def write(self, value):
+        self.stream.seek(0)
+        self.stream.truncate()
+        self.stream.write(json_text(value))
+        self.stream.flush()
+    def __enter__(self): return self
+    def __exit__(self, kind, primary, traceback):
+        try: self.stream.close()
+        except BaseException as secondary:
+            if primary is None: raise
+            primary.add_note('Evidence record close also failed: '+repr(secondary))
+
+
 def write_json(path, value):
-    Path(path).write_text(json.dumps(value, ensure_ascii=False, indent=2, default=str), encoding='utf-8')
+    # In particular, post-test receipts must never truncate test-created links.
+    with JsonRecord(path) as record: record.write(value)
 
 
 class Events:
@@ -366,11 +388,13 @@ class QualificationPlugin:
         self.enforce_manifest = enforce_manifest
         self.categories, self.reports, self.outcomes = {}, {}, Counter()
         self.manifest = []
+        self.manifest_record = None
         self.completed, self.finished = set(), False
         self.current = None
     def callback_allowed(self): return self.categories.get(self.current) == 'audited-callback'
     def pytest_sessionstart(self, session): self.events.emit('collection_start')
     def pytest_collection_modifyitems(self, session, config, items):
+        from _pytest.junitxml import mangle_test_address, bin_xml_escape
         kept, excluded, manifest = [], [], []
         for item in items:
             definitions = getattr(item, '_fixtureinfo').name2fixturedefs
@@ -380,13 +404,20 @@ class QualificationPlugin:
             accepted, reason, category = selection(self.scope,item.nodeid,item.fixturenames,params) if self.enforce_manifest else (True,'controlled helper fixture','backend')
             row = dict(nodeid=item.nodeid, fixtures=list(item.fixturenames), parameters=list(params),
                        selected=accepted, status='SELECTED' if accepted else 'NOT RUN', category=category, reason=reason)
+            # Use the installed pytest serializer's addressing, including params
+            # and configured prefix. Never infer edit/test identity from XML text.
+            address = mangle_test_address(item.nodeid)
+            classes = address[:-1]
+            if config.getoption('junitprefix'): classes.insert(0, config.getoption('junitprefix'))
+            row['junit'] = dict(classname='.'.join(classes), name=bin_xml_escape(address[-1]))
             row['fixture_definitions'] = {name: [dict(module=d.func.__module__, function=d.func.__qualname__)
                                                  for d in values] for name,values in definitions.items() if values}
             manifest.append(row)
             (kept if accepted else excluded).append(item)
             self.categories[item.nodeid] = category
         self.manifest=manifest
-        write_json(self.root/'manifest.json',manifest)
+        self.manifest_record = JsonRecord(self.root/'manifest.json')
+        self.manifest_record.write(manifest)
         if excluded: config.hook.pytest_deselected(items=excluded)
         items[:] = kept
         self.events.emit('selection', selected=len(kept), excluded=len(excluded))
@@ -395,7 +426,10 @@ class QualificationPlugin:
         for row in self.manifest:
             if row['selected'] and row['nodeid'] not in selected:
                 row.update(selected=False,status='NOT RUN',reason='Deselected by pytest collection filter')
-        write_json(self.root/'manifest.json',self.manifest)
+        if self.manifest_record:
+            self.manifest_record.write(self.manifest)
+            self.manifest_record.__exit__(None, None, None)
+            self.manifest_record = None
         self.events.emit('collection_complete', selected=len(session.items))
     def pytest_collectreport(self, report):
         self.events.emit('collection_report',nodeid=report.nodeid,outcome=report.outcome,
@@ -436,8 +470,8 @@ def node_outcome(reports):
     if any(r['outcome']=='failed' and r['phase']!='call' for r in reports): return 'error'
     if any(r['outcome']=='failed' for r in reports): return 'failed'
     call=next((r for r in reports if r['phase']=='call'),None)
-    if any(r['outcome']=='skipped' and r['wasxfail'] for r in reports): return 'xfailed'
-    if call and call['wasxfail']: return 'xpassed'
+    if any(r['outcome']=='skipped' and r['wasxfail'] is not None for r in reports): return 'xfailed'
+    if call and call['wasxfail'] is not None: return 'xpassed'
     if any(r['outcome']=='skipped' for r in reports): return 'skipped'
     return 'passed' if call else 'error'
 
@@ -498,17 +532,143 @@ def read_events(path, offset):
 def junit_status(path, completed=False):
     if not Path(path).exists(): return 'missing'
     from xml.etree import ElementTree
-    try: ElementTree.parse(path)
+    try:
+        document = ElementTree.parse(path).getroot()
+        if document.tag not in ('testsuite', 'testsuites'): return 'invalid JUnit structure'
     except (ElementTree.ParseError,OSError): return 'partial/unreadable'
     return 'complete' if completed else 'present but session incomplete'
 
 
-def archive_evidence(root):
+def validate_test_evidence(root, process_code, pytest_code):
+    """Reconcile detached manifest, complete events and actual pytest JUnit cases.
+
+    Multiple XML details/cases for a single node are legitimate (e.g. call and
+    teardown failure). Compare phase details, not XML element count to node count.
+    Anything not reliably attributable is incomplete evidence, never a guess.
+    """
+    from xml.etree import ElementTree
+    import math
+    root = Path(root)
+    result = dict(status='EVIDENCE_INCOMPLETE', diagnostics=[], junit=junit_status(root/'junit.xml', pytest_code is not None))
+    try:
+        def require(condition, message):
+            if not condition: raise ValueError(message)
+        manifest = json.loads((root/'manifest.json').read_text(encoding='utf-8'))
+        require(isinstance(manifest, list), 'Selection manifest must be a list')
+        selected = {}
+        identities = {}
+        seen = set()
+        for row in manifest:
+            require(isinstance(row, dict) and isinstance(row.get('nodeid'), str)
+                    and type(row.get('selected')) is bool, 'Invalid selection manifest row')
+            node = row['nodeid']
+            require(node not in seen, 'Duplicate manifest node: '+node); seen.add(node)
+            require(row.get('status') == ('SELECTED' if row['selected'] else 'NOT RUN')
+                    and isinstance(row.get('reason'), str) and bool(row['reason'])
+                    and isinstance(row.get('fixtures'), list), 'Incomplete selection manifest row')
+            if not row['selected']: continue
+            identity = row.get('junit', {})
+            require(isinstance(identity, dict) and all(isinstance(identity.get(k), str) and identity[k]
+                    for k in ('classname','name')), 'Missing JUnit identity: '+node)
+            key = (identity['classname'], identity['name'])
+            require(key not in identities, 'Ambiguous JUnit identity: '+repr(key))
+            identities[key] = node; selected[node] = row
+        data = (root/'events.jsonl').read_bytes()
+        require(not data or data.endswith(b'\n'), 'Incomplete final event line')
+        events = [json.loads(line) for line in data.splitlines()]
+        collections = [e for e in events if e['event']=='collection_complete']
+        sessions = [e for e in events if e['event']=='session_finish']
+        require(len(collections)==len(sessions)==1, 'Missing/duplicate collection or session completion')
+        require(collections[0]['selected']==len(selected), 'Manifest/collection selected count differs')
+        require(sessions[0]['pytest_exit_code']==pytest_code and pytest_code==process_code,
+                'Process/session exit status differs or session unfinished')
+        starts = [e['nodeid'] for e in events if e['event']=='node_start']
+        finishes = [e for e in events if e['event']=='node_finish']
+        require(Counter(starts)==Counter({node:1 for node in selected})
+                and Counter(e['nodeid'] for e in finishes)==Counter(starts),
+                'Selected nodes must start and finish exactly once')
+        reports = {node:[] for node in selected}
+        active = None
+        for event in events:
+            if event['event']=='node_start':
+                require(active is None, 'Overlapping node lifetimes')
+                active=event['nodeid']
+            elif event['event']=='node_finish':
+                require(active==event['nodeid'], 'Finish outside matching node lifetime')
+                active=None
+            elif event['event']=='session_finish':
+                require(active is None, 'Session finished with an active node')
+            if event['event']!='report': continue
+            require(event['nodeid'] in reports, 'Report for unselected node')
+            require(active==event['nodeid'], 'Report outside matching node lifetime')
+            require(event['phase'] in ('setup','call','teardown') and event['outcome'] in ('passed','failed','skipped'),
+                    'Invalid phase report')
+            reports[event['nodeid']].append(event)
+        counts = Counter()
+        for index, event in enumerate(finishes, 1):
+            node = event['nodeid']; phases = reports[node]
+            require([r['phase'] for r in phases] in (['setup','call','teardown'], ['setup','teardown']),
+                    'Missing/duplicate/out-of-order phase reports: '+node)
+            require((phases[0]['outcome']=='passed') == any(r['phase']=='call' for r in phases),
+                    'Call/setup phase inconsistency: '+node)
+            outcome = node_outcome(phases); counts[outcome]+=1
+            require(event['outcome']==outcome and event['completed']==index and event['counts']==dict(counts),
+                    'Completion outcome/count disagrees with phase reports: '+node)
+        require(sessions[0]['completed']==len(selected) and sessions[0]['counts']==dict(counts),
+                'Session summary disagrees with completed nodes')
+        document = ElementTree.parse(root/'junit.xml').getroot()
+        require(document.tag in ('testsuite','testsuites'), 'Not a JUnit testsuite/testsuites document')
+        suites = [document] if document.tag=='testsuite' else list(document)
+        require(bool(suites) and all(s.tag=='testsuite' for s in suites), 'Unsupported JUnit suite organization')
+        cases = {node:[] for node in selected}
+        for suite in suites:
+            require(all(c.tag in ('testcase','properties','system-out','system-err') for c in suite),
+                    'Unsupported testsuite child')
+            details = Counter()
+            for case in suite.findall('testcase'):
+                key = (case.get('classname'), case.get('name'))
+                require(key in identities, 'Unmapped JUnit testcase: '+repr(key))
+                require(math.isfinite(float(case.attrib['time'])) and float(case.attrib['time'])>=0,
+                        'Invalid testcase duration')
+                require(all(c.tag in ('failure','error','skipped','properties','system-out','system-err') for c in case),
+                        'Unsupported testcase child')
+                tags = []
+                for child in case:
+                    if child.tag not in ('failure','error','skipped'): continue
+                    require('message' in child.attrib, 'Missing JUnit outcome message')
+                    subtype = child.get('type') if child.tag=='skipped' else None
+                    require(child.tag!='skipped' or subtype in ('pytest.skip','pytest.xfail'),
+                            'Unknown JUnit skip representation')
+                    tags.append((child.tag, subtype)); details[child.tag]+=1
+                cases[identities[key]].append(tags)
+            for attr, tag in (('errors','error'),('failures','failure'),('skipped','skipped')):
+                require(int(suite.attrib[attr])==details[tag], 'JUnit '+attr+' aggregate disagrees with details')
+            require(int(suite.attrib['tests'])==len(suite.findall('testcase')),
+                    'JUnit tests aggregate disagrees with testcase evidence')
+        for node, phases in reports.items():
+            expected = Counter()
+            for report in phases:
+                if report['outcome']=='failed': expected[('failure' if report['phase']=='call' else 'error', None)]+=1
+                if report['outcome']=='skipped': expected[('skipped','pytest.xfail' if report.get('wasxfail') is not None else 'pytest.skip')]+=1
+            # pytest splits a call failure followed by teardown error into two
+            # cases; setup/teardown errors can instead share a single case.
+            split = any(r['phase']=='call' and r['outcome']=='failed' for r in phases) and phases[-1]['outcome']=='failed'
+            require(len(cases[node])==(2 if split else 1), 'Missing/extra JUnit case: '+node)
+            require(Counter(tag for case in cases[node] for tag in case)==expected,
+                    'JUnit outcomes disagree with event reports: '+node)
+        result.update(status='COMPLETE', manifest='valid', junit='complete', selected=len(selected), counts=dict(counts))
+    except Exception as exc:
+        result['diagnostics'].append(type(exc).__name__+': '+str(exc))
+    return result
+
+
+def archive_evidence(root, completion=None):
     """Enumerate owned files including hidden files, never follow reparse links."""
     root=Path(root).resolve();destination=Path(str(root)+'.zip')
     if destination.exists(): raise FileExistsError(destination)
     members=[];omitted=[]
-    for directory, dirs, files in os.walk(root,followlinks=False):
+    def traversal_error(error): raise error
+    for directory, dirs, files in os.walk(root,followlinks=False,onerror=traversal_error):
         for name in list(dirs):
             path=Path(directory)/name
             if path.is_symlink() or getattr(path.lstat(),'st_file_attributes',0)&0x400:
@@ -518,11 +678,46 @@ def archive_evidence(root):
             if not stat.S_ISREG(info.st_mode) or path.is_symlink() or getattr(info,'st_file_attributes',0)&0x400:
                 omitted.append(str(path.relative_to(root)));continue
             members.append(path)
+    # Exclusive creation is the ownership boundary, even if enumeration excluded
+    # a symlink/reparse point at this reserved name. Never reuse a previous file.
     write_json(root/'archive-members.json',dict(files=sorted([str(p.relative_to(root)) for p in members]+['archive-members.json']),omitted=omitted))
     members=[p for p in members if p!=root/'archive-members.json']+[root/'archive-members.json']
     with zipfile.ZipFile(destination,'x',compression=zipfile.ZIP_DEFLATED) as archive:
-        for path in sorted(members): archive.write(path,path.relative_to(root))
+        for path in sorted(members):
+            name=path.relative_to(root).as_posix()
+            # Final receipts are serialized into the ZIP, not optimistically
+            # installed in the directory before archive closure succeeds.
+            if completion and name in completion: archive.writestr(name,json_text(completion[name]))
+            else: archive.write(path,name)
     return destination
+
+
+def finalize_evidence(root, raw):
+    """Keep raw execution immutable; own final receipts across archive failure."""
+    root=Path(root)
+    success=raw['status'] in ('PASS','OBSERVED')
+    summary=dict(raw,collector_status=raw['status'],archive_status='VERIFIED')
+    launcher=dict(status=summary['status'],exit_code=0 if success else 4,success=success,
+                  collector_status=raw['status'],archive_status=summary['archive_status'])
+    # Any reserved-name collision refuses before archive publication. Existing
+    # evidence is never repurposed, even when it looks like our own JSON.
+    with JsonRecord(root/'summary.json') as summary_record, JsonRecord(root/'launcher-result.json') as launcher_record:
+        pending=dict(status='FINALIZING',success=False,exit_code=4,collector_status=raw['status'],archive_status='NOT COMPLETED')
+        summary_record.write(pending);launcher_record.write(pending)
+        try:
+            destination=archive_evidence(root,{'summary.json':summary,'launcher-result.json':launcher})
+            summary_record.write(summary);launcher_record.write(launcher)
+        except BaseException as primary:
+            summary.update(status='ERROR',archive_status='FAILED_OR_UNVERIFIED',error=repr(primary))
+            launcher.update(status='ERROR',success=False,exit_code=4,archive_status='FAILED_OR_UNVERIFIED')
+            for record,value in ((summary_record,summary),(launcher_record,launcher)):
+                try:record.write(value)
+                except Exception as secondary:primary.add_note('Final status write also failed: '+repr(secondary))
+            try:write_json(root/'archive-error.json',dict(error=repr(primary),notes=getattr(primary,'__notes__',[]),evidence_retained=str(root)))
+            except Exception as secondary:primary.add_note('Archive diagnostic write also failed: '+repr(secondary))
+            raise
+    print('Evidence ZIP: '+str(destination),flush=True)
+    return launcher['exit_code']
 
 
 class WindowsChild:
@@ -694,7 +889,7 @@ def monitor(child, root, limits, *, clock=time.monotonic, sleep=time.sleep, disp
         except queue.Full:live_truncated.set() # Canonical byte logs remain complete.
     def drain(stream, name):
         try:
-            with (root/name).open('wb') as log:
+            with (root/name).open('xb') as log:
                 decoder=codecs.getincrementaldecoder('utf-8')(errors='replace')
                 while True:
                     chunk=stream.read(4096)
@@ -768,15 +963,20 @@ def monitor(child, root, limits, *, clock=time.monotonic, sleep=time.sleep, disp
         cleanup['stream_errors']=late_errors;cleanup['verified']=False
         if reason is None:reason='COLLECTOR ERROR: output capture failed'
     display('CHRONICLE_PROGRESS '+json.dumps(progress.snapshot(clock()),ensure_ascii=False))
-    summary=dict(status=('OBSTRUCTED' if progress.obstruction else 'CANCELLED' if reason and reason.startswith('CANCELLED')
+    evidence=validate_test_evidence(root,code,progress.pytest_exit_code)
+    execution=('OBSTRUCTED' if progress.obstruction else 'CANCELLED' if reason and reason.startswith('CANCELLED')
                          else 'TIMEOUT' if reason and reason.startswith('TIMEOUT') else 'ERROR' if reason
                          else 'PASS' if code==0 and progress.pytest_exit_code==0 and progress.selected is not None
                          and progress.selected>0 and progress.completed==progress.selected
-                         and cleanup.get('verified') and cleanup.get('streams_drained') else 'FAIL'),
+                         and not any(progress.counts.get(k,0) for k in ('failed','error'))
+                         and not progress.collection_errors
+                         and cleanup.get('verified') and cleanup.get('streams_drained') else 'FAIL')
+    summary=dict(status='EVIDENCE_INCOMPLETE' if execution=='PASS' and evidence['status']!='COMPLETE' else execution,
+                 test_execution_status=execution,evidence=evidence,
                  termination_reason=reason,process_exit_code=code,pytest_exit_code=progress.pytest_exit_code,
                  progress=progress.snapshot(clock()),cleanup=cleanup,last_event=progress.last_payload,
                  junit=junit_status(root/'junit.xml',progress.pytest_exit_code is not None))
-    summary['manifest']='recorded' if (root/'manifest.json').exists() else 'missing/incomplete'
+    summary['manifest']=evidence.get('manifest','missing/invalid/incomplete')
     summary['live_console_truncated']=live_truncated.is_set()
     write_json(root/'test-result.json',summary)
     return summary
@@ -859,8 +1059,15 @@ def metadata_probe(root):
                     usable_equal_identity=bool(a.st_dev and a.st_ino and (a.st_dev,a.st_ino)==(b.st_dev,b.st_ino)))
     except OSError as exc:events.emit('hardlink',status='BLOCKED',error=repr(exc))
     old=path.stat();capture('before same-size mutation')
-    with path.open('r+b') as stream:stream.write(b'modified');stream.flush();os.fsync(stream.fileno())
-    os.utime(path,ns=(old.st_atime_ns,old.st_mtime_ns));capture('same-size mutation restored mtime')
+    with path.open('r+b') as stream:
+        stream.write(b'modified');stream.flush();os.fsync(stream.fileno())
+        os.utime(path,ns=(old.st_atime_ns,old.st_mtime_ns))
+        capture('same-size mutation open descriptor restored mtime',stream.fileno())
+    capture('same-size mutation restored mtime')
+    fd=os.open(path,os.O_RDONLY|getattr(os,'O_BINARY',0))
+    try:capture('same-size mutation fresh descriptor',fd)
+    finally:os.close(fd)
+    capture('same-size mutation after fresh close')
     return dict(status='OBSERVED',qualification='No compatibility acceptance inferred from observations')
 
 
@@ -912,7 +1119,7 @@ def prepare(repo,root,scope,expected):
             if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)) and node.name.startswith('test_'):
                 deferred.append(dict(nodeid=str(path.relative_to(repo))+'::'+node.name,status='NOT RUN',
                                      parameters='not collected',reason='Retained legacy suite outside native rewrite scope'))
-    write_json(root/'deferred.json',dict(legacy=deferred,supervised='Every collected rewrite exclusion and fixture reason is recorded in manifest.json; native operator dialogs are supervised separately.'))
+    deferred_record=dict(legacy=deferred,supervised='Every collected rewrite exclusion and fixture reason is recorded in manifest.json; native operator dialogs are supervised separately.')
     if scope=='MetadataProbe':
         uncollected=[]
         for path in sorted((repo/'tests/rewrite').glob('test_*.py')):
@@ -921,7 +1128,8 @@ def prepare(repo,root,scope,expected):
                     uncollected.append(dict(nodeid=str(path.relative_to(repo))+'::'+node.name,status='NOT RUN',
                                             parameters='not collected',reason='MetadataProbe does not request pytest'))
         write_json(root/'manifest.json',[])
-        write_json(root/'deferred.json',dict(legacy=deferred,rewrite=uncollected))
+        deferred_record=dict(legacy=deferred,rewrite=uncollected)
+    write_json(root/'deferred.json',deferred_record)
     return source
 
 
@@ -945,7 +1153,12 @@ def run_pytest(root,scope,arguments=None,*,enforce_manifest=True):
                   '--junitxml',str(root/'junit.xml'),'tests/rewrite/']
         write_json(root/'pytest-arguments.json',args)
         return int(pytest.main(args,plugins=[plugin]))
-    finally:guard.restore()
+    finally:
+        guard.restore()
+        if plugin.manifest_record:
+            # Preserve an in-flight collection failure if closing also fails.
+            plugin.manifest_record.__exit__(*sys.exc_info())
+            plugin.manifest_record=None
 
 
 def verify_output(root,repo,*,completed=False):
@@ -977,7 +1190,8 @@ def collect(repo,root,scope,expected,limits,*,archive=True):
         source=prepare(repo,root,scope,expected)
         print('CHRONICLE_PROGRESS '+json.dumps(dict(qualification_phase='MetadataProbe',phase='observation',completed=0,selected=None,counts={})),flush=True)
         summary['metadata']=metadata_probe(root)
-        if scope=='MetadataProbe':summary.update(status='OBSERVED',source=source,junit='NOT APPLICABLE: no pytest requested')
+        if scope=='MetadataProbe':summary.update(status='OBSERVED',source=source,junit='NOT APPLICABLE: no pytest requested',
+                                                evidence=dict(status='NOT APPLICABLE: no pytest requested'))
         else:
             args=[sys.executable,'-u','-B',str(Path(__file__).resolve()),'--pytest-worker',str(root),'--scope',scope]
             temp=root/'child-temp';home=root/'child-home';temp.mkdir();home.mkdir()
@@ -992,23 +1206,26 @@ def collect(repo,root,scope,expected,limits,*,archive=True):
                 summary['status']='BLOCKED';summary['source_changed']=True
     except BaseException as exc:
         summary.update(status='CANCELLED' if isinstance(exc,KeyboardInterrupt) else 'BLOCKED',error=repr(exc))
-        (root/'collector-error.txt').write_text(traceback.format_exc(),encoding='utf-8')
+        try:
+            with (root/'collector-error.txt').open('x',encoding='utf-8') as stream:stream.write(traceback.format_exc())
+        except Exception as secondary:summary['diagnostic_write_error']=repr(secondary)
     finally:
         summary['qualification']='No independent Windows/Stage 4 acceptance follows from collector completion'
         summary.setdefault('manifest','recorded' if (root/'manifest.json').exists() else 'not collected: execution blocked before complete collection')
-        write_json(root/'summary.json',summary)
+        # Immutable raw execution record. The launcher owns separate final
+        # summary/delivery records when --defer-archive is selected.
+        write_json(root/'collector-result.json',summary)
         try:
             if archive:
-                zip_path=archive_evidence(root)
-                print('Evidence ZIP: '+str(zip_path),flush=True)
+                return_code=finalize_evidence(root,summary)
         except Exception as exc:
-            write_json(root/'archive-error.json',dict(error=repr(exc),evidence_retained=str(root)))
-            summary['archive_error']=repr(exc);summary['status']='ERROR';write_json(root/'summary.json',summary)
-        print('Collector execution result: '+summary['status'],flush=True)
+            print('Evidence finalization failed; directory retained: '+repr(exc),file=sys.stderr,flush=True)
+            return_code=4
+        print('Raw collector execution result: '+summary['status'],flush=True)
         if 'progress' in summary:
             print('Final pytest nodes: '+json.dumps(summary['progress'],ensure_ascii=False),flush=True)
             print('Process exit: '+str(summary.get('process_exit_code'))+'; pytest session exit: '+str(summary.get('pytest_exit_code')),flush=True)
-    return 0 if summary['status'] in ('PASS','OBSERVED') else 4
+    return return_code if archive else (0 if summary['status'] in ('PASS','OBSERVED') else 4)
 
 
 def main():
@@ -1019,6 +1236,7 @@ def main():
     parser.add_argument('--expected-revision')
     parser.add_argument('--defer-archive',action='store_true',help=argparse.SUPPRESS)
     parser.add_argument('--archive-evidence',type=Path,help=argparse.SUPPRESS)
+    parser.add_argument('--archive-completion',type=Path,help=argparse.SUPPRESS)
     parser.add_argument('--pytest-worker',type=Path,help=argparse.SUPPRESS)
     parser.add_argument('--collection-seconds',type=int,default=90)
     parser.add_argument('--test-seconds',type=int,default=120)
@@ -1027,7 +1245,12 @@ def main():
     if options.archive_evidence:
         try:
             root=verify_output(options.archive_evidence,options.repo,completed=True)
-            print(archive_evidence(root),flush=True)
+            completion=None
+            if options.archive_completion:
+                if options.archive_completion!=root/'archive-completion.json':raise ValueError('Invalid archive completion path')
+                completion=json.loads(options.archive_completion.read_text(encoding='utf-8-sig'))['records']
+                if set(completion)!={'summary.json','launcher-result.json'}:raise ValueError('Invalid archive completion records')
+            print(archive_evidence(root,completion),flush=True)
             return 0
         except Exception:
             traceback.print_exc()

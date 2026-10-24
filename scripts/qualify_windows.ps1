@@ -23,6 +23,10 @@ $CollectorStarted = $false
 $Stdout = $null
 $Stderr = $null
 $ExitCode = 4
+$Helper = $null
+$RawCollectorExit = $null
+$LauncherFailure = $null
+$CleanupUnverified = $false
 $Utf8 = [Text.UTF8Encoding]::new($false)
 
 # Windows CRT quoting; ProcessStartInfo.ArgumentList is unavailable in PS 5.1.
@@ -32,10 +36,25 @@ function Quote-NativeArgument([string]$Value) {
     $Escaped = [regex]::Replace($Escaped, '(\\+)$', '$1$1')
     return '"' + $Escaped + '"'
 }
-function Save-Json([string]$Path, $Value) {
-    [IO.File]::WriteAllText($Path, ($Value | ConvertTo-Json -Depth 20), $Utf8)
+function Write-JsonRecord([IO.Stream]$Stream, $Value) {
+    $Bytes = $Utf8.GetBytes(($Value | ConvertTo-Json -Depth 30))
+    $Stream.Position = 0
+    $Stream.SetLength(0)
+    $Stream.Write($Bytes,0,$Bytes.Length)
+    $Stream.Flush()
 }
-function New-EvidenceZip([string]$Root) {
+function Save-Json([string]$Path, $Value) {
+    # CreateNew is the ownership operation, including dangling/reparse links.
+    $Stream = [IO.File]::Open($Path,[IO.FileMode]::CreateNew,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read)
+    $Primary = $null
+    try { Write-JsonRecord $Stream $Value }
+    catch { $Primary = $_; throw }
+    finally {
+        try { $Stream.Dispose() }
+        catch { if ($null -eq $Primary) { throw }; Write-Warning "Evidence close also failed: $_" }
+    }
+}
+function New-EvidenceZip([string]$Root, $Completion = $null) {
     # Fallback also includes hidden files. Skip every reparse object, never follow
     # an artifact link out of this unique owned tree; never include the ZIP itself.
     Add-Type -AssemblyName System.IO.Compression
@@ -58,17 +77,39 @@ function New-EvidenceZip([string]$Root) {
     $Members.Add($MembershipPath)
     Save-Json $MembershipPath @{files=@($Members | ForEach-Object { $_.Substring($Root.Length + 1) }); omitted=@($Omitted)}
     $FileStream = [IO.File]::Open($ZipPath, [IO.FileMode]::CreateNew)
-    $Zip = [IO.Compression.ZipArchive]::new($FileStream, [IO.Compression.ZipArchiveMode]::Create)
+    $Zip = $null
+    $Primary = $null
     try {
+        $Zip = [IO.Compression.ZipArchive]::new($FileStream, [IO.Compression.ZipArchiveMode]::Create)
         foreach ($Path in $Members) {
             $Name = $Path.Substring($Root.Length + 1).Replace('\','/')
-            [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($Zip, $Path, $Name, [IO.Compression.CompressionLevel]::Optimal) | Out-Null
+            if ($null -ne $Completion -and $Completion.Contains($Name)) {
+                $Entry = $Zip.CreateEntry($Name)
+                $EntryStream = $Entry.Open()
+                $EntryPrimary = $null
+                try {
+                    $Bytes = $Utf8.GetBytes(($Completion[$Name] | ConvertTo-Json -Depth 30))
+                    $EntryStream.Write($Bytes,0,$Bytes.Length)
+                } catch { $EntryPrimary = $_; throw }
+                finally {
+                    try { $EntryStream.Dispose() }
+                    catch { if ($null -eq $EntryPrimary) { throw }; Write-Warning "Archive entry close also failed: $_" }
+                }
+            } else { [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($Zip, $Path, $Name, [IO.Compression.CompressionLevel]::Optimal) | Out-Null }
         }
-    } finally { $Zip.Dispose(); $FileStream.Dispose() }
-    Write-Host "Evidence ZIP: $ZipPath"
+    } catch { $Primary = $_; throw }
+    finally {
+        foreach ($Resource in @($Zip,$FileStream)) {
+            if ($null -ne $Resource) {
+                try { $Resource.Dispose() }
+                catch { if ($null -eq $Primary) { $Primary = $_ } else { Write-Warning "Archive close also failed: $_" } }
+            }
+        }
+        if ($null -ne $Primary) { throw $Primary }
+    }
 }
 function New-PythonEvidenceZip([string]$Root) {
-    $ArchiveArgs = @('-B',$Helper,'--repo',$Repo,'--archive-evidence',$Root)
+    $ArchiveArgs = @('-B',$Helper,'--repo',$Repo,'--archive-evidence',$Root,'--archive-completion',(Join-Path $Root 'archive-completion.json'))
     Save-Json (Join-Path $Root 'archive-command.json') @{executable=$Python;arguments=$ArchiveArgs;timeout_seconds=60}
     $ArchiveStart = [Diagnostics.ProcessStartInfo]::new()
     $ArchiveStart.FileName = $Python
@@ -80,6 +121,7 @@ function New-PythonEvidenceZip([string]$Root) {
     $ArchiveStart.StandardErrorEncoding = $Utf8
     $ArchiveProcess = [Diagnostics.Process]::new()
     $ArchiveProcess.StartInfo = $ArchiveStart
+    $Primary = $null
     try {
         if (-not $ArchiveProcess.Start()) { throw 'Archive helper could not start' }
         $ArchiveOut = $ArchiveProcess.StandardOutput.ReadToEndAsync()
@@ -89,8 +131,79 @@ function New-PythonEvidenceZip([string]$Root) {
             throw 'Archive helper exceeded 60-second limit'
         }
         if ($ArchiveProcess.ExitCode -ne 0) { throw ('Archive failed: ' + $ArchiveErr.GetAwaiter().GetResult()) }
-        Write-Host ('Evidence ZIP: ' + $ArchiveOut.GetAwaiter().GetResult().Trim())
-    } finally { $ArchiveProcess.Dispose() }
+        $null = $ArchiveOut.GetAwaiter().GetResult()
+    } catch { $Primary = $_; throw }
+    finally {
+        try { $ArchiveProcess.Dispose() }
+        catch { if ($null -eq $Primary) { throw }; Write-Warning "Archive process close also failed: $_" }
+    }
+}
+function Complete-QualificationEvidence([string]$Root, $Raw, $CollectorExit, [string]$Failure, [bool]$UncertainCleanup) {
+    # The raw collector receipt is immutable. Final records are exclusively
+    # reserved and remain pessimistic until archive closure and acknowledgement.
+    $SummaryStream = $null
+    $ResultStream = $null
+    $FinalExit = 4
+    $ArchiveCompleted = $false
+    $Summary = @{status='ERROR';collector_status=$Raw.status;collector_exit_code=$CollectorExit;collector_result=$Raw;archive_status='NOT COMPLETED';launcher_failure=$Failure;cleanup_unverified=$UncertainCleanup}
+    $Result = @{status='ERROR';success=$false;exit_code=4;collector_status=$Raw.status;collector_exit_code=$CollectorExit;archive_status='NOT COMPLETED';scope=$Scope;qualification='Independent native review required'}
+    try {
+        $SummaryStream = [IO.File]::Open((Join-Path $Root 'summary.json'),[IO.FileMode]::CreateNew,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read)
+        $ResultStream = [IO.File]::Open((Join-Path $Root 'launcher-result.json'),[IO.FileMode]::CreateNew,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read)
+        Write-JsonRecord $SummaryStream $Summary
+        Write-JsonRecord $ResultStream $Result
+        $Good = ($CollectorExit -eq 0 -and $Raw.status -in @('PASS','OBSERVED') -and -not $Failure -and -not $UncertainCleanup)
+        $FinalExit = 4
+        $Status = $Raw.status
+        if ($Good) { $FinalExit = 0 }
+        elseif ($Status -in @('PASS','OBSERVED')) { $Status = 'ERROR' }
+        $Summary.status = $Status
+        $Summary.archive_status = 'VERIFIED'
+        $Result.status = $Status
+        $Result.success = $Good
+        $Result.exit_code = $FinalExit
+        $Result.archive_status = 'VERIFIED'
+        $Completion = @{'summary.json'=$Summary; 'launcher-result.json'=$Result}
+        # Proposed bytes for the final ZIP, not an actual delivery receipt.
+        Save-Json (Join-Path $Root 'archive-completion.json') @{purpose='Proposed records; delivery requires launcher acknowledgement';records=$Completion}
+        if ($Python -and $Helper -and (Test-Path -LiteralPath $Python) -and (Test-Path -LiteralPath $Helper)) { New-PythonEvidenceZip $Root }
+        else { New-EvidenceZip $Root $Completion }
+        $ArchiveCompleted = $true
+        Write-JsonRecord $SummaryStream $Summary
+        Write-JsonRecord $ResultStream $Result
+    } catch {
+        $Primary = $_
+        $FinalExit = 4
+        $Summary.status = 'ERROR'; $Summary.archive_status = 'FAILED_OR_UNVERIFIED'
+        $Result.status = 'ERROR'; $Result.success = $false; $Result.exit_code = 4; $Result.archive_status = 'FAILED_OR_UNVERIFIED'
+        foreach ($Pair in @(@($SummaryStream,$Summary),@($ResultStream,$Result))) {
+            if ($null -ne $Pair[0]) {
+                try { Write-JsonRecord $Pair[0] $Pair[1] }
+                catch { Write-Warning "Final status write also failed: $_" }
+            }
+        }
+        try { Save-Json (Join-Path $Root 'archive-error.json') @{error=$Primary.Exception.ToString();status='ERROR';evidence_retained=$Root;archive='FAILED_OR_UNVERIFIED'} }
+        catch { Write-Warning "Archive diagnostic also failed: $_" }
+        Write-Host "Evidence finalization failed; directory retained at $Root : $Primary"
+    } finally {
+        foreach ($Stream in @($SummaryStream,$ResultStream)) {
+            if ($null -ne $Stream) {
+                try { $Stream.Dispose() }
+                catch {
+                    $FinalExit = 4
+                    $Summary.status = 'ERROR'; $Summary.archive_status = 'FAILED_OR_UNVERIFIED'
+                    $Result.status = 'ERROR'; $Result.success = $false; $Result.exit_code = 4; $Result.archive_status = 'FAILED_OR_UNVERIFIED'
+                    foreach ($Pair in @(@($SummaryStream,$Summary),@($ResultStream,$Result))) {
+                        try { Write-JsonRecord $Pair[0] $Pair[1] }
+                        catch { Write-Warning "Final status after close failure could not be written: $_" }
+                    }
+                    Write-Warning "Final status close failed; delivery unverified: $_"
+                }
+            }
+        }
+    }
+    if ($ArchiveCompleted -and $Result.archive_status -eq 'VERIFIED') { Write-Host ('Evidence ZIP: ' + $Root + '.zip') }
+    return $FinalExit
 }
 try {
     $Repo = [IO.Path]::GetFullPath($Repo).TrimEnd('\')
@@ -217,51 +330,63 @@ try {
     }
     $Collector.WaitForExit()
     $ExitCode = $Collector.ExitCode
+    $RawCollectorExit = $ExitCode
 } catch {
+    $LauncherFailure = $_.Exception.ToString()
+    $ExitCode = 4
     Write-Host $_.Exception.Message
     if ($Evidence) {
-        Save-Json (Join-Path $Evidence 'launcher-failure.json') @{status='BLOCKED';error=$_.Exception.ToString();collector_exit_code=$null}
+        try { Save-Json (Join-Path $Evidence 'launcher-failure.json') @{status='BLOCKED';error=$LauncherFailure;collector_exit_code=$null} }
+        catch { Write-Warning "Launcher failure diagnostic also failed: $_" }
     }
 } finally {
     try { if ($CollectorStarted -and -not $Collector.HasExited) {
-        if ($Evidence) { [IO.File]::WriteAllText((Join-Path $Evidence 'cancel.request'),'operator/launcher cancellation',$Utf8) }
+        if (-not $LauncherFailure) { $LauncherFailure = 'Operator/launcher cancellation before collector completion' }
+        if ($Evidence) {
+            try { Save-Json (Join-Path $Evidence 'cancel.request') @{reason='operator/launcher cancellation'} }
+            catch {
+                # An existing/failed cancellation receipt must never skip the
+                # bounded wait/owned-process termination below.
+                $CleanupUnverified = $true
+                Write-Warning "Cancellation receipt unavailable; continuing owned cleanup: $_"
+            }
+        }
         if (-not $Collector.WaitForExit(8000)) {
             # Only our exact collector process. Its Job handle closes on death,
             # terminating its contained pytest descendants; never kill by name.
             $Collector.Kill()
             $Stopped = $Collector.WaitForExit(5000)
+            $CleanupUnverified = $true
+            $ExitCode = 4
             if ($Evidence) { Save-Json (Join-Path $Evidence 'forced-collector-stop.json') @{stopped=$Stopped;pytest_exit_code=$null;descendant_cleanup='UNVERIFIED: kill-on-job-close expected; no independent observation';reason='Collector cancellation exceeded bounded cleanup'} }
         }
     } } catch {
-        if ($Evidence) { Save-Json (Join-Path $Evidence 'launcher-cleanup-error.json') @{error=$_.Exception.ToString();cleanup='UNVERIFIED'} }
+        $CleanupUnverified = $true
         $ExitCode = 4
+        $CleanupFailure = $_.Exception.ToString()
+        if ($Evidence) {
+            try { Save-Json (Join-Path $Evidence 'launcher-cleanup-error.json') @{error=$CleanupFailure;cleanup='UNVERIFIED'} }
+            catch { Write-Warning "Cleanup diagnostic also failed: $_" }
+        }
     }
-    if ($Stdout) { $Stdout.Dispose() }
-    if ($Stderr) { $Stderr.Dispose() }
+    if ($CollectorStarted -and $Collector.HasExited) { $RawCollectorExit = $Collector.ExitCode }
+    foreach ($Stream in @($Stdout,$Stderr)) {
+        if ($null -ne $Stream) {
+            try { $Stream.Dispose() }
+            catch { $CleanupUnverified = $true; $ExitCode = 4; Write-Warning "Launcher log close failed: $_" }
+        }
+    }
     Write-Progress -Activity "Chronicle $Scope" -Completed
     if ($Evidence) {
-        if (-not (Test-Path -LiteralPath (Join-Path $Evidence 'summary.json'))) {
-            $JUnitStatus = 'missing'
-            $JUnitPath = Join-Path $Evidence 'junit.xml'
-            if (Test-Path -LiteralPath $JUnitPath) {
-                try { $null = [xml][IO.File]::ReadAllText($JUnitPath); $JUnitStatus = 'present; collector incomplete' }
-                catch { $JUnitStatus = 'partial/unreadable' }
-            }
-            Save-Json (Join-Path $Evidence 'summary.json') @{status='BLOCKED';pytest_exit_code=$null;junit=$JUnitStatus}
-        }
-        Save-Json (Join-Path $Evidence 'launcher-result.json') @{exit_code=$ExitCode;success=($ExitCode -eq 0);scope=$Scope;qualification='Independent native review required'}
+        $Raw = @{status='BLOCKED';pytest_exit_code=$null;junit='missing or unverified: collector incomplete'}
         try {
-            if ($Python -and $Helper -and (Test-Path -LiteralPath $Python) -and (Test-Path -LiteralPath $Helper)) { New-PythonEvidenceZip $Evidence }
-            else { New-EvidenceZip $Evidence }
-        }
+            $RawPath = Join-Path $Evidence 'collector-result.json'
+            if (Test-Path -LiteralPath $RawPath) { $Raw = [IO.File]::ReadAllText($RawPath) | ConvertFrom-Json }
+        } catch { $LauncherFailure = 'Raw collector result unavailable: ' + $_.Exception.ToString(); $ExitCode = 4 }
+        try { $ExitCode = Complete-QualificationEvidence $Evidence $Raw $RawCollectorExit $LauncherFailure $CleanupUnverified }
         catch {
-            Save-Json (Join-Path $Evidence 'archive-error.json') @{error=$_.Exception.ToString();status='ERROR';evidence_retained=$Evidence}
-            $FailedSummary = [IO.File]::ReadAllText((Join-Path $Evidence 'summary.json')) | ConvertFrom-Json
-            $FailedSummary | Add-Member -NotePropertyName test_status -NotePropertyValue $FailedSummary.status -Force
-            $FailedSummary.status = 'ERROR'
-            Save-Json (Join-Path $Evidence 'summary.json') $FailedSummary
             $ExitCode = 4
-            Write-Host "ZIP creation failed; evidence retained at $Evidence : $_"
+            Write-Host "Final status unavailable; directory retained at $Evidence : $_"
         }
         Write-Host "Evidence directory: $Evidence"
     }

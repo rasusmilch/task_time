@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import sys
 import time
@@ -64,6 +65,7 @@ def test_teardown(cleanup): pass
     assert finished[-1]['counts']==dict(passed=2,failed=1,skipped=1,xfailed=1,xpassed=1,error=2)
     assert log[-1]['pytest_exit_code']==1
     assert q.junit_status(root/'junit.xml',True)=='complete'
+    assert q.validate_test_evidence(root,1,1)['status']=='COMPLETE'
     assert all(e['phase'] in ('setup','call','teardown') for e in log if e['event']=='phase')
 
 
@@ -266,10 +268,15 @@ def test_metadata_probe_uses_only_new_owned_files_and_preserves_raw_fields(tmp_p
     log=events(tmp_path/'metadata.jsonl')
     assert any(e.get('label')=='readonly after close' for e in log)
     assert any(e.get('label')=='writable after fsync' for e in log)
-    mutations=[e for e in log if e['event']=='observation'][-2:]
+    mutations=[next(e for e in log if e.get('label')==label) for label in
+               ('before same-size mutation','same-size mutation restored mtime')]
     before,after=(e['observations']['lstat'] for e in mutations)
     assert before['st_size']==after['st_size'] and before['st_mtime_ns']==after['st_mtime_ns']
     assert mutations[0]['sha256']!=mutations[1]['sha256']
+    for label in ('same-size mutation open descriptor restored mtime','same-size mutation fresh descriptor'):
+        observation=next(e for e in log if e.get('label')==label)['observations']
+        assert observation['stat']['st_ino']==observation['fstat']['st_ino']
+        assert observation['fstat']['st_size']=='8'
     with pytest.raises(FileExistsError):q.metadata_probe(tmp_path)
 
 
@@ -497,3 +504,391 @@ def test_real_tk_audited_callback_plugin_runs_only_controlled_dialog_paths(tmp_p
     assert sum(e['event']=='node_finish' for e in log)==2
     assert log[-1]['counts']=={'passed':2}
     assert not any(e['event']=='obstructed' for e in log)
+
+
+def protected_snapshot(path):
+    info=path.stat()
+    return (path.read_bytes(),info.st_dev,info.st_ino,info.st_mode,info.st_size,info.st_mtime_ns,info.st_ctime_ns)
+
+
+@pytest.mark.parametrize('kind',['symlink','file','directory','hardlink','dangling'])
+def test_reserved_archive_manifest_is_exclusive_and_preserves_outside_sentinel(tmp_path,kind):
+    root=tmp_path/'evidence';root.mkdir()
+    outside=tmp_path/'outside sentinel';outside.write_bytes(b'unchanged outside')
+    before=protected_snapshot(outside)
+    reserved=root/'archive-members.json'
+    try:
+        if kind=='symlink':reserved.symlink_to(outside)
+        elif kind=='dangling':reserved.symlink_to(tmp_path/'absent')
+        elif kind=='hardlink':os.link(outside,reserved)
+        elif kind=='directory':reserved.mkdir()
+        else:reserved.write_bytes(b'preexisting record')
+    except (OSError,NotImplementedError) as exc:
+        if isinstance(exc,NotImplementedError) or getattr(exc,'winerror',None)==1314 or getattr(exc,'errno',None) in (errno.EPERM,errno.EACCES,errno.ENOSYS,errno.ENOTSUP):
+            pytest.skip('Native link setup unavailable: '+str(exc))
+        raise
+    # Creating a hardlink itself can change sentinel ctime: refusal must preserve
+    # the state after fixture setup, rather than attributing setup to the archive.
+    before=protected_snapshot(outside)
+    with pytest.raises((FileExistsError,IsADirectoryError,PermissionError)):
+        q.archive_evidence(root)
+    assert protected_snapshot(outside)==before
+    assert root.is_dir() and reserved.lstat()
+    if kind=='file':assert reserved.read_bytes()==b'preexisting record'
+    assert not Path(str(root)+'.zip').exists()
+    assert not (tmp_path/'absent').exists()
+
+
+@pytest.mark.parametrize('where',['root','child'])
+def test_archive_traversal_errors_are_not_silent_partial_success(tmp_path,monkeypatch,where):
+    root=tmp_path/'evidence';root.mkdir();(root/'keep').write_bytes(b'evidence')
+    child=root/'unreadable';child.mkdir();(child/'hidden failure evidence').write_bytes(b'keep')
+    original=os.scandir
+    def denied(path):
+        if Path(path)==(root if where=='root' else child):raise PermissionError('controlled enumeration failure')
+        return original(path)
+    monkeypatch.setattr(q.os,'scandir',denied)
+    with pytest.raises(PermissionError,match='controlled enumeration failure'):q.archive_evidence(root)
+    assert (root/'keep').read_bytes()==b'evidence'
+    assert (child/'hidden failure evidence').read_bytes()==b'keep'
+    assert not Path(str(root)+'.zip').exists()
+
+
+@pytest.fixture
+def complete_evidence(tmp_path):
+    child,root=run_fixture(tmp_path,'def test_pass(): pass\n')
+    assert child.returncode==0,child.stderr
+    assert q.validate_test_evidence(root,0,0)['status']=='COMPLETE'
+    return root
+
+
+class CompletedDouble(OwnedDouble):
+    def poll(self):return 0
+
+
+@pytest.mark.parametrize('damage',['missing_xml','truncated_xml','invalid_xml','missing_manifest','invalid_manifest',
+                                    'missing_case','wrong_case','wrong_outcome','duplicate_finish','missing_report','partial_event'])
+def test_successful_exit_requires_consistent_complete_evidence(complete_evidence,damage):
+    root=complete_evidence
+    xml=root/'junit.xml';manifest=root/'manifest.json';event_file=root/'events.jsonl'
+    if damage=='missing_xml':xml.unlink()
+    elif damage=='truncated_xml':xml.write_text('<testsuites><testsuite>')
+    elif damage=='invalid_xml':xml.write_text('<not-junit/>')
+    elif damage=='missing_manifest':manifest.unlink()
+    elif damage=='invalid_manifest':manifest.write_text('{}')
+    elif damage in ('missing_case','wrong_case','wrong_outcome'):
+        from xml.etree import ElementTree as ET
+        tree=ET.parse(xml);suite=tree.getroot().find('testsuite');case=suite.find('testcase')
+        if damage=='missing_case':suite.remove(case)
+        elif damage=='wrong_case':case.set('name','another test')
+        else:ET.SubElement(case,'failure',message='fabricated')
+        tree.write(xml)
+    else:
+        log=events(event_file)
+        if damage=='duplicate_finish':log.insert(-1,next(e for e in log if e['event']=='node_finish'))
+        elif damage=='missing_report':log=[e for e in log if not (e['event']=='report' and e['phase']=='teardown')]
+        event_file.write_text(''.join(json.dumps(e)+'\n' for e in log))
+        if damage=='partial_event':
+            with event_file.open('a') as stream:stream.write('{"event":')
+    result=q.monitor(CompletedDouble(),root,q.LIMITS,display=lambda *a,**kw:None)
+    assert result['status']=='EVIDENCE_INCOMPLETE'
+    assert result['test_execution_status']=='PASS'
+    assert result['process_exit_code']==result['pytest_exit_code']==0
+    assert result['evidence']['status']=='EVIDENCE_INCOMPLETE' and result['evidence']['diagnostics']
+
+
+def test_valid_junit_suite_root_and_prefix_mapping(complete_evidence):
+    from xml.etree import ElementTree as ET
+    xml=complete_evidence/'junit.xml';tree=ET.parse(xml)
+    ET.ElementTree(tree.getroot().find('testsuite')).write(xml)
+    assert q.validate_test_evidence(complete_evidence,0,0)['status']=='COMPLETE'
+
+
+def test_real_junit_double_outcomes_and_parametrized_xfail_xpass(tmp_path):
+    child,root=run_fixture(tmp_path,'''
+import pytest
+@pytest.mark.parametrize('value',[1,2])
+def test_pass(value):pass
+@pytest.mark.skip(reason='skip')
+def test_skip():pass
+@pytest.mark.xfail(reason='xfail')
+def test_xfail():assert False
+@pytest.mark.xfail(reason='xpass')
+def test_xpass():pass
+@pytest.fixture
+def bad_teardown():
+ yield
+ raise RuntimeError('teardown')
+def test_double_failure(bad_teardown):assert False
+@pytest.fixture
+def both(request):
+ request.addfinalizer(lambda: (_ for _ in ()).throw(RuntimeError('cleanup')))
+ raise RuntimeError('setup')
+def test_two_errors(both):pass
+''',extra=('--junitprefix','qualification'))
+    assert child.returncode==1,child.stderr
+    evidence=q.validate_test_evidence(root,1,1)
+    assert evidence['status']=='COMPLETE',evidence
+    assert evidence['counts']==dict(passed=2,skipped=1,xfailed=1,xpassed=1,error=2)
+    assert len([e for e in events(root/'events.jsonl') if e['event']=='node_finish'])==7
+
+
+@pytest.mark.parametrize('raw_status',['PASS','FAIL','OBSERVED','CANCELLED'])
+@pytest.mark.parametrize('archive_failure',[False,True])
+def test_final_delivery_preserves_raw_status_and_agrees_with_exit(tmp_path,monkeypatch,raw_status,archive_failure):
+    root=tmp_path/'evidence';root.mkdir()
+    raw=dict(status=raw_status,pytest_exit_code=None if raw_status=='OBSERVED' else int(raw_status=='FAIL'))
+    q.write_json(root/'collector-result.json',raw)
+    before=(root/'collector-result.json').read_bytes()
+    if archive_failure:
+        def fail(*args):raise TimeoutError('archive exceeded controlled deadline')
+        monkeypatch.setattr(q,'archive_evidence',fail)
+        with pytest.raises(TimeoutError,match='controlled deadline'):q.finalize_evidence(root,raw)
+        code=4
+    else:code=q.finalize_evidence(root,raw)
+    summary=json.loads((root/'summary.json').read_text())
+    result=json.loads((root/'launcher-result.json').read_text())
+    assert summary['status']==result['status']
+    assert result['exit_code']==code and result['success']==(code==0)
+    assert summary['collector_status']==result['collector_status']==raw_status
+    assert (root/'collector-result.json').read_bytes()==before
+    if archive_failure:
+        assert summary['status']=='ERROR' and result['archive_status']=='FAILED_OR_UNVERIFIED'
+        assert (root/'archive-error.json').is_file() and root.is_dir()
+    else:
+        with zipfile.ZipFile(Path(str(root)+'.zip')) as z:
+            assert json.loads(z.read('summary.json'))==summary
+            assert json.loads(z.read('launcher-result.json'))==result
+            assert json.loads(z.read('collector-result.json'))==raw
+
+
+def test_partial_zip_and_secondary_diagnostic_failure_never_promote_success(tmp_path,monkeypatch):
+    root=tmp_path/'evidence';root.mkdir();raw=dict(status='PASS')
+    def fail(root,completion):
+        Path(str(root)+'.zip').write_bytes(b'partial ZIP')
+        raise OSError('primary archive failure')
+    original=q.write_json
+    def diagnostic(path,value):
+        if Path(path).name=='archive-error.json':raise OSError('secondary diagnostic failure')
+        return original(path,value)
+    monkeypatch.setattr(q,'archive_evidence',fail);monkeypatch.setattr(q,'write_json',diagnostic)
+    with pytest.raises(OSError,match='primary archive failure') as caught:q.finalize_evidence(root,raw)
+    assert any('secondary diagnostic' in note for note in caught.value.__notes__)
+    assert json.loads((root/'launcher-result.json').read_text())['success'] is False
+    assert Path(str(root)+'.zip').read_bytes()==b'partial ZIP'
+
+
+@pytest.mark.parametrize('name',['test-result.json','summary.json','launcher-result.json','collector-result.json','archive-error.json'])
+def test_post_test_reserved_json_never_follows_existing_link(tmp_path,name):
+    root=tmp_path/'evidence';root.mkdir();outside=tmp_path/'outside';outside.write_bytes(b'protected')
+    try:(root/name).symlink_to(outside)
+    except (NotImplementedError,OSError) as exc:
+        if isinstance(exc,NotImplementedError) or getattr(exc,'winerror',None)==1314 or getattr(exc,'errno',None) in (errno.EPERM,errno.EACCES,errno.ENOSYS,errno.ENOTSUP):pytest.skip(str(exc))
+        raise
+    before=protected_snapshot(outside)
+    with pytest.raises(FileExistsError):q.write_json(root/name,dict(status='PASS'))
+    assert protected_snapshot(outside)==before
+
+
+def test_metadata_only_completion_requires_no_junit_or_test_process(source_repo,tmp_path,monkeypatch):
+    root=tmp_path/'probe';root.mkdir()
+    q.write_json(root/'collector-owner.json',dict(kind='Chronicle qualification',root=str(root),id='d3e40067-6166-49bd-b199-285303dce545'))
+    monkeypatch.setattr(q,'prepare',lambda *a:dict(revision='fixture'))
+    monkeypatch.setattr(q,'WindowsChild',lambda *a:pytest.fail('MetadataProbe cannot start pytest'))
+    assert q.collect(source_repo,root,'MetadataProbe',None,q.LIMITS)==0
+    raw=json.loads((root/'collector-result.json').read_text())
+    assert raw['status']=='OBSERVED' and raw['junit'].startswith('NOT APPLICABLE')
+    assert not (root/'junit.xml').exists()
+
+
+def test_powershell_exclusive_creation_and_finalization_static_contract():
+    text=(HELPER.parent/'qualify_windows.ps1').read_text()
+    save=text.split('function Save-Json',1)[1].split('function New-EvidenceZip',1)[0]
+    assert '[IO.FileMode]::CreateNew' in save and 'WriteAllText' not in save
+    archive=text.split('function New-EvidenceZip',1)[1].split('function New-PythonEvidenceZip',1)[0]
+    assert 'Save-Json $MembershipPath' in archive and 'EnumerateFileSystemEntries' in archive
+    assert 'ReparsePoint' in archive and 'catch { $Primary = $_; throw }' in archive
+    finish=text.split('function Complete-QualificationEvidence',1)[1].split('\ntry {\n    $Repo =',1)[0]
+    assert finish.count('[IO.FileMode]::CreateNew')==2
+    assert "archive_status = 'FAILED_OR_UNVERIFIED'" in finish
+    assert '$Result.success = $false' in finish and '$Result.exit_code = 4' in finish
+    assert finish.index('New-PythonEvidenceZip $Root')<finish.index('Write-JsonRecord $SummaryStream $Summary',finish.index('New-PythonEvidenceZip $Root'))
+    assert 'collector-result.json' in text and '--archive-completion' in text
+    assert 'Cancellation receipt unavailable; continuing owned cleanup' in text
+    assert 'Launcher failure diagnostic also failed' in text
+    assert 'Cleanup diagnostic also failed' in text
+
+
+POWERSHELL=shutil.which('pwsh') or shutil.which('powershell')
+
+
+def run_powershell_functions(tmp_path,body):
+    prefix=(HELPER.parent/'qualify_windows.ps1').read_text().split('\ntry {\n    $Repo =',1)[0]
+    script=tmp_path/'collector functions ü.ps1';script.write_text(prefix+'\n'+body,encoding='utf-8-sig')
+    return subprocess.run([POWERSHELL,'-NoProfile','-NonInteractive','-File',str(script)],
+                          capture_output=True,text=True,encoding='utf-8',timeout=20)
+
+
+@pytest.mark.skipif(not POWERSHELL,reason='PowerShell unavailable: fallback runtime remains UNVERIFIED')
+def test_actual_powershell_fallback_reserved_manifest(tmp_path):
+    root=tmp_path/'evidence with spaces ü';root.mkdir()
+    reserved=root/'archive-members.json';reserved.write_bytes(b'keep')
+    body='$Root = '+"'"+str(root).replace("'","''")+"'\ntry { New-EvidenceZip $Root; exit 0 } catch { exit 4 }"
+    result=run_powershell_functions(tmp_path,body)
+    assert result.returncode==4,result.stdout+result.stderr
+    assert reserved.read_bytes()==b'keep' and not Path(str(root)+'.zip').exists()
+
+
+@pytest.mark.skipif(not POWERSHELL,reason='PowerShell unavailable: launcher failure/runtime checks remain UNVERIFIED')
+@pytest.mark.parametrize('fault',['none','python','fallback','timeout','status','cancel'])
+def test_actual_powershell_final_status_after_archive_outcome(tmp_path,fault):
+    root=tmp_path/'evidence ü';root.mkdir()
+    quoted="'"+str(root).replace("'","''")+"'"
+    body=f'$Root = {quoted}\n$Python = $null\n$Helper = $null\n'
+    if fault in ('python','timeout'):
+        body+='$Python = $PSHOME\n$Helper = $PSHOME\nfunction New-PythonEvidenceZip([string]$Root) { throw "controlled Python archive '+fault+'" }\n'
+    if fault=='fallback':body+='function New-EvidenceZip([string]$Root,$Completion) { throw "controlled fallback failure" }\n'
+    if fault=='status':
+        body+='function Write-JsonRecord([IO.Stream]$Stream,$Value) { throw "controlled status finalization failure" }\n'
+    failure="'operator cancellation'" if fault=='cancel' else "''"
+    body+=f"$Code = Complete-QualificationEvidence $Root @{{status='PASS';pytest_exit_code=0}} 0 {failure} $false\nexit $Code"
+    result=run_powershell_functions(tmp_path,body)
+    assert result.returncode==(0 if fault=='none' else 4),result.stdout+result.stderr
+    if fault!='status':
+        summary=json.loads((root/'summary.json').read_text())
+        final=json.loads((root/'launcher-result.json').read_text())
+        assert summary['status']==final['status'] and final['exit_code']==result.returncode
+        assert final['success']==(result.returncode==0)
+
+
+def test_final_status_write_failure_keeps_raw_and_fails_closed(tmp_path,monkeypatch):
+    root=tmp_path/'evidence';root.mkdir();raw=dict(status='PASS',pytest_exit_code=0)
+    q.write_json(root/'collector-result.json',raw)
+    original=q.JsonRecord.write
+    failed=False
+    def write(record,value):
+        nonlocal failed
+        if Path(record.stream.name).name=='summary.json' and value.get('archive_status')=='VERIFIED' and not failed:
+            failed=True
+            raise OSError('controlled final status failure')
+        return original(record,value)
+    monkeypatch.setattr(q.JsonRecord,'write',write)
+    with pytest.raises(OSError,match='controlled final status failure'):q.finalize_evidence(root,raw)
+    assert json.loads((root/'collector-result.json').read_text())==raw
+    for name in ('summary.json','launcher-result.json'):
+        assert json.loads((root/name).read_text())['status']=='ERROR'
+    assert json.loads((root/'launcher-result.json').read_text())['exit_code']==4
+    # A ZIP may have closed before acknowledgement/status failed. It is retained,
+    # never claimed as completed delivery or deleted as a rollback action.
+    assert Path(str(root)+'.zip').exists()
+
+
+def test_exclusive_record_keeps_primary_when_close_also_fails(tmp_path):
+    record=q.JsonRecord(tmp_path/'record.json')
+    record.stream.close()
+    class CloseFailure:
+        def close(self):raise OSError('secondary close failure')
+    record.stream=CloseFailure()
+    with pytest.raises(ValueError,match='primary write failure') as caught:
+        with record:raise ValueError('primary write failure')
+    assert any('secondary close failure' in note for note in caught.value.__notes__)
+
+
+@pytest.mark.skipif(not POWERSHELL,reason='PowerShell unavailable: native reserved-link fallback remains UNVERIFIED')
+def test_actual_powershell_fallback_manifest_link_preserves_sentinel(tmp_path):
+    root=tmp_path/'evidence';root.mkdir();outside=tmp_path/'outside';outside.write_bytes(b'sentinel')
+    try:(root/'archive-members.json').symlink_to(outside)
+    except (NotImplementedError,OSError) as exc:
+        if isinstance(exc,NotImplementedError) or getattr(exc,'winerror',None)==1314 or getattr(exc,'errno',None) in (errno.EPERM,errno.EACCES,errno.ENOSYS,errno.ENOTSUP):pytest.skip(str(exc))
+        raise
+    before=protected_snapshot(outside)
+    body="$Root = '"+str(root).replace("'","''")+"'\ntry { New-EvidenceZip $Root; exit 0 } catch { exit 4 }"
+    result=run_powershell_functions(tmp_path,body)
+    assert result.returncode==4,result.stdout+result.stderr
+    assert protected_snapshot(outside)==before and not Path(str(root)+'.zip').exists()
+
+
+@pytest.mark.skipif(not POWERSHELL,reason='PowerShell unavailable: sequential failed-builder preservation remains UNVERIFIED')
+def test_actual_powershell_failed_python_then_failed_fallback_preserves_raw(tmp_path):
+    root=tmp_path/'evidence';root.mkdir();raw=dict(status='PASS',pytest_exit_code=0)
+    (root/'collector-result.json').write_text(json.dumps(raw))
+    body="$Root = '"+str(root).replace("'","''")+"'\n"
+    body+='''
+$Python = $PSHOME
+$Helper = $PSHOME
+function New-PythonEvidenceZip([string]$Root) { throw 'primary Python archive failure' }
+$Code = Complete-QualificationEvidence $Root @{status='PASS';pytest_exit_code=0} 0 '' $false
+# No automatic fallback is performed after possible publication. A later explicit
+# attempt must also refuse a reserved-object collision, never erase evidence.
+Save-Json (Join-Path $Root 'archive-members.json') @{existing='preserve'}
+try { New-EvidenceZip $Root; exit 0 } catch { exit $Code }
+'''
+    result=run_powershell_functions(tmp_path,body)
+    assert result.returncode==4,result.stdout+result.stderr
+    assert json.loads((root/'collector-result.json').read_text())==raw
+    assert json.loads((root/'launcher-result.json').read_text())['success'] is False
+    assert 'primary Python archive failure' in (root/'archive-error.json').read_text()
+
+
+def test_archive_cli_serializes_proposed_receipts_without_optimistic_directory_success(tmp_path):
+    root=tmp_path/'evidence space ü';root.mkdir()
+    q.write_json(root/'collector-owner.json',dict(kind='Chronicle qualification',root=str(root),id='d3e40067-6166-49bd-b199-285303dce545'))
+    pending=dict(status='FINALIZING',success=False,exit_code=4)
+    completion={'summary.json':dict(status='OBSERVED',archive_status='VERIFIED'),
+                'launcher-result.json':dict(status='OBSERVED',success=True,exit_code=0,archive_status='VERIFIED')}
+    for name in completion:q.write_json(root/name,pending)
+    proposed=root/'archive-completion.json'
+    proposed.write_text(json.dumps(dict(purpose='Proposed; not actual delivery',records=completion)),encoding='utf-8-sig')
+    result=subprocess.run([sys.executable,'-B',str(HELPER),'--archive-evidence',str(root),'--archive-completion',str(proposed)],
+                          capture_output=True,text=True,encoding='utf-8',timeout=10)
+    assert result.returncode==0,result.stderr
+    with zipfile.ZipFile(Path(str(root)+'.zip')) as archive:
+        for name,value in completion.items():
+            assert json.loads(archive.read(name))==value
+            assert json.loads((root/name).read_text())==pending
+
+
+@pytest.mark.parametrize('where',['root','child'])
+def test_traversal_failure_is_recorded_as_delivery_failure(tmp_path,monkeypatch,where):
+    root=tmp_path/'evidence';root.mkdir();child=root/'child';child.mkdir()
+    raw=dict(status='PASS',pytest_exit_code=0)
+    q.write_json(root/'collector-result.json',raw)
+    original=os.scandir
+    def denied(path):
+        if Path(path)==(root if where=='root' else child):raise PermissionError('archive tree unavailable')
+        return original(path)
+    monkeypatch.setattr(q.os,'scandir',denied)
+    with pytest.raises(PermissionError,match='archive tree unavailable'):q.finalize_evidence(root,raw)
+    assert json.loads((root/'collector-result.json').read_text())==raw
+    assert json.loads((root/'summary.json').read_text())['status']=='ERROR'
+    assert json.loads((root/'launcher-result.json').read_text())['exit_code']==4
+    assert 'archive tree unavailable' in (root/'archive-error.json').read_text()
+    assert not Path(str(root)+'.zip').exists()
+
+
+def test_xfail_and_xpass_without_reason_are_still_expected_outcomes(tmp_path):
+    child,root=run_fixture(tmp_path,'''
+import pytest
+@pytest.mark.xfail
+def test_expected(): assert False
+@pytest.mark.xfail
+def test_unexpected_pass(): pass
+''')
+    assert child.returncode==0,child.stderr
+    result=q.validate_test_evidence(root,0,0)
+    assert result['status']=='COMPLETE',result
+    assert result['counts']==dict(xfailed=1,xpassed=1)
+
+
+def test_probe_preparation_reserves_each_record_once(source_repo,tmp_path,monkeypatch):
+    root=tmp_path/'probe';root.mkdir()
+    # Exercise the actual record-building path with explicit prerequisite doubles;
+    # this is not native Windows/Tk/NTFS evidence.
+    monkeypatch.setattr(q,'runtime_evidence',lambda:dict(errors=[]))
+    monkeypatch.setattr(q,'ntfs_evidence',lambda path:dict(filesystem='NTFS',qualification='synthetic prerequisite'))
+    monkeypatch.setattr(q.sys,'getwindowsversion',lambda:SimpleNamespace(build=22000,product_type=1),raising=False)
+    monkeypatch.setattr(q.importlib.metadata,'version',lambda name:'2026.5' if name=='tzdata' else '9.1.1')
+    source=q.prepare(source_repo,root,'MetadataProbe',None)
+    assert source['revision']==q.checked_source(source_repo)['revision']
+    assert json.loads((root/'manifest.json').read_text())==[]
+    assert set(json.loads((root/'deferred.json').read_text()))=={'legacy','rewrite'}

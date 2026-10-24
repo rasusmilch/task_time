@@ -57,7 +57,12 @@ receipts or commits. No release or production qualification is implied below.
   qualification. Add opt-in MetadataProbe/Critical/Storage/Extended Windows
   qualification tooling with explicit fixture-audited selection, live progress,
   bounded owned-process execution, no automatic dialog answers and isolated ZIP
-  evidence. Native PowerShell/Job Object/dialog behavior remains unverified.
+  evidence. Exclusively reserve archive manifests and post-test receipts, reject
+  unreadable archive traversal and require reconciled manifest/event/JUnit evidence
+  for test-scope success. Preserve raw test outcomes separately from final archive/
+  launcher status, including failed or unacknowledged ZIP delivery. Metadata probes
+  include descriptor observations after controlled mutation and close/reopen.
+  Native PowerShell/Job Object/dialog behavior remains unverified.
   Protect all
   active dataset paths/aliases; verify owned staging and complete final bytes/digest,
   preserve truthful postpublication uncertainty and never roll back final output.

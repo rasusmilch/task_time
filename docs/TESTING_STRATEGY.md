@@ -545,6 +545,14 @@ actual process/pytest exit statuses, real JUnit with explicit incomplete/missing
 status, commands, source/collector identities, metadata observations and cleanup
 results in one isolated evidence tree/ZIP. A setup/teardown failure makes that
 node an error even if its call passed; raw report/JUnit counts remain available.
+Test execution, evidence completeness and archive delivery are separate results.
+PASS requires a valid final selection manifest, exactly one start/completion per
+selected node, consistent phase/session counts and mapped pytest JUnit case
+evidence, in addition to zero exits and verified cleanup/output capture.
+Missing/invalid/unmappable evidence cannot promote a zero pytest exit to PASS.
+The validator accepts pytest's suite root/wrapper and multiple error details or
+cases belonging to one node; it does not equate XML error counts with node counts.
+MetadataProbe's JUnit is explicitly not applicable.
 Watchdog termination is not a pytest failure exit code invented by the collector.
 Elapsed/event-age heartbeats do not imply completed work or elapsed percentages.
 Suspended-start Windows Job Object assignment precedes testing; failure to contain
@@ -561,6 +569,17 @@ heartbeat/no-progress warning/deadlines, interruption/cleanup, unexpected Tk/Tcl
 dialog obstruction, local dialog doubles, static/dynamic fixture exclusion,
 source mismatch/dirty refusal, missing prerequisites, partial XML, isolated ZIP
 membership including hidden artifacts, and metadata-only owned files. Portable
+repair regressions exercise reserved manifest files/directories/links against
+outside disposable sentinels; exclusive post-test receipt writes; root/child
+enumeration failures; missing, malformed and inconsistent JUnit/manifest/events;
+actual parametrized/xfail/xpass/setup/teardown JUnit; and raw versus final status
+after archive timeout, partial output and secondary failures. The archive manifest
+is reserved exclusively; traversal failures cannot produce a complete archive.
+Final receipts remain pessimistic until archive acknowledgement, while the raw
+collector result is retained unchanged. Successful ZIPs contain the completed
+receipt bytes; failed/unacknowledged ZIPs are diagnostic artifacts, not delivered
+qualification. Conditional PowerShell fallback/finalization tests run only when
+PowerShell is installed; source checks alone are not its runtime evidence. Portable
 process groups are test fixtures only, not a Windows containment fallback.
 Python compilation/static PowerShell checks cannot qualify PowerShell 5.1/7,
 CRT quoting, native progress display, Job Objects, NTFS or actual Windows dialogs.
