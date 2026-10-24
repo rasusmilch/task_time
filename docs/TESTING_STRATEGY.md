@@ -527,6 +527,46 @@ unsuitable target safe.
 
 ## Windows desktop and release qualification
 
+The opt-in [Windows collector](../scripts/qualify_windows.ps1) and its private
+[pytest helper](../scripts/qualification_pytest.py) implement bounded automated
+scopes documented in [RUNNING](../RUNNING.md#bounded-windows-qualification-collector).
+MetadataProbe is the default; Critical/Storage/Extended are frozen function
+manifests with collected fixture-closure checks, not an unattended full regression.
+Unknown static fixtures are NOT RUN; unknown dynamic fixtures obstruct before
+setup. Every collected rewrite exclusion retains a reason, and retained legacy
+cases are listed separately as not collected. Supervised GUI/operator cases are
+never promoted to passing evidence by exclusion. Exactly two Extended Backup
+callbacks are audited: one locally cancels its owned chooser, the other requests
+no native dialog. These differ from actual native operator decisions/input.
+
+The collector retains flushed collection/node/phase/report/completion events,
+unique completed-node and outcome counts, independently drained stdout/stderr,
+actual process/pytest exit statuses, real JUnit with explicit incomplete/missing
+status, commands, source/collector identities, metadata observations and cleanup
+results in one isolated evidence tree/ZIP. A setup/teardown failure makes that
+node an error even if its call passed; raw report/JUnit counts remain available.
+Watchdog termination is not a pytest failure exit code invented by the collector.
+Elapsed/event-age heartbeats do not imply completed work or elapsed percentages.
+Suspended-start Windows Job Object assignment precedes testing; failure to contain
+blocks rather than falling back to kill-by-name. Toolkit guards never answer an
+unexpected dialog. Owned native windows are inspected, but external security/OS
+windows are not claimed to be universally detectable; unknown obstruction still
+has a bounded timeout with no automatic consent.
+
+[test_qualification_collector.py](../tests/rewrite/test_qualification_collector.py)
+uses tiny actual pytest subprocess fixtures for parametrization/deselection,
+pass/fail/skip/xfail/xpass, setup/teardown errors and hung collection/setup/call/
+teardown. It also covers unique completion counts, live concurrent streams,
+heartbeat/no-progress warning/deadlines, interruption/cleanup, unexpected Tk/Tcl
+dialog obstruction, local dialog doubles, static/dynamic fixture exclusion,
+source mismatch/dirty refusal, missing prerequisites, partial XML, isolated ZIP
+membership including hidden artifacts, and metadata-only owned files. Portable
+process groups are test fixtures only, not a Windows containment fallback.
+Python compilation/static PowerShell checks cannot qualify PowerShell 5.1/7,
+CRT quoting, native progress display, Job Objects, NTFS or actual Windows dialogs.
+Those remain UNVERIFIED until native execution. Collector completion itself is
+not independent Windows/Stage 4 acceptance. No application behavior changes.
+
 Native Windows source operation is required before actual deployment/complete core
 pilot: actual Python/built-in SQLite/Tk, offline IANA rules, writable NTFS ownership,
 persisted timers, main/mini, active-start correction, modal input/focus, exceptions

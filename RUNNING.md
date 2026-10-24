@@ -97,6 +97,88 @@ restore. The later Stage 4C GO independently accepts Stage 4B portable reliabili
 Stage 4C cold compatibility inspection is delivered for independent review, not
 complete stabilization or native/pilot qualification.
 
+## Bounded Windows qualification collector
+
+From the reviewed, clean repository, use the installed Python environment and an
+approved existing local NTFS output parent outside the repository, Chronicle data
+and cloud-synchronized folders:
+
+```powershell
+.\scripts\qualify_windows.ps1 -Scope MetadataProbe -OutputParent 'C:\Qualification evidence'
+```
+
+The default scope is MetadataProbe. No source/path editing, package installation,
+fetch, reset or execution-policy change is performed. If policy blocks the script,
+stop and report it. Do not bypass policy. Optional `-Repo`, `-Python` and
+`-ExpectedRevision` select existing source/interpreter and an expected commit prefix.
+By default it finds this script's repository, `.venv\Scripts\python.exe` or installed
+`python`, and reserves a new unique directory below the temporary directory. Passing
+an output parent approves only the newly reserved child, not existing contents.
+Store execution aliases, source/output aliases, network paths and repository/data overlap
+refuse. Missing prerequisites produce BLOCKED evidence when a safe output directory
+can be reserved; an unsafe/unavailable output parent cannot receive a receipt.
+
+| Scope | Unattended work |
+| --- | --- |
+| MetadataProbe | Only new disposable files: raw stat/lstat/fstat JSONL, readonly/writable handle observations, fsync/close, hard-link identity and same-size mutation with restored mtime. No Chronicle dataset is opened. |
+| Critical | Probe plus the frozen observation-contract tests and named profile/reopen, report publication/reuse/conflict/reinspection, minimal backup/restore and genuine hot-journal cases. |
+| Storage | Probe plus explicitly listed source-runtime, schema/services/worker/bootstrap, ownership/lifecycle, interruption, compatibility, backup/restore and protected-report functions. |
+| Extended | Storage plus listed pure time/accounting, manual/revision/history-reader/week/allocation cases and exactly two audited Backup callback tests. It is not the full repository suite or the supervised operator workflow. |
+
+The exact frozen function lists and fixture allowlist live in
+[scripts/qualification_pytest.py](scripts/qualification_pytest.py). Collection checks
+each node's fixture closure, including indirect/dynamic dependencies. The generated
+manifest records every collected rewrite exclusion as NOT RUN with its reason;
+legacy source-level cases are separately listed as not collected. A name lacking
+`real_tk` is no safety argument. Extended's chooser callback locally doubles its
+owned file chooser to cancel; its failure/retry callback requests no native dialog.
+Neither is native operator-input evidence. Other GUI/operator cases remain deferred.
+
+The display updates at least once per second, with current node, setup/call/teardown,
+selected/completed node counts, final node outcomes, elapsed time and event age.
+Text heartbeats appear every ten seconds. Progress is indeterminate until collection
+completes; percentages use completed nodes only. Setup/teardown errors classify the
+node as error, rather than adding another completed node. Raw pytest reports, exit
+status and real JUnit remain separate evidence.
+
+Defaults are 90 seconds for collection/prerequisites/probe, 120 seconds per whole
+node and 900 seconds for the pytest phase. The genuine-spill recovery family alone
+has an explicit 240-second node allowance. `-CollectionSeconds`, `-TestSeconds` and
+`-PhaseSeconds` permit reviewed, recorded changes for legitimately longer work;
+limits never extend automatically. A 30-second lack of pytest events warns while
+heartbeats continue. Cancellation requests cooperative collector cleanup, then bounds
+forced cleanup. ZIP generation is bounded to 60 seconds when Python is available.
+
+Pytest is created suspended with a creation-time kill-on-close Job Object attribute,
+then membership is checked before resume; inability to establish containment blocks
+execution. Only its designated standard handles are inherited. Timeouts terminate
+only that owned job, including descendants. Raw stdout/stderr drain independently.
+Live console mirroring is bounded/truncated under large output so progress can
+continue; complete original bytes remain in stdout.log/stderr.log, with truncation
+reported separately. Launcher log streams close before the ZIP is generated.
+Unexpected Tk construction or toolkit dialogs obstruct instead of receiving an
+answer. Callback roots are allowed only for the two audited nodes; dialogs still
+require their local doubles. Owned visible windows outside those permissions also
+obstruct. External OS/security processes cannot be universally detected: an unknown
+obstruction is bounded by the watchdog and never clicked or automatically approved.
+No Defender/ACL/trust/security policy is changed.
+
+The console reports a unique evidence directory and one ZIP beside it. Keep the ZIP
+for manual upload; nothing uploads automatically. It contains source/collector
+identities, environment/profile observations, manifests/deferred cases, arguments,
+flushed events, both logs, real JUnit or explicit missing/partial status, timeout/
+cleanup diagnostics, probe files and final summaries. Hidden artifacts are included;
+reparse links are recorded as omitted, not traversed. ZIP failure leaves the directory
+and diagnostics intact. Crash fixture databases/journals are diagnostic artifacts,
+not verified backups. A failed pre-Python launch uses a .NET ZIP fallback.
+
+PowerShell 5.1/7 quoting, visible progress, NTFS observations, native dialog guarding
+and Windows Job Object containment remain UNVERIFIED until actual native execution.
+Portable helper tests and static inspection do not establish Windows qualification.
+The prior standalone metadata probe remains a fallback until this scope is natively
+verified. Start with independently reviewed MetadataProbe or Critical; do not
+proceed automatically to Extended, operator qualification, suspend/resume or pilot.
+
 ## Backup and cold recovery
 
 Close other modal views, then choose **Backup Chronicle**. Choose a new file outside

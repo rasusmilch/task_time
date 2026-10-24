@@ -54,7 +54,11 @@ receipts or commits. No release or production qualification is implied below.
   pathname/descriptor binding across startup, backup/restore and report files.
   Windows creation/change-time and executable-mode handling is a provisional
   candidate pending native field observations and focused validation, not Windows
-  qualification. Protect all
+  qualification. Add opt-in MetadataProbe/Critical/Storage/Extended Windows
+  qualification tooling with explicit fixture-audited selection, live progress,
+  bounded owned-process execution, no automatic dialog answers and isolated ZIP
+  evidence. Native PowerShell/Job Object/dialog behavior remains unverified.
+  Protect all
   active dataset paths/aliases; verify owned staging and complete final bytes/digest,
   preserve truthful postpublication uncertainty and never roll back final output.
   Saved Reports loads frozen context/text after restart without current accounting;
