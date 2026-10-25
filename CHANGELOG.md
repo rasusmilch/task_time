@@ -53,16 +53,19 @@ receipts or commits. No release or production qualification is implied below.
   raw observations and complete same-domain stability; share explicit identity and
   pathname/descriptor binding across startup, backup/restore and report files.
   Windows creation/change-time and executable-mode handling is a provisional
-  candidate pending native field observations and focused validation, not Windows
-  qualification. Add opt-in MetadataProbe/Critical/Storage/Extended Windows
-  qualification tooling with explicit fixture-audited selection, live progress,
+  candidate independently accepted for portable development, pending native field
+  observations and focused validation, not Windows qualification. Add opt-in
+  MetadataProbe/Critical/Storage/Extended Windows qualification tooling with explicit
+  fixture-audited selection, live progress,
   bounded owned-process execution, no automatic dialog answers and isolated ZIP
   evidence. Exclusively reserve archive manifests and post-test receipts, reject
   unreadable archive traversal and require reconciled manifest/event/JUnit evidence
   for test-scope success. Preserve raw test outcomes separately from final archive/
   launcher status, including failed or unacknowledged ZIP delivery. Metadata probes
   include descriptor observations after controlled mutation and close/reopen.
-  Native PowerShell/Job Object/dialog behavior remains unverified.
+  The collector and bounded evidence-safety repair are independently accepted for
+  limited native MetadataProbe use. Native PowerShell/Job Object/dialog behavior
+  remains unverified.
   Protect all
   active dataset paths/aliases; verify owned staging and complete final bytes/digest,
   preserve truthful postpublication uncertainty and never roll back final output.
@@ -111,9 +114,13 @@ receipts or commits. No release or production qualification is implied below.
   conversion, lock creation during inspection, recreation or repair. Keep schema/application identity and
   version 1 unchanged; require separately approved future cold source-to-new-target
   transformations, original protection and independent evidence validation. No
-  upgrade engine or target schema is active. Stage 4C is delivered for independent
-  review; remaining Stage 4, native Windows source/NTFS/actual suspend qualification
-  and complete-core pilot remain separate.
+  upgrade engine or target schema is active. Stage 4C, including bounded owned
+  SQLite-native rollback recovery, is independently accepted for functional
+  development. The accepted integration coverage audit identifies no material
+  missing portable cross-boundary coverage or need for new portable integration
+  tests. Stage 4 remains IN PROGRESS; native Windows/NTFS/operator/backup/restore/
+  recovery and actual suspend/resume qualification remain outstanding. Stage 5 is
+  NOT STARTED; external reporting policy and installation/cutover remain open.
 - Reconcile the core charter and Stages 0–6: timer foundation is not a complete
   MVP; frozen Timesheet, absolute whole/checked/manual POL-R confirmation,
   daily/weekly reconciliation and reminders are mandatory before the complete
@@ -127,7 +134,8 @@ receipts or commits. No release or production qualification is implied below.
   including already-equal values, and exact selected stale acknowledgements.
   Stage 3A implements allocation/preview/evidence and Stage 3B connects protected
   file Save/recovery; Stage 3C connects confirmation and Stage 3D connects derived
-  reconciliation, summaries and calendar reminders for independent review.
+  reconciliation, summaries and calendar reminders, independently accepted as part
+  of Stage 3 under the later Stage 4A approval.
   Retained JSONL source is unshipped; it is not a parallel runtime.
   External redistribution/zero-entry policy needs validation before official
   reporting/pilot. Allocation budgets/conveniences remain optional and separately

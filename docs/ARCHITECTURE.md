@@ -21,7 +21,10 @@ the later Stage 3D GO instruction. Stage 3D connects derived daily/weekly
 reconciliation and reminders. The later explicit Stage 4A GO instruction records
 Stage 3 functional acceptance. The later Stage 4B GO independently accepts Stage 4A
 recovery. The later Stage 4C GO independently accepts Stage 4B portable reliability;
-cold compatibility inspection/refusal is delivered for review, with schema 1 unchanged. Earlier
+subsequent independent review accepts Stage 4C cold compatibility inspection,
+protected refusal and bounded owned SQLite-native rollback recovery for functional
+development, with schema 1 unchanged. Stage 4 remains IN PROGRESS; native
+qualification is incomplete and Stage 5 is not started. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
 ## Small application and responsibility boundaries
@@ -164,7 +167,8 @@ ownership checks intentionally compare identity/type rather than changing size
 or timestamps. Startup admission remains bounded, cold inspection retains full
 fingerprints, and native rollback ordering is unchanged.
 
-This comparison candidate follows inspected
+Unit A's comparison candidate is independently accepted for portable development
+at `ca78e2a833592a780772624f104d6c68c03feda0`. It follows inspected
 [CPython Windows implementation semantics](https://github.com/python/cpython/blob/v3.15.0/Modules/posixmodule.c)
 and [descriptor metadata implementation](https://github.com/python/cpython/blob/v3.15.0/Python/fileutils.c).
 Actual Windows/NTFS field agreement and focused native behavior remain UNVERIFIED,

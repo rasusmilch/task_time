@@ -127,7 +127,9 @@ sessions first. This cold read-only command classifies current/unsupported versi
 layout, foreign identity, profile and unsafe/unavailable data without creating a
 lock or starting Tk/worker. Healthy current data passes complete independent
 validation; all other cases refuse ordinary startup. Schema remains version 1,
-with no automatic upgrade, downgrade or repair. Stage 4C is delivered for review.
+with no automatic upgrade, downgrade or repair. Stage 4C inspection, protected
+refusal and bounded owned SQLite-native rollback recovery are independently
+accepted for functional development.
 Future version-specific cold transformation remains separately approved, and
 unknown schemas refuse rather than being reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
 source launch, troubleshooting and native Windows source validation. Initial pip
@@ -161,8 +163,14 @@ No Reset controls/counters or synthetic work are added.
 Stage 3 is functionally accepted under the later explicit Stage 4A GO instruction.
 Stage 4A backup/cold restore is independently accepted by the later Stage 4B approval.
 Stage 4B portable operational qualification is independently accepted by the later
-Stage 4C GO. Read-only compatibility inspection is delivered for independent review;
-Stage 4 remains In Progress. Stage 3A connected frozen Preview, exact weekly suggestions
+Stage 4C GO. Stage 4C is independently accepted for functional development;
+Stage 4 remains IN PROGRESS and Stage 5 is NOT STARTED. Unit A's provisional
+filesystem compatibility repair is accepted for portable development. Unit B's
+collector and evidence-safety repair are accepted for limited native MetadataProbe
+use; Windows qualification is not complete. The accepted integration coverage
+audit found no material missing portable cross-boundary coverage and warrants no
+new portable integration test. See [acceptance provenance](docs/DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
+Stage 3A connected frozen Preview, exact weekly suggestions
 and immutable SQLite registration/recovery are independently accepted at
 `d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B protected file Save/status and
 Saved Reports recovery are independently accepted at

@@ -1057,6 +1057,39 @@ registry, callback mechanism or active upgrade action is approved now.
 Stage 4C is delivered for independent review. Stage 4 remains In Progress; native
 Windows/NTFS, suspend, power-loss limits, deployment and complete pilot are separate.
 
+### Stage 4C and portable tooling acceptance
+
+**Status:** independently accepted within the limits below. **Provenance:** the
+later explicit user documentation-reconciliation instruction records ChatGPT's
+independent acceptance of Stages 4A–4C for functional development, Unit A, Unit B
+and the Stage 4 integration coverage audit. Earlier delivery/pending-review entries
+preserve the status at their original approval; they are not current pending gates.
+
+Stage 4C acceptance includes cold compatibility inspection, protected refusal and
+the bounded owned SQLite-native hot DELETE rollback-journal recovery repair at
+`5bf7692d58baf89511ff2f0589cdf28188f81f1a`. Schema version 1, complete post-recovery
+validation, cold non-recovering inspection and unsupported-data refusal remain
+unchanged; no migration target or engine is active.
+
+Unit A at `ca78e2a833592a780772624f104d6c68c03feda0` is a provisional
+cross-platform filesystem compatibility repair accepted for portable development.
+Its actual Windows metadata semantics remain unverified. Unit B, including the
+B1/M1/M2/M3 evidence-safety repair reviewed at
+`edc5fd17df9fd4892d0954d65ebc2ea4ae266ecb`, is accepted for limited native
+MetadataProbe use only, not broader Windows qualification. Monday's MetadataProbe
+remains the next native qualification action.
+
+The integration coverage audit of that source is accepted. Existing connected
+and compatible composite evidence identifies no material missing portable
+cross-boundary guarantee; no new portable integration test is currently warranted.
+This acceptance is not a claim of newly executed tests or native correctness.
+
+Stage 4 remains IN PROGRESS. Windows/NTFS, operator GUI/modal/focus, native
+backup/restore and hot-journal recovery, and actual suspend/resume qualification
+remain outstanding. External POL-R redistribution authorization, worked-zero
+reporting semantics and installation/cutover approval remain open. Stage 5 is
+NOT STARTED; no pilot, merge or release is authorized by these acceptances.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

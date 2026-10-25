@@ -29,8 +29,10 @@ reconciliation/reminders; this is not deployment/pilot readiness.
 The later explicit Stage 4A GO instruction records independent Stage 3
 functional acceptance. The later Stage 4B GO independently accepts backup/cold
 restore. The later Stage 4C GO independently accepts Stage 4B portable reliability.
-Stage 4C delivers cold compatibility inspection/refusal for independent review,
-without completing Stage 4 or authorizing pilot.
+Stage 4C cold compatibility inspection, protected refusal and bounded owned
+SQLite-native rollback recovery are independently accepted for functional
+development. Stage 4 remains IN PROGRESS; native Windows qualification is incomplete
+and Stage 5 is NOT STARTED.
 
 ## SELECTED — Replacement installation and data boundary
 
@@ -640,8 +642,8 @@ before ordinary startup; do not operate original/upgraded clones as competing wo
 authorities. No target version, automatic upgrade/downgrade, in-place replacement,
 source retirement/deletion or migration engine is active. The [technical safety
 contract](ARCHITECTURE.md#cold-compatibility-inspection-and-future-transition-boundary)
-owns the concrete boundary. Stage 4C is delivered for independent review; Stage 4
-remains In Progress and no pilot is authorized.
+owns the concrete boundary. Stage 4C is independently accepted for functional
+development; Stage 4 remains IN PROGRESS and no pilot is authorized.
 
 ## OPEN — Reserved user/ChatGPT decisions
 

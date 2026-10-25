@@ -94,8 +94,12 @@ the later Stage 3D GO instruction. Stage 3D reconciliation/reminders are connect
 and independently accepted for functional development by the later Stage 4A GO
 instruction. The later Stage 4B GO independently accepts Stage 4A backup/cold
 restore. The later Stage 4C GO independently accepts Stage 4B portable reliability.
-Stage 4C cold compatibility inspection is delivered for independent review, not
-complete stabilization or native/pilot qualification.
+Stage 4C cold compatibility inspection, protected refusal and bounded owned
+SQLite-native rollback recovery are independently accepted for functional
+development. Stage 4 remains IN PROGRESS; Stage 5 is NOT STARTED. Native Windows/NTFS
+qualification, including operator modal/focus, backup/restore and hot-journal recovery,
+and actual suspend/resume remain outstanding. External reporting policy and
+installation/cutover approval remain open.
 
 ## Bounded Windows qualification collector
 
@@ -202,8 +206,12 @@ PowerShell 5.1/7 quoting, visible progress, NTFS observations, native dialog gua
 and Windows Job Object containment remain UNVERIFIED until actual native execution.
 Portable helper tests and static inspection do not establish Windows qualification.
 The prior standalone metadata probe remains a fallback until this scope is natively
-verified. Start with independently reviewed MetadataProbe or Critical; do not
-proceed automatically to Extended, operator qualification, suspend/resume or pilot.
+verified. The collector and bounded evidence-safety repair are independently
+accepted for limited native MetadataProbe use only; Critical/Storage/Extended are
+implemented scopes, not authorization to execute them. Monday's MetadataProbe
+remains the next native qualification action. Do not proceed automatically to
+broader scopes, operator qualification, suspend/resume or pilot. See
+[acceptance provenance](docs/DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
 
 ## Backup and cold recovery
 

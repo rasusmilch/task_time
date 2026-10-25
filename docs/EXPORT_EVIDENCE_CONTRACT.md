@@ -22,7 +22,9 @@ connects protected materialization, fresh status, one-call overwrite consent and
 Saved Reports recovery, independently accepted at
 `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C explicit source/manual absolute confirmation is independently accepted for
 functional development under the later Stage 3D GO instruction. Stage 3D connects
-derived reconciliation, weekly summaries and reminders for independent review.
+derived reconciliation, weekly summaries and reminders. The later Stage 4A GO
+records independent Stage 3 functional acceptance; native and external reporting
+policy qualification remain separate.
 
 **SQLite supersedes the earlier mandatory JSONL envelope, segment manifest,
 physical replay order, fsync/synchronize-journal and Python projection mechanisms.**

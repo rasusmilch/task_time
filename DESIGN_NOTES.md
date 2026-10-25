@@ -28,11 +28,14 @@ new directories, independently accepted by the later explicit Stage 4B GO.
 Stage 4B portable interruption/storage/shutdown reliability is independently
 accepted under the later explicit Stage 4C GO. Stage 4C adds headless cold
 `--inspect-dataset`, detached compatibility diagnostics and complete supported-image
-validation shared with backup/restore and ordinary startup. Startup fingerprints
-headers before SQLite open, preventing WAL sidecars on refusal; schema comparison
-preserves quoted literal content. Current schema/version 1 stays unchanged, with
-no upgrade target, transformation, conversion or automatic repair. Stage 4C is
-delivered for independent review. Independent reconciliation probes retain cleanup
+validation shared with backup/restore and ordinary startup. Startup uses bounded
+header/metadata admission before SQLite open, preventing WAL sidecars on refusal;
+under exclusive ownership it permits native hot-journal rollback recovery and
+requires complete validation before readiness. Cold inspection remains read-only
+and non-recovering; schema comparison preserves quoted literal content. Current
+schema/version 1 stays unchanged, with no upgrade target, transformation, conversion
+or automatic repair. Stage 4C is independently accepted for functional development.
+Independent reconciliation probes retain cleanup
 ownership after failed close; matching immutable Request context accompanies
 mutation delivery, and optional status rendering cannot lose a committed editor
 outcome. Definitive worker stop preserves uncertainty and refuses dead-worker retry.
@@ -47,8 +50,8 @@ offers exact-request reconciliation within that editor; queue acceptance is not 
 completion. This is separate from the historical closed-interval editor below.
 [ARCHITECTURE.md](docs/ARCHITECTURE.md) owns its implemented technical boundary;
 [requirements](docs/TIMESHEET_REQUIREMENTS.md), [roadmap](docs/ROADMAP.md) and
-[testing strategy](docs/TESTING_STRATEGY.md) distinguish delivery from pending
-independent functional/native Windows source qualification and later core/POL-R work.
+[testing strategy](docs/TESTING_STRATEGY.md) distinguish accepted functional
+development from outstanding native Windows source qualification and pilot gates.
 
 Everything below describes retained, **unshipped historical `task_timer` source**.
 References to active/production UI, services, paths and tests in those sections
@@ -67,9 +70,12 @@ preview/evidence and Stage 3B file Save/recovery are independently accepted.
 Stage 3C confirmation is independently accepted for functional development.
 Stage 3 functional completeness is independently accepted under the later Stage 4A
 GO instruction. Stage 4A is independently accepted by the later Stage 4B GO;
-Stage 4B is independently accepted under the later Stage 4C GO. Stage 4C delivery,
-native release qualification and pilot still require their own review/evidence;
-retained JSONL backup details below do not implement the SQLite recovery contract.
+Stage 4B is independently accepted under the later Stage 4C GO. Stage 4C is
+independently accepted for functional development. Stage 4 remains IN PROGRESS;
+native qualification is incomplete and Stage 5 is NOT STARTED. See
+[portable tooling and audit acceptance](docs/DECISIONS.md#stage-4c-and-portable-tooling-acceptance)
+for the bounded Unit A/Unit B status. Retained JSONL backup details below do not
+implement the SQLite recovery contract.
 
 ## Architecture
 

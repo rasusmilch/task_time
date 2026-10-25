@@ -122,8 +122,15 @@ The later explicit Stage 3D GO instruction independently accepts Stage 3C for
 functional development. The later Stage 4A GO instruction records independent
 Stage 3 functional acceptance. The later Stage 4B GO independently accepts
 Stage 4A. The later explicit Stage 4C GO independently accepts Stage 4B.
-Stage 4C inspection/refusal evidence remains subject to independent review; no
-complete stabilization, native pilot or external acceptance follows.
+Subsequent independent review accepts Stage 4C inspection, protected refusal and
+bounded owned SQLite-native rollback recovery for functional development. The
+Stage 4 integration coverage audit is independently accepted: existing connected
+and compatible composite evidence establishes the portable cross-boundary workflow;
+no material gap or new portable integration test is currently warranted. This is
+coverage sufficiency, not a new execution result or complete Stage 4 acceptance.
+Stage 4 remains IN PROGRESS; Stage 5 is NOT STARTED. See
+[acceptance provenance](DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
+Native qualification and external-policy/installation gates remain outstanding.
 
 ## Portable operational measurements
 
@@ -503,7 +510,9 @@ failures and postpublication diagnostics without rollback/deleting output.
 Status is freshly derived per destination; no persisted READY/history registry.
 
 Shared filesystem helpers preserve raw observations and all six same-domain
-fields. POSIX pathname/descriptor checks remain complete; provisional Windows
+fields. Unit A is accepted for portable development; this does not establish
+Windows compatibility. POSIX pathname/descriptor checks remain complete; provisional
+Windows
 binding separates legacy pathname ctime from descriptor change time, requires
 usable equal identity/type/size/mtime and compatible documented mode synthesis,
 and compares birthtime when both expose it. Native Windows observations and focused
@@ -530,7 +539,11 @@ unsuitable target safe.
 The opt-in [Windows collector](../scripts/qualify_windows.ps1) and its private
 [pytest helper](../scripts/qualification_pytest.py) implement bounded automated
 scopes documented in [RUNNING](../RUNNING.md#bounded-windows-qualification-collector).
-MetadataProbe is the default; Critical/Storage/Extended are frozen function
+Unit B and its bounded evidence-safety repair are independently accepted for
+limited native MetadataProbe use only. MetadataProbe remains the next native action;
+this review does not authorize broader scope execution or establish Windows
+qualification. MetadataProbe is the default; Critical/Storage/Extended are frozen
+function
 manifests with collected fixture-closure checks, not an unattended full regression.
 Unknown static fixtures are NOT RUN; unknown dynamic fixtures obstruct before
 setup. Every collected rewrite exclusion retains a reason, and retained legacy

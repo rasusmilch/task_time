@@ -54,15 +54,23 @@ accepted at `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57` under the later Stage 3C
 approval. The later explicit Stage 3D GO instruction independently accepts Stage 3C
 absolute confirmation for functional development. Stage 3D connects current daily/
 weekly reconciliation, coverage, current/frozen comparison and local-calendar
-reminders with durable explicit Dismiss for today, for independent review.
+reminders with durable explicit Dismiss for today.
 The later explicit Stage 4A GO instruction records independent Stage 3 functional
 acceptance. Stage 4A delivers worker-owned consistent SQLite backup, independent
 image validation and cold restore into new directories. The later explicit Stage 4B
 GO instruction independently accepts Stage 4A. The later explicit Stage 4C GO
-independently accepts Stage 4B portable reliability. Stage 4C delivers cold read-only
-compatibility inspection and strict non-destructive refusal for independent review.
+independently accepts Stage 4B portable reliability. Subsequent independent review
+accepts Stage 4C cold read-only compatibility inspection, protected refusal and
+bounded owned SQLite-native rollback recovery for functional development.
 Schema version 1 remains current; no upgrade target or transformation is active.
-Stage 4 remains In Progress; native qualification and Stage 5 pilot remain separate.
+Unit A's filesystem compatibility candidate is accepted for portable development;
+Unit B's collector, including its evidence-safety repair, is accepted only for
+limited native MetadataProbe use. The integration coverage audit is accepted:
+no material portable cross-boundary coverage gap or new portable test is identified.
+See [decision provenance](docs/DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
+Stage 4 remains IN PROGRESS. Native Windows/NTFS, operator modal/focus, backup/restore,
+hot-journal recovery and actual suspend/resume qualification remain outstanding.
+External reporting policy and installation/cutover remain open; Stage 5 is not started.
 Subsequent execution stays bounded and independently reviewed, using substantial
 coherent slices without microtasks.
 The fresh rewrite

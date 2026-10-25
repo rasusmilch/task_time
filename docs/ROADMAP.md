@@ -26,8 +26,9 @@ Stage 3B protected file Save/recovery is independently accepted at
 later Stage 3D GO instruction. The later explicit Stage 4A GO instruction records
 independent Stage 3 functional acceptance, including Stage 3D. The later Stage 4B
 GO independently accepts Stage 4A. The later Stage 4C GO independently accepts
-Stage 4B portable reliability. Stage 4C compatibility inspection and protected
-refusal are delivered for independent review; Stage 4 remains In Progress.
+Stage 4B portable reliability. Subsequent independent review accepts Stage 4C
+compatibility inspection, protected refusal and bounded owned SQLite-native
+rollback recovery for functional development; Stage 4 remains IN PROGRESS.
 Native Windows source operation
 is required before deployment/pilot, not an unavailable executable-build gate.
 
@@ -160,7 +161,7 @@ protection and separately confirmed overwrite both need connected evidence.
 
 ## Stage 4 — Stabilization
 
-**IN PROGRESS — Stage 4A/4B independently accepted; Stage 4C delivered for review.** Online worker-owned
+**IN PROGRESS — Stages 4A–4C independently accepted for functional development.** Online worker-owned
 SQLite backup, independent complete image validation and cold restore into new
 absent directories are connected. Restore exits before Tk/worker construction;
 normal later startup creates a fresh session and preserves the active timer and
@@ -178,12 +179,19 @@ signatures, complete startup receipt validation and protected refusal before ado
 backup verification or restore reservation. Ordinary startup admits genuine hot
 DELETE rollback journals into exclusively owned SQLite-native recovery, then
 requires complete validation before readiness; cold inspection remains read-only
-and non-recovering. This Stage 4C repair remains pending independent review.
+and non-recovering. Stage 4C acceptance includes this bounded recovery repair.
+Unit A's provisional filesystem repair is accepted for portable development;
+Unit B's collector and evidence-safety repair are accepted for limited native
+MetadataProbe use. Windows qualification is NOT COMPLETE. The accepted integration
+coverage audit identified no material missing portable cross-boundary coverage;
+no new portable integration test is currently warranted. See
+[acceptance provenance](DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
 Schema stays version 1. Its future
 upgrade safety contract selects separately approved source/target transformations
 into new cold directories, not an active migration engine or invented version 2.
 Remaining stabilization and the complete gate include actual native Windows source/
-NTFS, suspend and deployment qualification. A future real schema transition still
+NTFS, operator GUI/modal/focus, backup/restore, hot-journal recovery, actual
+suspend/resume and deployment qualification. A future real schema transition still
 requires separate version-specific approval and evidence. Exercise timer → frozen export → absolute
 confirmation → correction → reconciliation → backup → cold restore/new session.
 
