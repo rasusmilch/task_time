@@ -29,10 +29,27 @@ def test_directory_alias_second_owner_refused(store, tmp_path):
     try:
         alias.symlink_to(store.directory, target_is_directory=True)
     except (NotImplementedError, OSError) as exc:
-        if isinstance(exc, OSError) and exc.errno not in (1, 13, 38, 95):
+        if (isinstance(exc, OSError) and exc.errno not in (1, 13, 38, 95)
+                and getattr(exc, 'winerror', None) != 1314):
             raise
         pytest.skip(f"Native directory symlink unavailable: {exc}")
     assert child(code, alias).returncode != 0
+
+
+@pytest.mark.parametrize('winerror', [1314, 87, None])
+def test_directory_alias_setup_windows_privilege_denial_is_narrow(store, tmp_path, monkeypatch, winerror):
+    error = OSError(22, 'Synthetic Windows directory symlink fixture failure')
+    error.winerror = winerror
+    def fail(*args, **kwargs): raise error
+    monkeypatch.setattr(Path, 'symlink_to', fail)
+    if winerror == 1314:
+        with pytest.raises(pytest.skip.Exception, match='Native directory symlink unavailable'):
+            test_directory_alias_second_owner_refused(store, tmp_path)
+    else:
+        with pytest.raises(OSError) as caught:
+            test_directory_alias_second_owner_refused(store, tmp_path)
+        assert caught.value is error
+    assert not (tmp_path/'alias').exists()
 
 
 def test_normal_restart_and_crash_keep_same_active_identity(tmp_path):

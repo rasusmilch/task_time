@@ -34,9 +34,26 @@ def symlink(source, target, directory=False):
     try:
         target.symlink_to(source, target_is_directory=directory)
     except (OSError, NotImplementedError) as exc:
-        if isinstance(exc, OSError) and exc.errno not in (1,13,38,95):
+        if (isinstance(exc, OSError) and exc.errno not in (1,13,38,95)
+                and getattr(exc, 'winerror', None) != 1314):
             raise
         pytest.skip(f'Native symlink setup unavailable: {exc}')
+
+
+@pytest.mark.parametrize('winerror', [1314, 87, None])
+def test_symlink_setup_windows_privilege_denial_is_narrow(tmp_path, monkeypatch, winerror):
+    error = OSError(22, 'Synthetic Windows symlink fixture failure')
+    error.winerror = winerror
+    def fail(*args, **kwargs): raise error
+    monkeypatch.setattr(Path, 'symlink_to', fail)
+    if winerror == 1314:
+        with pytest.raises(pytest.skip.Exception, match='Native symlink setup unavailable'):
+            symlink(tmp_path/'source', tmp_path/'link')
+    else:
+        with pytest.raises(OSError) as caught:
+            symlink(tmp_path/'source', tmp_path/'link')
+        assert caught.value is error
+    assert not list(tmp_path.iterdir())
 
 
 @pytest.fixture

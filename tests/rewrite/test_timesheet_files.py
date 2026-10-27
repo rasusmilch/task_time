@@ -148,7 +148,11 @@ def test_inconclusive_file_inspection_has_no_consent(registered,monkeypatch,faul
 @pytest.mark.parametrize('name',['chronicle.sqlite3','.chronicle.lock','chronicle.sqlite3-journal','new.txt','nested/new.txt',''])
 def test_dataset_paths_protected_before_staging(registered,relative,name,monkeypatch):
     service,store,c,path=registered;target=store.directory/name
-    if relative:target=Path(os.path.relpath(target))
+    if relative:
+        # pytest's temporary data and the repository may be on different drives.
+        monkeypatch.chdir(store.directory.parent)
+        target=Path(os.path.relpath(target))
+        assert not target.is_absolute()
     before=facts(store);raw=store.path.read_bytes()
     with monkeypatch.context() as m:
         m.setattr(files.os,'open',lambda *a,**k:pytest.fail('protected path opened'))

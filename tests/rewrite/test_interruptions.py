@@ -155,22 +155,49 @@ def test_hot_journal_cold_inspector_never_opens_sqlite_or_owns_session(hot_datas
 
 
 def test_hot_journal_competing_owner_prevents_writable_recovery(hot_dataset, monkeypatch):
+    from chronicle.backup_restore import metadata
     from chronicle.dataset_lock import DatasetLock
     from test_dataset_compatibility import preserved
     directory, _, _ = hot_dataset
     leave_hot_journal(directory)
     lock = DatasetLock(directory)
-    lock.acquire()
     before = preserved(directory)
+    readable_before = {name: value for name, value in before[1].items() if name != lock.path.name}
+    def readable_files():
+        # Preserve all database/journal bytes and metadata, but do not read the
+        # byte Windows locks in .chronicle.lock through a competing handle.
+        return {p.name: (metadata(p.lstat()), p.read_bytes())
+                for p in directory.iterdir() if p != lock.path}
+    lock.acquire()
     def forbidden(*a):
         pytest.fail('Competing owner reached writable SQLite recovery')
     try:
         monkeypatch.setattr(SQLiteStore, '_connect', forbidden)
         with pytest.raises(OSError):
             SQLiteStore(directory)
-        assert preserved(directory) == before
+        assert lock.file is not None and not lock.file.closed
+        contender = DatasetLock(directory)
+        try:
+            with pytest.raises(OSError): contender.acquire()
+            assert contender.file is None
+        finally:
+            contender.close()
+        assert metadata(directory.lstat()) == before[0][0]
+        assert metadata(lock.path.lstat()) == before[1][lock.path.name][0]
+        assert readable_files() == readable_before
     finally:
         lock.close()
+    assert lock.file is None
+    assert preserved(directory) == before
+    next_owner = DatasetLock(directory)
+    try:
+        next_owner.acquire()
+        assert next_owner.file is not None
+        assert readable_files() == readable_before
+    finally:
+        next_owner.close()
+    assert next_owner.file is None
+    assert preserved(directory) == before
 
 
 def test_hot_journal_admission_does_not_treat_raw_header_markers_as_committed(hot_dataset, monkeypatch):
