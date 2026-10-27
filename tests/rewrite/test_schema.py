@@ -31,22 +31,43 @@ def test_startup_rechecks_candidate_after_ownership_before_adoption(store, monke
     from chronicle.dataset_lock import DatasetLock
     directory, path = store.directory, store.path
     store.close()
+    lock_path = directory / '.chronicle.lock'
+    lock_bytes = lock_path.read_bytes()
     acquire = DatasetLock.acquire
-    observed = []
+    observed, owners = [], []
+    def database_files():
+        # Windows protects the lock file's first byte while ownership is held.
+        # Include every other file, including any SQLite sidecars, without skips.
+        return {p.name: p.read_bytes() for p in directory.iterdir() if p != lock_path}
     def changed_after_lock(self):
         acquire(self)
+        owners.append(self)
         # Test-only competing change at the admission/ownership boundary.
         c = sqlite3.connect(path, isolation_level=None)
         try:
             c.execute('PRAGMA journal_mode=WAL' if changed == 'wal' else 'PRAGMA application_id=123')
         finally:
             c.close()
-        observed.append({p.name:p.read_bytes() for p in directory.iterdir()})
+        observed.append(database_files())
     def forbidden(*a): pytest.fail('Incompatible candidate reached runtime configuration')
-    monkeypatch.setattr(DatasetLock, 'acquire', changed_after_lock)
-    monkeypatch.setattr(SQLiteStore, '_profile', forbidden)
-    with pytest.raises(ValueError): SQLiteStore(directory)
-    assert observed == [{p.name:p.read_bytes() for p in directory.iterdir()}]
+    with monkeypatch.context() as patch:
+        patch.setattr(DatasetLock, 'acquire', changed_after_lock)
+        patch.setattr(SQLiteStore, '_profile', forbidden)
+        diagnostic = 'DELETE journal profile' if changed == 'wal' else 'Not a supported Chronicle schema'
+        with pytest.raises(ValueError, match=diagnostic): SQLiteStore(directory)
+    assert len(owners) == 1 and owners[0].file is None
+    assert observed == [database_files()]
+    assert lock_path.read_bytes() == lock_bytes
+    next_owner = DatasetLock(directory)
+    try:
+        next_owner.acquire()
+        assert next_owner.file is not None
+        assert observed == [database_files()]
+    finally:
+        next_owner.close()
+    assert next_owner.file is None
+    assert lock_path.read_bytes() == lock_bytes
+    assert observed == [database_files()]
 
 
 def test_fresh_profile_and_reopen(store):
