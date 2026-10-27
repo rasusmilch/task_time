@@ -39,6 +39,7 @@ def test_dst_real_timer_plus_whole_date(service,task,store,start,end,expected):
 
 
 def test_cross_midnight_redate_correction_deletion_and_read_purity(service,task,store):
+    from chronicle.timesheet_files import metadata
     e=timed(service,task,'2026-10-18','23:00','2026-10-19','01:00')
     d=dated(service,task,'2026-10-18','1:00')
     report=service.read_current_state(cutoff_utc_us=NOW)['report']['tasks'][task]
@@ -48,10 +49,22 @@ def test_cross_midnight_redate_correction_deletion_and_read_purity(service,task,
     report=service.read_current_state(cutoff_utc_us=NOW)['report']['tasks'][task]
     assert report['daily_us']=={'2026-10-18':2*H,'2026-10-19':H,'2026-10-20':2*H}
     service.delete_work_entry(task,e,expected_revision=2,request_id=uid(),action_utc_us=NOW)
-    before=facts(store); files={p.name:p.read_bytes() for p in store.directory.iterdir()}
+    before=facts(store)
+    lock_path=store.lock.path
+    assert lock_path.is_file()
+    lock_metadata=metadata(lock_path.lstat())
+    owner=store.lock.file
+    assert owner is not None and not owner.closed
+    def readable_files():
+        # Windows prohibits competing reads of the active lock byte. Keep every
+        # other dataset file, including SQLite sidecars, in the byte snapshot.
+        return {p.name:p.read_bytes() for p in store.directory.iterdir() if p != lock_path}
+    files=readable_files()
     for _ in range(3):
         assert service.read_current_state(cutoff_utc_us=NOW)['report']['tasks'][task]['week_us']==2*H
         service.read_task_work_history(task,cutoff_utc_us=NOW)
         service.read_work_entry_revisions(e)
     assert facts(store)==before
-    assert {p.name:p.read_bytes() for p in store.directory.iterdir()}==files
+    assert readable_files()==files
+    assert lock_path.is_file() and metadata(lock_path.lstat())==lock_metadata
+    assert store.lock.file is owner and not owner.closed
