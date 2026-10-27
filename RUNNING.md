@@ -30,7 +30,64 @@ source. IT policy may restrict Python, pip or environment creation; these
 instructions do not bypass those restrictions. Chronicle downloads nothing at
 startup and operates offline once dependencies are installed.
 
-## Create and reopen
+## Ordinary startup and first-run setup
+
+From the repository directory, launch without flags:
+
+```powershell
+python run_chronicle.py
+# Optional Windows convenience (same workflow and interpreter selection):
+.\scripts\run.ps1
+```
+
+**Welcome to Chronicle** explains local storage and shows the proposed dataset
+folder. Choose/enter another absolute local folder if needed. Select a readable
+timezone and click **Create and Open** to confirm both; **Advanced / Other** accepts
+an explicit offline IANA zone for other regions. A trusted exact Windows timezone
+key can suggest a choice; otherwise choose one yourself. Existing datasets retain
+their stored timezone. **Open Existing Dataset** chooses a dataset directory, not
+a backup import. **Cancel** writes no settings/data and starts no database worker.
+
+Windows suggests `%LOCALAPPDATA%\Chronicle\Data`; Linux uses
+`$XDG_DATA_HOME/Chronicle/Data` or `$HOME/.local/share/Chronicle/Data`; macOS uses
+`$HOME/Library/Application Support/Chronicle/Data`. Unsuitable/unavailable local
+storage requires explicit selection. These are opt-in source-mode conveniences,
+not final installation paths or legacy cutover. Displaying setup creates nothing.
+Creation accepts only a new or genuinely empty folder, with the existing worker/
+SQLite exclusive-creation and race guards. Network paths and existing symlink/
+reparse redirection refuse; choose trusted local storage, outside cloud sync.
+
+A bounded `launcher-selection.json` beside the suggested `Data` folder stores
+only format version 1 and the absolute selected dataset directory. It is separate
+from SQLite facts. It is written only after worker readiness and never by explicit
+CLI/recovery commands. Missing preferences permit discovery only at this new
+source-mode default: an apparent database opens normally; absent/empty folders
+show setup; other content refuses implicit creation. No legacy paths are searched.
+
+Subsequent zero-argument launches open the remembered dataset through ordinary
+ownership, complete validation and native hot-journal recovery. Missing, busy,
+damaged or unsupported datasets show diagnostics and require explicit action;
+a failed open never creates replacement data. Corrupt, unsupported, linked or
+unreadable selection records are retained, not silently overwritten. Explicit
+selection can still open a healthy dataset; a persistent warning explains if its
+location cannot be remembered. An unchanged valid reviewed record alone may be
+replaced after readiness; publication is staged/synced/verified and an absent
+record is published exclusively. These are trusted-local-storage protections,
+not atomic compare-and-replace against hostile filesystem changes.
+
+Setup and the application share one Tk root/mainloop. No worker starts until an
+accepted create/open choice (including remembered/default existing discovery).
+Controls wait for startup and cleanup; **Retry cleanup** retains existing ownership
+until the original worker closes safely. Cancel after an accepted operation waits
+for its completion rather than interrupting SQLite. A remembering failure does
+not close or undo the successfully opened dataset.
+
+Native Windows first-run/timezone suggestion, chooser/focus and reopen validation
+of this new flow remain required. Earlier unattended Windows qualification is
+historical supporting evidence, not execution of this startup UI. Stage 4 remains
+IN PROGRESS and Stage 5 is NOT STARTED.
+
+## Explicit engineering creation and reopening
 
 Choose an explicit new, disposable local-disk directory for engineering use:
 
@@ -49,7 +106,12 @@ python run_chronicle.py --data-dir PATH
 The launcher resolves `src/chronicle` directly. `chronicle.bootstrap.main` is the
 single entry point; no project wheel or installation step is needed.
 [scripts/run.ps1](scripts/run.ps1) is an optional thin convenience accepting
-`-DataDir`, `-Timezone`, `-Create`; it neither builds nor installs dependencies.
+optional `-DataDir`, `-Timezone`, `-Create`; it neither builds nor installs dependencies.
+Explicit CLI preserves its former meanings and does not update launcher selection.
+`--create` still requires `--data-dir` and `--timezone`; `--timezone` alone refuses.
+Recovery/inspection remain headless and never enter setup. Existing supported
+explicit directory aliases retain their previous CLI semantics; setup selection
+uses the stricter no-redirection admission described above.
 
 Use writable local storage, not a network/cloud-sync directory. The dataset has
 `chronicle.sqlite3`, `.chronicle.lock` and, during writes, a temporary SQLite

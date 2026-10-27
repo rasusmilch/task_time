@@ -112,7 +112,8 @@ represented as tests executed during the present task.
 Source-grounded command examples (select according to applicability):
 
 - Linux regression: `.venv/bin/python -B -m pytest -q -p no:cacheprovider -o addopts=''`.
-- Windows source launch: `python .\run_chronicle.py --data-dir PATH --timezone America/Chicago --create`; reopen with `--data-dir PATH` only.
+- Ordinary source launch: `python run_chronicle.py` or `.\scripts\run.ps1` opens setup or the remembered dataset.
+- Explicit engineering launch: `python .\run_chronicle.py --data-dir PATH --timezone America/Chicago --create`; reopen with `--data-dir PATH` only. Explicit CLI does not change launcher selection.
 - Runtime dependency: `python -m pip install --only-binary=:all: tzdata==2026.5`.
 - Source setup and optional virtual environment: see [RUNNING.md](RUNNING.md); no project build is required.
 

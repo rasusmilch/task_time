@@ -77,7 +77,7 @@ os._exit(0)
 
 
 def test_launcher_requires_explicit_path_without_touching_home(tmp_path):
-    result = subprocess.run([sys.executable, "-B", "run_chronicle.py"], env={**os.environ, "HOME": str(tmp_path)},
+    result = subprocess.run([sys.executable, "-B", "run_chronicle.py", "--create", "--timezone", "UTC"], env={**os.environ, "HOME": str(tmp_path)},
                             capture_output=True, text=True, timeout=10)
     assert result.returncode == 2
     assert "--data-dir" in result.stderr

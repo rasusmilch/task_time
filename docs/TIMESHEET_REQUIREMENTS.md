@@ -47,6 +47,36 @@ preservation obligation for the retired dataset does not authorize arbitrary
 startup deletion. Exact release paths, installation/cutover and cleanup remain
 Open. Protect new-runtime audit history and future schema/data upgrades.
 
+## SELECTED — Source-mode first-run and remembered startup
+
+Zero-argument `python run_chronicle.py` and the optional PowerShell source launcher
+show first-run setup or normally open the remembered dataset. Setup offers local
+folder choice, readable explicitly confirmed timezone, Advanced / Other IANA input,
+Create and Open, Open Existing Dataset and Cancel. Only exact approved Windows
+zone-key mappings may suggest a timezone; offsets, abbreviations and network
+inference are not timezone authority. Existing dataset timezones never change.
+
+Windows may suggest `%LOCALAPPDATA%\Chronicle\Data` for source-mode opt-in;
+non-Windows uses a suitable per-user local-data suggestion or requires selection.
+This does not settle Open installation/cutover paths. No creation occurs on setup
+display/cancel, and accepted creation keeps the existing exclusive worker/store
+checks for a new/empty folder, unknown contents, races and ownership.
+
+A separate bounded version-1 launcher record contains only the absolute dataset
+path. Remember only after readiness. Explicit CLI/recovery never changes it.
+Unreadable/corrupt/unsupported preferences and incompatible/missing/busy datasets
+produce diagnostics, never recreation or repair. Preserve unexpected preference
+objects; a remembering failure leaves a successfully opened dataset usable with a
+warning. Without a record, discover only the new suggested source-mode folder:
+apparent existing database opens normally, absent/empty shows setup, unknown or
+incomplete content requires explicit action. No legacy search/import occurs.
+
+One root/mainloop hands off to the ordinary app only after existing worker
+readiness; startup failure/cleanup cannot install a second authority. Cold
+inspection is not a prerequisite to ordinary recovery. Schema 1, evidence,
+transactions and all recovery contracts stay unchanged. Native first-run evidence
+and independent acceptance remain outstanding; Stage 4 remains IN PROGRESS.
+
 ## SELECTED — Independent projects and tasks
 
 Tasks have stable UUIDs and own independent work. Duplicate names are valid;

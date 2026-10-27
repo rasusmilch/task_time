@@ -38,7 +38,7 @@ Use shallow modules, splitting actual responsibilities rather than layers per cl
 
 | Responsibility | Boundary |
 | --- | --- |
-| Bootstrap | Runtime checks, selected fresh dataset, worker startup and Tk root. |
+| Bootstrap / source setup | Explicit CLI/headless recovery or zero-argument local selection; one Tk root, existing worker startup and readiness handoff. |
 | Plain records, time and accounting | Typed values and pure calculations; import neither Tkinter nor sqlite3. |
 | Explicit use-case services | Complete recording/edit/export/confirmation requests and transaction results through a narrow storage adapter. |
 | SQLite adapter | Built-in sqlite3 connection/profile, relational reads/writes, constraints, transactions and request lookup; future protected upgrades. No widget access. |
@@ -980,6 +980,47 @@ connected official reporting/pilot. This is not independent compliance approval
 or permission to reopen the selected formula. No extra worker, scheduler, datastore
 or persistence service is justified. Optional budget allocations and any future
 external connection remain separately approved.
+
+## Source startup and launcher selection
+
+`bootstrap.main` retains explicit CLI and headless recovery semantics. With no
+arguments it creates one root and `startup.StartupWindow`; no ChronicleApp or
+worker exists merely because setup is displayed. Readable timezone labels map to
+explicit pinned offline IANA rules. Only exact Windows `TimeZoneKeyName` values
+from the approved map suggest a label; missing/unknown keys require choice.
+Other zones use Advanced / Other. No stored timezone-changing feature is added.
+
+`launcher_selection` owns only a bounded versioned JSON path preference in the
+per-user source-mode Chronicle directory. Windows uses LOCALAPPDATA; Linux uses
+absolute XDG_DATA_HOME or HOME/.local/share; macOS uses HOME/Library/Application
+Support. Unavailable/unsafe bases require explicit choice. The proposed Data
+folder is an opt-in source convenience, not production installation policy.
+No setup-time mkdir or legacy search occurs. Missing records discover only this
+suggested folder; damaged records block implicit discovery and remain retained.
+
+Accepted setup paths reject existing links/reparse redirection and explicit remote
+storage. Create delegates to the existing worker/store final empty-directory and
+exclusive reservation checks; Open passes create=False/timezone=None, without cold
+inspection. The startup controller drains only initial worker results. Failure
+retains diagnostics/drafts; failed cleanup retains that worker and ownership for
+explicit Retry cleanup. No new connection/initializer/recovery engine exists.
+Only a real ready result removes setup controls and constructs ChronicleApp on
+the same root, delivering that result through its normal handler. Setup callbacks
+and bindings are removed, and the ordinary owner manages shutdown thereafter.
+
+Remembering runs only after readiness. Strict bounded regular-file reads compare
+path/descriptor identity and each domain's complete stability. Duplicate/extra
+fields, unknown versions and linked/damaged files refuse. Publication writes an
+exclusive private stage, syncs/closes/verifies it, reinspects any valid reviewed
+old record, then uses absent-target hard-link publication or replaces only that
+unchanged valid record. Cleanup touches only owned stages; final verification is
+required. No hostile-directory atomic CAS or power-loss guarantee is claimed.
+Explicit commands do not load/update launcher preferences. A remembering failure
+adds a persistent notice without invalidating the open database. Preferences are
+not a second work/timezone/evidence authority and are not part of database backup.
+
+The new first-run GUI remains subject to independent/native Windows qualification.
+Stage 4 remains IN PROGRESS, Stage 5 NOT STARTED, and installation/cutover remains Open.
 
 ## Deployment and next boundary
 

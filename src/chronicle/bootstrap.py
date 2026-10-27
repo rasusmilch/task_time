@@ -1,4 +1,4 @@
-"""Explicit engineering launcher; no old-data discovery or implicit dataset."""
+"""Source launcher, safe first-run selection and explicit headless recovery."""
 
 import argparse
 from pathlib import Path
@@ -75,7 +75,19 @@ def main(argv=None):
             traceback.print_exception(exc, file=sys.stderr)
             parser.exit(1, 'Recovery did not complete successfully. Existing files were not rolled back.\n')
     if args.data_dir is None:
-        parser.error('--data-dir is required')
+        if args.create or args.timezone is not None:
+            parser.error('--create and --timezone require --data-dir; creation also requires --timezone')
+        from .startup import StartupWindow
+        root = tk.Tk()
+        try:
+            startup = StartupWindow(root, app_factory=ChronicleApp, worker_factory=DatabaseWorker)
+            root.mainloop()
+        finally:
+            try:
+                root.destroy()
+            except tk.TclError:
+                pass  # Ordinary Cancel/application close already destroyed the one root.
+        return startup.app or startup
     if args.create and args.timezone is None:
         parser.error("--create requires --timezone with an explicit IANA key")
     root = tk.Tk()

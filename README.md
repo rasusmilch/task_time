@@ -82,7 +82,23 @@ then install the sole external runtime dependency in a permitted environment:
 ```powershell
 python -c "import sys,sqlite3,tkinter; print(sys.version); print(sqlite3.sqlite_version); print(tkinter.TkVersion)"
 python -m pip install --only-binary=:all: tzdata==2026.5
-python .\run_chronicle.py --data-dir C:\Chronicle-test\fresh --timezone America/Chicago --create
+python run_chronicle.py
+# Optional Windows convenience:
+.\scripts\run.ps1
+```
+
+First launch offers **Welcome to Chronicle**: choose a local dataset folder and a
+readable timezone, then **Create and Open**, or choose **Open Existing Dataset**.
+Nothing is created by displaying or canceling setup. Later zero-argument launches
+open the remembered dataset normally, never implicitly recreating missing data.
+Windows suggests `%LOCALAPPDATA%\Chronicle\Data` for explicit source-mode opt-in;
+it is not an installation/cutover decision. See [startup details](RUNNING.md#ordinary-startup-and-first-run-setup)
+for preference safety, Advanced / Other zones and refusal behavior.
+
+Advanced engineering creation remains explicit:
+
+```powershell
+python run_chronicle.py --data-dir C:\Chronicle-test\fresh --timezone America/Chicago --create
 ```
 
 Reopen the same dataset without creating it:
@@ -93,11 +109,13 @@ python .\run_chronicle.py --data-dir C:\Chronicle-test\fresh
 
 The root launcher supplies the src path; no editable install, wheel build or
 compiler is required. The PowerShell helper accepts `-DataDir`, `-Timezone` and
-`-Create`. No implicit data directory or legacy-runtime fallback exists.
+`-Create`, and accepts no arguments for the same setup/reopen workflow. Explicit
+CLI paths do not change the remembered selection. No legacy-runtime fallback or
+legacy-data discovery exists. Native first-run GUI qualification remains required.
 
 ## Data layout
 
-An explicitly selected local directory contains `chronicle.sqlite3`,
+The selected local dataset directory contains `chronicle.sqlite3`,
 `.chronicle.lock` and SQLite's temporary rollback journal during writes. Lock
 existence is not ownership. A live OS-held lock excludes a second application owner. Create refuses
 unknown nonempty or partial directories; open refuses unsupported datasets and

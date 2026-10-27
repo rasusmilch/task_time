@@ -29,6 +29,16 @@ receipts or commits. No release or production qualification is implied below.
   revision/deleted-entry details. Snapshot context is transaction-consistent;
   stale/uncertain outcomes retain review/request identity. One worker keeps Tk
   responsive and shutdown preserves uncertainty.
+  Add zero-argument source startup and optional-argument PowerShell launch: first-run
+  local folder/readable-timezone setup, explicit existing-dataset selection, and
+  normal remembered reopening on one Tk root after worker readiness. Suggest an
+  opt-in per-user source Data folder without creating it on display/Cancel. Keep
+  strict bounded versioned path-only preferences separate from SQLite; remember
+  only after readiness, retain corrupt/unexpected objects, protect staged
+  publication and report remembering failures without closing healthy data.
+  Explicit CLI/recovery does not change the selection; missing/incompatible/busy
+  data never triggers implicit creation, migration or repair. Native first-run
+  qualification remains outstanding, with Stage 4 IN PROGRESS and Stage 5 NOT STARTED.
   Sleep/exit never stops timers; restart uses committed state. Use explicit fresh
   paths and offline tzdata. Use built-in sqlite3 with verified DELETE journaling,
   synchronous EXTRA, foreign keys and the SQLite 3.37.0 STRICT floor. Exercise

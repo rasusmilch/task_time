@@ -195,6 +195,12 @@ suspend/resume and deployment qualification. A future real schema transition sti
 requires separate version-specific approval and evidence. Exercise timer → frozen export → absolute
 confirmation → correction → reconciliation → backup → cold restore/new session.
 
+The bounded source-startup usability slice adds first-run local folder/readable
+zone setup and zero-argument remembered reopening, with unchanged explicit CLI and
+recovery contracts. Its native Windows first-run/timezone suggestion/chooser/focus
+and reopen evidence remains pending independent qualification. Prior automated
+qualification retains its recorded limits and does not qualify this new UI.
+
 Gate: complete core integrity, recovery and restore demonstrated, no data-loss
 blocker, truthful uncertain outcomes, no obsolete callback installation after
 restore. Integrity testing starts in earlier slices, not here for the first time.

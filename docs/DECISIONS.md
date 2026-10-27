@@ -1090,6 +1090,30 @@ remain outstanding. External POL-R redistribution authorization, worked-zero
 reporting semantics and installation/cutover approval remain open. Stage 5 is
 NOT STARTED; no pilot, merge or release is authorized by these acceptances.
 
+### Source-mode first-run and remembered startup approval
+
+**Status:** selected; implemented for independent review and native follow-up.
+**Provenance:** the explicit user startup-usability execution task authorizes
+zero-argument setup/reopen without choosing a new architecture or installation
+policy. The user selects Windows LOCALAPPDATA/Chronicle/Data as an opt-in source
+suggestion, readable explicitly confirmed IANA mappings, Advanced / Other, and
+existing-dataset selection without changing its stored zone.
+
+A bounded separate versioned path-only launcher record is written after worker
+readiness. Explicit commands do not alter it. Missing preferences permit discovery
+only at this new source default; corrupt/unexpected records are retained and
+require explicit selection. Failed opens never authorize creation/repair; failed
+remembering preserves the usable dataset with a warning. One Tk root hands off
+from setup to ChronicleApp after the existing worker validates/recovers the dataset.
+No legacy discovery, schema/service/accounting/recovery change, new dependency,
+installer or migration is selected. Installation/cutover and timezone-change policy
+remain Open. Stage 4 stays IN PROGRESS; Stage 5 is NOT STARTED.
+
+The task reports earlier native MetadataProbe/Critical/Storage/Extended results as
+supporting historical evidence within their recorded limits; they do not establish
+native first-run behavior for this new code. Focused native follow-up and independent
+review remain required. No Stage 4 completion, pilot or release follows.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT
