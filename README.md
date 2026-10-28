@@ -76,30 +76,41 @@ Stage 0 was independently accepted at `a24aca706740b7e02cc1f856baa194042785bbcb`
 
 ## Approved hierarchy target — not yet implemented
 
-The later approved target restores tree-oriented main/mini controls and supports
-Project → Task → Subtask → Sub-subtask, leaf-only new time, reversible archive,
-soft deletion/controlled restore and reusable nested templates. Individual remains
-direct task Actual; Cumulative adds descendants exactly once for presentation.
-POL-R stays task/day based; neither rollups nor project grouping add work or change
-frozen evidence. Current source still has flat tasks and its existing main/mini
-controls; no hierarchy/lifecycle/template workflow is delivered by this design.
+The approved target restores tree-oriented main/mini and Project → Task → Subtask
+→ Sub-subtask, leaf-only new time and independent Individual/Cumulative values.
+There are exactly two primary lifecycle actions: reversible **Archive** (Unarchive
+reverses it) and irreversible **Delete** of unused complete selected branches.
+No recoverable deletion tier, Deleted Items or separate Permanent Delete is selected.
+Current source remains flat schema 1; these hierarchy/lifecycle controls are not
+implemented, and neither rollups nor projects add work or change frozen evidence.
 
-Approved lifecycle defaults make Unassigned a virtual group with the same depth,
-New Task without selection an Unassigned root, and hiding inherited from selected
-node archive/deletion while independent descendant states survive. Restore needs
-eligible ancestry; effectively archived branches cannot move. Templates are
-soft-deleted/restorable with unique active trim/casefold names; task duplicates
-remain valid. Keep Mini Open defaults Off/session-local; Show Main retains mini
-only when On, and mini never takes focus/grabs from modals. Sort A-Z is initially
-session-local.
+Archived Items shows the full expandable tree, independently archived branches
+with ancestor context, direct History and eligible Unarchive/Delete. Current archive
+dates are exact accepted UTC instants displayed in the dataset zone; inherited-only
+children use their nearest archived ancestor. Sort siblings/top-level entries by
+Name A–Z/Z–A or Date Archived Newest/Oldest, newest default, preserving selection
+and expansion. The view cannot record time. Archive preserves relationships/work;
+independent child flags survive Unarchive and effectively archived branches cannot
+move. Unassigned remains virtual with the same depth, and no-selection New Task
+creates an Unassigned root.
 
-Separate Permanent Delete is selected only through Deleted Items for unused
-soft-deleted projects/tasks and eligible complete branches. Any historical work,
-frozen/reporting/confirmation dependency or protected descendant blocks it.
-Eligible deletion requires dependency preview, warning, typed confirmation and
-transactional recheck. The proposed administrative-receipt/tombstone boundary
-needs independent review before implementation; there is no automatic purge or
-secure-erasure promise, and existing backups/copies remain unchanged.
+Delete needs no Archive first. Complete scope/counts, cannot-undo warning, typed
+DELETE for branch removal and transactional dependency recheck are required. Any
+work (including deleted revisions), active/correction, frozen zero/reference,
+confirmation/reporting or protected/unresolved dependency blocks the whole scope.
+Use Archive for protected history. New project/task names may duplicate, but normal
+creation always uses fresh UUIDs. Exclusively owned administrative requests may be
+erased with eligible unused rows: their exact historical retry/replay protection
+is no longer promised. No identity/tombstone/audit registry is selected. Its bounded
+engineering design still needs adjudication; current version-1 receipt semantics
+remain unchanged. Backups/copies stay untouched; no automatic cleanup or secure erasure.
+
+Nested template instances stay independent. Definitions use Archive/Unarchive and
+intended actual Delete; applied/referenced definition eligibility is Open before
+Package E, not a soft-delete tier. Active template names stay trim/casefold unique,
+while task/project names may duplicate. Keep Mini Open defaults Off/session-local;
+Show Main retains mini only when On, never stealing modal focus/grabs. Main Sort
+A-Z is session-local. Exact Actual, frozen Timesheet and task/day POL-R rules remain.
 
 Implementation will start with a distinctly identified fresh SQLite schema and
 fresh data, **without v1 migration, compatibility mode or legacy import**. Old files

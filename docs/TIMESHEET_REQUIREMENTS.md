@@ -118,10 +118,10 @@ browser. Descendant work remains accessible by selecting each descendant UUID.
 
 A running task cannot become a parent or be moved into an ineligible state.
 Adding a child, reparenting or applying a template cannot bypass this rule.
-Archiving/deleting any branch containing the running task refuses until an
-explicit prior Stop/Switch. No hierarchy operation silently stops, switches,
-restarts or changes an active timer. Archived/deleted branches are unavailable
-for ordinary new recording; historical accounting/evidence remains retained.
+Archiving any branch containing the running task refuses until an explicit prior
+Stop/Switch; an active timer also blocks Delete's unused-only eligibility. No
+hierarchy operation silently stops, switches or restarts a timer. Archived or
+effectively archived leaves accept no new time; their history remains retained.
 
 The new hierarchy runtime will require fresh data: no version-1 migration,
 backward-compatible mode, conversion engine, compatibility shim, JSONL import or
@@ -146,69 +146,128 @@ effectively archived branch cannot move until it is unarchived, including cleari
 inherited hiding through its ancestor path. An allowed move preserves independently
 archived descendant states; it must not clear flags to make a move possible.
 
-Archive and soft delete are distinct operations. Each explicitly changes only the
-selected project/task node; descendants are hidden by inheritance, not by bulk
-rewriting their independent states. Archive is reversible and preserves all work/
-evidence. Unarchive/Restore do not erase independently applied descendant archive
-or deletion states. An archived ancestor can still keep an unarchived child hidden.
+Exactly two primary lifecycle actions exist: **Archive**, reversible preservation,
+and **Delete**, irreversible removal of unused structure. Unarchive reverses Archive;
+it is not a deletion tier. No user-facing soft deletion, Deleted Items manager,
+separate Permanent Delete, Trash or recoverable Delete belongs to this target.
 
-Soft Delete requires an explicit warning identifying the affected branch. It
-retains identities, work revisions, exports and confirmations and removes the
-branch from ordinary active navigation. Provide a Deleted Items manager with
-controlled Restore and historical-work access. Ordinary Delete is never physical
-deletion. Physical entity removal is restricted to the separate unused-only
-Permanent Delete below for eligible task/project structure. Archived visibility and Deleted
-Items must be distinguishable, and enabling either view must not authorize new
-time implicitly.
-Task soft deletion does not delete its effective work: existing History Delete
-of a work entry remains a different operation, appending a deleted revision that
-removes that entry from current Actual while retaining its evidence.
-Deleted parents/projects retain descendant membership. Restore requires an
-eligible ancestor path and preserves identity/history and structural guards; a
-child cannot be independently exposed beneath a deleted parent. Restoring a parent
-does not restore an independently deleted child or clear any independent archive
-state. An archived ancestor continues to govern normal visibility.
-Project and task Create/Rename/Move/Archive/Unarchive/Delete/Restore use explicit
-reviewed operations, cancellation without writes, stale-state diagnostics and
-authoritative completion. These structural/lifecycle defaults are approved target
-behavior, not delivered services in the current flat runtime.
+Archive changes only the selected project/task's explicit archived state and
+stores its exact accepted UTC action instant as the current archive timestamp.
+Descendants become effectively archived by inheritance; do not rewrite their
+independent flags. Preserve identities, relationships, work, history, current
+project grouping, frozen reports and POL-R evidence. A running descendant blocks
+Archive; never perform an implicit Stop/Switch. Unarchive clears only the selected
+node's flag and current archived-at value, preserving independent child flags.
+An archived ancestor still hides an unarchived descendant. Unarchive does not
+move, rename, restore, recreate or change work. Archiving again later establishes
+a new current timestamp; no historical archive-date journal is required merely
+to view/sort abandoned unused items.
 
-### Unused-only Permanent Delete
+Project/task management offers Create, Rename, Move, Archive/Unarchive, Delete and
+direct Work History using reviewed UUIDs/versions, cancellation without writes,
+stale diagnostics and authoritative completion. These remain unimplemented target
+operations; current schema-1 functionality is not being relabeled as delivered.
 
-Permanent Delete is a separate user-facing action available **only in Deleted
-Items**. It applies only to soft-deleted projects/tasks and their eligible complete
-branches, including descendants hidden by inherited deletion. It does not apply to
-templates, work entries, reports, confirmations or arbitrary receipt history.
-Never offer it as ordinary Delete, creation cleanup or automatic maintenance.
+### Unused-only Delete
 
-Refuse the whole selected scope if any node has recorded work, any work revision
-(including previously deleted work), an active timer, frozen export/reference,
-confirmation, reporting dependency or protected relationship with surviving
-evidence. A project with any protected descendant cannot be purged as a whole;
-do not silently prune the protected part or widen the selection to delete a
-dependency. Current zero Actual is not evidence that a branch is unused.
+Delete physically removes selected project/task rows and their complete selected
+subtrees from the logical database. It is irreversible and available from
+appropriate management surfaces, including Archived Items. Archive is **not** a
+prerequisite. It never means deleting a dataset file or deleting work history.
 
-An eligible unused branch may be physically removed only after a complete
-dependency preview, explicit warning, typed confirmation and final transactional
-recheck of the exact reviewed scope and dependencies. Reject a stale or racing
-decision; require fresh review rather than automatically expanding authorization.
-The entire purge commits or none of it does. Do not damage unrelated rows, leave
-partial structure, silently cascade into work, rewrite frozen evidence or reuse
-removed identities. No automatic, age-based or background purge is selected.
+Evaluate the full scope and typed dependency closure. Refuse if any affected entity
+has timed work, date-only work, any work revision including deleted work, an active
+timer or active-start correction, any frozen Timesheet reference (even zero-valued
+scope/basis/task/project references), any POL-R confirmation including confirmed
+zero, any current/retained reporting dependency, any protected relationship to
+surviving evidence, any unresolved administrative dependency, or an ineligible
+descendant. Current Actual = 00:00 is not evidence of unused status. One protected
+descendant blocks a whole project deletion. Do not prune protected descendants,
+expand the confirmed scope or rewrite history to manufacture eligibility.
+A separately selected unused child may be eligible despite its parent's work,
+only when its complete dependency closure is independently removable.
 
-Existing backups and filesystem copies remain unchanged. This is not secure byte
-erasure: retained request identity/evidence, SQLite storage and external copies may
-retain information. Do not delete/rewrite those files as part of Permanent Delete.
+Before Delete show the exact scope, affected project/task counts and an explicit
+cannot-be-undone warning. Require confirmation, **typed DELETE for branch
+deletion**, followed by final transactional validation against the reviewed scope.
+Reject stale/racing decisions and require fresh review. Remove all or none of the
+eligible entity rows, parent-child relationships, exclusively owned administrative
+facts and safely proven exclusively associated administrative request records.
+Preserve unrelated survivors and every protected work/report/confirmation record.
+Do not retain a recoverable identity, names/notes in tombstones, an anti-replay
+registry or a permanent unused-project audit/purge-proof ledger.
 
-Creation/rename and other administrative receipts must not make every otherwise
-unused entity permanently ineligible by construction. The fresh schema must
-deliberately support a narrowly reviewed administrative dependency closure and
-request anti-replay boundary. That does **not** approve arbitrary receipt deletion
-or weaken exact committed-request reuse. The
-[proposed receipt/purge mechanism](ARCHITECTURE.md#proposed-unused-entity-purge-and-receipt-boundary)
-requires separate independent adjudication of its retention exception, tombstone
-representation, fresh schema marker and executable DDL before implementation.
-Current version-1 receipts and their entity-presence validator remain unchanged.
+Projects/tasks have UUID identity, not name identity. A new item may use the name
+of an existing, archived or deleted item, but normal creation always generates a
+fresh UUID. Duplicate names never authorize reuse, restoration, merging or
+overwriting. Active-template name uniqueness does not apply to projects/tasks.
+
+There is no automatic, age-based, scheduled or background deletion. Existing
+backups and filesystem copies remain unchanged. SQLite logical deletion does not
+promise secure physical erasure of old pages or external copies.
+
+Surviving requests and all protected evidence retain normal exact committed-request
+behavior. **Fully erased administrative requests no longer promise exact historical
+retry/result recovery.** Without persistent identity records, a later resubmission
+of an erased old request cannot necessarily be recognized or prevented from
+reintroducing its old UUID. Normal creation uses fresh IDs; stale queued/concurrent
+operations must still pass final transactional dependency checks. Do not claim
+permanent replay protection or silently reinstate a registry.
+
+If Delete committed but acknowledgement was lost and its own receipt was erased,
+present existence checks can establish current state, not prove that request's
+historical outcome. Report failure/uncertainty truthfully; do not automatically
+reexecute or invent a retained deletion journal to conceal this limit. The
+[proposed deletion/receipt boundary](ARCHITECTURE.md#proposed-unused-entity-deletion-and-receipt-boundary)
+requires separate engineering adjudication of its finite allowlist, closure,
+cross-entity/survivor dependencies, transaction order, stale/uncertain handling,
+independent verification and fresh DDL. Unsafe/unprovable scopes refuse.
+Current version-1 receipts and immutable evidence guards remain unchanged.
+
+A task/project with protected history must be archived instead of deleted. Its
+retained history stays available to History, Timesheet and POL-R/reconciliation.
+The existing work-entry History Delete remains a separate use case: it appends
+retained deleted-revision evidence and removes effective work from current Actual;
+it does not physically delete the task/work identity.
+
+### Archived Items tree, archive dates and sorting
+
+Provide a discoverable Archived Items window/view with archived projects,
+independently archived task branches and descendants hidden by archived ancestors.
+Preserve Project → Task → Subtask → Sub-subtask relationships and support full
+expand/collapse at every available level, historical Individual/Cumulative values,
+direct-task Work History, selected explicit-node Unarchive and eligible-branch
+Delete. Explain ineligible Delete/Unarchive. The view is read-only for recording:
+no Start, Switch into archived tasks or new manual work beneath archived parents.
+Selection, sorting and expansion never make an archived leaf eligible for time.
+
+An independently archived child with active ancestors is an archived entry with
+sufficient project/parent context, not a reparented task. An ancestry-hidden child
+appears under its archived parent when expanded. Do not flatten relationships or
+present one UUID as multiple independent archived records. Unarchive can only
+clear an explicit flag; explain inherited hiding without clearing an ancestor.
+
+Display current archive timestamps in the dataset IANA timezone using real DST/
+timezone conversion, never creation/modification time or a fixed offset. An
+independently archived child has its own accepted timestamp; a descendant hidden
+only through ancestry displays its nearest effective archived ancestor's timestamp.
+The exact column names/DDL remain proposals, not executing schema changes.
+
+Offer exactly four primary sorting choices:
+
+- Name — A to Z.
+- Name — Z to A.
+- Date Archived — Newest first (default).
+- Date Archived — Oldest first.
+
+Sort among siblings and top-level archived entries while keeping the tree intact.
+Use a deterministic stable secondary order such as UUID for equal names/timestamps.
+Preserve expansion/collapse throughout the open view, including sorting and normal
+refresh; preserve selected identity where still visible. Sort state may initially
+be session-local. Do not persist settings without approval, change authoritative
+accounting order/UUIDs/membership/work, or unnecessarily rebuild unchanged rows.
+Archive/Unarchive trigger targeted structural refresh in main and archived views;
+shared exact totals and main/mini observation remain unchanged by visibility.
 
 ### Reusable nested templates
 
@@ -218,13 +277,16 @@ timer, confirmations, committed operation receipts or work revisions copied from
 tasks**. Template-management operations still have their own ordinary request
 receipts. Template edits do not modify previously applied instances.
 
-Provide Create, Edit, Duplicate, Delete, Restore and Apply in a discoverable Templates
-manager. Create/Edit builds the reusable nested definition; Duplicate creates an
-independent definition identity; Delete removes its availability for later Apply,
-never instantiated tasks or history. Templates are soft-deleted and restorable;
-active template names are unique after trim/casefold. Duplicate/rename/restore
-must respect that active-name constraint without overwriting another definition.
-Applied instances remain independent, and task names may still duplicate. Apply
+Provide Create, Edit, Duplicate, Archive/Unarchive, Delete and Apply in a
+discoverable Templates manager. Archive/Unarchive makes a definition unavailable/
+available. Delete is intended as actual definition removal, not a hidden
+recoverable state. Exact eligibility for an already applied/referenced template
+is an Open technical dependency question before Package E; never silently discard
+retained request/evidence references or introduce tombstones. Task/project unused-
+only Delete does not authorize a broad template/history purge. Active template
+names remain unique after trim/casefold; Create/Duplicate/Rename/Unarchive must
+respect this without overwriting another definition. Applied instances remain
+independent and unchanged; project/task names remain duplicable. Apply
 fixes the selected project/parent task, shows the structure/destination for review,
 and inserts template roots immediately
 beneath it. Every inserted task receives a fresh UUID, preserving nested
@@ -237,17 +299,17 @@ task creation is selected.
 ### Target main and mini presentation
 
 Restore a practical tree layout with distinct project and task rows, expandable
-branches, preserved task selection by UUID and running/stopped indicators. Prefer
+branches, preserved task selection by UUID and running/stopped indicators. Use
 green Running and red Stopped with text/symbols so color is not the sole cue.
 Ancestors indicate a running descendant without claiming their own timer; expand
 the active task's ancestors automatically. Collapse never excludes descendant
 work from totals. Sort A-Z must preserve parentage and identity, not flatten or
 merge equal names. Sort A-Z is initially session-local. Navigation provides
 context-sensitive New Task, task History and metadata editing, visible
-project/task management, archived visibility and
-Deleted Items. Starting a project or nonleaf is unavailable; Stop still targets
-the sole actual timer, and Switch requires an eligible distinct leaf. Existing
-modal and uncertain-request blocking applies to main and mini actions alike.
+project/task management and Archived Items. Starting a project or nonleaf is
+unavailable; Stop still targets the sole actual timer, and Switch requires an
+eligible distinct leaf. Existing modal and uncertain-request blocking applies to
+main and mini actions alike.
 
 Main task columns are **Individual** and **Cumulative**, controlled together by
 **Today / This Week**. Individual is exact-task work for that period; Cumulative
@@ -255,8 +317,8 @@ is that Individual plus every descendant's Individual exactly once. Project rows
 show only derived cumulative totals. A parent with older direct work displays it
 in Individual and includes it once in Cumulative; its History opens only that
 direct work. Application totals sum underlying task Actual once, never both
-columns or project subtotals. Archived/deleted history continues to contribute
-where applicable even when navigation hides its rows. Main/mini/report daily
+columns or project subtotals. Archived history and retained effective work continue
+to contribute where applicable even when navigation hides its rows. Main/mini/report daily
 facts share the existing exact accounting and one coordinated cutoff.
 
 Mini restores a clear green/red state bar, task name, **Today**, Start/Stop,
@@ -383,9 +445,10 @@ The current flat runtime shows **Today** and **This week** for each task's own
 work. The approved hierarchy target replaces those main columns with shared-period
 Individual/Cumulative as specified above. Mini-mode retains Individual **Today**
 for its displayed task and Start/Stop.
-Application totals include retained work of deleted tasks, while the active list
-omits deleted tasks. One coordinated refresh uses one aware UTC cutoff and local
-observation date for main/mini. This week is the complete containing calendar
+Application totals retain archived-task work when navigation hides it. Current
+schema-1 readers also preserve their existing retained-deleted task identities;
+that representation is not a new-target soft-delete tier. One coordinated refresh
+uses one aware UTC cutoff and local observation date for main/mini. This week is the complete containing calendar
 week. Timed work is cutoff-capped; dated amounts belong wholly to their declared
 dates, including later dates within that week.
 
@@ -592,9 +655,10 @@ passing implementation evidence does not establish external-policy qualification
 One modal Timesheet/POL-R workflow replaces old export workflows. Main/mini input
 is blocked while timers continue. Fresh preview defaults to This week/All tasks;
 Last week and Custom, typed dates/pickers, All or explicit task UUIDs are supported.
-Do not expand descendants. Duplicate names remain separate; retained deleted-task
-work stays reportable. Calendar selection only edits drafts, cancellation preserves
-them, and invalid drafts remain correctable. Resolve relative periods at explicit
+Do not expand descendants. Duplicate names remain separate; archived-task work
+stays reportable. Existing schema-1 retained-deleted task inclusion is unchanged,
+not a target recoverable-Delete workflow. Calendar selection only edits drafts;
+cancellation preserves them and invalid drafts remain correctable. Resolve relative periods at explicit
 Preview/Refresh, not by silently advancing an old preview.
 
 Preview prepares a detached frozen candidate with one cutoff and complete text,
@@ -873,7 +937,8 @@ Stage 4 remains IN PROGRESS and no pilot is authorized.
 | Decision | First affected gate |
 | --- | --- |
 | Dataset-timezone changes and historical date attribution under changes | Stage 1 dataset configuration / Stage 2 accounting, before implementation. Explicit fixed dataset zone is required; change policy is not guessed. |
-| Permanent Delete receipt boundary | Before affected fresh schema/service implementation: independently adjudicate administrative dependency closure, narrowly scoped lifecycle-receipt retirement, exact retry/anti-replay tombstones and complete verification. Approved unused-only behavior does not approve a receipt-immutability exception or executable DDL. |
+| Unused-only Delete engineering | Before affected B/C implementation: finite administrative allowlist, complete closure/cross-entity survivor proof, transaction/constraint design, stale/uncertain handling and complete independent verification. The owner approves retiring exclusively owned administrative requests without historical retry guarantees; no tombstones/registry/ledger or executable DDL is selected. |
+| Referenced template deletion | Before Package E: exact eligibility and retained administrative/request/evidence dependency handling for already applied/referenced definitions. Archive/Unarchive and actual Delete intent are selected; no silent reference removal or tombstones. |
 | Exact release paths, installation/cutover and retired-data cleanup | Before affected deployment/Stage 5 fresh pilot setup; startup deletion is unauthorized. |
 | Allocation controls/recurrence/overrides/week-change effects | Before optional Stage 6 allocation work. |
 

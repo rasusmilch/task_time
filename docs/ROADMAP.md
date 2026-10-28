@@ -222,27 +222,33 @@ retains its original limits.
 | Package | Bounded implementation and dependencies | Review/acceptance gate |
 | --- | --- | --- |
 | A — Main/mini restoration on flat data | Restore visible state colors/text, Show Main, Keep Mini Open, shared Today/This Week Individual/Cumulative columns, minute-boundary repaint and immediate refresh using existing services. Keep Mini Open defaults Off/session-local; Show Main retains mini only when On; Sort A-Z is initially session-local. With no descendants, Cumulative equals Individual. Do not imply hierarchy, archive or templates work yet. | Same accepted timer/worker accounting, no row churn for unchanged data, modal focus/grab protection, clock/date/unavailable detection, close/reopen, actual Tk input. No persistence/schema changes merely for presentation. |
-| B — Fresh hierarchy schema/services | Use three task levels under real projects and virtual Unassigned; no-selection New Task creates an Unassigned root. Review exact fresh STRICT DDL, distinct schema identity, guards and typed operations, including the proposed purge/receipt boundary, before affected implementation. Create on new/empty destinations only. Add bounded forest/read/move/new-time eligibility and derived accounting; preserve direct History/report identity. No v1 migration or fallback. | FK/trigger and transaction guards, cycles/depth/cross-project/cross-dataset refusal, active-parent prevention, atomic subtree identity preservation, complete startup/backup/restore/receipt validation. Every active reader includes retained direct work before hierarchical writers are exposed. |
-| C — Lifecycle and management | After B, implement selected-node explicit Archive/Soft Delete, inherited hiding, retained membership, eligible-path Unarchive/Restore and effectively archived Move refusal. Add discoverable managers/Deleted Items. Separately review the narrow administrative-receipt exception/tombstone mechanism before enabling unused-only Permanent Delete from Deleted Items. | Independent descendant states survive; no child exposed under a deleted parent; active-branch refusal. Purge requires complete dependency preview, warning, typed confirmation and final transactional recheck; any protected descendant/history blocks the whole scope. Atomic structure/receipt handling, exact retries and independent verification, no physical historical-work deletion or automatic purge. |
-| D — Connected hierarchy tree | Connect A presentation to B/C snapshots and operations: context-sensitive New Task, project distinctions, expansion/selection, running ancestors, sibling A-Z, branch movement, direct History and visibility controls. | Actual Tk create/move/lifecycle workflow, leaf eligibility at UI and service, unchanged task selection/UUIDs, collapsed/hidden descendant totals, no double count, modal main/mini blocking. No placeholders represented as completed actions. |
-| E — Nested templates | After B/D, connect Create/Edit/Duplicate/Soft Delete/Restore/Apply with versioned SQLite definitions, active trim/casefold name uniqueness and reviewed atomic fresh UUID insertion. | All-or-none application, multiple roots/nesting/depth checks, active destination refusal, duplicate task names allowed, template restore-name collision refusal, no name-based merging, no copied work/evidence, old instances unchanged by later definition edits, exact retries after uncertain commit. |
-| F — Target integration and native qualification | Exercise recording → hierarchy changes → direct History → frozen report → absolute confirmation → correction/reconciliation → backup/cold restore/fresh operation. Carry forward compatible math/failure tests; add focused cross-boundary evidence for changed guarantees. | Full applicable regression for shared schema/accounting, real Tk, native Windows/NTFS tree/modal/mini/input and file/recovery checks. Earlier flat-schema or unattended results cannot qualify changed behavior. No pilot/cutover/Stage 4 completion follows without separate adjudication. |
+| B — Fresh hierarchy schema/services | After exact fresh DDL/distinct identity and revised administrative Delete/receipt design adjudication, add three task levels under real projects/virtual Unassigned, reviewed structure/move/leaf services and derived accounting. Propose explicit archive flags/current accepted UTC timestamps; no target soft-delete state, tombstones or migration. | FK/trigger/transaction guards; cycles/depth/cross-project/cross-dataset refusal; active-parent prevention; complete survivor/startup/backup/restore validation. Retained requests stay exact; fully erased administrative requests have no historical retry guarantee. All readers include direct work before writers are exposed. |
+| C — Lifecycle and management | After B, connect Archive/Unarchive and actual unused-only Delete, discoverable managers and Archived Items with current dates, hierarchical navigation and four approved sort choices. No archive prerequisite for Delete. | Independent archive flags/timestamps and inherited visibility; active-branch Archive refusal; Delete scope/counts/cannot-undo warning, typed DELETE for branches and final closure recheck. All-or-none removal of unused rows/exclusively owned administration; protected references or unresolved dependencies refuse. No recoverable deletion tier or retained deletion ledger. |
+| D — Connected main/archived hierarchy trees | Connect A presentation to B/C snapshots/services: context New Task, project distinctions, active ancestors, direct History, management, full expansion and targeted structural refresh in both trees. | Selected UUID/expansion survive sorting and ordinary refresh while visible. Archived Items sibling/top-level Name A–Z/Z–A and Date Archived Newest/Oldest, newest default, deterministic ties. No flattening/duplicate identities, double count, flicker or recording eligibility from archived selection. Existing modal main/mini ownership remains. |
+| E — Nested templates | After B/D and adjudication of deletion dependencies for applied/referenced definitions, connect Create/Edit/Duplicate/Archive/Unarchive/actual Delete/Apply. Preserve active trim/casefold name uniqueness and atomic fresh task UUID insertion. | Nested depth/active destination guards, duplicate project/task names allowed, conflicting Unarchive-name refusal, no merging/copied work, applied instances unchanged. No soft-delete template tier, tombstones or silent loss of retained request/evidence references. Protected retained requests still retry exactly. |
+| F — Target integration and native qualification | Exercise recording → hierarchy/archive changes → direct History → frozen report → confirmation → correction/reconciliation → backup/cold restore/fresh operation; separately exercise unused-branch Delete, atomic refusal and its explicit historical-outcome limit. Carry forward compatible mathematics/failure evidence. | Full applicable regression for shared schema/accounting, real Tk and native Windows/NTFS main/archived tree, sorting, mini/modal/input and file/recovery. No manufactured success for erased administrative request uncertainty; protected evidence unchanged. Earlier flat-schema results do not qualify changed behavior. No Stage 4 completion/pilot/cutover follows without adjudication. |
 
-Order B before dependent lifecycle/tree/template writes; A may be reviewed alone
-on the flat model. Keep each package coherent rather than one helper per task.
-Every package preserves SQLite/worker/file protection and the existing exact
-Actual/frozen/confirmed boundary. Fresh hierarchy data creation never deletes,
-reuses or transforms old files; old retained objects are not a compatibility gate.
-Do not choose a target schema number or activate it in this documentation task.
-The later lifecycle amendment resolves the former root/depth, inherited state,
-archive/move, template and mini defaults. Only the
-[remaining decisions](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions)
-gate their affected package; in particular, approved unused-only Permanent Delete
-does not approve receipt retirement or executable DDL. The fresh foundation must
-deliberately accommodate that reviewed boundary rather than make all unused
-entities permanently unpurgeable through administrative receipt retention.
-Optional allocations remain separately reserved. Existing backups/copies stay
-untouched; no secure byte erasure, Stage 4 completion or pilot is claimed.
+Package A remains the first executable task after this documentation is independently
+accepted: restore main/mini presentation on the existing flat schema, without
+implementing hierarchy/lifecycle early. No package executes in this documentation
+task. B precedes dependent C–E writes; C establishes the Archived Items management
+surface and D completes its connection to the full main/hierarchy presentation.
+Keep each package coherent rather than one helper per task.
+
+All packages preserve SQLite/worker/file protection and the exact Actual/frozen/
+confirmed boundary. Fresh schema creation never deletes, transforms or reuses old
+database files. Entity Delete is not dataset-file cleanup. The final owner decision
+supersedes the former soft-delete/Deleted Items/Permanent Delete and tombstone
+plans. Only Archive (with Unarchive reversal) and unused-only irreversible Delete
+are selected. Independently adjudicate the finite administrative deletion allowlist,
+closure/survivor proof, stale/uncertain handling, complete validation and exact fresh
+DDL before B/C, and referenced-template Delete dependencies before E. Fully erased
+administrative requests deliberately have no exact historical retry promise; retain
+normal guarantees for every surviving/protected request. Add no permanent identity
+registry or deletion ledger. See [remaining decisions](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions).
+Stage 4 remains IN PROGRESS; Stage 5 NOT STARTED. Native qualification, external
+reporting policy, installation/cutover and optional allocation decisions remain
+separate. No backup/copy rewrite or secure-byte-erasure guarantee is selected.
 
 ## Stage 5 — Complete core pilot
 
@@ -268,8 +274,9 @@ control decisions, separately approved conveniences, and future external POL-R
 integration only if explicitly approved. Tags and other conveniences remain
 separately inventoried. Nested hierarchy templates now belong to the approved
 target packages above, not an unresolved optional Stage 6 carryover. Their lifecycle
-defaults are selected by the later amendment; precise fresh DDL and the separate
-entity-purge receipt boundary still require independent technical adjudication.
+defaults follow the final Archive/Delete model; referenced-template deletion
+dependencies, precise fresh DDL and the bounded administrative Delete/receipt
+design still require independent technical adjudication.
 
 Gate: independent acceptance of each optional outcome. Core POL-R is already
 complete and validated by Stage 5. No optional limit, unavailable external value
@@ -282,7 +289,8 @@ or allocation may prevent recording Actual.
 | Dataset timezone changes | Stage 1 configuration / Stage 2 accounting before affected code. |
 | Exact fresh release path, installation/cutover, retired-data cleanup | Before affected deployment and Stage 5 setup; no startup deletion or legacy import. |
 | External redistribution authorization and worked-day zero/omitted-entry treatment | Before affected Stage 3 connected official reporting and Stage 5 pilot; mathematical policy is selected, not reopened. |
-| Narrow purge/receipt exception, tombstone proof and exact fresh schema/DDL | Independent adjudication before affected B/C implementation; lifecycle defaults and unused-only product eligibility are selected, not reopened. |
+| Unused-only Delete engineering and exact fresh schema/DDL | Before B/C: finite administrative allowlist, closure/cross-entity/survivor proof, transaction order, stale/uncertain handling and independent validation, without tombstones/ledger. Selected lifetime limit for erased requests is not reopened. |
+| Referenced-template actual Delete dependencies | Before E; no hidden recoverable deletion or silent removal of retained references. |
 | Allocation controls, defaults/overrides and week-change effects | Before optional Stage 6 work. |
 
 Return material choices to user/ChatGPT. These do not reopen Tkinter/SQLite or

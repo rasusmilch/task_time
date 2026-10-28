@@ -8,31 +8,32 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
-- Document the later approved, unimplemented hierarchy target: three task levels
-  beneath organizational projects, stable independent UUIDs and leaf-only new time;
-  retain a former leaf's direct history and derive Individual/Cumulative without
-  duplicating Actual or task/day POL-R. Select tree main/mini restoration, branch
-  move/archive/soft-delete/restore and atomic reusable nested templates. Separate
-  approved behavior from proposed fresh relational DDL and bounded packages A–F.
-  This supersedes broad Open/Stage 6 template placement and a hierarchy migration
-  assumption: fresh data, distinct reviewed schema, no v1 conversion or compatibility
-  mode, with old files protected. Current runtime/schema 1 is unchanged; no target
-  functionality is delivered here. Reconcile later approved defaults: virtual
-  Unassigned has the same depth; no-selection New Task creates its root; selected
-  archive/delete flags hide descendants by inheritance without erasing independent
-  states; deleted ancestors retain membership and require eligible-path restore;
-  effectively archived branches cannot move. Templates are soft-deleted/restorable
-  with unique active trim/casefold names, independent instances and duplicate task
-  names allowed. Keep Mini Open defaults Off/session-local with conditional Show
-  Main retention and modal focus/grab protection; Sort A-Z starts session-local.
-  Select separate unused-only Permanent Delete from Deleted Items, blocked by any
-  work/revision (including deleted work), active, frozen, confirmation, reporting or
-  protected survivor dependency. Require complete preview, warning, typed consent
-  and atomic final recheck. Document a PROPOSED narrow administrative-receipt
-  retirement/exact-retry tombstone boundary; exception, representation and fresh
-  DDL still need independent adjudication. No historical-evidence purge, automatic
-  cleanup, backup/copy modification or secure-erasure claim. Native, external-policy
-  and pilot gates remain unchanged.
+- Document the approved, unimplemented hierarchy target: three task levels under
+  projects/virtual Unassigned, stable UUIDs, leaf-only new time and retained parent
+  direct History with derived Individual/Cumulative, not extra Actual/POL-R. Keep
+  bounded A–F packages, fresh distinct reviewed schema, no v1 migration/compatibility
+  and old-file protection; executing flat schema 1 remains unchanged. Reconcile the
+  final owner lifecycle decision to Archive/Unarchive plus actual unused-only
+  Delete, superseding the earlier soft-delete/Deleted Items/separate Permanent
+  Delete and tombstone/anti-replay/audit-ledger plans. Archive preserves work/edges,
+  explicit child flags and current accepted UTC timestamps. Add selected Archived
+  Items full hierarchy, context for independent branches, four sibling/top-level
+  name/date sort choices (newest default), expansion/selection retention and no
+  recording controls. Delete requires exact scope/counts, cannot-undo warning,
+  typed DELETE for branch removal and atomic dependency recheck; protected work
+  (including deleted revisions), active, frozen zero/reference, confirmation,
+  reporting/survivor or unresolved administrative dependency blocks the scope.
+  Exclusively owned administration may be erased without permanent identity or
+  historical retry promises; retain exact behavior for survivors/protected evidence.
+  Lost acknowledgement with erased receipt cannot be proven by present absence.
+  Finite closure/transaction/validation engineering remains proposed. Templates use
+  Archive/Unarchive and intended actual Delete; referenced-definition eligibility
+  stays Open, active names trim/casefold unique and applied instances independent.
+  Project/task names remain duplicable with fresh UUIDs. Preserve mini Off/session-
+  local Keep Mini Open, conditional Show Main and modal focus/grabs; main Sort A-Z
+  stays session-local. Package A follows independent documentation review, not this
+  task. No automatic cleanup, dataset-file deletion, backup/copy rewrite, secure
+  erasure, native qualification, Stage 4 completion or Stage 5 authorization.
 - Select Python + Tkinter/ttk with transactional SQLite as the sole replacement
   authority, superseding earlier Qt/PySide6 planning and JSONL-as-target mechanics.
   Preserve exact work semantics, immutable revisions/evidence, stable work-entry
@@ -177,9 +178,9 @@ receipts or commits. No release or production qualification is implied below.
   decided.
   Preserve fresh-data scope without migration/compatibility or startup deletion;
   installation/cutover, timezone changes and allocation decisions remain
-  reserved. The later hierarchy design selects nested templates while retaining
-  explicit unresolved lifecycle details. Explicit Stage 1A approval resolves
-  clock/restart and uncertain-exit rules.
+  reserved. The final hierarchy/lifecycle design selects nested templates; actual
+  referenced-definition Delete dependencies remain Open. Explicit Stage 1A approval
+  resolves clock/restart and uncertain-exit rules.
 - Establish one target architecture owner and distinguish the retained unshipped
   JSONL source, historical bounded Phase 2 acceptance and future SQLite evidence.
   Stage 0 is independently accepted; the connected Stage 1A timer runs on the

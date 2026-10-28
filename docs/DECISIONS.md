@@ -1117,7 +1117,8 @@ review remain required. No Stage 4 completion, pilot or release follows.
 
 ### Hierarchy, tree presentation, lifecycle and fresh-data approval
 
-**Status:** approved target behavior; unimplemented. **Provenance:** the later
+**Status:** approved hierarchy target, unimplemented; its earlier lifecycle model
+is superseded by the final Archive/Delete decision below. **Provenance:** the later
 explicit user documentation/design-consolidation instruction, following reviewed
 source `3cdfd012bd7afe6c979034d65689ac91c6c51ead`, supplies these choices. It
 authorizes documentation only, not schema/service/UI execution. Current owners:
@@ -1142,7 +1143,9 @@ presentation and in-place refresh do not change exact accounting observations.
 The legacy interface is implementation evidence, not authority to import its
 JSONL storage, own-time-only columns, hidden behavior or destructive operations.
 
-Create/Rename/Move/Archive/Unarchive/Soft Delete/Restore retain identities and work.
+At that approval, Create/Rename/Move/Archive/Unarchive/Soft Delete/Restore retained
+identities and work in the selected plan; the final lifecycle supersession below
+replaces its project/task deletion tiers.
 Archive hides descendants by inheritance while independent flags survive parent
 unarchive. Soft Delete warns and retains evidence; Deleted Items provides controlled
 restore. Nested templates have independent identities/definitions, no copied work/
@@ -1173,13 +1176,15 @@ authorized by this design consolidation.
 
 ### Lifecycle defaults and unused-only Permanent Delete amendment
 
-**Status:** approved target behavior; unimplemented. **Provenance:** the explicit
+**Status:** historical approval, unimplemented; deletion tiers, template soft
+deletion and tombstone proposals superseded by the final owner decision below.
+Other structural/window defaults remain selected. **Provenance:** the explicit
 user Lifecycle Policy Documentation Amendment, following independently verified
 source `fe3e1d7439f26f0da7cc432ac21dad34bdaa856c`. This authorizes documentation
 only. It resolves the earlier structural-default questions in place in the
 [requirements](TIMESHEET_REQUIREMENTS.md#projecttask-management-and-branch-lifecycle)
 and adds the separately approved
-[Permanent Delete policy](TIMESHEET_REQUIREMENTS.md#unused-only-permanent-delete).
+[then-current Permanent Delete policy](https://github.com/rasusmilch/task_time/blob/18198fe7a166daf970eb18669c7c4d5fb551267a/docs/TIMESHEET_REQUIREMENTS.md#unused-only-permanent-delete).
 
 Unassigned is virtual with the same three task levels as projects. No-selection
 New Task creates an Unassigned root; otherwise it creates immediately under the
@@ -1207,7 +1212,7 @@ Source inspection establishes that the present version-1 receipt verifier requir
 entity creation/rename/assignment receipts to retain their entity, and immutable
 guards prohibit receipt deletion. The user requires deliberate fresh-schema support
 for unused entities rather than making all of them unpurgeable by receipt design.
-The [narrow mechanism](ARCHITECTURE.md#proposed-unused-entity-purge-and-receipt-boundary)
+The [then-proposed narrow mechanism](https://github.com/rasusmilch/task_time/blob/18198fe7a166daf970eb18669c7c4d5fb551267a/docs/ARCHITECTURE.md#proposed-unused-entity-purge-and-receipt-boundary)
 is an **engineering proposal**, not an approved immutability exception: typed
 administrative dependency closure; retirement only of purge-owned lifecycle facts;
 immutable anti-replay tombstones retaining the exact canonical Request and original
@@ -1217,6 +1222,70 @@ silently substituted for exact content reuse. The precise tombstones, receipt
 exception, fresh schema number and executable DDL require separate independent
 adjudication. No version-1 behavior changes, migration or general historical purge
 framework is authorized. Stage 4 remains IN PROGRESS; Stage 5 NOT STARTED.
+
+### Final Archive/Delete and Archived Items supersession
+
+**Status:** current selected target; unimplemented. **Provenance:** the explicit
+owner Archive / Delete Design Reconciliation instruction, following independently
+verified source `18198fe7a166daf970eb18669c7c4d5fb551267a`. Current owners are the
+[lifecycle requirements](TIMESHEET_REQUIREMENTS.md#projecttask-management-and-branch-lifecycle),
+[Archived Items design](TIMESHEET_REQUIREMENTS.md#archived-items-tree-archive-dates-and-sorting)
+and [proposed administrative boundary](ARCHITECTURE.md#proposed-unused-entity-deletion-and-receipt-boundary).
+This documentation-only instruction supersedes the preceding project/task soft-
+delete/Deleted Items/separate Permanent Delete model and full-content/digest
+anti-replay tombstone or purge-proof-ledger proposals. They were earlier approvals/
+proposals, never implemented functionality; their provenance above is retained,
+not current implementation guidance.
+
+The owner selects exactly two primary lifecycle actions: reversible Archive and
+irreversible unused-only Delete. Unarchive reverses Archive, clearing only selected
+explicit state/current accepted UTC archive time, without changing descendant
+flags/work/relationships. Effective archive visibility is inherited; running
+containing branches refuse and no archived leaf gets new time. Protected history
+requires Archive, never physical removal of that history. Work-entry History Delete
+continues its separate immutable deleted-revision behavior.
+
+Archived Items retains full project/task/subtask/sub-subtask tree navigation,
+independent-branch ancestor context, inherited descendants, unique identities,
+Individual/Cumulative and direct History. Recording is unavailable there. Exactly
+four primary orders are selected: Name A–Z/Z–A and Date Archived Newest/Oldest,
+newest default. Sort siblings/top-level entries without flattening; preserve
+selection/expansion through sorting and normal refresh. Current explicit timestamps
+are accepted UTC instants displayed with the dataset IANA rules; inherited-only
+children use the nearest archived ancestor. No archive-date journal is required.
+
+Delete needs no prior Archive. Display the complete selected subtree/counts and
+cannot-undo warning, require typed DELETE for branches, then revalidate scope and
+full dependency closure transactionally. All work/revisions including deleted work,
+active/correction evidence, frozen references including zero, confirmation/reporting
+and protected survivor or unresolved administrative dependencies block the whole
+scope. An unused child may be separately removable despite a parent's work if its
+closure is independent. No automatic pruning, scope expansion or evidence rewrite.
+Remove eligible rows/edges and exclusively owned administrative facts/requests,
+with no recoverable identity or permanent unused-project ledger. No automatic
+cleanup, dataset-file deletion, backup/copy rewrite or forensic-erasure guarantee.
+Project/task names are reusable; ordinary creation always generates fresh UUIDs.
+
+The owner explicitly accepts the request-lifetime consequence: exact committed
+request/result behavior remains for survivors and protected evidence, but is no
+longer promised for fully erased administrative requests. A later replay may be
+unrecognizable and may reintroduce an old UUID. Lost Delete acknowledgement with
+an erased receipt cannot be proven historically by present absence. This replaces
+the earlier proposal to retain exact payload tombstones; do not hide the limit
+with a new registry, automatic retry or forensic ledger. The finite administrative
+allowlist, cross-entity closure, survivor proof, constraints/transaction order,
+stale/uncertain handling and independent complete validation remain PROPOSED
+engineering work for B/C. Executing schema 1 and its receipt guards are unchanged.
+
+Templates use Archive/Unarchive availability and intended actual definition Delete,
+not soft-delete/Restore terminology. Applied tasks remain independent and active
+names remain unique after trim/casefold. Exact deletion eligibility for applied/
+referenced definitions is Open before E; no silent reference removal/tombstones.
+Other selected hierarchy, mini/session defaults and frozen/POL-R rules remain.
+Package A is the next executable slice only after independent acceptance of this
+documentation; no implementation occurs here. Stage 4 remains IN PROGRESS,
+Stage 5 NOT STARTED, with native, external-policy, installation and release gates
+unchanged.
 
 ## Open decisions
 
@@ -1229,10 +1298,12 @@ owner or candidate implementation design.
 - Allocation defaults/overrides and their interaction with week-start changes.
 - Exact installation replacement and old-data cutover.
 - Dataset-timezone changes before affected configuration/accounting.
-- Precise unused-entity administrative receipt-retirement exception, tombstone/
-  closure proof and exact fresh schema/DDL before affected implementation. The
-  lifecycle defaults and unused-only Permanent Delete product policy above are
-  selected; they are no longer broad Open structural questions.
+- Exact finite administrative Delete allowlist, cross-entity closure/survivor proof,
+  transactional constraints/order, stale/uncertain handling and independent complete
+  validation in the separately reviewed fresh schema, without tombstones or a
+  deletion ledger. Its narrowed historical-retry promise is owner-selected.
+- Exact actual Delete eligibility for applied/referenced template definitions before
+  Package E; no silently erased references or recoverable third deletion tier.
 
 The later rewrite approval places allocations in optional Stage 6; earlier
 first-release inclusion is superseded, not a remaining core pilot decision.

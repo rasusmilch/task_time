@@ -50,22 +50,26 @@ Each parent/leaf task UUID remains an independent reporting identity: only its
 direct task/day Actual enters allocation and confirmation. Parent Cumulative and
 project totals are informational sums, never additional cells or work. Selecting
 a parent UUID does not expand descendants. A former leaf's retained direct work
-stays reportable; move/archive/soft-delete/restore never rewrites frozen labels,
+stays reportable; move/archive/unarchive never rewrites frozen labels,
 basis/text/digest, confirmations or prior receipts. Current project membership
 continues grouping current reports; registered reports retain original context.
 Hierarchy implementation is pending separately reviewed fresh DDL, with no old-data
 conversion selected; existing frozen-evidence semantics are unchanged.
 
-The later unused-only Permanent Delete policy cannot remove an entity referenced
-by any frozen export, including retained labels/project context, scope, full-week
-basis or zero-valued cells, nor by confirmation/reporting dependencies. A protected
-descendant blocks a whole project purge. Previously deleted work still blocks
-purge; zero current Actual or no published file is not proof of unused data.
-Export/confirmation receipts, immutable cells/text/digests and prior/current
-confirmation chains are never retirement candidates. The proposed fresh-schema
-administrative receipt mechanism requires separate adjudication and grants no
-exception to this evidence contract. Existing external files/backups remain
-untouched; no secure byte-erasure promise follows.
+Any protected reporting reference unequivocally blocks project/task Delete,
+including retained frozen labels/project context, scope, full-week basis, zero-valued
+cells, all confirmation/history/current references (including confirmed zero),
+reporting dependencies and their protected requests. A protected descendant blocks
+whole-project Delete. Previously deleted work still blocks; zero current Actual or
+no external report file does not establish unused status. Never rewrite references
+to manufacture eligibility. Use Archive for entities with protected history.
+
+Export/confirmation receipts, cells/text/digests and prior/current chains remain
+immutable and are never administrative deletion candidates. The owner's narrow
+fresh-target exception allows only proven exclusively owned administrative requests
+to be erased, without historical retry recovery, identity tombstones or a deletion
+ledger. It grants no exception to this reporting contract or surviving exact
+receipts. Existing external files/backups stay untouched; no secure-erasure promise.
 
 ## Export identity and contents
 
@@ -76,7 +80,7 @@ a committed request receipt in the same transaction. Preserve:
 | --- | --- |
 | Dates and cutoff | Inclusive civil start/end dates, one UTC accounting observation. |
 | Calendar | Explicit IANA report timezone and selected week-start weekday (Monday=0, Sunday=6). |
-| Scope | All/explicit UUID selection, original request and deleted-task inclusion. Preserve any supported task/project/Unassigned request rather than infer it later. |
+| Scope | All/explicit UUID selection and original request; archived-task inclusion in the hierarchy target. Preserve existing schema-1 retained-deleted inclusion and original supported task/project/Unassigned scope rather than infer it later. No recoverable task Delete tier is implied. |
 | Identity/labels | Task UUIDs, historical names and current-at-export project UUID/group labels; duplicate names remain distinct. |
 | In-scope cells | Exact task/day Actual microseconds, displayed Actual hundredths and suggested POL-R integer quarter counts. Actual and suggestion are visibly separate. |
 | Full-week basis | For every included task/week intersecting the report, all seven civil dates with exact reviewed daily Actual and computed suggestions, cutoff, timezone and week convention, sufficient to prove/reproduce allocation without later Actual. Context outside report dates is not an extra report/confirmation cell. |

@@ -389,8 +389,10 @@ Close History or another work form, then choose Timesheet / POL-R. Fresh opening
 start This week/All tasks and require Preview. Last week uses the committed week
 convention; Custom accepts inclusive dates or draft-only inline calendar choices.
 Selected tasks uses explicit UUID rows (Ctrl/Shift selection), not names or
-hierarchy. Retained deleted tasks remain available. Preview observes a running
-timer without stopping it and shows Actual separately from suggested POL-R.
+hierarchy. Current schema-1 retained-deleted identities remain available; they do
+not define the future Archive/Delete controls, which are not implemented. Preview
+observes a running timer without stopping it and shows Actual separately from
+suggested POL-R.
 Full-week target/adjustment context includes dates outside a partial report.
 Changed inputs require a fresh Preview even after changing back. Older output is
 labeled previous. Save Timesheet opens an owned .txt destination dialog. Cancel

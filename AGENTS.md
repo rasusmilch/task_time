@@ -89,15 +89,20 @@ and [packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
 Exact fresh DDL/schema identity needs separate review; current runtime stays
 schema 1. Hierarchy starts fresh without v1 migration, compatibility mode or legacy
 import. Protect retained old files rather than converting/deleting/reusing them.
-The later lifecycle amendment resolves Unassigned/root depth, inherited archive/
-delete/restore, archived moves, template naming/soft deletion and mini defaults in
-the requirements. Unused-only Permanent Delete is approved target behavior, but
-the [proposed receipt-retirement boundary](docs/ARCHITECTURE.md#proposed-unused-entity-purge-and-receipt-boundary)
-is not an approved exception to immutable receipts or exact retries. Independently
-adjudicate its closure/tombstones and fresh DDL before affected implementation.
-No work/export/confirmation evidence purge or automatic cleanup is authorized.
-These documentation approvals authorize no implementation
-package, Stage 4 completion, Stage 5, merge or release.
+The final owner lifecycle decision supersedes soft-delete/Deleted Items/separate
+Permanent Delete and tombstone/anti-replay-ledger proposals. Select Archive with
+Unarchive reversal, current accepted UTC archive timestamps and the hierarchical
+[Archived Items view](docs/TIMESHEET_REQUIREMENTS.md#archived-items-tree-archive-dates-and-sorting),
+plus irreversible unused-only Delete without an Archive prerequisite. Protected
+work/report/confirmation references always block Delete. Exclusively owned
+administrative requests may be erased after complete proof; their historical retry
+recovery is deliberately no longer promised, with no persistent deletion registry.
+Independently adjudicate the [bounded deletion/receipt design](docs/ARCHITECTURE.md#proposed-unused-entity-deletion-and-receipt-boundary)
+and exact fresh DDL before B/C; applied/referenced-template actual Delete eligibility
+is Open before E. No historical work/evidence deletion or automatic cleanup is
+authorized. Package A is first only after independent documentation acceptance.
+This documentation task executes no implementation package and authorizes no
+Stage 4 completion, Stage 5, merge or release.
 
 ## Reading map
 
