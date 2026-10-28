@@ -221,11 +221,11 @@ retains its original limits.
 
 | Package | Bounded implementation and dependencies | Review/acceptance gate |
 | --- | --- | --- |
-| A — Main/mini restoration on flat data | Restore visible state colors/text, Show Main, Keep Mini Open, shared Today/This Week Individual/Cumulative columns, minute-boundary repaint and immediate refresh using existing services. With no descendants, Cumulative equals Individual. Do not imply hierarchy, archive or templates work yet. Resolve window/view option policy before affected UI code. | Same accepted timer/worker accounting, no row churn for unchanged data, modal blocking, clock/date/unavailable detection, close/reopen, actual Tk input. No persistence/schema changes merely for presentation. |
-| B — Fresh hierarchy schema/services | Resolve root/depth and membership questions; review exact fresh STRICT DDL, distinct schema identity, guards and typed operations before implementation. Create on new/empty destinations only. Add bounded forest/read/move/new-time eligibility and derived accounting; preserve direct History/report identity. No v1 migration or fallback. | FK/trigger and transaction guards, cycles/depth/cross-project/cross-dataset refusal, active-parent prevention, atomic subtree identity preservation, complete startup/backup/restore/receipt validation. Every active reader includes retained direct work before hierarchical writers are exposed. |
-| C — Lifecycle and management | After B and delete/restore/archive-move policy adjudication, add reviewed Archive/Unarchive/Soft Delete/Restore, discoverable project/task managers and Deleted Items. | Inherited hiding versus independent flags, complete branch warnings, active-branch refusal, controlled restore, stale/uncertain/crash rollback and immutable evidence retention. No physical task/work deletion. |
+| A — Main/mini restoration on flat data | Restore visible state colors/text, Show Main, Keep Mini Open, shared Today/This Week Individual/Cumulative columns, minute-boundary repaint and immediate refresh using existing services. Keep Mini Open defaults Off/session-local; Show Main retains mini only when On; Sort A-Z is initially session-local. With no descendants, Cumulative equals Individual. Do not imply hierarchy, archive or templates work yet. | Same accepted timer/worker accounting, no row churn for unchanged data, modal focus/grab protection, clock/date/unavailable detection, close/reopen, actual Tk input. No persistence/schema changes merely for presentation. |
+| B — Fresh hierarchy schema/services | Use three task levels under real projects and virtual Unassigned; no-selection New Task creates an Unassigned root. Review exact fresh STRICT DDL, distinct schema identity, guards and typed operations, including the proposed purge/receipt boundary, before affected implementation. Create on new/empty destinations only. Add bounded forest/read/move/new-time eligibility and derived accounting; preserve direct History/report identity. No v1 migration or fallback. | FK/trigger and transaction guards, cycles/depth/cross-project/cross-dataset refusal, active-parent prevention, atomic subtree identity preservation, complete startup/backup/restore/receipt validation. Every active reader includes retained direct work before hierarchical writers are exposed. |
+| C — Lifecycle and management | After B, implement selected-node explicit Archive/Soft Delete, inherited hiding, retained membership, eligible-path Unarchive/Restore and effectively archived Move refusal. Add discoverable managers/Deleted Items. Separately review the narrow administrative-receipt exception/tombstone mechanism before enabling unused-only Permanent Delete from Deleted Items. | Independent descendant states survive; no child exposed under a deleted parent; active-branch refusal. Purge requires complete dependency preview, warning, typed confirmation and final transactional recheck; any protected descendant/history blocks the whole scope. Atomic structure/receipt handling, exact retries and independent verification, no physical historical-work deletion or automatic purge. |
 | D — Connected hierarchy tree | Connect A presentation to B/C snapshots and operations: context-sensitive New Task, project distinctions, expansion/selection, running ancestors, sibling A-Z, branch movement, direct History and visibility controls. | Actual Tk create/move/lifecycle workflow, leaf eligibility at UI and service, unchanged task selection/UUIDs, collapsed/hidden descendant totals, no double count, modal main/mini blocking. No placeholders represented as completed actions. |
-| E — Nested templates | After B/D and definition-lifecycle policy, connect Create/Edit/Duplicate/Delete/Apply with versioned SQLite definitions and reviewed atomic fresh UUID insertion. | All-or-none application, multiple roots/nesting/depth checks, active destination refusal, no name-based merging, no copied work/evidence, old instances unchanged by later definition edits, exact retries after uncertain commit. |
+| E — Nested templates | After B/D, connect Create/Edit/Duplicate/Soft Delete/Restore/Apply with versioned SQLite definitions, active trim/casefold name uniqueness and reviewed atomic fresh UUID insertion. | All-or-none application, multiple roots/nesting/depth checks, active destination refusal, duplicate task names allowed, template restore-name collision refusal, no name-based merging, no copied work/evidence, old instances unchanged by later definition edits, exact retries after uncertain commit. |
 | F — Target integration and native qualification | Exercise recording → hierarchy changes → direct History → frozen report → absolute confirmation → correction/reconciliation → backup/cold restore/fresh operation. Carry forward compatible math/failure tests; add focused cross-boundary evidence for changed guarantees. | Full applicable regression for shared schema/accounting, real Tk, native Windows/NTFS tree/modal/mini/input and file/recovery checks. Earlier flat-schema or unattended results cannot qualify changed behavior. No pilot/cutover/Stage 4 completion follows without separate adjudication. |
 
 Order B before dependent lifecycle/tree/template writes; A may be reviewed alone
@@ -234,8 +234,15 @@ Every package preserves SQLite/worker/file protection and the existing exact
 Actual/frozen/confirmed boundary. Fresh hierarchy data creation never deletes,
 reuses or transforms old files; old retained objects are not a compatibility gate.
 Do not choose a target schema number or activate it in this documentation task.
-The [Open questions](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions)
-gate only their affected package; optional allocations remain separately reserved.
+The later lifecycle amendment resolves the former root/depth, inherited state,
+archive/move, template and mini defaults. Only the
+[remaining decisions](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions)
+gate their affected package; in particular, approved unused-only Permanent Delete
+does not approve receipt retirement or executable DDL. The fresh foundation must
+deliberately accommodate that reviewed boundary rather than make all unused
+entities permanently unpurgeable through administrative receipt retention.
+Optional allocations remain separately reserved. Existing backups/copies stay
+untouched; no secure byte erasure, Stage 4 completion or pilot is claimed.
 
 ## Stage 5 — Complete core pilot
 
@@ -260,8 +267,9 @@ passing tests or a source-launch smoke alone are not release approval.
 control decisions, separately approved conveniences, and future external POL-R
 integration only if explicitly approved. Tags and other conveniences remain
 separately inventoried. Nested hierarchy templates now belong to the approved
-target packages above, not an unresolved optional Stage 6 carryover; only their
-explicit remaining lifecycle details need adjudication.
+target packages above, not an unresolved optional Stage 6 carryover. Their lifecycle
+defaults are selected by the later amendment; precise fresh DDL and the separate
+entity-purge receipt boundary still require independent technical adjudication.
 
 Gate: independent acceptance of each optional outcome. Core POL-R is already
 complete and validated by Stage 5. No optional limit, unavailable external value
@@ -274,8 +282,7 @@ or allocation may prevent recording Actual.
 | Dataset timezone changes | Stage 1 configuration / Stage 2 accounting before affected code. |
 | Exact fresh release path, installation/cutover, retired-data cleanup | Before affected deployment and Stage 5 setup; no startup deletion or legacy import. |
 | External redistribution authorization and worked-day zero/omitted-entry treatment | Before affected Stage 3 connected official reporting and Stage 5 pilot; mathematical policy is selected, not reopened. |
-| Hierarchy roots/depth, lifecycle restoration and template-definition details | Before affected packages B–E, as enumerated in the requirements; selected hierarchy/template behavior is not reopened. |
-| Main/mini window lifecycle and Keep Mini Open policy | Before affected package A/D behavior; see requirements. |
+| Narrow purge/receipt exception, tombstone proof and exact fresh schema/DDL | Independent adjudication before affected B/C implementation; lifecycle defaults and unused-only product eligibility are selected, not reopened. |
 | Allocation controls, defaults/overrides and week-change effects | Before optional Stage 6 work. |
 
 Return material choices to user/ChatGPT. These do not reopen Tkinter/SQLite or

@@ -66,7 +66,7 @@ complete behavioral slices follow the roadmap, not optional post-pilot bolt-ons:
 
 | Facts | Required relationships and invariants |
 | --- | --- |
-| Projects/tasks | Stable UUIDs, optional current membership, retained deleted identities. Projects own no work/timer. |
+| Projects/tasks | Stable UUIDs, optional current membership, retained deleted identities through ordinary lifecycle. Proposed unused-only purge/receipt boundary below is not an active exception. Projects own no work/timer. |
 | Timed work | Stable entry UUID, task UUID, genuine UTC endpoints, current revision and deletion state. Closed spans positive; active timer represented explicitly without a fabricated stop. |
 | Date-only work | Stable entry UUID, task UUID, civil work date and integer duration; no synthetic endpoints. Distinct shape and constraints. |
 | Work revisions | Immutable typed prior/new revision facts, audit time, optional comment, ownership and deletion evidence. Current reference changes atomically with revision. |
@@ -351,10 +351,10 @@ cache, new worker or Python hierarchy projection becomes authoritative.
 
 | Proposed relation | Fields/relationships and purpose |
 | --- | --- |
-| projects | Stable project UUID, name, reviewed version and explicit archive/deletion state; retained identity. No work/timer FK targets projects. |
-| tasks | Stable task UUID, optional project FK, optional self-parent FK, name, reviewed version and explicit archive/deletion state. Task and parent cannot be identical. Duplicate names remain possible. |
+| projects | Stable project UUID, name, reviewed version and explicit archive/deletion state; identity retained through ordinary lifecycle. Physical removal is limited to the separately reviewed unused-only purge boundary below. No work/timer FK targets projects. |
+| tasks | Stable task UUID, optional project FK, optional self-parent FK, name, reviewed version and explicit archive/deletion state. Task and parent cannot be identical. Duplicate names remain valid; retained identity has only the unused-only purge exception below. |
 | task structure | Parent adjacency is the authority. A subtree shares current project membership; root project may be NULL. Whether membership is stored per task with transactional subtree updates or derived from roots is an exact-DDL review choice; do not keep two independently mutable memberships. Proposed preference: per-task membership, consistent with existing report reads, validated on every affected edge. |
-| template definitions | Stable template UUID, name and reviewed version. Definition deletion/retention fields depend on the explicitly Open lifecycle policy. |
+| template definitions | Stable template UUID, name, reviewed version and explicit soft-deletion state. Active names are unique after trim/casefold; restoration must recheck uniqueness. Proposed normalized-name key/UNIQUE representation requires DDL review; SQLite lower/NOCASE is not proof of Python casefold equivalence. Definitions are restorable, not included in entity Permanent Delete. |
 | template nodes | Template UUID, node identity, name and optional parent within the same template. Proposed compound FK binds (template, parent node) to that template; root NULL has no parent. No work/timer/confirmation/source-task identity is embedded. |
 | existing evidence families | Retain direct task ownership in work_entries/revisions, active timer/corrections, frozen export/task/basis/cells, confirmation batches/cells/current references and committed_requests. Adapt fresh FK/guards to the reviewed fresh schema; never introduce parent cumulative work rows. |
 
@@ -377,13 +377,18 @@ depth, membership and lifecycle invariants as well as every existing evidence
 chain. Direct-SQL invalid states must reject wherever selected constraints can
 enforce them; service-only guards must be identified explicitly in that review.
 
-Three task levels below projects is fixed. Unassigned root depth and the exact
-explicit/inherited delete/restore representation remain
-[Open policy](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions).
-Archive must distinguish an item's own flag from effective ancestor hiding, so
-unarchiving a parent cannot clear independent child flags. Use the same separation
-for deletion only if the independently reviewed delete/restore policy selects it.
-Do not choose a cascade representation that silently resolves restoration policy.
+Real projects and virtual Unassigned both allow three task levels. Unassigned is
+presented as a group, with no additional persisted project UUID; proposed root
+membership remains NULL. No selection for New Task means an Unassigned root;
+otherwise the destination is the selected group/project or eligible parent task.
+
+Archive and soft delete each change the selected node's own flag. Effective hidden
+state is derived through ancestry, preserving independent descendant flags. Deleted
+projects/parents retain edges/membership; Restore requires an eligible ancestor
+path and cannot independently expose a child beneath a deleted parent. An archived
+ancestor still governs visibility. Refuse Move on an effectively archived selected
+branch until it is unarchived; preserve explicit descendant archive states on every
+allowed move. Do not cascade state flags or rewrite history to achieve visibility.
 
 ### Explicit operations, atomicity and uncertainty
 
@@ -393,12 +398,13 @@ with fresh DDL review:
 
 | Use case | Strict reviewed inputs / result |
 | --- | --- |
-| Create project/task | Explicit new UUID/name and fixed destination project/parent UUIDs, plus destination reviewed versions; return created UUID/version. Root creation follows the adjudicated selection policy. |
+| Create project/task | Explicit new UUID/name and fixed destination project/parent UUIDs, plus destination reviewed versions; return created UUID/version. No selection creates an Unassigned root; virtual group selection carries no invented project UUID. |
 | Rename project/task | Entity UUID, expected version and name; retain all relationships/work. |
-| Move task branch / assign project | Root UUID and expected version, reviewed source/destination identities and versions, new parent/project (or selected root/Unassigned); return affected identities/versions. Validate current subtree, ancestry, membership and active eligibility atomically. |
+| Move task branch / assign project | Root UUID and expected version, reviewed source/destination identities and versions, new parent/project (or selected root/Unassigned); return affected identities/versions. Validate current subtree, ancestry, membership and active eligibility atomically; refuse effectively archived selection and retain descendant states. |
 | Archive/Unarchive project or task branch | Typed entity UUID, expected version and explicit desired state; validate inherited context/active descendants, preserve independent child flags. |
-| Soft-delete/Restore | Typed entity UUID, expected version and reviewed branch/destination context under the separately resolved lifecycle policy; never physically remove work or evidence. UI Delete requires explicit warning, not inferred consent. |
-| Create/Edit/Duplicate/Delete template | Explicit template UUID/version and complete typed node set for changes; validate graph before writing and inside transaction. Duplicate uses fresh definition/node identities. No copied task/work receipts. |
+| Soft-delete/Restore | Typed entity UUID, expected version and reviewed branch/ancestor context; change selected explicit state only, retain membership and descendant states. Restore rechecks eligible ancestry. Never physically remove work or evidence; Delete requires explicit warning. |
+| Preview/Permanent Delete | Complete selected soft-deleted task/project branch and dependency preview; frozen reviewed identities/versions/closure, explicit warning and typed confirmation, then final transactional recheck. The proposed receipt boundary below gates executable design. |
+| Create/Edit/Duplicate/Soft-delete/Restore template | Explicit template UUID/version and complete typed node set for changes; validate graph and active trim/casefold name uniqueness inside transaction, including Restore. Duplicate uses fresh definition/node identities; applied tasks remain independent. No copied task/work receipts. |
 | Apply template | Reviewed template UUID/version, fixed destination UUID/version, and a frozen mapping of every template node to a fresh task UUID; return that same created mapping. Validate full prospective depth and leaf/active eligibility before insertion. |
 | Detached reads | One consistent structure/state snapshot plus current direct daily facts at one cutoff; management/deleted/template readers expose stable IDs/versions, never widget row indices as authority. |
 
@@ -418,7 +424,107 @@ An explicit Stop/Switch must commit first when an operation would make the runni
 task a parent or otherwise ineligible, or archive/delete its containing branch.
 No management service may perform an implicit timer operation. An eligible active
 branch move must retain the same active entry/start and pass all destination
-invariants; any unselected policy detail returns for adjudication.
+invariants, including effective archive refusal and independent descendant states.
+
+### Proposed unused-entity purge and receipt boundary
+
+**PROPOSED engineering mechanism only.** The user approves unused-only Permanent
+Delete behavior, not a receipt-immutability exception, tombstone representation,
+fresh schema number or executable DDL. All four require independent adjudication
+before implementation. This is not a general historical-evidence purge, migration
+or repair framework. Current flat schema 1 and its immutable guards stay unchanged.
+
+Source constraint: `SQLiteStore.verify_receipts()` requires creation/rename/project
+assignment receipts to reference a present entity with a sufficient version.
+`_receipt()` compares exact canonical Request bytes and returns the original stored
+result before stale checks; immutable triggers prohibit receipt UPDATE/DELETE.
+Deleting an unused entity while retaining an ordinary receipt therefore fails
+complete validation. Calling every administrative receipt protected history would
+instead make the approved feature impossible. Neither ignoring missing rows nor
+removing current guards is a valid resolution.
+
+Proposed fresh-schema solution: distinguish a finite allowlist of purely
+administrative lifecycle dependencies from protected work/report/confirmation
+evidence, retire only a proven purge-owned administrative closure, and preserve
+exact request identity/result information in immutable anti-replay tombstones.
+The following is a design for review, not a currently permitted write path:
+
+1. **Read-only preview.** Capture selected deleted entity UUID/type/version, its
+   complete branch/edges/current states and typed incoming/outgoing dependencies.
+   Scan all work entries/revisions, active/correction evidence, frozen exports
+   (including task labels, project references, full basis and scope/request
+   references), confirmations/current references, reporting dependencies and
+   receipts. Deleted work still blocks; any protected descendant blocks a whole
+   project purge. Counts alone, FK checks alone or zero current Actual cannot
+   establish eligibility. No deletion or authorization results from preview.
+2. **Administrative closure.** From that fixed branch, follow typed lifecycle
+   request/result/relationship dependencies to a fixed point. Classify by explicit
+   operation contracts, not arbitrary UUID string searches. A receipt is eligible
+   for retirement only if all its effects and the records requiring its continued
+   ordinary entity validation are purge-owned administrative facts. References to
+   a surviving project/parent as context require an explicitly reviewed rule, not
+   automatic retirement of that survivor's receipts. Any protected relationship
+   with surviving evidence blocks outright; a tombstone cannot waive it. Shared
+   template-Apply or multi-entity receipts spanning survivors cannot be retired
+   wholesale. Unless independence of the surviving evidence can be proved without
+   weakening its original relationships, refuse the purge. Unknown or unprovable
+   dependencies block. Never enlarge the confirmed scope, retire survivor-owned
+   records or remove history to make the closure fit.
+3. **Minimal exact-retry tombstones.** Proposed logical fields are retired request
+   UUID/dataset, original operation/commit sequence, exact canonical Request bytes,
+   original canonical result bytes and a binding to the purge receipt/closed
+   entity scope. Proposed purge proof freezes the removed UUIDs/types, reviewed
+   terminal versions/deletion states/parent-project edges and the exact retired
+   request set/associations, sufficient to cross-check administrative ownership
+   against the original typed requests and results. It is not a mutable missing-row
+   exemption or an accounting authority. Keep only what proves identity, retirement
+   ownership/order and unchanged retry results; no copied work or second hierarchy
+   projection. Exact bytes are deliberate: digest-only matching would change the
+   current exact request comparison contract and needs separate approval, not an optimization
+   silently substituted here. Canonical payloads may retain names; this mechanism
+   is not personal-data erasure. Precise layout, FK/UNIQUE/trigger choices and
+   sufficient closure proof remain subject to review.
+4. **Atomic installation.** After explicit warning/typed confirmation, BEGIN
+   IMMEDIATE and resolve an exact purge-request retry before stale checks. Rebuild
+   and compare the complete reviewed branch/dependency closure and versions;
+   reject new descendants, new work/references, altered state or changed receipt
+   dependencies without changing any subset. Insert the proposed immutable
+   tombstones and purge proof/receipt, retire only authorized administrative rows,
+   remove eligible unused structure in safe dependency order and verify all
+   surviving relationships in the same transaction. No FK cascade may erase
+   evidence. Preserve original commit ordering; do not renumber surviving history.
+   If any check/COMMIT fails, rollback or reconcile truthfully through the existing
+   worker/request boundary; no partial purge or new coordinator.
+5. **No replay or resurrection.** Proposed lookup spans ordinary receipts and
+   tombstones with one globally unique request identity. An exact retired request
+   returns its original committed result before stale/existence checks, never
+   reexecutes Create/Rename/Move or restores removed rows. Changed content rejects.
+   The old result is historical completion, not proof that its entity still
+   exists; current state comes from a fresh read. Exact purge retries return the
+   original purge result without another deletion. Removed entity UUIDs remain
+   reserved by the purge proof, rejecting attempts to recreate them under a new
+   Request. Identity reservation must survive backup/restore and later purges;
+   tombstones, purge proofs and purge receipts are not themselves retirement
+   candidates. Their historical identity references require a reviewed representation
+   that never masquerades as a surviving live entity relationship.
+6. **Independent complete verification.** Extend the one authoritative fresh-schema
+   validator, not a parallel permissive path. Startup, cold inspection, independent
+   backup validation and restore must verify canonical tombstone Request/results,
+   globally disjoint/unique IDs and original ordering, closed-scope proof and purge
+   receipt associations, finite allowed administrative operations, absence of
+   unauthorized survivor dependencies and continued full work/export/confirmation
+   validation. Every retired record must have exactly one authorized retirement;
+   missing, inconsistent, duplicate or orphan tombstones/proofs refuse. A manifest
+   alone is not proof of dependency absence. Exact proof sufficiency must be reviewed;
+   inability to validate completely blocks enabling purge, not grounds to skip
+   checks or weaken current evidence validators.
+
+The only candidate exception is physical retirement of this proven administrative
+closure in a separately approved fresh schema. Ordinary receipt immutability and
+all protected evidence remain intact; even that narrow exception is **not yet
+approved**. Do not implement trigger-disabling, broad receipt deletion or a rule
+that every missing entity is presumed purged. Backups/external filesystem copies
+are never rewritten and no secure byte-erasure claim follows.
 
 ### Accounting, tree presentation and evidence integration
 
@@ -434,7 +540,8 @@ Individual; its History/edit requests still target that UUID's own entries.
 Main tree and mini consume the same detached report/cutoff. Proposed row keys are
 typed project/task identities to prevent collision; selection/expansion stays
 presentation state, never authorization. Reconcile changed nodes/values in place;
-Sort A-Z orders siblings without losing parentage. Active ancestors expand and
+Sort A-Z orders siblings without losing parentage and is initially session-local.
+Active ancestors expand and
 show a distinct descendant-running indicator, not extra active timers. Disable
 new-time actions on projects/nonleaves/effectively archived/deleted tasks both in
 UI and in the service. Management remains reachable from visible main entry points;
@@ -443,9 +550,10 @@ owned dialogs keep existing callback-only lifecycle and pending-request ownershi
 Minute-boundary amount repaint and immediate operation/period refresh replace
 unnecessary row rebuilding, while observation still detects clock jumps, date
 rollover and unavailable totals. Existing `_tick` is not permission to delay action
-timestamps or persist ticks. Mini's state bar, Show Main, Keep Mini Open and
-topmost behavior require the remaining window-policy decisions and native modal/
-focus tests; no second root, timer or worker is justified.
+timestamps or persist ticks. Keep Mini Open defaults Off and remains session-local;
+Show Main keeps mini visible only while it is On. Mini/topmost handling must never
+steal focus or grabs from owned modals. Native modal/focus tests remain required;
+no second root, timer or worker is justified.
 
 Timesheet and POL-R continue to read direct task/day amounts and the unchanged
 allocation contract; a parent selection is not subtree scope. Current project

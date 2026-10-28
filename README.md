@@ -84,6 +84,23 @@ POL-R stays task/day based; neither rollups nor project grouping add work or cha
 frozen evidence. Current source still has flat tasks and its existing main/mini
 controls; no hierarchy/lifecycle/template workflow is delivered by this design.
 
+Approved lifecycle defaults make Unassigned a virtual group with the same depth,
+New Task without selection an Unassigned root, and hiding inherited from selected
+node archive/deletion while independent descendant states survive. Restore needs
+eligible ancestry; effectively archived branches cannot move. Templates are
+soft-deleted/restorable with unique active trim/casefold names; task duplicates
+remain valid. Keep Mini Open defaults Off/session-local; Show Main retains mini
+only when On, and mini never takes focus/grabs from modals. Sort A-Z is initially
+session-local.
+
+Separate Permanent Delete is selected only through Deleted Items for unused
+soft-deleted projects/tasks and eligible complete branches. Any historical work,
+frozen/reporting/confirmation dependency or protected descendant blocks it.
+Eligible deletion requires dependency preview, warning, typed confirmation and
+transactional recheck. The proposed administrative-receipt/tombstone boundary
+needs independent review before implementation; there is no automatic purge or
+secure-erasure promise, and existing backups/copies remain unchanged.
+
 Implementation will start with a distinctly identified fresh SQLite schema and
 fresh data, **without v1 migration, compatibility mode or legacy import**. Old files
 remain protected and may refuse; nothing automatically deletes or recreates them.

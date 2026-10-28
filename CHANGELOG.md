@@ -17,8 +17,22 @@ receipts or commits. No release or production qualification is implied below.
   This supersedes broad Open/Stage 6 template placement and a hierarchy migration
   assumption: fresh data, distinct reviewed schema, no v1 conversion or compatibility
   mode, with old files protected. Current runtime/schema 1 is unchanged; no target
-  functionality is delivered here. Retain explicit unresolved placement/lifecycle/
-  window details and all native, external-policy and pilot gates.
+  functionality is delivered here. Reconcile later approved defaults: virtual
+  Unassigned has the same depth; no-selection New Task creates its root; selected
+  archive/delete flags hide descendants by inheritance without erasing independent
+  states; deleted ancestors retain membership and require eligible-path restore;
+  effectively archived branches cannot move. Templates are soft-deleted/restorable
+  with unique active trim/casefold names, independent instances and duplicate task
+  names allowed. Keep Mini Open defaults Off/session-local with conditional Show
+  Main retention and modal focus/grab protection; Sort A-Z starts session-local.
+  Select separate unused-only Permanent Delete from Deleted Items, blocked by any
+  work/revision (including deleted work), active, frozen, confirmation, reporting or
+  protected survivor dependency. Require complete preview, warning, typed consent
+  and atomic final recheck. Document a PROPOSED narrow administrative-receipt
+  retirement/exact-retry tombstone boundary; exception, representation and fresh
+  DDL still need independent adjudication. No historical-evidence purge, automatic
+  cleanup, backup/copy modification or secure-erasure claim. Native, external-policy
+  and pilot gates remain unchanged.
 - Select Python + Tkinter/ttk with transactional SQLite as the sole replacement
   authority, superseding earlier Qt/PySide6 planning and JSONL-as-target mechanics.
   Preserve exact work semantics, immutable revisions/evidence, stable work-entry

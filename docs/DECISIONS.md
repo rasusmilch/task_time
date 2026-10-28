@@ -1151,8 +1151,9 @@ a template never changes applied instances. Create/Edit/Duplicate/Delete/Apply i
 selected; recurrence/scheduling/external creation is not.
 
 This resolves the earlier broad Open replacement-template question and supersedes
-its optional Stage 6 placement. Only enumerated lifecycle/placement/window details
-remain Open. It also supersedes the assumption that hierarchy must transform
+its optional Stage 6 placement. At that point enumerated lifecycle/placement/window
+details remained Open, later resolved as specified in the amendment below. It also
+supersedes the assumption that hierarchy must transform
 existing version-1 SQLite datasets: the user explicitly chooses a **fresh schema
 and fresh data, without migration/backward compatibility**. Retain old objects and
 refuse incompatibility; do not delete/recreate/convert them. Stage 4C's earlier
@@ -1163,10 +1164,59 @@ for separate approval; actual runtime version 1/application identity are unchang
 
 The relational table/service shapes in Architecture and package boundaries in
 Roadmap are engineering proposals derived from inspected source dependencies,
-not extra user-approved product decisions. The precise Open questions are retained
-in the requirements; implementers must not settle them through schema defaults or
-tests. Stage 4 remains IN PROGRESS; Stage 5, native acceptance, installation/cutover,
-external policy, merge and release are not authorized by this design consolidation.
+not extra user-approved product decisions. At that approval the lifecycle/root/
+template/window questions remained Open; the later amendment below resolves the
+specified defaults without rewriting that earlier provenance. Current remaining
+decisions belong in the requirements. Stage 4 remains IN PROGRESS; Stage 5, native
+acceptance, installation/cutover, external policy, merge and release are not
+authorized by this design consolidation.
+
+### Lifecycle defaults and unused-only Permanent Delete amendment
+
+**Status:** approved target behavior; unimplemented. **Provenance:** the explicit
+user Lifecycle Policy Documentation Amendment, following independently verified
+source `fe3e1d7439f26f0da7cc432ac21dad34bdaa856c`. This authorizes documentation
+only. It resolves the earlier structural-default questions in place in the
+[requirements](TIMESHEET_REQUIREMENTS.md#projecttask-management-and-branch-lifecycle)
+and adds the separately approved
+[Permanent Delete policy](TIMESHEET_REQUIREMENTS.md#unused-only-permanent-delete).
+
+Unassigned is virtual with the same three task levels as projects. No-selection
+New Task creates an Unassigned root; otherwise it creates immediately under the
+selected project/group or eligible task. Archive/soft-delete changes the selected
+node explicitly; inherited hiding does not erase independent descendant states.
+Deleted parents/projects retain membership. Restore needs eligible ancestry and
+cannot expose a child beneath a deleted parent. Effectively archived selected
+branches cannot move until unarchived; allowed moves preserve descendant flags.
+Templates are soft-deleted/restorable, active names are unique after trim/casefold,
+task-name duplicates remain valid, and applied instances are independent.
+Keep Mini Open defaults Off/session-local; Show Main retains mini only when On;
+mini cannot steal modal focus/grabs. Sort A-Z is initially session-local.
+
+Permanent Delete is distinct from ordinary soft Delete and available only in
+Deleted Items for soft-deleted projects/tasks and complete eligible branches.
+Any work/revision (including deleted work), active timer, frozen export/reference,
+confirmation, reporting dependency or protected survivor relationship blocks the
+whole scope; a protected descendant blocks a whole project purge. Unused branches
+require complete dependency preview, warning, typed confirmation and final
+transactional recheck. No partial deletion, evidence rewrite, unrelated-record
+damage, automatic/age/background purge, backup/copy rewrite or secure-byte-erasure
+promise is approved. This is not permission to purge templates or history.
+
+Source inspection establishes that the present version-1 receipt verifier requires
+entity creation/rename/assignment receipts to retain their entity, and immutable
+guards prohibit receipt deletion. The user requires deliberate fresh-schema support
+for unused entities rather than making all of them unpurgeable by receipt design.
+The [narrow mechanism](ARCHITECTURE.md#proposed-unused-entity-purge-and-receipt-boundary)
+is an **engineering proposal**, not an approved immutability exception: typed
+administrative dependency closure; retirement only of purge-owned lifecycle facts;
+immutable anti-replay tombstones retaining the exact canonical Request and original
+result; atomic purge proof/receipt; no survivor damage; complete independent
+validation and stale/racing-decision refusal. Digest-only retry matching is not
+silently substituted for exact content reuse. The precise tombstones, receipt
+exception, fresh schema number and executable DDL require separate independent
+adjudication. No version-1 behavior changes, migration or general historical purge
+framework is authorized. Stage 4 remains IN PROGRESS; Stage 5 NOT STARTED.
 
 ## Open decisions
 
@@ -1179,10 +1229,10 @@ owner or candidate implementation design.
 - Allocation defaults/overrides and their interaction with week-start changes.
 - Exact installation replacement and old-data cutover.
 - Dataset-timezone changes before affected configuration/accounting.
-- Hierarchy Unassigned/root depth and placement; branch delete/restore and
-  archive/move interactions; template definition lifecycle/naming; main/mini
-  window lifecycle, as enumerated in the requirements. Core nested
-  template and leaf-only recording behavior is now selected, not broadly Open.
+- Precise unused-entity administrative receipt-retirement exception, tombstone/
+  closure proof and exact fresh schema/DDL before affected implementation. The
+  lifecycle defaults and unused-only Permanent Delete product policy above are
+  selected; they are no longer broad Open structural questions.
 
 The later rewrite approval places allocations in optional Stage 6; earlier
 first-release inclusion is superseded, not a remaining core pilot decision.

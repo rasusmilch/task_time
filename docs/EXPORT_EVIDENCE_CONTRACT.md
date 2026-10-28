@@ -56,6 +56,17 @@ continues grouping current reports; registered reports retain original context.
 Hierarchy implementation is pending separately reviewed fresh DDL, with no old-data
 conversion selected; existing frozen-evidence semantics are unchanged.
 
+The later unused-only Permanent Delete policy cannot remove an entity referenced
+by any frozen export, including retained labels/project context, scope, full-week
+basis or zero-valued cells, nor by confirmation/reporting dependencies. A protected
+descendant blocks a whole project purge. Previously deleted work still blocks
+purge; zero current Actual or no published file is not proof of unused data.
+Export/confirmation receipts, immutable cells/text/digests and prior/current
+confirmation chains are never retirement candidates. The proposed fresh-schema
+administrative receipt mechanism requires separate adjudication and grants no
+exception to this evidence contract. Existing external files/backups remain
+untouched; no secure byte-erasure promise follows.
+
 ## Export identity and contents
 
 Use one stable export UUID and immutable typed relational evidence/cells, with

@@ -104,8 +104,9 @@ and optional parent task. Projects have independent identities but never own wor
 or timers. Task names need not be globally unique. Cycles, duplicate identities,
 cross-dataset relationships and depth overflow reject. Branch moves preserve all
 task UUIDs and work; project membership determines current reporting grouping.
-Unassigned task branches remain supported; their precise depth convention is an
-Open detail below, not permission for an unlimited tree.
+Unassigned is a virtual project group, not an additional persisted project or work
+owner. It has the same three-task-level limit as real projects: root Task,
+Subtask, Sub-subtask. Duplicate task names remain valid at every level.
 
 Only leaf tasks may accept **new time**: Start, Switch destination, Add timed work
 and Add date-only work. A task becomes a parent when it gains children. Its
@@ -134,34 +135,80 @@ filesystem objects is protection, not a requirement to make them compatible.
 
 Provide discoverable project and task management entry points in the main UI,
 including a visible project-management route rather than only an unrelated
-dropdown. Create project with its own identity; Create/New Task inserts directly
-beneath the selected project or task, with destination shown before submission.
+dropdown. Create project with its own identity. With no selection, New Task creates
+an Unassigned root. Otherwise it inserts immediately beneath the selected real or
+virtual project group or eligible task, with destination shown before submission.
 Refuse a child beyond the depth bound. Rename preserves UUID/work. Move/reparent
 reviews source and destination, then atomically moves the entire subtree without
 cycles, cross-dataset references, identity changes or partial project reassignment.
-Assigning/moving between projects uses this same branch invariant. Exact root
-creation and detach/Unassigned choices still needing adjudication are listed below.
+Assigning/moving between projects uses this same branch invariant. A selected
+effectively archived branch cannot move until it is unarchived, including clearing
+inherited hiding through its ancestor path. An allowed move preserves independently
+archived descendant states; it must not clear flags to make a move possible.
 
-Archive and soft delete are distinct operations. Archive hides the selected branch
-in normal navigation, is reversible, and preserves work/evidence. Descendants
-inherit hidden status; independently archived children keep that state when a
-parent is unarchived. Unarchive reverses only the selected explicit archive state,
-not a child's independent choice; an archived ancestor can still keep it hidden.
+Archive and soft delete are distinct operations. Each explicitly changes only the
+selected project/task node; descendants are hidden by inheritance, not by bulk
+rewriting their independent states. Archive is reversible and preserves all work/
+evidence. Unarchive/Restore do not erase independently applied descendant archive
+or deletion states. An archived ancestor can still keep an unarchived child hidden.
 
 Soft Delete requires an explicit warning identifying the affected branch. It
 retains identities, work revisions, exports and confirmations and removes the
 branch from ordinary active navigation. Provide a Deleted Items manager with
-controlled Restore and historical-work access; do not physically delete ordinary
-task/project records or work. Archived visibility and Deleted Items must be
-distinguishable, and enabling either view must not authorize new time implicitly.
+controlled Restore and historical-work access. Ordinary Delete is never physical
+deletion. Physical entity removal is restricted to the separate unused-only
+Permanent Delete below for eligible task/project structure. Archived visibility and Deleted
+Items must be distinguishable, and enabling either view must not authorize new
+time implicitly.
 Task soft deletion does not delete its effective work: existing History Delete
 of a work entry remains a different operation, appending a deleted revision that
 removes that entry from current Actual while retaining its evidence.
-Restoration must preserve identity/history and pass the same structural guards.
+Deleted parents/projects retain descendant membership. Restore requires an
+eligible ancestor path and preserves identity/history and structural guards; a
+child cannot be independently exposed beneath a deleted parent. Restoring a parent
+does not restore an independently deleted child or clear any independent archive
+state. An archived ancestor continues to govern normal visibility.
 Project and task Create/Rename/Move/Archive/Unarchive/Delete/Restore use explicit
 reviewed operations, cancellation without writes, stale-state diagnostics and
-authoritative completion. Detailed delete/restore membership policy remains Open
-where specified below; implementation must not choose it silently.
+authoritative completion. These structural/lifecycle defaults are approved target
+behavior, not delivered services in the current flat runtime.
+
+### Unused-only Permanent Delete
+
+Permanent Delete is a separate user-facing action available **only in Deleted
+Items**. It applies only to soft-deleted projects/tasks and their eligible complete
+branches, including descendants hidden by inherited deletion. It does not apply to
+templates, work entries, reports, confirmations or arbitrary receipt history.
+Never offer it as ordinary Delete, creation cleanup or automatic maintenance.
+
+Refuse the whole selected scope if any node has recorded work, any work revision
+(including previously deleted work), an active timer, frozen export/reference,
+confirmation, reporting dependency or protected relationship with surviving
+evidence. A project with any protected descendant cannot be purged as a whole;
+do not silently prune the protected part or widen the selection to delete a
+dependency. Current zero Actual is not evidence that a branch is unused.
+
+An eligible unused branch may be physically removed only after a complete
+dependency preview, explicit warning, typed confirmation and final transactional
+recheck of the exact reviewed scope and dependencies. Reject a stale or racing
+decision; require fresh review rather than automatically expanding authorization.
+The entire purge commits or none of it does. Do not damage unrelated rows, leave
+partial structure, silently cascade into work, rewrite frozen evidence or reuse
+removed identities. No automatic, age-based or background purge is selected.
+
+Existing backups and filesystem copies remain unchanged. This is not secure byte
+erasure: retained request identity/evidence, SQLite storage and external copies may
+retain information. Do not delete/rewrite those files as part of Permanent Delete.
+
+Creation/rename and other administrative receipts must not make every otherwise
+unused entity permanently ineligible by construction. The fresh schema must
+deliberately support a narrowly reviewed administrative dependency closure and
+request anti-replay boundary. That does **not** approve arbitrary receipt deletion
+or weaken exact committed-request reuse. The
+[proposed receipt/purge mechanism](ARCHITECTURE.md#proposed-unused-entity-purge-and-receipt-boundary)
+requires separate independent adjudication of its retention exception, tombstone
+representation, fresh schema marker and executable DDL before implementation.
+Current version-1 receipts and their entity-presence validator remain unchanged.
 
 ### Reusable nested templates
 
@@ -171,12 +218,15 @@ timer, confirmations, committed operation receipts or work revisions copied from
 tasks**. Template-management operations still have their own ordinary request
 receipts. Template edits do not modify previously applied instances.
 
-Provide Create, Edit, Duplicate, Delete and Apply in a discoverable Templates
+Provide Create, Edit, Duplicate, Delete, Restore and Apply in a discoverable Templates
 manager. Create/Edit builds the reusable nested definition; Duplicate creates an
 independent definition identity; Delete removes its availability for later Apply,
-never instantiated tasks or history. Whether definition deletion itself is soft
-or physical is not yet selected. Apply fixes the selected project/parent task,
-shows the structure/destination for review, and inserts template roots immediately
+never instantiated tasks or history. Templates are soft-deleted and restorable;
+active template names are unique after trim/casefold. Duplicate/rename/restore
+must respect that active-name constraint without overwriting another definition.
+Applied instances remain independent, and task names may still duplicate. Apply
+fixes the selected project/parent task, shows the structure/destination for review,
+and inserts template roots immediately
 beneath it. Every inserted task receives a fresh UUID, preserving nested
 relationships; the entire insertion and receipt commit atomically. Refuse depth
 overflow, stale/ineligible destination and attempts to make a running task a
@@ -192,8 +242,9 @@ green Running and red Stopped with text/symbols so color is not the sole cue.
 Ancestors indicate a running descendant without claiming their own timer; expand
 the active task's ancestors automatically. Collapse never excludes descendant
 work from totals. Sort A-Z must preserve parentage and identity, not flatten or
-merge equal names. Navigation provides context-sensitive New Task, task History
-and metadata editing, visible project/task management, archived visibility and
+merge equal names. Sort A-Z is initially session-local. Navigation provides
+context-sensitive New Task, task History and metadata editing, visible
+project/task management, archived visibility and
 Deleted Items. Starting a project or nonleaf is unavailable; Stop still targets
 the sole actual timer, and Switch requires an eligible distinct leaf. Existing
 modal and uncertain-request blocking applies to main and mini actions alike.
@@ -212,7 +263,9 @@ Mini restores a clear green/red state bar, task name, **Today**, Start/Stop,
 Show Main and Keep Mini Open, with appropriate always-on-top behavior. It keeps
 the existing active-task/otherwise-selected-task rule and displays that task's
 Individual Today; it is never a second timer or a cumulative POL-R source.
-Detailed window-option persistence/defaults remain Open below.
+Keep Mini Open defaults Off and is session-local. Show Main leaves mini visible
+only when that option is On. Mini must not steal focus or grabs from owned modals;
+topmost behavior must respect that existing modal owner.
 
 Use minute-boundary presentation updates and immediate post-operation refresh,
 updating changed row values/structure rather than rebuilding unchanged rows.
@@ -820,11 +873,7 @@ Stage 4 remains IN PROGRESS and no pilot is authorized.
 | Decision | First affected gate |
 | --- | --- |
 | Dataset-timezone changes and historical date attribution under changes | Stage 1 dataset configuration / Stage 2 accounting, before implementation. Explicit fixed dataset zone is required; change policy is not guessed. |
-| Unassigned hierarchy roots and moves | Before foundation/tree implementation: depth counting without a project, New Task with no selection, and whether a child can detach to a root or Unassigned. Three-level/project maximum is fixed. |
-| Delete/restore branch policy | Before lifecycle implementation: explicit versus inherited deletion representation; restoration beneath deleted/archived ancestors, independent descendant deletions, name conflicts and project-delete membership handling. Identity/history retention and active-branch refusal are fixed. |
-| Archive/move interaction | Before lifecycle/move implementation: whether moving an inherited-hidden descendant out of an archived branch is permitted and what review is required. Explicit child archive flags must survive. |
-| Template definition lifecycle and local naming | Before affected schema/services: definition Delete retention and any sibling/template-name uniqueness beyond the approved absence of global task-name uniqueness. Never merge/overwrite by name. |
-| Main/mini window lifecycle | Before GUI restoration: Keep Mini Open default/persistence, Show Main/Close interaction and topmost behavior while an owned modal is active. Existing modal safety cannot weaken. Ordinary period/sort presentation details are not new product-policy gates. |
+| Permanent Delete receipt boundary | Before affected fresh schema/service implementation: independently adjudicate administrative dependency closure, narrowly scoped lifecycle-receipt retirement, exact retry/anti-replay tombstones and complete verification. Approved unused-only behavior does not approve a receipt-immutability exception or executable DDL. |
 | Exact release paths, installation/cutover and retired-data cleanup | Before affected deployment/Stage 5 fresh pilot setup; startup deletion is unauthorized. |
 | Allocation controls/recurrence/overrides/week-change effects | Before optional Stage 6 allocation work. |
 

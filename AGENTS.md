@@ -89,8 +89,14 @@ and [packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
 Exact fresh DDL/schema identity needs separate review; current runtime stays
 schema 1. Hierarchy starts fresh without v1 migration, compatibility mode or legacy
 import. Protect retained old files rather than converting/deleting/reusing them.
-Do not resolve the explicitly Open root/lifecycle/template/window policies through
-implementation defaults. This documentation approval authorizes no implementation
+The later lifecycle amendment resolves Unassigned/root depth, inherited archive/
+delete/restore, archived moves, template naming/soft deletion and mini defaults in
+the requirements. Unused-only Permanent Delete is approved target behavior, but
+the [proposed receipt-retirement boundary](docs/ARCHITECTURE.md#proposed-unused-entity-purge-and-receipt-boundary)
+is not an approved exception to immutable receipts or exact retries. Independently
+adjudicate its closure/tombstones and fresh DDL before affected implementation.
+No work/export/confirmation evidence purge or automatic cleanup is authorized.
+These documentation approvals authorize no implementation
 package, Stage 4 completion, Stage 5, merge or release.
 
 ## Reading map
