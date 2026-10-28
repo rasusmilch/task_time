@@ -350,10 +350,14 @@ Do not delete sidecars or change permissions to force inspection. Metadata/diges
 checks are bounded observations, not reliable exclusion of another writer or
 hostile-directory protection. Use Backup Chronicle for a consistent live image.
 
-A future approved transition requires its own exact source/target definitions,
-transformation and evidence-preservation tests. The selected default is cold
-transformation into a new nonexistent directory with independent target validation;
-the original stays untouched. No such transformation or migration engine exists now.
+The approved hierarchy target is not implemented by these commands. It will require
+a separately reviewed distinct fresh schema and fresh data, without migration,
+backward-compatible mode or automatic conversion of this runtime's version-1
+datasets. Existing files remain protected; choose a new/empty folder explicitly
+when that runtime is separately approved. Do not delete journals or old databases
+to bypass refusal. Any hypothetical future data-preserving transformation would
+require separate source/target and safety approval; no such engine exists now.
+See the [target boundary](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary).
 
 ## Manual work and week configuration
 

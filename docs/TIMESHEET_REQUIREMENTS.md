@@ -45,7 +45,8 @@ Temporary old source during development creates no compatibility obligation.
 Existing files must remain protected during development. Absence of a release
 preservation obligation for the retired dataset does not authorize arbitrary
 startup deletion. Exact release paths, installation/cutover and cleanup remain
-Open. Protect new-runtime audit history and future schema/data upgrades.
+Open. Protect new-runtime audit history; the approved hierarchy target starts
+fresh rather than transforming existing datasets.
 
 ## SELECTED — Source-mode first-run and remembered startup
 
@@ -88,6 +89,143 @@ Moving or renaming a task preserves its identity/work. Reports group all its
 historical work by **current** project membership. Derived project subtotals are
 informational; never add them again to their tasks. Parent/descendant display
 must not turn another task's work into a task's own Actual.
+
+### Approved hierarchy target and fresh-data boundary
+
+The later explicit hierarchy-design instruction selects the following target;
+it is **not implemented** in the current flat SQLite runtime. It supersedes the
+former Open/optional placement of replacement templates and the assumption that
+this hierarchy change would transform existing version-1 data. Exact fresh DDL
+and its distinct supported schema identity remain PROPOSED pending separate review.
+
+Maximum structure is Project → Task → Subtask → Sub-subtask: three task levels
+below a project. Each task has an independent UUID, optional project membership
+and optional parent task. Projects have independent identities but never own work
+or timers. Task names need not be globally unique. Cycles, duplicate identities,
+cross-dataset relationships and depth overflow reject. Branch moves preserve all
+task UUIDs and work; project membership determines current reporting grouping.
+Unassigned task branches remain supported; their precise depth convention is an
+Open detail below, not permission for an unlimited tree.
+
+Only leaf tasks may accept **new time**: Start, Switch destination, Add timed work
+and Add date-only work. A task becomes a parent when it gains children. Its
+previous direct work remains its Individual Actual, independently readable and
+correctable through its own Work History; it is not transferred to children,
+discarded or duplicated. Correcting/deleting existing work is not creating new
+work. A parent's History stays direct-task history, not an implicit descendant
+browser. Descendant work remains accessible by selecting each descendant UUID.
+
+A running task cannot become a parent or be moved into an ineligible state.
+Adding a child, reparenting or applying a template cannot bypass this rule.
+Archiving/deleting any branch containing the running task refuses until an
+explicit prior Stop/Switch. No hierarchy operation silently stops, switches,
+restarts or changes an active timer. Archived/deleted branches are unavailable
+for ordinary new recording; historical accounting/evidence remains retained.
+
+The new hierarchy runtime will require fresh data: no version-1 migration,
+backward-compatible mode, conversion engine, compatibility shim, JSONL import or
+old-runtime fallback. Its schema must identify itself distinctly so an old dataset
+cannot be mistaken for supported new data. Incompatible datasets may refuse.
+Creation still requires exclusive ownership and a new/empty destination; never
+delete, truncate, replace or reuse an old database automatically. Retention of old
+filesystem objects is protection, not a requirement to make them compatible.
+
+### Project/task management and branch lifecycle
+
+Provide discoverable project and task management entry points in the main UI,
+including a visible project-management route rather than only an unrelated
+dropdown. Create project with its own identity; Create/New Task inserts directly
+beneath the selected project or task, with destination shown before submission.
+Refuse a child beyond the depth bound. Rename preserves UUID/work. Move/reparent
+reviews source and destination, then atomically moves the entire subtree without
+cycles, cross-dataset references, identity changes or partial project reassignment.
+Assigning/moving between projects uses this same branch invariant. Exact root
+creation and detach/Unassigned choices still needing adjudication are listed below.
+
+Archive and soft delete are distinct operations. Archive hides the selected branch
+in normal navigation, is reversible, and preserves work/evidence. Descendants
+inherit hidden status; independently archived children keep that state when a
+parent is unarchived. Unarchive reverses only the selected explicit archive state,
+not a child's independent choice; an archived ancestor can still keep it hidden.
+
+Soft Delete requires an explicit warning identifying the affected branch. It
+retains identities, work revisions, exports and confirmations and removes the
+branch from ordinary active navigation. Provide a Deleted Items manager with
+controlled Restore and historical-work access; do not physically delete ordinary
+task/project records or work. Archived visibility and Deleted Items must be
+distinguishable, and enabling either view must not authorize new time implicitly.
+Task soft deletion does not delete its effective work: existing History Delete
+of a work entry remains a different operation, appending a deleted revision that
+removes that entry from current Actual while retaining its evidence.
+Restoration must preserve identity/history and pass the same structural guards.
+Project and task Create/Rename/Move/Archive/Unarchive/Delete/Restore use explicit
+reviewed operations, cancellation without writes, stale-state diagnostics and
+authoritative completion. Detailed delete/restore membership policy remains Open
+where specified below; implementation must not choose it silently.
+
+### Reusable nested templates
+
+Templates have their own UUID/name and a collection of named task nodes with
+parent relationships fitting the depth limit. They contain **no Actual, active
+timer, confirmations, committed operation receipts or work revisions copied from
+tasks**. Template-management operations still have their own ordinary request
+receipts. Template edits do not modify previously applied instances.
+
+Provide Create, Edit, Duplicate, Delete and Apply in a discoverable Templates
+manager. Create/Edit builds the reusable nested definition; Duplicate creates an
+independent definition identity; Delete removes its availability for later Apply,
+never instantiated tasks or history. Whether definition deletion itself is soft
+or physical is not yet selected. Apply fixes the selected project/parent task,
+shows the structure/destination for review, and inserts template roots immediately
+beneath it. Every inserted task receives a fresh UUID, preserving nested
+relationships; the entire insertion and receipt commit atomically. Refuse depth
+overflow, stale/ineligible destination and attempts to make a running task a
+parent; never overwrite unrelated tasks or leave partial insertion. Duplicate
+names do not authorize merging. No recurrence, scheduling or automatic external
+task creation is selected.
+
+### Target main and mini presentation
+
+Restore a practical tree layout with distinct project and task rows, expandable
+branches, preserved task selection by UUID and running/stopped indicators. Prefer
+green Running and red Stopped with text/symbols so color is not the sole cue.
+Ancestors indicate a running descendant without claiming their own timer; expand
+the active task's ancestors automatically. Collapse never excludes descendant
+work from totals. Sort A-Z must preserve parentage and identity, not flatten or
+merge equal names. Navigation provides context-sensitive New Task, task History
+and metadata editing, visible project/task management, archived visibility and
+Deleted Items. Starting a project or nonleaf is unavailable; Stop still targets
+the sole actual timer, and Switch requires an eligible distinct leaf. Existing
+modal and uncertain-request blocking applies to main and mini actions alike.
+
+Main task columns are **Individual** and **Cumulative**, controlled together by
+**Today / This Week**. Individual is exact-task work for that period; Cumulative
+is that Individual plus every descendant's Individual exactly once. Project rows
+show only derived cumulative totals. A parent with older direct work displays it
+in Individual and includes it once in Cumulative; its History opens only that
+direct work. Application totals sum underlying task Actual once, never both
+columns or project subtotals. Archived/deleted history continues to contribute
+where applicable even when navigation hides its rows. Main/mini/report daily
+facts share the existing exact accounting and one coordinated cutoff.
+
+Mini restores a clear green/red state bar, task name, **Today**, Start/Stop,
+Show Main and Keep Mini Open, with appropriate always-on-top behavior. It keeps
+the existing active-task/otherwise-selected-task rule and displays that task's
+Individual Today; it is never a second timer or a cumulative POL-R source.
+Detailed window-option persistence/defaults remain Open below.
+
+Use minute-boundary presentation updates and immediate post-operation refresh,
+updating changed row values/structure rather than rebuilding unchanged rows.
+No continuously changing started-at timestamp is required in main. Redraw cadence
+is separate from observation: clock movement, date rollover and unavailable
+calculations must still be detected accurately, and actions keep exact accepted
+instants. No per-minute persistence, rounded work or sleeping UI loop is selected.
+
+These display rollups do not alter reporting scope: POL-R and frozen Timesheets
+remain independent task/day identities with existing exact allocation, Unknown/
+confirmed-zero, immutable labels and evidence. Parent Cumulative values are never
+additional Actual or confirmation cells. Selecting a parent UUID in Timesheet
+still selects only that task, not descendants.
 
 ## SELECTED — Recording and timer operation
 
@@ -188,8 +326,10 @@ exports and confirmations neither erase nor increase calendar Actual.
 
 ## SELECTED — Calendar Actual displays
 
-Main task rows show **Today** and **This week**, each task's own work, including
-parents. Mini-mode shows **Today** for its displayed task and retains Start/Stop.
+The current flat runtime shows **Today** and **This week** for each task's own
+work. The approved hierarchy target replaces those main columns with shared-period
+Individual/Cumulative as specified above. Mini-mode retains Individual **Today**
+for its displayed task and Start/Stop.
 Application totals include retained work of deleted tasks, while the active list
 omits deleted tasks. One coordinated refresh uses one aware UTC cutoff and local
 observation date for main/mini. This week is the complete containing calendar
@@ -553,7 +693,7 @@ gates; no automatic external allocation verification is established.
 | Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
-| Subtask templates | Existing legacy convenience; replacement semantics Open before any optional implementation. No silent carryover of hierarchy/duplicate-name rules. |
+| Hierarchy, branch lifecycle, tree main/mini and nested templates | Approved target packages A–F in the roadmap; not implemented, not silently inherited from JSONL and not authorized for execution by this design task. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
@@ -663,24 +803,28 @@ unavailable rather than authorizing recovery. Existing files are never removed o
 repaired to force acceptance. Backup/restore retain their complete current-schema
 validation and protected destination contracts.
 
-Future upgrades require separately approved exact source/target definitions,
-version-specific transformation, preservation/adjudication of all immutable evidence,
-independent validation, ownership and failure/install/recovery tests. The selected
-safe default is cold transformation into a previously nonexistent directory outside
-an active application/worker session, protecting the original. Validate the target
-before ordinary startup; do not operate original/upgraded clones as competing work
-authorities. No target version, automatic upgrade/downgrade, in-place replacement,
-source retirement/deletion or migration engine is active. The [technical safety
-contract](ARCHITECTURE.md#cold-compatibility-inspection-and-future-transition-boundary)
-owns the concrete boundary. Stage 4C is independently accepted for functional
-development; Stage 4 remains IN PROGRESS and no pilot is authorized.
+The later hierarchy approval selects fresh creation rather than a version-1
+transformation. No migration/backward compatibility obligation belongs to that
+plan; old files remain protected and incompatible data refuses. The current
+runtime still supports only its exact version-1 schema. A hypothetical later
+data-preserving transition would require a separate explicit approval and complete
+source/target, evidence, ownership, installation/failure and recovery contract;
+Stage 4C's historical safety contract is not permission or an implementation
+requirement to build one for hierarchy. No target version or DDL is activated here.
+The [technical boundary](ARCHITECTURE.md#cold-compatibility-inspection-and-future-transition-boundary)
+remains strict. Stage 4C is independently accepted for functional development;
+Stage 4 remains IN PROGRESS and no pilot is authorized.
 
 ## OPEN — Reserved user/ChatGPT decisions
 
 | Decision | First affected gate |
 | --- | --- |
 | Dataset-timezone changes and historical date attribution under changes | Stage 1 dataset configuration / Stage 2 accounting, before implementation. Explicit fixed dataset zone is required; change policy is not guessed. |
-| Replacement template semantics | Before optional Stage 6 template implementation. |
+| Unassigned hierarchy roots and moves | Before foundation/tree implementation: depth counting without a project, New Task with no selection, and whether a child can detach to a root or Unassigned. Three-level/project maximum is fixed. |
+| Delete/restore branch policy | Before lifecycle implementation: explicit versus inherited deletion representation; restoration beneath deleted/archived ancestors, independent descendant deletions, name conflicts and project-delete membership handling. Identity/history retention and active-branch refusal are fixed. |
+| Archive/move interaction | Before lifecycle/move implementation: whether moving an inherited-hidden descendant out of an archived branch is permitted and what review is required. Explicit child archive flags must survive. |
+| Template definition lifecycle and local naming | Before affected schema/services: definition Delete retention and any sibling/template-name uniqueness beyond the approved absence of global task-name uniqueness. Never merge/overwrite by name. |
+| Main/mini window lifecycle | Before GUI restoration: Keep Mini Open default/persistence, Show Main/Close interaction and topmost behavior while an owned modal is active. Existing modal safety cannot weaken. Ordinary period/sort presentation details are not new product-policy gates. |
 | Exact release paths, installation/cutover and retired-data cleanup | Before affected deployment/Stage 5 fresh pilot setup; startup deletion is unauthorized. |
 | Allocation controls/recurrence/overrides/week-change effects | Before optional Stage 6 allocation work. |
 

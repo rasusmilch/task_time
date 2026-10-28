@@ -45,6 +45,17 @@ cannot rewrite saved evidence. Retry/recovery reads that snapshot, not current
 accounting or a retained widget. A registered report remains recoverable even
 with no currently verified external copy.
 
+The later approved hierarchy target does not change these units or formulas.
+Each parent/leaf task UUID remains an independent reporting identity: only its
+direct task/day Actual enters allocation and confirmation. Parent Cumulative and
+project totals are informational sums, never additional cells or work. Selecting
+a parent UUID does not expand descendants. A former leaf's retained direct work
+stays reportable; move/archive/soft-delete/restore never rewrites frozen labels,
+basis/text/digest, confirmations or prior receipts. Current project membership
+continues grouping current reports; registered reports retain original context.
+Hierarchy implementation is pending separately reviewed fresh DDL, with no old-data
+conversion selected; existing frozen-evidence semantics are unchanged.
+
 ## Export identity and contents
 
 Use one stable export UUID and immutable typed relational evidence/cells, with

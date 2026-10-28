@@ -345,11 +345,46 @@ cold inspection from ordinary locked native hot-journal rollback followed by ful
 validation. Clean invalid candidates must preserve bytes/entries; physical SQLite
 rollback effects on journaled candidates are not Chronicle evidence mutations.
 Never infer genuine hot-journal recovery solely from a journal filename.
-Future transitions need the
-[version-specific safety contract](ARCHITECTURE.md#cold-compatibility-inspection-and-future-transition-boundary);
-there is no current migration target or engine. No legacy import/compatibility fixture obligation.
+A hypothetical separately approved data-preserving transition would need the
+[version-specific safety contract](ARCHITECTURE.md#cold-compatibility-inspection-and-future-transition-boundary).
+The hierarchy target instead requires fresh data, a distinct approved schema and
+strict old-dataset refusal, not v1 conversion tests. No migration engine, legacy
+import or backward-compatibility fixture obligation is selected.
 Linux fault injection does not prove arbitrary concurrent-writer, power-loss or
 native Windows/NTFS safety.
+
+## Hierarchy target evidence — planned, not implemented
+
+This section maps the later user-approved
+[target requirements](TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary)
+to [packages A–F](ROADMAP.md#hierarchy-target--bounded-packages-a-f). It does not
+claim tests exist or ran, and does not turn retained JSONL tests into SQLite
+qualification. Resolve listed Open policies and approve exact fresh DDL before
+writing assertions that would silently select them.
+
+| Guarantee | Required focused evidence |
+| --- | --- |
+| Fresh schema boundary | Current runtime remains v1 until separately approved implementation. New schema is distinctly identified; new/empty creation is exclusive. Old/foreign/partial/damaged/WAL candidates refuse without conversion, replacement, file deletion or repair. Cold inspection stays read-only/non-recovering; supported new images retain locked native rollback recovery and complete validation before readiness. |
+| Forest and depth | Real SQLite task/project UUIDs and duplicate names; optional roots/membership per adjudication; three task levels under a project; cycles/self-parent/cross-dataset/depth overflow reject. Moving a height-two subtree must check its deepest leaf, not just destination depth. Test SQL-enforced constraints separately from transactional cross-row postconditions. |
+| New-time eligibility | Start, Switch destination and both manual writers accept only eligible leaves. Existing parent direct work remains readable/correctable/deletable as work. Adding child/move/template cannot make a running task ineligible; archive/delete active containing branches refuse. No implicit timer event or synthetic Stop. |
+| Accounting conservation | Independent expected examples with parent direct work plus children/grandchildren: Individual stays direct, Cumulative includes each descendant once, project/application totals never sum rollups twice. Collapse, sort and archived/deleted navigation filters do not remove applicable history. One cutoff/main/mini, all weekdays, midnight/DST, exact microseconds, future dated work and unavailable calculations retain existing semantics. Carry forward compatible edge-case suites rather than rebuilding them inside a giant integration test. |
+| Branch moves | Complete before/after UUID/work/evidence comparison for same-project reparent and cross-project move; all descendants get coherent current grouping. Stale source/destination/affected state rejects atomically. Frozen labels/text/basis and absolute confirmations remain unchanged while fresh grouping updates. |
+| Archive/deletion/restore | Distinct explicit and inherited visibility; unarchiving parent preserves child's independent archive flag. Soft Delete warns, retains identities/evidence and removes ordinary navigation; Deleted Items can read/restore under approved ancestor policy. Ineligible/stale restore leaves all facts unchanged. Test independent descendant states and project membership under the resolved policy, not a guessed cascade. |
+| Templates | Real SQLite definition/node validation; multi-root nesting, duplicate names, deepest prospective insertion, fresh UUID mapping, no actual work/evidence copied. Edit/Duplicate/Delete do not mutate applied instances. Apply interruption/faults at nodes/receipt/COMMIT yields all or none, exact retry returns the same instance, changed identity content rejects. No template JSON authority. |
+| Main/mini and ownership | Actual Tk controls and separate server-input evidence: context-sensitive New Task, sibling A-Z, expansion/selection preserved by UUID, active ancestors expanded/indicated, parent direct History, visible project/lifecycle/template entry points. Green/red plus text, Individual/Cumulative shared period, mini Individual Today/Show Main/Keep Mini Open/topmost per approved options. Existing modal focus/Escape/cancel/pending-result ownership persists; minute repaint does not delay action timestamps or hide time/date changes. |
+| Evidence/recovery integration | Representative hierarchical/revised/hidden/deleted/active data with frozen full-week basis, confirmations/zero/current references and exact receipts survives backup validation, cold restore and fresh operation. Compare logical complete facts, not physical page layout. New restored work must not rewrite original/image/frozen evidence. No migration fixture or live replacement. |
+
+Use disposable data through actual services/worker; preserve complete logical and
+relevant filesystem snapshots for refusal/read-purity checks without reading an
+actively Windows-locked lock byte. Inject partial subtree/template writes,
+failed COMMIT/independent probe/result delivery and cleanup failures. Preserve
+original diagnostics and exact pending Request, not an invented recovery ledger.
+Shared schema/accounting changes require Level C plus applicable integration;
+GUI restoration on existing flat data uses proportional focused/affected tests.
+Native Windows tree, modal/focus, topmost and actual operator input remain Level E
+evidence; Linux tests, source inspection and synthetic observations cannot replace
+them. Actual suspend/resume, external reporting policy, installation and Stage 5
+remain separate gates. No tests or datasets are created by this documentation task.
 
 ## Tk thread, interaction and lifecycle evidence
 
@@ -623,8 +658,9 @@ Use disposable temporary datasets only. Do not initialize services against
 `~/.task_timer_data`, read actual user settings for source investigation, import
 old history, delete user files or change installation paths. Fresh rewrite scope
 removes migration/compatibility obligations, not data protection. Exact release
-cutover/cleanup remains Open; new-runtime backup/cold restore and future protected
-upgrades require integrity evidence. No arbitrary startup deletion is authorized.
+cutover/cleanup remains Open; new-runtime backup/cold restore and fresh hierarchy
+schema admission require integrity evidence. No hierarchy migration/compatibility
+work is required, and no arbitrary startup deletion is authorized.
 
 ## Commands and evidence classification
 

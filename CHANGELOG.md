@@ -8,6 +8,17 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Document the later approved, unimplemented hierarchy target: three task levels
+  beneath organizational projects, stable independent UUIDs and leaf-only new time;
+  retain a former leaf's direct history and derive Individual/Cumulative without
+  duplicating Actual or task/day POL-R. Select tree main/mini restoration, branch
+  move/archive/soft-delete/restore and atomic reusable nested templates. Separate
+  approved behavior from proposed fresh relational DDL and bounded packages A–F.
+  This supersedes broad Open/Stage 6 template placement and a hierarchy migration
+  assumption: fresh data, distinct reviewed schema, no v1 conversion or compatibility
+  mode, with old files protected. Current runtime/schema 1 is unchanged; no target
+  functionality is delivered here. Retain explicit unresolved placement/lifecycle/
+  window details and all native, external-policy and pilot gates.
 - Select Python + Tkinter/ttk with transactional SQLite as the sole replacement
   authority, superseding earlier Qt/PySide6 planning and JSONL-as-target mechanics.
   Preserve exact work semantics, immutable revisions/evidence, stable work-entry
@@ -151,8 +162,10 @@ receipts or commits. No release or production qualification is implied below.
   reporting/pilot. Allocation budgets/conveniences remain optional and separately
   decided.
   Preserve fresh-data scope without migration/compatibility or startup deletion;
-  installation/cutover, timezone changes and template/allocation decisions remain
-  reserved. Explicit Stage 1A approval resolves clock/restart and uncertain-exit rules.
+  installation/cutover, timezone changes and allocation decisions remain
+  reserved. The later hierarchy design selects nested templates while retaining
+  explicit unresolved lifecycle details. Explicit Stage 1A approval resolves
+  clock/restart and uncertain-exit rules.
 - Establish one target architecture owner and distinguish the retained unshipped
   JSONL source, historical bounded Phase 2 acceptance and future SQLite evidence.
   Stage 0 is independently accepted; the connected Stage 1A timer runs on the

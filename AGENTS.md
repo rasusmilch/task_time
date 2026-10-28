@@ -81,6 +81,18 @@ Read the product contract before POL-R-related work. Selected does not mean
 implemented. Do not claim target functionality is active or treat superseded
 legacy behavior as permanent replacement-product policy.
 
+The later hierarchy-design approval selects tree main/mini, leaf-only new time,
+branch lifecycle and nested templates as an unimplemented target. Read the
+[approved behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
+[proposed fresh foundation](docs/ARCHITECTURE.md#proposed-fresh-hierarchy-foundation)
+and [packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
+Exact fresh DDL/schema identity needs separate review; current runtime stays
+schema 1. Hierarchy starts fresh without v1 migration, compatibility mode or legacy
+import. Protect retained old files rather than converting/deleting/reusing them.
+Do not resolve the explicitly Open root/lifecycle/template/window policies through
+implementation defaults. This documentation approval authorizes no implementation
+package, Stage 4 completion, Stage 5, merge or release.
+
 ## Reading map
 
 | Owner | Read for |

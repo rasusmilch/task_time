@@ -27,6 +27,12 @@ development, with schema 1 unchanged. Stage 4 remains IN PROGRESS; native
 qualification is incomplete and Stage 5 is not started. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
+The later user-approved hierarchy design is documented below as an **unimplemented
+target**. Product behavior is selected; the fresh relational model, exact DDL,
+schema marker and proposed service shapes require separate review before coding.
+Current source still implements flat schema 1. No migration or compatibility mode
+is required for the hierarchy target, and no runtime schema changes in this task.
+
 ## Small application and responsibility boundaries
 
 One local application operates one selected local-disk dataset with one serialized
@@ -41,7 +47,7 @@ Use shallow modules, splitting actual responsibilities rather than layers per cl
 | Bootstrap / source setup | Explicit CLI/headless recovery or zero-argument local selection; one Tk root, existing worker startup and readiness handoff. |
 | Plain records, time and accounting | Typed values and pure calculations; import neither Tkinter nor sqlite3. |
 | Explicit use-case services | Complete recording/edit/export/confirmation requests and transaction results through a narrow storage adapter. |
-| SQLite adapter | Built-in sqlite3 connection/profile, relational reads/writes, constraints, transactions and request lookup; future protected upgrades. No widget access. |
+| SQLite adapter | Built-in sqlite3 connection/profile, relational reads/writes, constraints, transactions and request lookup; strict schema admission and protected fresh creation. No widget access or hierarchy migration engine. |
 | Reports, files and backups | Frozen report rendering, protected publication/verification and supported database backup/restore. |
 | Tk views and small controllers | Drafts, detached display rows, explicit requests, completion/error presentation and owned-window lifecycle. No SQL. |
 
@@ -69,7 +75,7 @@ complete behavioral slices follow the roadmap, not optional post-pilot bolt-ons:
 | Absolute confirmation batches/cells | Immutable batch identity/audit/source and selected task/day absolute integer quarter counts, reviewed prior identity and exact cell-specific acknowledgement. One batch is atomic. No arbitrary hundredth confirmations. |
 | Current confirmed references | Each known task/day points to its latest committed immutable confirmation cell/batch; absence means Unknown, an explicit zero row means known zero. No additive confirmed balance. |
 | Committed request receipts | Unique request identity, strictly comparable request content and committed result, atomically tied to the use case. Not file-availability state. |
-| Dataset metadata | Schema version, explicit IANA timezone, selected week convention and one nullable canonical reminder-dismissed local date. No computed status/summary ledger. Future upgrades protect new-runtime data; no legacy import. |
+| Dataset metadata | Schema identity, explicit IANA timezone, selected week convention and one nullable canonical reminder-dismissed local date. No computed status/summary ledger or legacy import. Current runtime stays version 1; proposed hierarchy requires a distinct fresh schema identity. |
 
 Use enforced foreign keys and appropriate STRICT, CHECK and UNIQUE constraints;
 validate bounded integer/date ranges and shapes in services as well. Stage 1A SQL
@@ -143,14 +149,15 @@ New databases start in DELETE mode. A rollback journal may exist during a write;
 orderly DELETE commit removes it. Never delete journals/sidecars as application
 cleanup. Development datasets are disposable, but incompatible/damaged/unknown
 files are refused, not recreated, repaired or converted. No production SQLite
-datasets exist; no migration or old-schema compatibility is provided. Schema stays 1.
+datasets exist; no migration or old-schema compatibility is provided. The executing
+schema stays 1; the proposed hierarchy schema is distinct and unimplemented.
 Cold compatibility inspection below is diagnostic only, not a conversion route.
 
 Stage 4A implements online consistent backup on the existing worker-owned source
 connection through `sqlite3.Connection.backup()`. A live main-file copy is never a
 backup. Cold restore installs a validated image only into a previously nonexistent
-directory and exits before Tk/worker/session construction. Future protected schema
-upgrades remain separate; exact release paths/cutover remain Open.
+directory and exits before Tk/worker/session construction. Hierarchy will use fresh
+creation, not an upgrade path; exact release paths/cutover remain Open.
 
 Filesystem observations retain the raw six-field tuple (device, inode, mode,
 size, mtime_ns, ctime_ns). Small shared helpers in `timesheet_files` distinguish
@@ -288,7 +295,8 @@ fingerprints; backup image validation reuses the complete gate and cold restore
 still validates before directory reservation. No schema definitions or version
 markers are changed, and no fallback or migration registry exists.
 
-A future transition requires a separately approved version-specific contract:
+A hypothetical data-preserving transition requires a separately approved
+version-specific contract (historical Stage 4C safety requirements):
 
 1. Exact accepted source and target schemas/versions and transformation rules.
 2. Preservation or explicit adjudication of every persisted identity and immutable
@@ -298,13 +306,156 @@ A future transition requires a separately approved version-specific contract:
 5. An atomic or recoverable installation boundary with truthful failure behavior
    before and after publication, and refusal by older application versions.
 
-The selected default is a **cold transformation into a new nonexistent dataset
-directory**, outside ChronicleApp/DatabaseWorker. The original remains untouched;
-independently validate the target before ordinary use. Original and upgraded clones
-must not operate as competing live authorities. No in-place replacement, automatic
-source retirement/deletion, target version 2, transformation callback or runtime
-upgrade is implemented or authorized by Stage 4C. No UPGRADE_AVAILABLE result exists.
-Native qualification and the complete Stage 4 gate remain separate.
+That contract's cold-new-directory default protects originals if a future
+transformation is separately authorized. It does not apply as a migration obligation
+to the later hierarchy approval: **fresh data, no transformation or compatibility
+layer** is the selected hierarchy policy. No in-place replacement, automatic source
+retirement/deletion, target version 2, transformation callback or runtime upgrade is
+implemented or authorized. No UPGRADE_AVAILABLE result exists. Normal locked native
+rollback recovery of a supported image is not schema conversion. Native
+qualification and the complete Stage 4 gate remain separate.
+
+## Proposed fresh hierarchy foundation
+
+**Status: PROPOSED technical model for the approved target behavior, not active
+DDL or an implementation authorization.** See the
+[hierarchy requirements](TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary)
+and [bounded packages](ROADMAP.md#hierarchy-target--bounded-packages-a-f).
+Do not edit `SCHEMA_VERSION`, `APPLICATION_ID` or live tables to implement this
+document. Before package B, review exact fresh STRICT DDL/guards/indexes and a
+distinct supported schema marker; never accept old flat schema 1 as hierarchy.
+Whether the existing application ID is retained is part of that identity review,
+not an independently selected new application ID here.
+
+Source grounding: [sqlite_store.py](../src/chronicle/sqlite_store.py) currently
+defines flat `projects`/`tasks`, schema 1, retained identity and immutable evidence
+guards; [services.py](../src/chronicle/services.py) provides `create_task`,
+`assign_task_to_project`, `read_current_state` and explicit Request operations.
+[app.py](../src/chronicle/app.py) has a flat Treeview in `_build`/`_render`;
+[mini_mode.py](../src/chronicle/mini_mode.py) delegates to that owner but currently
+lacks Show Main/Keep Mini Open/state bar. [accounting.py](../src/chronicle/accounting.py)
+calculates direct task/day values; [timesheet.py](../src/chronicle/timesheet.py)
+freezes task identities/current-at-export grouping. The legacy
+[tree UI](../src/task_timer/app.py), [mini](../src/task_timer/mini_mode.py) and
+[template store](../src/task_timer/subtask_templates.py) demonstrate practical
+controls, not reusable runtime authority: do not import the old service or copy
+its separate JSON template persistence. [Design Notes](../DESIGN_NOTES.md) remains
+unchanged historical evidence.
+
+### Relational shape and invariant ownership
+
+Keep one SQLite authority, existing built-in driver/profile, one worker connection,
+BEGIN IMMEDIATE/COMMIT/ROLLBACK, immutable evidence and exact atomic receipts.
+No separate JSON tree, template JSON store, persistent descendant totals, closure
+cache, new worker or Python hierarchy projection becomes authoritative.
+
+| Proposed relation | Fields/relationships and purpose |
+| --- | --- |
+| projects | Stable project UUID, name, reviewed version and explicit archive/deletion state; retained identity. No work/timer FK targets projects. |
+| tasks | Stable task UUID, optional project FK, optional self-parent FK, name, reviewed version and explicit archive/deletion state. Task and parent cannot be identical. Duplicate names remain possible. |
+| task structure | Parent adjacency is the authority. A subtree shares current project membership; root project may be NULL. Whether membership is stored per task with transactional subtree updates or derived from roots is an exact-DDL review choice; do not keep two independently mutable memberships. Proposed preference: per-task membership, consistent with existing report reads, validated on every affected edge. |
+| template definitions | Stable template UUID, name and reviewed version. Definition deletion/retention fields depend on the explicitly Open lifecycle policy. |
+| template nodes | Template UUID, node identity, name and optional parent within the same template. Proposed compound FK binds (template, parent node) to that template; root NULL has no parent. No work/timer/confirmation/source-task identity is embedded. |
+| existing evidence families | Retain direct task ownership in work_entries/revisions, active timer/corrections, frozen export/task/basis/cells, confirmation batches/cells/current references and committed_requests. Adapt fresh FK/guards to the reviewed fresh schema; never introduce parent cumulative work rows. |
+
+Use canonical UUID, type, NOT NULL, FK, CHECK, UNIQUE and STRICT guards for local
+shapes, self-parent refusal, positive versions, boolean states and retained
+identities. Task UUIDs must not change, and work ownership remains immutable.
+Indexes should serve parent-child lookup, project navigation, template-node lookup
+and existing task/day/evidence readers; justify them by actual query paths. No
+materialized daily/project/ancestor aggregate tables are selected.
+
+Foreign keys alone cannot prove bounded acyclic ancestry, same-project consistency
+when NULL is involved, effective inherited visibility, leaf eligibility, subtree
+height at a new destination or absence of an active descendant. Proposed service
+validation uses bounded ancestry/subtree reads (recursive CTE or equivalent
+transactional queries) and final lifecycle checks inside the write transaction.
+Review database triggers for enforceable active-leaf and structural guards as part
+of the exact DDL; do not claim a CHECK with cross-row reads exists in SQLite.
+Full startup/image validation must independently establish the complete forest,
+depth, membership and lifecycle invariants as well as every existing evidence
+chain. Direct-SQL invalid states must reject wherever selected constraints can
+enforce them; service-only guards must be identified explicitly in that review.
+
+Three task levels below projects is fixed. Unassigned root depth and the exact
+explicit/inherited delete/restore representation remain
+[Open policy](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions).
+Archive must distinguish an item's own flag from effective ancestor hiding, so
+unarchiving a parent cannot clear independent child flags. Use the same separation
+for deletion only if the independently reviewed delete/restore policy selects it.
+Do not choose a cascade representation that silently resolves restoration policy.
+
+### Explicit operations, atomicity and uncertainty
+
+Extend the existing explicit TimerService/worker route, not a generic update-dict
+API. The following are **proposed service contracts**, names/signatures to finalize
+with fresh DDL review:
+
+| Use case | Strict reviewed inputs / result |
+| --- | --- |
+| Create project/task | Explicit new UUID/name and fixed destination project/parent UUIDs, plus destination reviewed versions; return created UUID/version. Root creation follows the adjudicated selection policy. |
+| Rename project/task | Entity UUID, expected version and name; retain all relationships/work. |
+| Move task branch / assign project | Root UUID and expected version, reviewed source/destination identities and versions, new parent/project (or selected root/Unassigned); return affected identities/versions. Validate current subtree, ancestry, membership and active eligibility atomically. |
+| Archive/Unarchive project or task branch | Typed entity UUID, expected version and explicit desired state; validate inherited context/active descendants, preserve independent child flags. |
+| Soft-delete/Restore | Typed entity UUID, expected version and reviewed branch/destination context under the separately resolved lifecycle policy; never physically remove work or evidence. UI Delete requires explicit warning, not inferred consent. |
+| Create/Edit/Duplicate/Delete template | Explicit template UUID/version and complete typed node set for changes; validate graph before writing and inside transaction. Duplicate uses fresh definition/node identities. No copied task/work receipts. |
+| Apply template | Reviewed template UUID/version, fixed destination UUID/version, and a frozen mapping of every template node to a fresh task UUID; return that same created mapping. Validate full prospective depth and leaf/active eligibility before insertion. |
+| Detached reads | One consistent structure/state snapshot plus current direct daily facts at one cutoff; management/deleted/template readers expose stable IDs/versions, never widget row indices as authority. |
+
+Every mutation uses the existing Request dataset/UUID/accepted UTC instant and
+strict canonical arguments. Resolve an exact committed retry before stale checks;
+changed content under the UUID rejects. New operations validate relevant source,
+destination and definition versions plus current affected membership inside the
+transaction. Recheck final invariants after all changes and before the existing
+atomic receipt commits. New subtree/template writes, current references and receipt
+are all-or-nothing. Template creation identities are frozen before queueing so an
+uncertain Apply cannot generate a second branch on retry. Partial insertion,
+stale review or depth/cycle failure rolls back everything. Unexpected post-COMMIT
+delivery uses the same independent receipt reconciliation; rendering failure is
+not rollback. Process death before/after COMMIT preserves the existing boundary.
+
+An explicit Stop/Switch must commit first when an operation would make the running
+task a parent or otherwise ineligible, or archive/delete its containing branch.
+No management service may perform an implicit timer operation. An eligible active
+branch move must retain the same active entry/start and pass all destination
+invariants; any unselected policy detail returns for adjudication.
+
+### Accounting, tree presentation and evidence integration
+
+Extend the existing pure accounting result from exact **direct task/day** facts
+with derived ancestor sums: Individual(task) = direct period amount;
+Cumulative(task) = Individual(task) + sum(Individual(descendants)). Each UUID
+appears once in a subtree sum. Project totals sum their member tasks' Individual,
+never add parent Cumulative; application totals sum all direct task facts once,
+including retained hidden/deleted history. Collapse and navigation filters do not
+filter the authoritative accounting input. A former leaf's old direct work remains
+Individual; its History/edit requests still target that UUID's own entries.
+
+Main tree and mini consume the same detached report/cutoff. Proposed row keys are
+typed project/task identities to prevent collision; selection/expansion stays
+presentation state, never authorization. Reconcile changed nodes/values in place;
+Sort A-Z orders siblings without losing parentage. Active ancestors expand and
+show a distinct descendant-running indicator, not extra active timers. Disable
+new-time actions on projects/nonleaves/effectively archived/deleted tasks both in
+UI and in the service. Management remains reachable from visible main entry points;
+owned dialogs keep existing callback-only lifecycle and pending-request ownership.
+
+Minute-boundary amount repaint and immediate operation/period refresh replace
+unnecessary row rebuilding, while observation still detects clock jumps, date
+rollover and unavailable totals. Existing `_tick` is not permission to delay action
+timestamps or persist ticks. Mini's state bar, Show Main, Keep Mini Open and
+topmost behavior require the remaining window-policy decisions and native modal/
+focus tests; no second root, timer or worker is justified.
+
+Timesheet and POL-R continue to read direct task/day amounts and the unchanged
+allocation contract; a parent selection is not subtree scope. Current project
+membership groups historical work; saved exports retain original labels/context,
+exact bytes/digest, cells and basis. No move/archive/restore/template operation
+rewrites work revisions, confirmations, existing receipts or frozen evidence.
+Backup validation/restore must understand the separately approved fresh schema
+and all its facts before it can be called supported; neither becomes a conversion
+route for old datasets. Existing cold non-recovering inspection and owned ordinary
+native rollback recovery ordering remain mandatory for supported new data.
 
 ## Time and one accounting implementation
 
@@ -322,9 +473,11 @@ dates in a requested week. Sum integer units, never binary-float work accumulati
 or per-tick persistence. Week calculations use civil-date arithmetic and the
 selected weekday (Sunday initially), not fixed 168-hour UTC spans.
 
-Main/mini share a coordinated cutoff; each task shows its own work and application
-totals include retained deleted-task work. Current project grouping is derived,
-non-additive. Displayed Actual rounds each task/day once to integer hundredths;
+Main/mini share a coordinated cutoff; each task's Individual remains its own work
+and application totals include retained deleted-task work. The approved hierarchy
+target adds only the derived Cumulative presentation described above. Current
+project grouping is derived, non-additive. Displayed Actual rounds each task/day
+once to integer hundredths;
 its rollups sum those cells. **Submission is a distinct pure calculation** over
 exact full-task/week work, yielding suggested quarter counts with no carryover.
 The single [algorithm/proof owner](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation)
@@ -474,7 +627,9 @@ complete-fact transaction faults, reminder/file/backup barrier-controlled child
 interruptions, queued Start/Stop/Switch exit and a connected uncertain-save/backup/
 cold-restore/new-session scenario. Measured full-history validation cost is retained
 without caches or weaker evidence checks; [timings and limits](TESTING_STRATEGY.md#portable-operational-measurements)
-are engineering evidence. Protected upgrades and remaining stabilization are separate. Native Windows source operation remains a deployment qualification.
+are engineering evidence. Fresh hierarchy implementation and remaining stabilization
+are separate; no upgrade machinery is selected. Native Windows source operation
+remains a deployment qualification.
 
 The supported deployment is ordinary Python 3.11+ source execution through
 `run_chronicle.py` → `chronicle.bootstrap.main`, without task_timer fallback.

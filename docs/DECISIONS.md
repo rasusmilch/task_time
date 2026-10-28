@@ -59,7 +59,8 @@ and its limited historical meaning are recorded below.
 
 ### Independent task ownership and organizational projects
 
-**Status:** current. **Provenance:** explicit user confirmation of the reviewed
+**Status:** current, extended by the later hierarchy approval below.
+**Provenance:** explicit user confirmation of the reviewed
 project/task architecture; current owner:
 [independent projects/tasks](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks).
 
@@ -1114,6 +1115,59 @@ supporting historical evidence within their recorded limits; they do not establi
 native first-run behavior for this new code. Focused native follow-up and independent
 review remain required. No Stage 4 completion, pilot or release follows.
 
+### Hierarchy, tree presentation, lifecycle and fresh-data approval
+
+**Status:** approved target behavior; unimplemented. **Provenance:** the later
+explicit user documentation/design-consolidation instruction, following reviewed
+source `3cdfd012bd7afe6c979034d65689ac91c6c51ead`, supplies these choices. It
+authorizes documentation only, not schema/service/UI execution. Current owners:
+[requirements](TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
+[proposed model](ARCHITECTURE.md#proposed-fresh-hierarchy-foundation) and
+[packages A–F](ROADMAP.md#hierarchy-target--bounded-packages-a-f).
+
+The user selects Project → Task → Subtask → Sub-subtask, stable independent task
+UUIDs, optional project/parent, no cycles and leaf-only **new** time. Previously
+recorded parent direct work stays attached, appears in Individual and direct
+History and contributes once to Cumulative. Running tasks cannot be made parents
+or otherwise ineligible; containing-branch Archive/Delete requires explicit prior
+Stop/Switch, never an implicit timer operation. Current project membership groups
+work; immutable historical report/confirmation context remains untouched.
+
+The selected main layout restores a tree, expand/collapse, active ancestors,
+running/stopped and running-descendant indicators, context New Task, visible
+project/task management, sibling-preserving Sort A-Z and Individual/Cumulative
+with shared Today/This Week. Mini restores state bar, name, Individual Today,
+Start/Stop, Show Main, Keep Mini Open and appropriate topmost behavior. Minute
+presentation and in-place refresh do not change exact accounting observations.
+The legacy interface is implementation evidence, not authority to import its
+JSONL storage, own-time-only columns, hidden behavior or destructive operations.
+
+Create/Rename/Move/Archive/Unarchive/Soft Delete/Restore retain identities and work.
+Archive hides descendants by inheritance while independent flags survive parent
+unarchive. Soft Delete warns and retains evidence; Deleted Items provides controlled
+restore. Nested templates have independent identities/definitions, no copied work/
+evidence and atomic Apply to the selected destination with fresh task UUIDs. Editing
+a template never changes applied instances. Create/Edit/Duplicate/Delete/Apply is
+selected; recurrence/scheduling/external creation is not.
+
+This resolves the earlier broad Open replacement-template question and supersedes
+its optional Stage 6 placement. Only enumerated lifecycle/placement/window details
+remain Open. It also supersedes the assumption that hierarchy must transform
+existing version-1 SQLite datasets: the user explicitly chooses a **fresh schema
+and fresh data, without migration/backward compatibility**. Retain old objects and
+refuse incompatibility; do not delete/recreate/convert them. Stage 4C's earlier
+hypothetical cold-transformation safety contract remains historical provenance and
+a boundary for any separately authorized future preservation task, not a hierarchy
+upgrade-engine requirement. Exact fresh DDL and distinct schema marker are PROPOSED
+for separate approval; actual runtime version 1/application identity are unchanged.
+
+The relational table/service shapes in Architecture and package boundaries in
+Roadmap are engineering proposals derived from inspected source dependencies,
+not extra user-approved product decisions. The precise Open questions are retained
+in the requirements; implementers must not settle them through schema defaults or
+tests. Stage 4 remains IN PROGRESS; Stage 5, native acceptance, installation/cutover,
+external policy, merge and release are not authorized by this design consolidation.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT
@@ -1125,7 +1179,10 @@ owner or candidate implementation design.
 - Allocation defaults/overrides and their interaction with week-start changes.
 - Exact installation replacement and old-data cutover.
 - Dataset-timezone changes before affected configuration/accounting.
-- Replacement template semantics before optional implementation.
+- Hierarchy Unassigned/root depth and placement; branch delete/restore and
+  archive/move interactions; template definition lifecycle/naming; main/mini
+  window lifecycle, as enumerated in the requirements. Core nested
+  template and leaf-only recording behavior is now selected, not broadly Open.
 
 The later rewrite approval places allocations in optional Stage 6; earlier
 first-release inclusion is superseded, not a remaining core pilot decision.

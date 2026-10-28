@@ -74,6 +74,26 @@ permanently block later Stage 2 development.
 Stage 0 was independently accepted at `a24aca706740b7e02cc1f856baa194042785bbcb`. Active work is
 `feature/chronicle-rewrite`; the old feature branch/history is preserved.
 
+## Approved hierarchy target — not yet implemented
+
+The later approved target restores tree-oriented main/mini controls and supports
+Project → Task → Subtask → Sub-subtask, leaf-only new time, reversible archive,
+soft deletion/controlled restore and reusable nested templates. Individual remains
+direct task Actual; Cumulative adds descendants exactly once for presentation.
+POL-R stays task/day based; neither rollups nor project grouping add work or change
+frozen evidence. Current source still has flat tasks and its existing main/mini
+controls; no hierarchy/lifecycle/template workflow is delivered by this design.
+
+Implementation will start with a distinctly identified fresh SQLite schema and
+fresh data, **without v1 migration, compatibility mode or legacy import**. Old files
+remain protected and may refuse; nothing automatically deletes or recreates them.
+Exact DDL is proposed for separate review. See
+[selected behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
+[proposed foundation](docs/ARCHITECTURE.md#proposed-fresh-hierarchy-foundation) and
+[bounded packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
+Stage 4 remains IN PROGRESS, Stage 5 NOT STARTED; native qualification, external
+reporting and installation/cutover gates remain separate.
+
 ## Run from source (repo root)
 
 Use Python 3.11+ with built-in SQLite 3.37.0+ and Tcl/Tk. Check the actual modules,
@@ -148,8 +168,9 @@ validation; all other cases refuse ordinary startup. Schema remains version 1,
 with no automatic upgrade, downgrade or repair. Stage 4C inspection, protected
 refusal and bounded owned SQLite-native rollback recovery are independently
 accepted for functional development.
-Future version-specific cold transformation remains separately approved, and
-unknown schemas refuse rather than being reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
+Any hypothetical future data-preserving transformation needs separate approval;
+the hierarchy target instead starts fresh, with no migration. Unknown schemas
+refuse rather than being reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
 source launch, troubleshooting and native Windows source validation. Initial pip
 installation needs internet or an approved local wheel source and available IT
 permission; ordinary Chronicle operation is offline and never installs packages.
