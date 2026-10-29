@@ -1321,6 +1321,20 @@ are unimplemented and need separate approvals. Windows Package A follow-up remai
 deferred; portable execution is not native qualification. Stage 4 remains IN
 PROGRESS, Stage 5 NOT STARTED; no installation/cutover, merge or release follows.
 
+### Package B2 atomic movement approval
+
+**Status:** selected and implemented for independent review. **Provenance:** explicit
+Package B2 instruction following accepted B1 commit
+`1e5cef6ca171e3bac9141d8d13b1e82f08d36b64`.
+One move request reviews the complete sorted subtree and source/destination versions.
+Cross-project movement uses temporary edge detachment within BEGIN IMMEDIATE, then
+project updates/root attachment/internal reconstruction with existing guards enabled.
+Only finally changed rows receive one version/timestamp effect; one administrative
+receipt covers all effects. No schema change, implicit timer event, work mutation or
+movement UI. Historical reconstruction is independent validation only. Future Delete
+receipt ownership/retirement policy remains unselected and unimplemented here.
+Stage 4 remains IN PROGRESS, Stage 5 NOT STARTED and native qualification separate.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

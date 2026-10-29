@@ -359,7 +359,7 @@ History remains direct and New Task still creates a project-scoped root.
 
 ## Fresh hierarchy foundation
 
-**B1 IMPLEMENTED FOR INDEPENDENT REVIEW; later movement/lifecycle/template
+**B1/B2 IMPLEMENTED FOR INDEPENDENT REVIEW; later lifecycle/template
 contracts below remain PROPOSED where identified.** Schema version 2 and application
 ID 0x4348524E identify the sole supported fresh layout, together with exact DDL.
 Version 1 refuses without conversion/replacement or clearing remembered selection.
@@ -383,7 +383,8 @@ supplied value, including NULL, must match exactly. Root creation in a real proj
 requires its reviewed version; child creation requires the reviewed parent version
 and checks a project version if supplied. Root creation has no parent review.
 Parents receive no artificial version increment. Standalone-root assignment stays
-available; changing membership of a nested task/branch refuses pending B2.
+available; that legacy assignment still refuses nested branches. B2 uses the
+separate move_task_branch operation below.
 
 Every new work identity and active insert has SQL active-leaf guards. Task edge
 INSERT/UPDATE guards enforce matching project, no running parent and bounded
@@ -395,8 +396,8 @@ corrected/deleted by immutable revisions even after it becomes a parent.
 `committed_requests.receipt_class` is constrained to administrative/protected and
 derived from the finite operation list in `records.py`, never caller metadata.
 Implemented administrative operations are create/rename project, create/rename task
-and assign_task_to_project. The reserved move_task_branch and archive/unarchive
-project/task names are classified but not executable. All other operations are
+and assign_task_to_project. B2 implements move_task_branch; archive/unarchive project/task names remain
+classified but not executable. All other operations are
 protected. SQL prohibits every receipt UPDATE and every protected receipt DELETE.
 No B1 service deletes administrative receipts. Creation ownership FKs are deferred;
 independent validation proves each creation owns a surviving entity and every
@@ -404,6 +405,42 @@ survivor has its creation, canonical result, contiguous version effects, current
 name/membership/timestamps and historically reviewed destination versions. Missing
 or orphaned administration is damage, not an assumed prior Delete. This detached
 validation installs no replayed hierarchy authority.
+
+### Implemented B2 subtree movement
+
+Schema 2 and its exact DDL remain unchanged. `TimerService.move_task_branch`
+accepts task_id/expected_version, source_parent_task_id/source_project_id,
+destination_parent_task_id/destination_project_id, expected_destination_parent_version,
+expected_destination_project_version, and reviewed_subtree. The latter is a complete
+UUID-sorted list of task_id/expected_version/parent_task_id/project_id records.
+Names and widget rows never authorize movement. Destination versions are required
+for present identities and NULL for absent identities. Request identity/content is
+frozen once; existing receipt resolution precedes all stale checks.
+
+Within the existing BEGIN IMMEDIATE, read the actual forest, subtree, destination
+and active timer. Check complete review, source/destination eligibility, deepest
+resulting depth, membership and active leaf. A true no-op rolls back without a
+receipt. For cross-project moves detach every branch edge, update isolated member
+projects, attach the selected root, then reconstruct internal edges parent-first.
+Every statement respects existing FK/triggers; no disabled guard or committed
+intermediate state. Same-project movement changes only the root edge.
+Increment each finally changed row once with the accepted action timestamp; do
+not alter creation/archive fields. Compare the complete installed rows and active
+timer against the proposed final snapshot before the single receipt/COMMIT.
+Result: task_id plus UUID-sorted changed_tasks records (task_id/version).
+
+`administration.py` independently reconstructs chronological administrative effects
+for validation only, including complete historical move scope and multi-row version
+results. Protected timer receipt order supplies active context for historical move
+checks. Compare every surviving creation/name/structure/version/timestamp with SQL;
+missing, extra, orphaned or inconsistent effects refuse startup/backup validation.
+This transient verification is neither runtime authority nor persisted projection.
+No administrative retirement is implemented. Future Delete must adjudicate move
+receipt ownership across its deletion scope; B2 makes no retirement policy choice.
+
+Movement preserves work/revisions, active entry/start, independent archive states,
+frozen Timesheets and confirmations. Direct Actual/application totals do not change;
+current parent cumulative/project grouping does. No Move UI or implicit Stop.
 
 ### Relational shape and invariant ownership
 
@@ -416,7 +453,7 @@ cache, new worker or Python hierarchy projection becomes authoritative.
 | --- | --- |
 | projects | B1: stable UUID, name, reviewed version, explicit archive flag, nullable current UTC archive timestamp and owning created_request_id deferred FK. No target soft-delete flag. Eligible unused Delete removes the row, not protected evidence. Duplicate names are valid; projects own no work/timer. |
 | tasks | B1: stable UUID, optional project FK, optional self-parent FK, name, reviewed version, explicit archive flag/current UTC timestamp and owning created_request_id deferred FK. No target soft-delete flag; parent cannot be self. Duplicate names are valid. Eligible unused Delete removes the row under the dependency boundary below. |
-| task structure | Parent adjacency is the authority. A subtree shares current project membership; root project may be NULL. B1 stores matching project_id on every descendant; root membership may be NULL. Parent adjacency is the only hierarchy authority, with tasks_project/tasks_parent indexes. B2 must separately adjudicate atomic subtree movement and corresponding guards; do not add a second mutable membership authority. |
+| task structure | Parent adjacency is the authority. A subtree shares current project membership; root project may be NULL. B1 stores matching project_id on every descendant; root membership may be NULL. Parent adjacency is the only hierarchy authority, with tasks_project/tasks_parent indexes. B2 implements atomic subtree movement with the unchanged guards; do not add a second mutable membership authority. |
 | template definitions (not implemented) | Stable UUID/name/version and Archive/Unarchive availability, not a recoverable deletion state. Active names are unique after trim/casefold; Unarchive rechecks uniqueness. Proposed normalized-key/UNIQUE representation needs review; SQLite lower/NOCASE does not establish Python casefold equivalence. Actual definition Delete eligibility for applied/referenced templates remains Open before E. |
 | template nodes (not implemented) | Template UUID, node identity, name and optional parent within the same template. Proposed compound FK binds (template, parent node) to that template; root NULL has no parent. No work/timer/confirmation/source-task identity is embedded. |
 | existing evidence families | Retain direct task ownership in work_entries/revisions, active timer/corrections, frozen export/task/basis/cells, confirmation batches/cells/current references and committed_requests. Adapt fresh FK/guards to the reviewed fresh schema; never introduce parent cumulative work rows. |
@@ -434,7 +471,7 @@ height at a new destination or absence of an active descendant. B1 service
 validation uses bounded ancestry/subtree reads (recursive CTE or equivalent
 transactional queries) and final lifecycle checks inside the write transaction.
 B1 SQL triggers enforce local active-leaf/structural guards; do not claim a CHECK
-with cross-row reads exists in SQLite. Further movement guards need B2 review.
+with cross-row reads exists in SQLite. Future changes to these guards require separate review.
 Full startup/image validation must independently establish the complete forest,
 depth, membership and lifecycle invariants as well as every existing evidence
 chain. Direct-SQL invalid states must reject wherever selected constraints can
@@ -466,8 +503,9 @@ materialized cumulative-time authority is selected.
 ### Explicit operations, atomicity and uncertainty
 
 Extend the existing explicit TimerService/worker route, not a generic update-dict
-API. B1 implements creation/rename, standalone assignment, recording and detached
-reads as above. Other operations below remain **proposed future contracts**:
+API. B1/B2 implement creation/rename, standalone assignment, explicit subtree
+movement, recording and detached reads as above. Lifecycle/template operations
+below remain **proposed future contracts**:
 
 | Use case | Strict reviewed inputs / result |
 | --- | --- |

@@ -55,6 +55,54 @@ class TimerService:
         return self._make("assign_task_to_project", request_id, action_utc_us,
                           dict(task_id=task_id, project_id=project_id, expected_version=expected_version))
 
+    def move_task_branch(self, task_id: str, *, expected_version: int,
+                         source_parent_task_id: str | None, source_project_id: str | None,
+                         destination_parent_task_id: str | None, destination_project_id: str | None,
+                         expected_destination_parent_version: int | None,
+                         expected_destination_project_version: int | None,
+                         reviewed_subtree: list[dict], request_id: str, action_utc_us: int) -> Outcome:
+        return self._make('move_task_branch',request_id,action_utc_us,
+            dict(task_id=task_id,expected_version=expected_version,
+                 source_parent_task_id=source_parent_task_id,source_project_id=source_project_id,
+                 destination_parent_task_id=destination_parent_task_id,destination_project_id=destination_project_id,
+                 expected_destination_parent_version=expected_destination_parent_version,
+                 expected_destination_project_version=expected_destination_project_version,
+                 reviewed_subtree=reviewed_subtree))
+
+    def _move_task_branch(self, c, request, arguments):
+        from .movement import plan
+        from .hierarchy import task_paths
+        tasks=[dict(r) for r in c.execute('SELECT * FROM tasks')]
+        projects=[dict(r) for r in c.execute('SELECT * FROM projects')]
+        row=c.execute('SELECT * FROM active_timer').fetchone()
+        active=dict(row) if row else None
+        final,result=plan(tasks,projects,active,arguments)
+        if not result['changed_tasks']:return None
+        branch={r['task_id'] for r in arguments['reviewed_subtree']}
+        original={r['task_id']:r for r in tasks}
+        expected={r['task_id']:r for r in final}
+        root=arguments['task_id']
+        if arguments['source_project_id']!=arguments['destination_project_id']:
+            for key in sorted(branch):
+                c.execute('UPDATE tasks SET parent_task_id=NULL WHERE task_id=?',(key,))
+            for key in sorted(branch):
+                c.execute('UPDATE tasks SET project_id=? WHERE task_id=?',(arguments['destination_project_id'],key))
+            c.execute('UPDATE tasks SET parent_task_id=? WHERE task_id=?',(arguments['destination_parent_task_id'],root))
+            paths=task_paths(final)
+            for key in sorted(branch-{root},key=lambda k:(len(paths[k]),k)):
+                c.execute('UPDATE tasks SET parent_task_id=? WHERE task_id=?',(original[key]['parent_task_id'],key))
+        else:
+            c.execute('UPDATE tasks SET parent_task_id=? WHERE task_id=?',(arguments['destination_parent_task_id'],root))
+        for changed in result['changed_tasks']:
+            key=changed['task_id']
+            c.execute('UPDATE tasks SET version=?,updated_utc_us=? WHERE task_id=?',(changed['version'],request.action_utc_us,key))
+            expected[key]['updated_utc_us']=request.action_utc_us
+        self.store.assert_structure(c)
+        actual={r['task_id']:dict(r) for r in c.execute('SELECT * FROM tasks')}
+        if actual!=expected or (dict(c.execute('SELECT * FROM active_timer').fetchone()) if active else None)!=active:
+            raise ValueError('Installed move differs from validated final state')
+        return result
+
     def start_timer(self, task_id: str, entry_id: str, *, expected_task_version: int,
                     request_id: str, action_utc_us: int) -> Outcome:
         return self._make("start_timer", request_id, action_utc_us,
@@ -465,6 +513,8 @@ class TimerService:
         def operation(c):
             a, op, now = request.args(), request.operation, request.action_utc_us
             local_date(now, self.store.zone)
+            if op == 'move_task_branch':
+                return self._move_task_branch(c,request,a)
             if op == 'dismiss_polr_reminder_today':
                 from .polr_allocation import civil
                 if set(a)!={'local_date'}:raise ValueError('Dismissal requires one local date')

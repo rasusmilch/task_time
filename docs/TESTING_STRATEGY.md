@@ -353,6 +353,21 @@ import or backward-compatibility fixture obligation is selected.
 Linux fault injection does not prove arbitrary concurrent-writer, power-loss or
 native Windows/NTFS safety.
 
+## Package B2 movement evidence
+
+[test_branch_movement.py](../tests/rewrite/test_branch_movement.py) exercises real
+schema-2 triggers and service/worker transactions for roots/nested branches,
+project/Unassigned membership, same-project reparenting, complete sorted review,
+changed versions/timestamps, exact/no-op retry, archived ancestry, active destination
+refusal, running leaf preservation and independently archived descendants.
+Independent direct/cumulative/group/application expectations guard double counting.
+Faults at detachment/project/attachment/version/receipt/COMMIT prove rollback or
+committed reconciliation; separate killed-child barriers prove pre/post-COMMIT
+structure/receipt atomicity. Corrupted multi-entity receipts refuse full validation.
+Rich frozen/confirmed evidence remains exact across movement, backup, cold restore
+and independent reopen. Existing GUI and recording suites remain regression scope;
+no movement UI, native Windows or hardware power-loss qualification is claimed.
+
 ## Package B1 fresh hierarchy evidence
 
 [test_hierarchy_foundation.py](../tests/rewrite/test_hierarchy_foundation.py)

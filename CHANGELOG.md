@@ -8,6 +8,12 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Add B2 atomic subtree movement on unchanged schema 2: frozen complete subtree/
+  destination review, guard-respecting cross-project detachment/reconstruction,
+  changed-row-only versions, no-op purity and one exact administrative receipt.
+  Independently validate chronological multi-entity effects while preserving active
+  timer/work/archive/frozen reporting evidence. No movement UI, lifecycle actions,
+  template operations or migration. Delivered for independent review only.
 - Deliver Package B1's fresh-only schema 2 (same Chronicle application ID): parent
   adjacency, matching project/Unassigned membership, three-level bounds, reviewed
   atomic child creation without parent version changes, active-leaf new recording

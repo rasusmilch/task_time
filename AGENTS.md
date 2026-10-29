@@ -87,7 +87,8 @@ The later hierarchy-design approval selects tree main/mini, leaf-only new time,
 branch lifecycle and nested templates as a target. Package A grouped main/mini
 presentation is adapted to B1 schema 2. B1 implements parent adjacency, three levels,
 leaf-only new recording, retained parent history, derived cumulative values and
-administrative/protected receipt classes. Structural movement, lifecycle mutations,
+administrative/protected receipt classes. B2 adds transactional subtree movement
+on unchanged schema 2, with multi-entity receipt validation. Lifecycle mutations,
 nested management UI and templates remain unimplemented. Read the
 [approved behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation)
@@ -105,7 +106,7 @@ work/report/confirmation references always block Delete. Exclusively owned
 administrative requests may be erased after complete proof; their historical retry
 recovery is deliberately no longer promised, with no persistent deletion registry.
 Independently adjudicate the [bounded deletion/receipt design](docs/ARCHITECTURE.md#proposed-unused-entity-deletion-and-receipt-boundary)
-and movement/Delete DDL before B2/C; applied/referenced-template actual Delete eligibility
+and future Delete DDL before C; B2 retains the existing DDL; applied/referenced-template actual Delete eligibility
 is Open before E. No historical work/evidence deletion or automatic cleanup is
 authorized. Packages B–F require separately approved implementation tasks after
 their dependencies are adjudicated. Package A authorizes no Stage 4 completion,

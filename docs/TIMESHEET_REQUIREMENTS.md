@@ -94,8 +94,8 @@ must not turn another task's work into a task's own Actual.
 
 The hierarchy target is partially implemented by Package B1 for independent review:
 exact fresh schema 2, unchanged application ID 0x4348524E, parent adjacency and core
-recording/accounting. Movement, lifecycle actions, nested management UI and templates
-remain unimplemented. B1 supersedes the former proposed foundation/identity gate,
+recording/accounting. B2 implements transactional subtree movement for independent review. Lifecycle
+actions, movement UI, nested management UI and templates remain unimplemented. B1 supersedes the former proposed foundation/identity gate,
 not the remaining package approvals or the no-migration boundary.
 
 Maximum structure is Project → Task → Subtask → Sub-subtask: three task levels
@@ -166,8 +166,8 @@ to view/sort abandoned unused items.
 Project/task management offers Create, Rename, Move, Archive/Unarchive, Delete and
 direct Work History using reviewed UUIDs/versions, cancellation without writes,
 stale diagnostics and authoritative completion. B1 implements creation/rename,
-explicit child creation and existing standalone-root project assignment. Nested
-branch movement, Archive/Unarchive and project/task Delete remain unimplemented.
+explicit child creation and existing standalone-root project assignment. B2 adds explicit service-level subtree movement; movement UI, Archive/Unarchive
+and project/task Delete remain unimplemented.
 
 ### Unused-only Delete
 
@@ -823,7 +823,7 @@ gates; no automatic external allocation verification is established.
 | Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
-| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation and B1 fresh hierarchy/recording foundation implemented for review. B2 movement/C lifecycle/D full nested UI/E templates remain unimplemented, separately approved packages; nothing inherited from JSONL. |
+| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation and B1 fresh hierarchy/recording foundation implemented for review. B2 movement implemented for review; C lifecycle/D full nested UI/E templates remain separately approved, unimplemented packages; nothing inherited from JSONL. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
@@ -835,7 +835,10 @@ supports three levels, matching project/Unassigned membership and reviewed desti
 versions. A running leaf cannot become a parent; only effectively active leaves
 accept new work. Parent direct history remains editable/deletable by revision.
 Derived Individual/Cumulative/project amounts never add extra Actual to reporting.
-No migration, movement, lifecycle actions or templates are delivered.
+B2 adds one atomic move receipt for the complete reviewed subtree, with exact
+retry/no-op behavior and changed-row-only versions/timestamps. Direct work and
+frozen evidence remain unchanged; current grouping/cumulative values follow the
+new structure. No migration, movement UI, lifecycle actions or templates are delivered.
 
 Package A presentation remains implemented: empty project groups,
 typed task/group rows, session-local A-Z/period choice, green/red text states,

@@ -593,7 +593,7 @@ class SQLiteStore:
             for key in ('expected_version','expected_task_version','expected_active_version','expected_revision'):
                 if key in a and (type(a[key]) is not int or not 1 <= a[key] <= 2**63-1):
                     raise ValueError('Invalid reviewed version in receipt')
-            if op in ('create_task','rename_task','assign_task_to_project','create_project','rename_project'):
+            if op in ('create_task','rename_task','assign_task_to_project','create_project','rename_project','move_task_branch'):
                 pass  # Complete bidirectional entity/version closure is checked below.
             elif op == 'set_week_start':
                 if (type(a.get('week_start')) is not int or not 0 <= a['week_start'] <= 6
@@ -685,104 +685,9 @@ class SQLiteStore:
 
     @staticmethod
     def verify_administration(c, receipts):
-        """Compare each surviving row with its finite immutable version effects.
-
-        This is validation only; it installs no replayed state or hierarchy authority.
-        Parent/project context is checked against versions committed before creation.
-        """
-        events = {}
-        sequence = {r['request_id']: r['commit_seq'] for r in c.execute('SELECT request_id,commit_seq FROM committed_requests')}
-        for request, result in receipts.values():
-            op, a = request.operation, request.args()
-            if op not in ('create_project','rename_project','create_task','rename_task','assign_task_to_project'):
-                continue
-            entity = 'project' if op in ('create_project','rename_project') else 'task'
-            key = uuid_text(a.get(entity + '_id'))
-            required = {entity + '_id', 'name'} if op.startswith('create_') else (
-                {'task_id','project_id','expected_version'} if op == 'assign_task_to_project' else {entity + '_id','name','expected_version'})
-            allowed = required | ({'project_id','parent_task_id','expected_project_version','expected_parent_version'} if op == 'create_task' else set())
-            if not required <= set(a) or not set(a) <= allowed:
-                raise ValueError('Invalid administrative receipt fields')
-            if 'name' in a and (type(a['name']) is not str or not a['name'].strip()):
-                raise ValueError('Invalid administrative name')
-            if 'project_id' in a and a['project_id'] is not None: uuid_text(a['project_id'])
-            if a.get('parent_task_id') is not None: uuid_text(a['parent_task_id'])
-            events.setdefault((entity,key),[]).append((sequence[request.request_id],request,result))
-        histories = {}
-        for entity in ('project','task'):
-            for fact in c.execute(f'SELECT * FROM {entity}s'):
-                key = fact[entity + '_id']
-                history = sorted(events.pop((entity,key),[]),key=lambda r:r[0])
-                if not history or history[0][1].operation != 'create_' + entity:
-                    raise ValueError('Surviving entity has no creation receipt')
-                first = history[0][1]
-                if first.request_id != fact['created_request_id'] or first.action_utc_us != fact['created_utc_us']:
-                    raise ValueError('Entity creation receipt ownership differs')
-                name = None
-                parent = first.args().get('parent_task_id') if entity == 'task' else None
-                group = first.args().get('project_id', fact['project_id'] if parent else None) if entity == 'task' else None
-                states = []
-                for version, (seq, request, result) in enumerate(history,1):
-                    a, op = request.args(), request.operation
-                    if canonical(result) != canonical({entity + '_id':key,'version':version}):
-                        raise ValueError('Administrative result/version differs')
-                    if version == 1:
-                        if op != 'create_' + entity: raise ValueError('Invalid entity creation')
-                        name = a['name'].strip()
-                    else:
-                        if a.get('expected_version') != version-1 or op == 'create_' + entity:
-                            raise ValueError('Missing or reordered administrative version effect')
-                        if op == 'assign_task_to_project':
-                            if parent is not None or a['project_id'] == group:
-                                raise ValueError('Invalid standalone-root assignment receipt')
-                            group = a['project_id']
-                        else:
-                            new = a['name'].strip()
-                            if new == name: raise ValueError('No-op rename cannot have a receipt')
-                            name = new
-                    states.append((seq,version,group))
-                if (fact['version'] != len(history) or fact['name'] != name
-                        or fact['updated_utc_us'] != history[-1][1].action_utc_us):
-                    raise ValueError('Entity/current administrative version effects differ')
-                if entity == 'task' and (fact['project_id'] != group or fact['parent_task_id'] != parent):
-                    raise ValueError('Task structure differs from administrative effects')
-                histories[(entity,key)] = (history,states)
-        if events:
-            raise ValueError('Administrative receipt has no owning surviving entity')
-
-        def reviewed(entity, key, seq):
-            history = histories.get((entity,key))
-            prior = [r for r in history[1] if r[0] < seq] if history else []
-            if not prior: raise ValueError('Reviewed administrative destination did not yet exist')
-            return prior[-1]
-
-        for (entity,key), (history,states) in histories.items():
-            if entity != 'task': continue
-            for (seq,request,result), (_,version,group) in zip(history,states):
-                a = request.args()
-                if request.operation == 'create_task':
-                    parent = a.get('parent_task_id')
-                    parent_version = a.get('expected_parent_version')
-                    project_version = a.get('expected_project_version')
-                    if parent is not None:
-                        integer(parent_version,'Reviewed parent version',1,2**63-1)
-                        prior = reviewed('task',parent,seq)
-                        if prior[1] != parent_version or prior[2] != group:
-                            raise ValueError('Child creation parent context differs')
-                    elif parent_version is not None:
-                        raise ValueError('Root creation has unexpected parent review')
-                    if group is not None:
-                        prior = reviewed('project',group,seq)
-                        if parent is None or project_version is not None:
-                            integer(project_version,'Reviewed project version',1,2**63-1)
-                            if prior[1] != project_version: raise ValueError('Creation project context differs')
-                    elif project_version is not None:
-                        raise ValueError('Unassigned creation has unexpected project review')
-                elif request.operation == 'assign_task_to_project':
-                    if group is not None: reviewed('project',group,seq)
-                    for child in c.execute('SELECT created_request_id FROM tasks WHERE parent_task_id=?',(key,)):
-                        if sequence[child[0]] < seq:
-                            raise ValueError('Assignment receipt moved a branch')
+        """Independent complete administrative effects, including multi-row moves."""
+        from .administration import verify
+        verify(c,receipts)
 
     @staticmethod
     def assert_structure(c):
