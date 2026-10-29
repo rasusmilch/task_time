@@ -40,3 +40,14 @@ def make_request(store):
     def make(operation, now=NOW, **arguments):
         return Request.make(uid(), store.dataset_id, operation, now, **arguments)
     return make
+
+
+def archive(service, entity, key, now=NOW):
+    """Production archive facts/receipt, including the entity's reviewed version."""
+    service.store._recover_connection()
+    c = service.store.connection
+    version = c.execute(f'SELECT version FROM {entity}s WHERE {entity}_id=?', (key,)).fetchone()[0]
+    result = getattr(service, 'archive_' + entity)(key, expected_version=version,
+                                                request_id=uid(), action_utc_us=now)
+    assert result.status == 'committed', result
+    return result

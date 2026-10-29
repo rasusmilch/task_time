@@ -66,7 +66,7 @@ complete behavioral slices follow the roadmap, not optional post-pilot bolt-ons:
 
 | Facts | Required relationships and invariants |
 | --- | --- |
-| Projects/tasks | Stable UUIDs, optional current membership and preserved archived identities/history. Target Delete removes only eligible unused structure under the administrative boundary below; B1 stores explicit archive metadata and no live soft-delete flag; lifecycle mutations remain pending. Projects own no work/timer. |
+| Projects/tasks | Stable UUIDs, optional current membership and preserved archived identities/history. Target Delete removes only eligible unused structure under the administrative boundary below; B1 stores explicit archive metadata and no live soft-delete flag; C1 implements Archive/Unarchive; irreversible Delete remains pending. Projects own no work/timer. |
 | Timed work | Stable entry UUID, task UUID, genuine UTC endpoints, current revision and deletion state. Closed spans positive; active timer represented explicitly without a fabricated stop. |
 | Date-only work | Stable entry UUID, task UUID, civil work date and integer duration; no synthetic endpoints. Distinct shape and constraints. |
 | Work revisions | Immutable typed prior/new revision facts, audit time, optional comment, ownership and deletion evidence. Current reference changes atomically with revision. |
@@ -396,13 +396,14 @@ corrected/deleted by immutable revisions even after it becomes a parent.
 `committed_requests.receipt_class` is constrained to administrative/protected and
 derived from the finite operation list in `records.py`, never caller metadata.
 Implemented administrative operations are create/rename project, create/rename task
-and assign_task_to_project. B2 implements move_task_branch; archive/unarchive project/task names remain
-classified but not executable. All other operations are
+and assign_task_to_project. B2 implements move_task_branch; C1 implements
+archive_project, unarchive_project, archive_task and unarchive_task. All other operations are
 protected. SQL prohibits every receipt UPDATE and every protected receipt DELETE.
 No B1 service deletes administrative receipts. Creation ownership FKs are deferred;
 independent validation proves each creation owns a surviving entity and every
 survivor has its creation, canonical result, contiguous version effects, current
-name/membership/timestamps and historically reviewed destination versions. Missing
+name/membership/timestamps, explicit archive flag/current archive timestamp and
+historically reviewed destination versions. Missing
 or orphaned administration is damage, not an assumed prior Delete. This detached
 validation installs no replayed hierarchy authority.
 
@@ -441,6 +442,40 @@ receipt ownership across its deletion scope; B2 makes no retirement policy choic
 Movement preserves work/revisions, active entry/start, independent archive states,
 frozen Timesheets and confirmations. Direct Actual/application totals do not change;
 current parent cumulative/project grouping does. No Move UI or implicit Stop.
+
+### Implemented C1 archive lifecycle and management
+
+The four typed operations accept exactly the selected entity UUID and expected_version.
+The existing Request carries the accepted action instant; callers cannot supply an
+archive timestamp or descendant list. Resolve exact retries before reviewed-state
+checks. A valid repeated explicit state is unchanged with no receipt/version/time
+write. A changed action updates only that entity's flag, current archive timestamp,
+version and updated timestamp; Unarchive clears the flag/time. Archive refuses an
+active task anywhere in the containing project/subtree, with no implicit timer event.
+Existing transaction/FK/trigger guards and full lifecycle checks remain enabled.
+
+Independent administrative validation reconstructs archive state at each commit,
+including active-timer eligibility and B2 movement in its historical context. It
+compares final explicit state/timestamps as well as all former survivor effects.
+Missing/altered/orphaned archival receipts refuse startup, inspection and recovery.
+No receipt retirement or DDL change is introduced.
+
+`archived_window.py` is one modeless owner-created Toplevel consuming the same
+worker-produced state/report cutoff as main/mini. It has no connection, timer or
+accounting algorithm. Full original archived branches appear once per UUID;
+independent branches under active ancestors carry their original path as context.
+Own explicit time takes precedence, otherwise nearest archived task ancestor,
+otherwise archived project time. Local display includes numeric UTC offset for DST
+repeated hours; date sorting uses UTC microseconds. Four sibling/top-level sorts
+retain UUID ties, expansion and surviving selection through in-place row updates.
+Today/This Week uses existing Individual/Cumulative results, with unavailable
+placeholders on failed calculation. Archive confirmation is default-No, identifies
+the reviewed node/descendant count and never hides optimistically. Selected explicit
+Unarchive and direct-task History use the app's pending Request and modal guards;
+inherited-only Unarchive explains the owning ancestor. Closing/destroying the
+modeless window cannot discard accepted work. History returns legitimate focus to
+its live origin. Existing owned modals block main/mini/archived actions. No Delete,
+movement UI, templates or full nested active navigation is supplied by C1.
 
 ### Relational shape and invariant ownership
 
@@ -486,8 +521,7 @@ B1's current GUI intentionally retains project-scoped root creation.
 Archive changes only the selected node's explicit flag and stores the exact
 accepted UTC instant. Unarchive clears that flag/current timestamp, never descendant
 flags or edges. B1 implements a CHECK binding explicit is_archived to non-NULL
-archived_at_utc_us within the existing valid UTC-integer range. No archive mutation
-service is delivered yet. Effective archived state comes from ancestry. Independently archived
+archived_at_utc_us within the existing valid UTC-integer range. C1 supplies the four selected-node archive mutation services. Effective archived state comes from ancestry. Independently archived
 nodes use their own timestamp; inherited-only nodes use the nearest archived
 ancestor's timestamp for display. Convert with the stored IANA zone/DST rules;
 date sorting uses the genuine UTC instant, not ambiguous formatted local text.
@@ -504,15 +538,15 @@ materialized cumulative-time authority is selected.
 
 Extend the existing explicit TimerService/worker route, not a generic update-dict
 API. B1/B2 implement creation/rename, standalone assignment, explicit subtree
-movement, recording and detached reads as above. Lifecycle/template operations
-below remain **proposed future contracts**:
+movement, recording, C1 Archive/Unarchive and detached reads as above. Delete and
+template operations below remain **proposed future contracts**:
 
 | Use case | Strict reviewed inputs / result |
 | --- | --- |
 | Create project/task | Explicit new UUID/name and fixed destination project/parent UUIDs, plus destination reviewed versions; return created UUID/version. No selection creates an Unassigned root; virtual group selection carries no invented project UUID. |
 | Rename project/task | Entity UUID, expected version and name; retain all relationships/work. |
 | Move task branch / assign project | Root UUID and expected version, reviewed source/destination identities and versions, new parent/project (or selected root/Unassigned); return affected identities/versions. Validate current subtree, ancestry, membership and active eligibility atomically; refuse effectively archived selection and retain descendant states. |
-| Archive/Unarchive project or task branch | Typed entity UUID/version and desired explicit flag; Archive stores the Request accepted UTC instant, Unarchive clears current flag/time. Validate active descendants/inherited context and preserve independent child flags/work. |
+| Archive/Unarchive project or task branch | Exactly project_id/expected_version or task_id/expected_version; operation name selects the explicit flag. Archive stores the Request accepted UTC instant, Unarchive clears current flag/time. Validate active descendants/inherited context and preserve independent child flags/work. |
 | Preview/Delete unused branch | Fixed project/task subtree, complete typed dependency closure and counts, cannot-undo warning, typed DELETE for branch removal and final transactional recheck. No archive prerequisite. No retained deletion state; administrative request retirement follows the proposed boundary below. |
 | Create/Edit/Duplicate/Archive/Unarchive/Delete template | Explicit definition UUID/version and complete typed node set for changes; validate graph and active trim/casefold name uniqueness. Duplicate uses fresh definition/node IDs; applied tasks are independent. Referenced-definition Delete eligibility remains Open, with no tombstones or silent reference removal. |
 | Apply template | Reviewed template UUID/version, fixed destination UUID/version, and a frozen mapping of every template node to a fresh task UUID; return that same created mapping. Validate full prospective depth and leaf/active eligibility before insertion. |
@@ -595,7 +629,7 @@ executable DDL or permission to broaden deletion:
    including the disposition of Delete's own administrative request. Validate all
    survivors and COMMIT all or none. No cascade into history, trigger-disabling,
    partial success, new coordinator or automatic cleanup is selected. Exact SQL
-   guards/order and retirement permissions must be adjudicated before Package B/C.
+   guards/order and retirement permissions must be adjudicated before Package C2.
 4. **No persistent deletion identity.** Remove eligible entity rows/relationships
    and eligible exclusively associated administrative request records, without a
    residual name/note tombstone, digest registry, deletion-proof row or permanent
@@ -640,7 +674,7 @@ No general relaxation of protected evidence immutability or historical-evidence
 purge is authorized. Delete removes logical rows, not dataset files. It does not
 modify backups or filesystem copies or promise secure erasure of SQLite pages.
 
-### Proposed Archived Items presentation
+### Archived Items presentation
 
 Use one application-owned view through the existing worker/read-token and Tk
 ownership boundary, not a second connection, timer or persisted archive index.
@@ -648,14 +682,15 @@ A consistent detached snapshot carries original project/task identities, parent
 edges, explicit flags/current timestamps, effective ancestor provenance, versions
 and shared Individual/Cumulative values for the displayed period/cutoff.
 
-Proposed projection uses archived projects and maximal effectively archived task
+C1 projection uses archived projects and maximal effectively archived task
 branches as entries. An independently archived child with active ancestors carries
 their identifying context; it is not reparented in storage. An inherited-hidden
 descendant stays beneath its archived ancestor, including independently archived
 nested children. Render one identity once, with expand/collapse at all available
 project/task/subtask/sub-subtask levels. Do not flatten or double-count contextual
-paths. Direct History targets only the selected task's work; eligible Delete and
-explicit-node Unarchive are the only lifecycle actions here. Explain inherited
+paths. Direct History targets only the selected task's work; C1 offers explicit-node
+Unarchive only. Eligible Delete remains a separately adjudicated C2 target with no
+current control. Explain inherited
 hiding or dependency refusal; expose no recording controls or manual-work route.
 
 The four primary orders are Name A–Z, Name Z–A, Date Archived Newest first (default)

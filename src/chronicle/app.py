@@ -91,6 +91,7 @@ class ChronicleApp:
         self.mini = self.editor = None
         self._work_editor = None
         self.history = None
+        self.archived = None
         self.timesheet = None
         self._timesheet_opening = False
         self._timesheet_return = None
@@ -211,6 +212,10 @@ class ChronicleApp:
         self.buttons['Recheck POL-R'].grid(row=2,column=0,sticky='w',padx=3)
         self.buttons['Backup Chronicle'] = ttk.Button(actions, text='Backup Chronicle', command=self.open_backup)
         self.buttons['Backup Chronicle'].grid(row=2, column=1, sticky='w', padx=3)
+        self.buttons['Archive'] = ttk.Button(actions, text='Archive', command=self.archive_selected)
+        self.buttons['Archive'].grid(row=2, column=2, sticky='w', padx=3)
+        self.buttons['Archived Items'] = ttk.Button(actions, text='Archived Items', command=self.open_archived)
+        self.buttons['Archived Items'].grid(row=2, column=3, sticky='w', padx=3)
         self._controls()
 
     def can_mutate(self, *, origin=None):
@@ -413,6 +418,9 @@ class ChronicleApp:
                 allowed &= active is not None
             if name == "Switch":
                 allowed &= eligible and active is not None and task["task_id"] != active["task_id"]
+            if name == 'Archive':
+                entity, item = self._archive_selection()
+                allowed &= item is not None and not self._archive_contains_active(entity, item)
             if name == "Rename project":
                 allowed &= bool(self.state["projects"])
             configure_changed(button, state="normal" if allowed else "disabled")
@@ -435,6 +443,8 @@ class ChronicleApp:
         if self.mini is not None:
             self.mini.render()
         self._render_reminder()
+        if self.archived is not None:
+            self.archived.controls()
 
     def _selection_changed(self):
         self._controls()
@@ -500,6 +510,71 @@ class ChronicleApp:
         return self._submit("switch_timer", expected_active_entry_id=active["entry_id"],
                             expected_active_version=active["version"], next_task_id=task["task_id"],
                             next_entry_id=str(uuid4()), expected_task_version=task["version"])
+
+    def _archive_selection(self):
+        project = self._selected_project()
+        if project is not None:
+            return 'project', project
+        return 'task', self._selected()
+
+    def _archive_contains_active(self, entity, item):
+        active = self.state.get('active')
+        if not active or item is None:
+            return False
+        from .hierarchy import task_paths
+        if entity == 'project':
+            return any(t['task_id'] == active['task_id'] and t['project_id'] == item['project_id']
+                       for t in self.state['tasks'])
+        return item['task_id'] in task_paths(self.state['tasks'])[active['task_id']]
+
+    def archive_selected(self):
+        if not self.can_mutate() or self.root.grab_current() is not None:
+            return False
+        entity, item = self._archive_selection()
+        if item is None or self._archive_contains_active(entity, item):
+            return False
+        reviewed = deepcopy(item)
+        from .hierarchy import task_paths
+        paths = task_paths(self.state['tasks'])
+        count = sum(t['project_id'] == item['project_id'] if entity == 'project'
+                    else item['task_id'] in paths[t['task_id']] and t['task_id'] != item['task_id']
+                    for t in self.state['tasks'])
+        self.executing = True
+        self._controls()
+        try:
+            confirmed = messagebox.askyesno('Archive ' + entity,
+                f"Archive {entity}: {reviewed['name']}\n{reviewed[entity + '_id']}\n"
+                f"Affected descendant tasks: {count}\nHides this branch without deleting recorded work. Unarchive reverses this action.",
+                parent=self.root, default=messagebox.NO)
+        finally:
+            self.executing = False
+            self._controls()
+        if confirmed:
+            return self._submit('archive_' + entity, **{entity + '_id': reviewed[entity + '_id'],
+                                                       'expected_version': reviewed['version']})
+        return False
+
+    def open_archived(self):
+        if self.archived is not None or not self.can_mutate() or self.root.grab_current() is not None:
+            return False
+        from .archived_window import ArchivedItemsWindow
+        window = None
+        try:
+            window = ArchivedItemsWindow(self)
+            self.archived = window
+            window.render(self.state)
+            window.window.deiconify()  # Modeless: no focus/grab replacement or nested loop.
+            self.refresh()
+            return True
+        except Exception as primary:
+            if window is not None:
+                try:
+                    window.window.destroy()
+                except Exception as secondary:
+                    primary.add_note(f'Archived Items construction cleanup failed: {secondary!r}')
+            self.status.configure(text=f'Unable to open Archived Items: {primary}')
+            self._diagnose(primary)
+            return False
 
     def _ask_name(self, title, initial="", *, prompt="Name"):
         if not self.can_mutate():
@@ -1169,7 +1244,7 @@ class ChronicleApp:
             self.executing = False
             self._timesheet_dialog_busy = False
 
-    def open_history(self):
+    def open_history(self, *, _archived_origin=None, _task_id=None):
         # Duplicate/reentrant requests do not inspect drafts, clocks or task arguments.
         if self._history_opening:
             return False
@@ -1178,7 +1253,18 @@ class ChronicleApp:
             if not self.history.disposed and widget_live(self.history.window):
                 return False
             self._history_disposed(self.history)
-        if not self.can_mutate() or self._selected() is None:
+        origin = self.root
+        task = self._selected()
+        if _archived_origin is not None:
+            if (self.archived is not _archived_origin or not _archived_origin.current()
+                    or self.root.grab_current() is not None):
+                return False
+            selected = _archived_origin.selected()
+            if selected is None or selected['entity'] != 'task' or selected['item']['task_id'] != _task_id:
+                return False
+            task = next((t for t in self.state['tasks'] if t['task_id'] == _task_id and t['effective_archived']), None)
+            origin = _archived_origin.window
+        if not self.can_mutate() or task is None:
             return False
         from .history_window import HistoryWindow, widget_live
         self._history_opening = True
@@ -1190,8 +1276,8 @@ class ChronicleApp:
             if grab is not None and (grab is not self.root or grab.grab_status() != "local"):
                 raise ValueError("History cannot replace an unrelated or global grab")
             focus = self.root.focus_get()
-            self._history_return = (self.root, grab, focus)
-            history = HistoryWindow(self, self._selected())
+            self._history_return = (origin, grab, focus)
+            history = HistoryWindow(self, task)
             self.history = history  # Publish before any presentation event can run.
             self._controls()
             history.present()
@@ -1479,6 +1565,8 @@ class ChronicleApp:
         configure_changed(self.headline, text="Today: —    This week: —")
         configure_changed(self.error, text="Time totals unavailable. " + str(exc))
         self._controls()
+        if self.archived is not None:
+            self.archived.render(self.state)
         self._diagnose(exc)
 
     def _render(self, candidate):
@@ -1558,6 +1646,8 @@ class ChronicleApp:
         configure_changed(self.active_label, text=f"▶ Running: {task['name']}" if task else "■ Stopped — no active timer")
         configure_changed(self.error, text="" if report else "Time totals unavailable. " + (candidate.get("calculation_error") or ""))
         self._controls()
+        if self.archived is not None:
+            self.archived.render(self.state)
 
     def _handle(self, message):
         if message.kind == 'backup':

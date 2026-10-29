@@ -10,7 +10,7 @@ from chronicle.records import Outcome
 from chronicle.services import TimerService
 from chronicle.timesheet_window import TimesheetWindow
 from chronicle.worker import Message
-from conftest import NOW,uid
+from conftest import archive, NOW,uid
 from test_app import root,connected,click,keyboard,pump,create,evidence
 from test_chronicle_history_ui import mutation,selected_task,seed
 from test_chronicle_history_operator import choose_combo
@@ -263,7 +263,8 @@ def test_real_tk_choice_labels_deleted_tasks_and_last_week_drafts(connected,root
     original=TimerService.read_timesheet_task_choices
     def retained(self):
         # Explicit fixture mutation on the real owning worker, never a GUI SQL call.
-        self.store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(second,))
+        if not self.store.connection.execute('SELECT is_archived FROM tasks WHERE task_id=?',(second,)).fetchone()[0]:
+            archive(self, 'task', second, now=0)
         return original(self)
     with monkeypatch.context() as m:
         m.setattr(TimerService,'read_timesheet_task_choices',retained)

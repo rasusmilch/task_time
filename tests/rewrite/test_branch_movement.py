@@ -11,7 +11,7 @@ from chronicle.services import TimerService
 from chronicle.sqlite_store import SQLiteStore
 from chronicle.movement import snapshot
 from chronicle.worker import DatabaseWorker,Message
-from conftest import NOW,uid
+from conftest import archive, NOW,uid
 from test_hierarchy_foundation import create,group,verify,corrupt_with_original_guards
 from test_backup_restore import logical,rich
 from test_manual_work import dated,M
@@ -116,21 +116,21 @@ def test_ineligible_context_refuses(store,service,where):
         else:d=create(service,q,target)
     if where=='active_destination':assert service.start_timer(d,uid(),expected_task_version=1,request_id=uid(),action_utc_us=NOW).status=='committed'
     elif where.endswith('project'):
-        store.connection.execute('UPDATE projects SET is_archived=1,archived_at_utc_us=? WHERE project_id=?',(NOW,p if where=='source_project' else q))
-    else:store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=? WHERE task_id=?',(NOW,target))
+        archive(service, 'project', p if where=='source_project' else q)
+    else:archive(service, 'task', target)
     args=review(store,a,d,q);before=logical(store.path)
     assert execute(service,args).status=='rejected' and logical(store.path)==before;verify(store)
 
 
 def test_active_leaf_and_independent_archived_descendant_preserved(store,service):
     p=group(service);q=group(service);a=create(service,p);b=create(service,p,a);arch=create(service,p,a)
-    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=? WHERE task_id=?',(NOW,arch))
+    archive(service, 'task', arch)
     assert service.start_timer(b,uid(),expected_task_version=1,request_id=uid(),action_utc_us=NOW).status=='committed'
-    active=dict(store.connection.execute('SELECT * FROM active_timer').fetchone());archive=dict(store.connection.execute('SELECT * FROM tasks WHERE task_id=?',(arch,)).fetchone())
+    active=dict(store.connection.execute('SELECT * FROM active_timer').fetchone());archived_row=dict(store.connection.execute('SELECT * FROM tasks WHERE task_id=?',(arch,)).fetchone())
     assert execute(service,review(store,a,project=q)).status=='committed'
     assert dict(store.connection.execute('SELECT * FROM active_timer').fetchone())==active
     row=store.connection.execute('SELECT * FROM tasks WHERE task_id=?',(arch,)).fetchone()
-    assert (row['is_archived'],row['archived_at_utc_us'])==(archive['is_archived'],archive['archived_at_utc_us'])
+    assert (row['is_archived'],row['archived_at_utc_us'])==(archived_row['is_archived'],archived_row['archived_at_utc_us'])
     verify(store)
 
 

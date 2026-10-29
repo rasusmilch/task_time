@@ -98,12 +98,14 @@ B1 implements fresh schema 2 and service-level parent adjacency, three task leve
 reviewed child creation, effectively active leaf-only new recording and retained
 parent history. Package A remains a project/task grouped UI with root-only New Task;
 parent new-work controls are disabled. B1 nested development data is not a qualified
-end-user workflow. B2 service-level subtree movement is implemented for review. Movement UI,
-nested management, lifecycle actions and templates remain pending;
+end-user workflow. B2 service-level subtree movement is implemented. C1 delivers
+Archive/Unarchive and full Archived Items navigation for independent review.
+Movement UI, full nested active management, irreversible Delete and templates remain pending;
 rollups/projects never add work or change frozen evidence.
 
 Archived Items shows the full expandable tree, independently archived branches
-with ancestor context, direct History and eligible Unarchive/Delete. Current archive
+with ancestor context, direct History and explicit-node Unarchive. Eligible Delete
+remains a later C2 target and has no control in the current application. Current archive
 dates are exact accepted UTC instants displayed in the dataset zone; inherited-only
 children use their nearest archived ancestor. Sort siblings/top-level entries by
 Name A–Z/Z–A or Date Archived Newest/Oldest, newest default, preserving selection
@@ -136,8 +138,9 @@ Current runtime supports only exact fresh schema 2, **without v1 migration,
 compatibility mode or legacy import**. Version-1 datasets/backups refuse and remain
 protected; failed remembered startup does not replace data or clear selection.
 Backup/restore/cold inspection completely validate v2 structure and evidence.
-B2 movement is implemented for independent review; C/D/E lifecycle/nested UI/
-templates require separate approvals. See
+B2 movement and C1 Archive/Unarchive/Archived Items are implemented; C1 awaits
+independent review. C2 irreversible Delete, D nested active UI and E templates
+require separate approvals. See
 [selected behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation) and
 [bounded packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).

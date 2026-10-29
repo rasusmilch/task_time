@@ -1227,7 +1227,8 @@ framework is authorized. Stage 4 remains IN PROGRESS; Stage 5 NOT STARTED.
 
 ### Final Archive/Delete and Archived Items supersession
 
-**Status:** current selected target; unimplemented. **Provenance:** the explicit
+**Status:** current selected target; originally unimplemented. C1 later implements
+Archive/Unarchive and Archived Items; Delete remains unimplemented. **Provenance:** the explicit
 owner Archive / Delete Design Reconciliation instruction, following independently
 verified source `18198fe7a166daf970eb18669c7c4d5fb551267a`. Current owners are the
 [lifecycle requirements](TIMESHEET_REQUIREMENTS.md#projecttask-management-and-branch-lifecycle),
@@ -1334,6 +1335,26 @@ receipt covers all effects. No schema change, implicit timer event, work mutatio
 movement UI. Historical reconstruction is independent validation only. Future Delete
 receipt ownership/retirement policy remains unselected and unimplemented here.
 Stage 4 remains IN PROGRESS, Stage 5 NOT STARTED and native qualification separate.
+
+### Package C1 reversible lifecycle and Archived Items approval
+
+**Status:** current approved behavior; implemented for independent review.
+**Provenance:** explicit Package C1 GO following reviewed B2 source. The owner
+separates reversible lifecycle from C2 irreversible unused-only Delete adjudication.
+C1 activates the existing schema-2 archive fields without DDL changes. Four strict
+entity/version operations update only the selected flag/current accepted UTC time,
+version and modification instant; active-containing Archive refuses, independent
+child flags survive, no-op writes nothing and retained exact requests reconcile.
+Chronological validation includes archive states, movement and active context.
+
+One owner/worker-backed modeless Archived Items tree supplies full original branches,
+independent ancestor context, four stable sibling/top-level sorts, IANA date/offset
+display, coordinated Individual/Cumulative periods and direct modal History.
+Main remains project-grouped until D. C1 implements no Delete, receipt retirement,
+templates or migration. Earlier pending lifecycle statements above describe their
+original implementation stage, not a competing current approval. C2 still requires
+separate dependency/receipt/DDL adjudication; Stage 4 is IN PROGRESS, Stage 5 NOT STARTED,
+and native Windows qualification of these changes remains outstanding.
 
 ## Open decisions
 

@@ -218,6 +218,9 @@ def test_real_tk_actual_scroll_and_expansion_preserved_through_reads_and_period(
     keys=[task(app,str(i),p) for i in range(26)]
     app.root.geometry('720x420')
     pump(app.root,lambda:app.root.winfo_width()==720 and app.root.winfo_height()==420)
+    # Root Configure precedes child layout. Freeze the viewport only after the
+    # requested resize has reached the Treeview; retain every purity assertion.
+    app.root.update_idletasks()
     app.tree.see(app.task_row(keys[-1]));app.tree.yview_moveto(1)
     pump(app.root,lambda:app.tree.yview()[0]>0)
     select(app,app.task_row(keys[-1]));scroll=app.tree.yview()

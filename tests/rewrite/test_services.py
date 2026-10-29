@@ -6,7 +6,7 @@ import pytest
 
 from chronicle.records import Request, canonical
 from chronicle.timekeeping import to_us
-from conftest import NOW, uid
+from conftest import archive, NOW, uid
 
 
 def start(service, task, now=NOW):
@@ -83,8 +83,8 @@ def test_bad_id_owner_deleted_task_and_stale_version(service, task, store):
         assert service.start_timer(target, uid(), expected_task_version=1, request_id=uid(), action_utc_us=NOW).status == "rejected"
     assert service.start_timer(task, uid(), expected_task_version=2, request_id=uid(), action_utc_us=NOW).status == "rejected"
     store._recover_connection()
-    store.connection.execute("UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?", (task,))
-    assert service.start_timer(task, uid(), expected_task_version=1, request_id=uid(), action_utc_us=NOW).status == "rejected"
+    archive(service, 'task', task, now=0)
+    assert service.start_timer(task, uid(), expected_task_version=2, request_id=uid(), action_utc_us=NOW).status == "rejected"
 
 
 def test_active_start_audit_precision_noop_stale_and_stop(service, task, store):

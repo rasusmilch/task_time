@@ -8,12 +8,22 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Deliver C1 selected-node Archive/Unarchive on unchanged schema 2: exact accepted
+  UTC current timestamps, inherited visibility, active-containing branch refusal,
+  no-op purity, exact retries and complete chronological archive/move validation.
+  Add default-No main Archive and one modeless Archived Items full-depth tree with
+  four sibling/top-level sorts, stable selection/expansion, dataset-zone dates,
+  shared Individual/Cumulative periods and direct historical Work History. Preserve
+  modal/pending ownership, active identities and immutable reporting/work evidence.
+  No irreversible Delete, receipt retirement, templates or full nested active UI.
+  Delivered for independent review; Stage 4 remains IN PROGRESS, Stage 5 not started.
+
 - Add B2 atomic subtree movement on unchanged schema 2: frozen complete subtree/
   destination review, guard-respecting cross-project detachment/reconstruction,
   changed-row-only versions, no-op purity and one exact administrative receipt.
   Independently validate chronological multi-entity effects while preserving active
-  timer/work/archive/frozen reporting evidence. No movement UI, lifecycle actions,
-  template operations or migration. Delivered for independent review only.
+  timer/work/archive/frozen reporting evidence. No movement UI, template operations
+  or migration. Delivered for independent review only.
 - Deliver Package B1's fresh-only schema 2 (same Chronicle application ID): parent
   adjacency, matching project/Unassigned membership, three-level bounds, reviewed
   atomic child creation without parent version changes, active-leaf new recording

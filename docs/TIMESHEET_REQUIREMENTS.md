@@ -94,8 +94,9 @@ must not turn another task's work into a task's own Actual.
 
 The hierarchy target is partially implemented by Package B1 for independent review:
 exact fresh schema 2, unchanged application ID 0x4348524E, parent adjacency and core
-recording/accounting. B2 implements transactional subtree movement for independent review. Lifecycle
-actions, movement UI, nested management UI and templates remain unimplemented. B1 supersedes the former proposed foundation/identity gate,
+recording/accounting. B2 implements transactional subtree movement. C1 implements
+Archive/Unarchive and full Archived Items navigation for independent review.
+Delete, movement UI, nested active management UI and templates remain unimplemented. B1 supersedes the former proposed foundation/identity gate,
 not the remaining package approvals or the no-migration boundary.
 
 Maximum structure is Project → Task → Subtask → Sub-subtask: three task levels
@@ -166,8 +167,8 @@ to view/sort abandoned unused items.
 Project/task management offers Create, Rename, Move, Archive/Unarchive, Delete and
 direct Work History using reviewed UUIDs/versions, cancellation without writes,
 stale diagnostics and authoritative completion. B1 implements creation/rename,
-explicit child creation and existing standalone-root project assignment. B2 adds explicit service-level subtree movement; movement UI, Archive/Unarchive
-and project/task Delete remain unimplemented.
+explicit child creation and existing standalone-root project assignment. B2 adds explicit service-level subtree movement; C1 adds Archive/Unarchive and
+Archived Items. Movement UI and project/task Delete remain unimplemented.
 
 ### Unused-only Delete
 
@@ -241,7 +242,8 @@ independently archived task branches and descendants hidden by archived ancestor
 Preserve Project → Task → Subtask → Sub-subtask relationships and support full
 expand/collapse at every available level, historical Individual/Cumulative values,
 direct-task Work History, selected explicit-node Unarchive and eligible-branch
-Delete. Explain ineligible Delete/Unarchive. The view is read-only for recording:
+Delete (later C2). C1 implements this view with Unarchive and direct History only;
+no Delete command is present. Explain ineligible Delete/Unarchive. The view is read-only for recording:
 no Start, Switch into archived tasks or new manual work beneath archived parents.
 Selection, sorting and expansion never make an archived leaf eligible for time.
 
@@ -255,7 +257,8 @@ Display current archive timestamps in the dataset IANA timezone using real DST/
 timezone conversion, never creation/modification time or a fixed offset. An
 independently archived child has its own accepted timestamp; a descendant hidden
 only through ancestry displays its nearest effective archived ancestor's timestamp.
-The exact column names/DDL remain proposals, not executing schema changes.
+B1 schema 2 already stores explicit flags/current archive timestamps. C1 uses
+those unchanged fields; no additional archive-date journal or DDL is introduced.
 
 Offer exactly four primary sorting choices:
 
@@ -823,7 +826,7 @@ gates; no automatic external allocation verification is established.
 | Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
-| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation and B1 fresh hierarchy/recording foundation implemented for review. B2 movement implemented for review; C lifecycle/D full nested UI/E templates remain separately approved, unimplemented packages; nothing inherited from JSONL. |
+| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 Delete/D full nested active UI/E templates remain unimplemented; nothing inherited from JSONL. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
@@ -838,15 +841,19 @@ Derived Individual/Cumulative/project amounts never add extra Actual to reportin
 B2 adds one atomic move receipt for the complete reviewed subtree, with exact
 retry/no-op behavior and changed-row-only versions/timestamps. Direct work and
 frozen evidence remain unchanged; current grouping/cumulative values follow the
-new structure. No migration, movement UI, lifecycle actions or templates are delivered.
+new structure. C1 adds selected-only Archive/Unarchive with exact accepted UTC
+current timestamps, inherited visibility and complete chronological receipt checks.
+No migration, movement UI, irreversible Delete or templates are delivered.
 
 Package A presentation remains implemented: empty project groups,
 typed task/group rows, session-local A-Z/period choice, green/red text states,
 in-place row/label updates preserving selection/expansion/scroll, project-scoped
 New Task and selected-project rename. Mini adds Show Main, Off-by-default session-
 local Keep Mini Open and guarded topmost. Exact worker observations continue each
-second; only changed visible values repaint. No full nested management UI, Archive/Delete actions,
-Archived Items or templates are implemented. Native Windows interface follow-up
+second; only changed visible values repaint. C1 adds the modeless full-depth
+Archived Items tree, four sibling/top-level sorts, shared period values, explicit
+Unarchive and direct History, with existing modal/pending guards. No full nested
+active management UI, Delete or templates are implemented. Native Windows interface follow-up
 remains required.
 
 The sole shipped source route uses `src/chronicle`: explicit fresh SQLite

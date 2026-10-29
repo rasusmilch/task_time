@@ -593,7 +593,7 @@ class SQLiteStore:
             for key in ('expected_version','expected_task_version','expected_active_version','expected_revision'):
                 if key in a and (type(a[key]) is not int or not 1 <= a[key] <= 2**63-1):
                     raise ValueError('Invalid reviewed version in receipt')
-            if op in ('create_task','rename_task','assign_task_to_project','create_project','rename_project','move_task_branch'):
+            if op in ('create_task','rename_task','assign_task_to_project','create_project','rename_project','move_task_branch','archive_project','unarchive_project','archive_task','unarchive_task'):
                 pass  # Complete bidirectional entity/version closure is checked below.
             elif op == 'set_week_start':
                 if (type(a.get('week_start')) is not int or not 0 <= a['week_start'] <= 6

@@ -8,7 +8,7 @@ import pytest
 from chronicle.records import Request
 from chronicle.sqlite_store import SQLiteStore
 from chronicle.timekeeping import parse_duration, to_us
-from conftest import NOW, uid
+from conftest import archive, NOW, uid
 
 M = 60_000_000
 H = 60 * M
@@ -141,7 +141,7 @@ def test_unknown_deleted_task_and_duplicate_uuid_do_not_create_orphans(service,t
         result=service.add_date_only_work(target,entry,'2026-10-19','1:00',request_id=uid(),action_utc_us=NOW)
         assert result.status in ('rejected','rolled_back') and facts(store)==before
     service.read_current_state(cutoff_utc_us=NOW)  # Reconnect after the rejected identity collision.
-    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(task,))
+    archive(service, 'task', task, now=0)
     before=facts(store)
     assert service.add_date_only_work(task,uid(),'2026-10-19','1:00',request_id=uid(),action_utc_us=NOW).status=='rejected'
     assert facts(store)==before

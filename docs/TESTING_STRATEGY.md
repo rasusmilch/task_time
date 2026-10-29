@@ -399,6 +399,38 @@ Former live soft-delete fixtures now exercise retained archived identities; work
 Delete still means immutable revisions. Frozen report is_deleted remains false in
 new v2 evidence. Native Windows/NTFS qualification of these changes remains pending.
 
+## Package C1 reversible lifecycle evidence
+
+[test_archive_lifecycle.py](../tests/rewrite/test_archive_lifecycle.py) exercises
+real selected-only project/task archive timestamps/versions, inheritance and
+independent descendants, no-op purity, stale/strict request refusal, active branch
+refusal without timer mutation, exact retries after later changes and B2 movement
+in reconstructed archive context. Faults and separate barrier-controlled child
+termination around updates/receipt/COMMIT verify atomicity, committed survival and
+exact reconciliation. Damaged archival requests/results/class/state/timestamps
+refuse complete validation, cold inspection and restore before target reservation.
+A rich work/revision/export/confirmation/active/dismissal image survives worker
+Archive/Unarchive, backup, independent cold restore and further legitimate work.
+Existing B1/B2 archive fixtures now create valid archive receipts through production
+services; deliberate damage fixtures continue bypassing guards only on disposable
+images before restoring the exact DDL.
+
+[test_archived_items.py](../tests/rewrite/test_archived_items.py) exercises actual
+Tk/worker snapshots for full three-level archived structure, empty projects,
+independent branch context, no duplicate UUIDs, inherited-only explanations,
+selected-only Unarchive, period/shared totals, direct History and modal exclusion.
+Four sorts retain hierarchy, expansion/selection and deterministic ties without
+unchanged-row writes. DST repeated-hour dates include UTC offset and sort by UTC.
+Cancellation, pending/destroyed origins, lost acknowledgement/exact reconciliation
+and stale deliveries remain distinct from server-delivered Archive confirmation,
+cancel, Archived Items selection and Unarchive input. These are portable Linux
+Xorg/XTest tests, not native Windows focus/topmost/NTFS qualification. No C2 Delete
+or full nested active management is established. Run Level C after this shared
+lifecycle/application boundary change, plus focused runtime/UI evidence.
+The existing explorer viewport fixture settles pending child layout after its
+requested root resize before freezing the baseline; full scroll-fraction, selected
+UUID and expansion assertions remain unchanged.
+
 ## Package A explorer evidence
 
 [test_main_explorer.py](../tests/rewrite/test_main_explorer.py) uses actual Tk,
@@ -414,17 +446,18 @@ backup/startup cases now address typed rows without weakening service assertions
 manual-work tests explicitly exercise the shared period. Linux evidence does not
 qualify native Windows theme/topmost/focus behavior.
 
-## Remaining hierarchy target evidence — planned, not implemented
+## Hierarchy evidence and remaining target gates
 
 This section maps the later user-approved
 [target requirements](TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary)
 to [packages A–F](ROADMAP.md#hierarchy-target--bounded-packages-a-f). It does not
-claim all remaining tests exist or ran. The B1 foundation subset is established
-in the inventory above and carried forward; this section retains later gates.
+claim all remaining tests exist or ran. Implemented B1/B2/C1 subsets are established
+in the inventory above and carried forward; this table retains required assertions
+and later C2/D/E/F gates.
 Retained JSONL tests do not become SQLite qualification. The final owner decision selects Archive/Unarchive plus actual
 unused-only Delete without a recoverable tier or deletion ledger. Independently
-adjudicate finite administrative dependency/transaction design and exact fresh DDL
-before dependent tests; referenced-template Delete eligibility remains Open.
+adjudicate C2 administrative dependency/transaction design and any required DDL
+before dependent Delete tests; referenced-template Delete eligibility remains Open.
 
 | Guarantee | Required focused evidence |
 | --- | --- |
@@ -435,7 +468,7 @@ before dependent tests; referenced-template Delete eligibility remains Open.
 | Accounting conservation | Independent expected examples with parent direct work plus children/grandchildren: Individual stays direct, Cumulative includes each descendant once, project/application totals never sum rollups twice. Collapse, sort and archived navigation filters do not remove applicable history. One cutoff/main/mini, all weekdays, midnight/DST, exact microseconds, future dated work and unavailable calculations retain existing semantics. Carry forward compatible edge-case suites rather than rebuilding them inside a giant integration test. |
 | Branch moves | Complete before/after UUID/work/evidence comparison for same-project reparent and cross-project move; all descendants get coherent current grouping. Effectively archived selected branches refuse until unarchived; allowed moves preserve independently archived descendant states. Stale source/destination/affected state rejects atomically. Frozen labels/text/basis and absolute confirmations remain unchanged while fresh grouping updates. |
 | Archive/Unarchive | Only selected explicit flag/current archive time changes; exact accepted UTC instant, IANA/DST display, no creation/mtime inference. Active containing branches refuse without implicit timer action. Descendant flags/relationships/work/grouping/frozen evidence remain unchanged. Unarchive clears only selected flag/time; archived ancestors still hide children; rearchive later gets a new current timestamp. No historical archive-date journal is required. |
-| Archived Items tree/sort | Archived projects, independently archived branches with active-ancestor context and inherited-only descendants; one UUID once, original parentage and full expand/collapse. Exactly Name A–Z/Z–A and Date Archived Newest/Oldest with newest default; sibling/top-level sorting, stable UUID ties, nearest-archived-ancestor timestamp versus own explicit time, real UTC chronology across DST repeats. Selection/expansion retained during sorting/refresh while visible; targeted updates avoid unnecessary row rebuild. Read-only for time: no Start/Switch/new manual work, including direct callbacks and stale selected nodes. Direct History/Unarchive/eligible Delete and explanatory refusal tested through worker/Tk and separate server input. |
+| Archived Items tree/sort | Archived projects, independently archived branches with active-ancestor context and inherited-only descendants; one UUID once, original parentage and full expand/collapse. Exactly Name A–Z/Z–A and Date Archived Newest/Oldest with newest default; sibling/top-level sorting, stable UUID ties, nearest-archived-ancestor timestamp versus own explicit time, real UTC chronology across DST repeats. Selection/expansion retained during sorting/refresh while visible; targeted updates avoid unnecessary row rebuild. Read-only for time: no Start/Switch/new manual work, including direct callbacks and stale selected nodes. C1 Direct History/Unarchive and explanatory refusal use worker/Tk and separate server input. Eligible Delete remains future C2 evidence with no current control. |
 | Unused-only Delete | No Archive prerequisite; project/task management and Archived Items routes. Exact selected subtree/counts/cannot-undo warning, typed DELETE for branch removal, final scope/closure recheck and all-or-none row/relationship/exclusively owned administrative removal. Timed/date-only/deleted work/revisions, active/correction evidence, frozen zero scope/basis/labels/project references, all confirmations including zero, reporting/survivor dependencies and unresolved administration each block. One protected descendant blocks whole-project Delete; an independently removable unused child under a working parent may succeed. Zero Actual never proves eligibility. No pruning, scope expansion, history rewrite, automatic cleanup, dataset-file deletion or backup/copy modification. |
 | Proposed administrative Delete/receipt boundary | After engineering approval, test finite allowlist and typed complete closure, shared/cross-entity/survivor refusal, races/new dependencies, constraint-safe atomic order and full before/after survivor equality. Surviving/protected requests retain exact retry/conflict semantics and commit order. Fully erased administrative requests deliberately have no historical result/replay guarantee; do not require erased UUID reservation or tombstones. Lost Delete acknowledgement plus erased receipt reports uncertainty: present absence is not historical proof. No automatic resubmission or stale callback adoption; queued/concurrent actions pass final current checks. Faults/interruption prove all or none and complete independent startup/backup/restore validation without a deletion registry/ledger. |
 | Templates | Real SQLite graph/depth/UUID validation, duplicate task/project names, active template trim/casefold uniqueness including non-ASCII collisions and conflicting Unarchive-name refusal. Archive/Unarchive availability and intended actual definition Delete; referenced/applied definition eligibility assertions wait for Package E dependency adjudication. No soft-delete tier, tombstones or silent reference removal. Applied tasks/history stay independent; whole Apply commits or rolls back and retained exact request retries return the original instance. |

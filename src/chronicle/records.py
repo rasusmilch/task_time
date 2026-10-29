@@ -10,7 +10,6 @@ from uuid import UUID
 
 ADMINISTRATIVE_OPERATIONS = frozenset({
     'create_project', 'rename_project', 'create_task', 'rename_task', 'assign_task_to_project', 'move_task_branch',
-    # Classified now, deliberately not executable until separately approved packages.
     'archive_project', 'unarchive_project', 'archive_task', 'unarchive_task',
 })
 

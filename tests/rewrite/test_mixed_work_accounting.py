@@ -1,6 +1,6 @@
 """Active-reader gate: real services expose all effective work together."""
 import pytest
-from conftest import NOW,uid
+from conftest import archive, NOW,uid
 from test_manual_work import H,M,dated,timed,stamp,facts
 
 
@@ -20,7 +20,7 @@ def test_mixed_precision_future_dates_and_independent_tasks(service,task,store):
     assert a['daily_us'].get('2026-10-23',0)==a['daily_us'].get('2026-10-25',0)==0
     assert b['today_us']==15*M
     assert state['report']['application']['week_us']==a['week_us']+b['week_us']
-    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(second,))
+    archive(service, 'task', second, now=0)
     assert service.read_current_state(cutoff_utc_us=NOW)['report']['application']==state['report']['application']
 
 

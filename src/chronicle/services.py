@@ -55,6 +55,26 @@ class TimerService:
         return self._make("assign_task_to_project", request_id, action_utc_us,
                           dict(task_id=task_id, project_id=project_id, expected_version=expected_version))
 
+    def archive_project(self, project_id: str, *, expected_version: int,
+                       request_id: str, action_utc_us: int) -> Outcome:
+        return self._make('archive_project', request_id, action_utc_us,
+                          dict(project_id=project_id, expected_version=expected_version))
+
+    def unarchive_project(self, project_id: str, *, expected_version: int,
+                       request_id: str, action_utc_us: int) -> Outcome:
+        return self._make('unarchive_project', request_id, action_utc_us,
+                          dict(project_id=project_id, expected_version=expected_version))
+
+    def archive_task(self, task_id: str, *, expected_version: int,
+                       request_id: str, action_utc_us: int) -> Outcome:
+        return self._make('archive_task', request_id, action_utc_us,
+                          dict(task_id=task_id, expected_version=expected_version))
+
+    def unarchive_task(self, task_id: str, *, expected_version: int,
+                       request_id: str, action_utc_us: int) -> Outcome:
+        return self._make('unarchive_task', request_id, action_utc_us,
+                          dict(task_id=task_id, expected_version=expected_version))
+
     def move_task_branch(self, task_id: str, *, expected_version: int,
                          source_parent_task_id: str | None, source_project_id: str | None,
                          destination_parent_task_id: str | None, destination_project_id: str | None,
@@ -513,6 +533,20 @@ class TimerService:
         def operation(c):
             a, op, now = request.args(), request.operation, request.action_utc_us
             local_date(now, self.store.zone)
+            from .lifecycle import OPERATIONS, transition
+            if op in OPERATIONS:
+                tasks = [dict(r) for r in c.execute('SELECT * FROM tasks')]
+                projects = [dict(r) for r in c.execute('SELECT * FROM projects')]
+                active = c.execute('SELECT * FROM active_timer').fetchone()
+                changed = transition(op, a, now, tasks, projects, active)
+                if changed is None:
+                    return None
+                entity = 'project' if op.endswith('_project') else 'task'
+                key = changed[entity + '_id']
+                c.execute(f'UPDATE {entity}s SET is_archived=?,archived_at_utc_us=?,version=?,updated_utc_us=? WHERE {entity}_id=?',
+                          (changed['is_archived'], changed['archived_at_utc_us'], changed['version'], now, key))
+                self.store.assert_lifecycle(c)
+                return {entity + '_id': key, 'version': changed['version']}
             if op == 'move_task_branch':
                 return self._move_task_branch(c,request,a)
             if op == 'dismiss_polr_reminder_today':

@@ -11,7 +11,7 @@ from chronicle.records import Request, ADMINISTRATIVE_OPERATIONS, canonical, rec
 from chronicle.services import TimerService
 from chronicle.sqlite_store import SQLiteStore, APPLICATION_ID, SCHEMA_VERSION, DATABASE
 from chronicle.worker import DatabaseWorker, Message
-from conftest import NOW, uid
+from conftest import archive, NOW, uid
 from test_backup_restore import logical, rich
 from test_interruptions import paused_child
 from test_manual_work import dated, timed, M
@@ -180,15 +180,15 @@ def test_running_leaf_cannot_gain_child_and_switch_between_leaves_is_atomic(stor
 def test_effective_archive_refuses_new_recording_and_child(store,service,where,operation):
     p=group(service);a=create(service,p);b=create(service,p,a);other=create(service);active=uid()
     assert service.start_timer(other,active,expected_task_version=1,request_id=uid(),action_utc_us=NOW).status=='committed'
-    table,key,value=('projects','project_id',p) if where=='project' else ('tasks','task_id',a if where=='ancestor' else b)
-    store.connection.execute(f'UPDATE {table} SET is_archived=1,archived_at_utc_us=? WHERE {key}=?',(NOW,value))
+    value = p if where=='project' else a if where=='ancestor' else b
+    archive(service, 'project' if where=='project' else 'task', value)
     before=logical(store.path)
     base=dict(request_id=uid(),action_utc_us=NOW+M)
-    if operation=='start_timer':result=service.start_timer(b,uid(),expected_task_version=1,**base)
-    elif operation=='switch_timer':result=service.switch_timer(active,b,uid(),expected_active_version=1,expected_task_version=1,**base)
+    if operation=='start_timer':result=service.start_timer(b,uid(),expected_task_version=2 if where=='task' else 1,**base)
+    elif operation=='switch_timer':result=service.switch_timer(active,b,uid(),expected_active_version=1,expected_task_version=2 if where=='task' else 1,**base)
     elif operation=='add_timed_work':result=service.add_timed_work(b,uid(),'2026-10-19','08:00','2026-10-19','09:00',**base)
     elif operation=='add_date_only_work':result=service.add_date_only_work(b,uid(),'2026-10-19','0:10',**base)
-    else:result=service.create_task(uid(),'Child',p,parent_task_id=b,expected_parent_version=1,**base)
+    else:result=service.create_task(uid(),'Child',p,parent_task_id=b,expected_parent_version=2 if where=='task' else 1,**base)
     assert result.status=='rejected' and logical(store.path)==before
     verify(store)
 
@@ -349,7 +349,7 @@ def test_v2_rich_nested_backup_restore_worker_and_independent_later_work(store,s
         request_id=uid(),action_utc_us=NOW).status=='committed'
     dated(service,child,duration='0:07');grand=create(service,row['project_id'],child)
     dated(service,grand,duration='0:03')
-    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=? WHERE task_id=?',(NOW,child))
+    archive(service, 'task', child)
     baseline=logical(store.path);backup=store.backup(tmp_path/'hierarchy.sqlite3')
     assert backup.verified and logical(backup.destination)==baseline and logical(store.path)==baseline
     target=tmp_path/'restored';restored=br.restore_image(backup.destination,target)
@@ -440,7 +440,7 @@ def test_real_tk_b1_parent_history_root_creation_and_leaf_controls(connected,mon
     created=next(t for t in app.state['tasks'] if t['name']=='New flat root')
     assert created['parent_task_id'] is None and created['project_id']==p
     assert app.tree.item(app.task_row(a),'values')[1:]==('00:10','00:30')
-    assert not any(word in label.lower() for label in app.buttons for word in ('archive','delete','template','subtask'))
+    assert not any(word in label.lower() for label in app.buttons for word in ('delete','template','subtask'))
 
 
 @pytest.mark.parametrize('start,end,hours',[

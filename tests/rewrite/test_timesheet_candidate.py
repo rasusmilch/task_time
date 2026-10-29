@@ -9,7 +9,7 @@ from chronicle.services import TimerService
 from chronicle.sqlite_store import SQLiteStore
 from chronicle.timesheet import from_content,validate,render
 from chronicle.timekeeping import to_us
-from conftest import NOW,uid
+from conftest import archive, NOW,uid
 from test_manual_work import dated,timed,facts,H,M
 
 
@@ -63,7 +63,7 @@ def test_multieweek_task_independence_duplicate_names_projects_deleted_and_label
     for t in (task,second):
         dated(service,t,day='2026-10-19',duration='0:03')
         dated(service,t,day='2026-10-26',duration='0:03')
-    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(second,))
+    archive(service, 'task', second, now=0)
     c=preview(service,period='custom',start_date='2026-10-19',end_date='2026-10-26')
     assert len(c.basis)==28 and len(c.cells)==16
     assert all(sum(b.suggested_quarters for b in c.basis if b.task_id==t)==2 for t in (task,second))

@@ -107,7 +107,8 @@ B1 creates schema 2 only: task parentage has at most three levels under a projec
 or Unassigned, new recording is leaf-only, and historical parent work remains
 retained. The current grouped main/mini interface creates project-scoped roots;
 service-level nested development fixtures await the full nested UI and native
-qualification. No Archive/Delete/template or branch-move command is delivered.
+qualification. C1 supplies Archive and Archived Items; no Delete/template or
+branch-move GUI command is delivered.
 
 The launcher resolves `src/chronicle` directly. `chronicle.bootstrap.main` is the
 single entry point; no project wheel or installation step is needed.
@@ -369,6 +370,32 @@ to bypass refusal. Any hypothetical future data-preserving transformation would
 require separate source/target and safety approval; no such engine exists now.
 See the [target boundary](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary).
 
+## Archive and Archived Items
+
+Select a real project/task in main, then **Archive**. Review the node UUID and
+affected descendant count in the default-No confirmation. Cancel writes nothing.
+A containing running timer blocks Archive; Stop explicitly first if intended.
+Archive preserves work, membership and reporting evidence. Only the selected
+explicit flag/current accepted UTC archive instant changes; descendants inherit
+visibility and retain any independently archived state.
+
+**Archived Items** opens one modeless expandable tree, including empty archived
+projects, full three-level branches and independent task branches with original
+ancestor context. It cannot record new time. **Today / This Week** uses the same
+coordinated report as main. Sort by **Name — A to Z / Z to A** or **Date Archived —
+Newest first / Oldest first** (newest default), retaining selection and expansion.
+Dates display in the dataset timezone with UTC offset; sorting uses actual UTC.
+
+**Unarchive selected** clears only an explicitly archived selected node. For
+inherited-only rows it is disabled and the hiding ancestor is explained. Independent
+archived children stay hidden after parent Unarchive. **Work History** opens the
+existing direct-task modal, including permitted retained work corrections/deleted
+revisions. Close History before further management/main/mini actions. Pending or
+uncertain operations retain the owner's exact Request even if Archived Items is
+closed; use the existing Retry/Reconcile controls. No Delete control exists in C1.
+Full nested active-tree management and templates remain later packages. Native
+Windows focus/topmost/input qualification of this changed interface remains pending.
+
 ## Manual work and week configuration
 
 Select a task, then Add timed work or Add date-only work. Dates default to today
@@ -401,7 +428,7 @@ start This week/All tasks and require Preview. Last week uses the committed week
 convention; Custom accepts inclusive dates or draft-only inline calendar choices.
 Selected tasks uses explicit UUID rows (Ctrl/Shift selection), not names or
 hierarchy. Schema-2 archived/parent identities remain reportable; they do
-not define the future Archive/Delete controls, which are not implemented. Preview
+not change the Archive/Unarchive controls or authorize irreversible Delete. Preview
 observes a running timer without stopping it and shows Actual separately from
 suggested POL-R.
 Full-week target/adjustment context includes dates outside a partial report.

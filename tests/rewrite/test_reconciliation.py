@@ -11,7 +11,7 @@ from chronicle.services import TimerService
 from chronicle.sqlite_store import SQLiteStore
 from chronicle.records import Request,Outcome
 from chronicle.timekeeping import to_us,from_us
-from conftest import NOW,uid
+from conftest import archive, NOW,uid
 from test_manual_work import dated,timed,M,H
 from test_timesheet_candidate import preview,case_c
 from test_polr_confirmation import manual,submit,source_args,all_facts
@@ -94,7 +94,7 @@ def test_cell_display_rounding_per_task_independence_deleted_and_scope(service,t
     project_id=uid();service.create_project(project_id,'Group',request_id=uid(),action_utc_us=NOW)
     service.assign_task_to_project(other,project_id,expected_version=1,request_id=uid(),action_utc_us=NOW)
     for t in (task,other):dated(service,t,duration='0:03')
-    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(other,))
+    archive(service, 'task', other, now=0)
     r=read(service);assert r['cross_task_weeks'][0]['weekly_target_quarters']==2
     assert r['cross_task_weeks'][0]['exact_actual_us']==6*M
     assert r['cross_task_weeks'][0]['weekly_adjustment_us']==24*M

@@ -1,7 +1,8 @@
 """Independent chronological administrative verification, never runtime state."""
 from .records import canonical, uuid_text, integer
-from .hierarchy import task_paths
+from .hierarchy import task_paths, task_observations
 from .movement import plan
+from .lifecycle import OPERATIONS, transition
 
 
 def verify(c, receipts):
@@ -18,6 +19,16 @@ def verify(c, receipts):
             active=dict(task_id=a['next_task_id' if op=='switch_timer' else 'task_id'])
         elif op=='stop_timer':
             active=None
+        if op in OPERATIONS:
+            changed = transition(op, a, now, list(tasks.values()), list(projects.values()), active)
+            if changed is None:
+                raise ValueError('No-op archive operation cannot have a receipt')
+            entity = 'project' if op.endswith('_project') else 'task'
+            key = changed[entity + '_id']
+            if canonical(result) != canonical({entity + '_id': key, 'version': changed['version']}):
+                raise ValueError('Archive administrative result/version differs')
+            (projects if entity == 'project' else tasks)[key] = changed
+            continue
         if op=='move_task_branch':
             final,expected=plan(list(tasks.values()),list(projects.values()),active,a)
             if not expected['changed_tasks']:raise ValueError('No-op move cannot have a receipt')
@@ -42,12 +53,17 @@ def verify(c, receipts):
                     uuid_text(parent);p=version(tasks,parent,a.get('expected_parent_version'))
                     if 'project_id' in a and group!=p['project_id']:raise ValueError('Child project context differs')
                     group=p['project_id']
+                    context=task_observations(list(tasks.values()),list(projects.values()))[parent]
+                    if context['effective_archived'] or context['depth']>=3 or active and active['task_id']==parent:
+                        raise ValueError('Administrative creation destination was ineligible')
                 elif a.get('expected_parent_version') is not None:raise ValueError('Unexpected parent review')
                 if group is not None:
                     uuid_text(group)
                     if parent is None or a.get('expected_project_version') is not None:version(projects,group,a.get('expected_project_version'))
                     elif group not in projects:raise ValueError('Unknown project')
                 elif a.get('expected_project_version') is not None:raise ValueError('Unassigned has no version')
+                if group is not None and projects[group]['is_archived']:
+                    raise ValueError('Administrative creation project was archived')
             row=dict(name=a['name'].strip(),version=1,created_request_id=request_id,created_utc_us=now,updated_utc_us=now,
                      is_archived=0,archived_at_utc_us=None)
             row[entity+'_id']=key
@@ -61,6 +77,9 @@ def verify(c, receipts):
                 if (group is not None and group not in projects or row['parent_task_id'] is not None
                     or any(t['parent_task_id']==key for t in tasks.values()) or row['project_id']==group):
                     raise ValueError('Invalid standalone administrative assignment')
+                context=task_observations(list(tasks.values()),list(projects.values()))[key]
+                if context['effective_archived'] or group is not None and projects[group]['is_archived']:
+                    raise ValueError('Administrative assignment context was archived')
                 row['project_id']=group
             else:
                 if row['name']==a['name'].strip():raise ValueError('No-op administrative rename')
@@ -73,8 +92,6 @@ def verify(c, receipts):
         actual={r[key]:dict(r) for r in c.execute(f'SELECT * FROM {table}')}
         if set(actual)!=set(rows):raise ValueError('Administrative creation/survivor coverage differs')
         for identity,row in rows.items():
-            # Current archive metadata is validated separately; no historical archive
-            # operations exist yet, and B2 never changes these fields.
             for field,value in row.items():
-                if field not in ('is_archived','archived_at_utc_us') and actual[identity][field]!=value:
+                if actual[identity][field]!=value:
                     raise ValueError('Current administrative effects differ')
