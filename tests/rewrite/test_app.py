@@ -135,6 +135,9 @@ def test_real_tk_production_controls_main_mini_switch_and_shared_cutoff(connecte
     monkeypatch.setattr(module.simpledialog, "askstring", lambda *args, **kwargs: next(names))
     click(app.buttons["New Task"])
     pump(root, lambda: len(app.state["tasks"]) == 1 and app.pending is None)
+    # D selects the created UUID: choose Unassigned explicitly for another root.
+    box = app.tree.bbox(app.project_row(None))
+    click(app.tree, (box[0] + 35, box[1] + box[3] // 2))
     click(app.buttons["New Task"])
     pump(root, lambda: len(app.state["tasks"]) == 2 and app.pending is None)
     first, second = [t["task_id"] for t in app.state["tasks"]]
@@ -315,6 +318,7 @@ def test_stale_read_rejected_but_closed_origin_commit_handled():
     app.history = None
     app.timesheet = None
     app._timesheet_opening = False
+    app._move_submission = None
     app._timesheet_attempt = app._timesheet_handoff = None
     app._timesheet_dialog_busy = False
     app._pending_token = 2

@@ -1384,6 +1384,21 @@ promise. Main/Archived Items expose the same owned preview/confirmation. Templat
 Delete, full nested active management and native qualification remain separate.
 Stage 4 remains IN PROGRESS; Stage 5 is NOT STARTED.
 
+### Package D connected hierarchy UI approval
+
+**Status:** approved implementation; delivered for independent review.
+**Provenance:** explicit Package D GO at accepted C2 source
+`f2e944d38ded6756b318776b6d1a897bd24695ba`. A/B1/B2/C1/C2 are accepted for functional
+development. D supersedes A's temporary flat New Task/Assign project UI: real task
+selection creates an immediate child; one reviewed Move / Reparent dialog uses the
+existing B2 request, advisory planner and final transaction. Full-depth incremental
+navigation, inherited visibility, direct/cumulative report consumption and running
+ancestor display introduce no persistence or reporting-policy change. Move keeps
+normal exact retry; Delete retains its separate no-retry boundary. Historical package
+entries describe their original delivery, not restrictions on this approved UI.
+Schema 2/DDL and protected evidence are unchanged. Templates, native Windows changed-
+interface qualification and remaining Stage 4 gates stay separate; Stage 5 NOT STARTED.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

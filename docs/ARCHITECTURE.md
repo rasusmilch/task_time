@@ -324,43 +324,56 @@ qualification and the complete Stage 4 gate remain separate.
 
 ## Implemented main and mini presentation
 
-`task_row`/`project_row` distinguish task:UUID, project:UUID and group:unassigned;
-only a validated task row authorizes a task UUID. Selected project rows cannot
-reuse a prior task. Empty groups remain visible; Rename project uses selected
-identity/version, with the existing chooser otherwise. New Task freezes selected
-project, selected task's current project or Unassigned before its owned prompt,
-then calls existing create_task(project_id). No new SQL or service operation.
+`task_row`/`project_row` distinguish task:UUID, project:UUID and group:unassigned.
+D projects the complete effectively active forest from the existing detached worker
+snapshot: empty projects remain, task parentage is exact, archived descendants stay
+in report accounting. No persistent tree or second calculation/connection exists.
+New Task freezes selected project/group/parent UUIDs and reviewed versions before
+name entry. Task selection means immediate child, not sibling/root; no selection
+means Unassigned root. Depth-three/running-parent controls explain refusal, while
+B1 performs final transactional eligibility checks. Parents retain direct History.
 
-Main Individual/Cumulative use session Today/This Week. B1 reads direct Individual,
-derived descendant Cumulative and project sums from the same worker report. Group
-Individual is a placeholder; retained archived/parent direct work still counts. Headline totals come from the report's
-application values, never widget rollups. Failure clears all amounts without
-repeating a failing formatter; later valid reads recover.
+Main Individual/Cumulative use session Today/This Week and the existing report;
+project Individual is a placeholder. Headline totals use application direct Actual,
+never widget rollups. Failure recursively clears every nested row without repeating
+a failed formatter; active identity/status remains and a later valid read recovers.
 
-`_render` reconciles typed rows/values in place and reparents surviving tasks after
-assignment. A-Z orders groups/siblings with UUID ties. Selection, group open state
-and scroll persist. Active identity/group transitions expand the active group;
-ordinary reads respect later user collapse. Green/red task tags plus text show
-Running/Stopped; organizational rows indicate an active member, not their own timer.
-Main has no changing started-at/elapsed/as-of label. `_tick` retains one-second
-exact UTC/safety/date/reminder/coalesced reads; row comparisons and
-`configure_changed` write only changed presentation values. Visible minute amounts
-therefore change at relevant boundaries; Stop/Switch capture action time immediately.
+`_render` installs ancestors before children, reparents survivors before obsolete
+ancestor deletion, then reorders only changed sibling lists and updates only changed
+text/values/tags. UUID selection, expansion, period/sort and meaningful scroll persist.
+A-Z uses casefolded sibling names and deterministic UUID ties. Active identity/full-
+path changes reveal every ancestor once; ordinary reads respect manual collapse.
+Committed creation/movement reveals/selects the accepted task after authoritative
+refresh. Navigation never implicitly chooses a replacement for a hidden selection.
+Green/red plus text distinguishes leaf Running/Stopped, Running descendant on task
+ancestors, and an organizational running-task group. No parent owns a timer.
 
-Mini delegates to the same owner/report and adds state bar/Show Main. Keep Mini
-Open defaults Off/session-local; Show Main raises main and closes mini only when
-Off. Presentation/Show Main require a ready idle owner without competing modal,
-grab, pending mutation, backup or shutdown. Mini drops topmost while blocked and
-never takes focus/grabs. Existing root destruction owns child/worker cleanup; no
-new timer, root, connection or worker. Package A awaits independent review and
-native Windows theme/topmost/focus qualification. B1's service hierarchy below is
-implemented; full nested UI remains Package D. Parent new-work controls are disabled;
-History remains direct and New Task still creates a project-scoped root.
+`move_window.py` is one owned modal with a frozen detached source/destination review.
+It builds exact existing B2 fields using `movement.snapshot`, calls the existing
+`movement.plan` only for advisory eligibility/no-op diagnostics, and dispatches one
+normal Request through the worker. It does not implement SQL or another planner.
+Full paths/UUIDs distinguish duplicates. Final B2 validation remains authoritative.
+Commit updates current grouping through a fresh read; no-op says unchanged; rejected
+review requires closing/reopening. Unverified Move keeps the original Request/token
+in ChronicleApp for exact Retry/Reconcile or explicit default-No exceptional exit.
+Destroyed/disposed windows cannot lose or retarget accepted requests. Completion is
+recorded before presentation; existing stale-delivery checks still apply. This is
+separate from C2's no-retry uncertainty contract. All existing modal/backup/shutdown
+exclusions apply; main/mini/Archived Items cannot bypass the owned Move.
+
+Main has no changing started-at/elapsed/as-of label. One-second exact UTC safety,
+date/reminder/coalesced worker observation continues; changed-value comparisons
+retain minute-oriented visible updates and immediate Stop/Switch capture.
+Mini uses the same active eligible leaf, otherwise selected eligible leaf, and the
+same Individual Today report. Keep Mini Open defaults Off/session-local; Show Main
+closes mini only when Off. Topmost drops while blocked without focus/grab theft.
+No additional root, timer, worker, schema or persisted UI settings are introduced.
+Native Windows theme/topmost/focus/operator qualification remains outstanding.
 
 ## Fresh hierarchy foundation
 
-**B1/B2 IMPLEMENTED FOR INDEPENDENT REVIEW; later lifecycle/template
-contracts below remain PROPOSED where identified.** Schema version 2 and application
+**A/B1/B2/C1/C2 ACCEPTED FOR FUNCTIONAL DEVELOPMENT; D DELIVERED FOR REVIEW.**
+Template contracts below remain PROPOSED where identified. Schema version 2 and application
 ID 0x4348524E identify the sole supported fresh layout, together with exact DDL.
 Version 1 refuses without conversion/replacement or clearing remembered selection.
 Creation uses the existing exclusive new/empty-directory path. Current normal
@@ -373,7 +386,7 @@ versions. `hierarchy.py` reconstructs bounded paths/derived observations afresh 
 one relational snapshot; it stores no projection or cache. `accounting.py` retains
 direct task/day values and derives Individual/Cumulative/project dictionaries at
 the same cutoff. `timesheet.py`/POL-R still use direct facts, never rollups.
-Main/mini remain Package A grouping with B1-compatible contracts, not the nested UI.
+D connects full main hierarchy and management to these same B1/B2/C contracts.
 Legacy tree/template source remains interface evidence, never runtime authority.
 
 B1 task creation is atomic with its administrative receipt. Child creation reviews
@@ -477,8 +490,7 @@ Unarchive and direct-task History use the app's pending Request and modal guards
 inherited-only Unarchive explains the owning ancestor. Closing/destroying the
 modeless window cannot discard accepted work. History returns legitimate focus to
 its live origin. Existing owned modals block main/mini/archived actions. C1 supplies no Delete;
-C2 now adds the owned preview/confirmation below. Movement UI, templates and full
-nested active navigation remain later packages.
+C2 now adds the owned preview/confirmation below. D now connects movement and full nested active navigation; templates remain later.
 
 ### Relational shape and invariant ownership
 
@@ -518,8 +530,8 @@ enforce them; service-only guards must be identified explicitly in that review.
 Real projects and virtual Unassigned both allow three task levels. Unassigned is
 presented as a group, with no additional persisted project UUID; proposed root
 membership remains NULL. No selection for New Task means an Unassigned root;
-the future nested GUI uses the selected group/project or eligible parent task.
-B1's current GUI intentionally retains project-scoped root creation.
+D's nested GUI uses the selected group/project or eligible parent task; A's
+former project-scoped-only task selection is superseded.
 
 Archive changes only the selected node's explicit flag and stores the exact
 accepted UTC instant. Unarchive clears that flag/current timestamp, never descendant
@@ -651,7 +663,7 @@ Items. Stale/refused decisions require a new preview. Pending context belongs to
 ChronicleApp even if the view is destroyed. Known commitment precedes fallible
 presentation, while lost delivery/worker stop retains uncertainty. Main, mini,
 History, Timesheet, backup, focus/grab and shutdown guards remain authoritative.
-Full nested active management and templates remain separate packages.
+D connects full nested active management; templates remain separate.
 
 ### Archived Items presentation
 

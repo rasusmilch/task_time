@@ -422,10 +422,10 @@ def test_real_tk_b1_parent_history_root_creation_and_leaf_controls(connected,mon
     submit(app,'add_date_only_work',task_id=b,entry_id=uid(),work_date='2026-10-19',duration_text='0:20',comment='leaf')
     assert app.tree.item(app.task_row(a),'values')[1:]==('00:10','00:30')
     assert app.tree.item(app.task_row(b),'values')[1:]==('00:20','00:20')
-    assert app.tree.parent(app.task_row(b))==app.project_row(p) # B1 is not the nested GUI.
+    assert app.tree.parent(app.task_row(b))==app.task_row(a) # D connects the authoritative parent.
     assert app.tree.item(app.project_row(p),'values')[2]=='00:30'
     select(app,app.task_row(a))
-    for label in ('Start','Add timed work','Add date-only work','Assign project'):
+    for label in ('Start','Add timed work','Add date-only work'):
         assert app.buttons[label].instate(['disabled'])
     assert not app.buttons['Work History'].instate(['disabled'])
     assert app.open_history();pump(app.root,lambda:app.history.current)
@@ -435,10 +435,10 @@ def test_real_tk_b1_parent_history_root_creation_and_leaf_controls(connected,mon
     app.open_mini();assert app.mini.name.cget('text')=='No task selected' and app.mini.toggle.instate(['disabled'])
     select(app,app.task_row(b));assert app.mini.today.cget('text')=='Today: 00:20'
     select(app,app.task_row(a))
-    monkeypatch.setattr('chronicle.app.simpledialog.askstring',lambda *a,**kw:'New flat root')
+    monkeypatch.setattr('chronicle.app.simpledialog.askstring',lambda *a,**kw:'New child')
     app.create_task();settled(app)
-    created=next(t for t in app.state['tasks'] if t['name']=='New flat root')
-    assert created['parent_task_id'] is None and created['project_id']==p
+    created=next(t for t in app.state['tasks'] if t['name']=='New child')
+    assert created['parent_task_id']==a and created['project_id']==p
     assert app.tree.item(app.task_row(a),'values')[1:]==('00:10','00:30')
     assert not any(word in label.lower() for label in app.buttons for word in ('template','subtask'))
 

@@ -105,10 +105,12 @@ python run_chronicle.py --data-dir PATH
 
 B1 creates schema 2 only: task parentage has at most three levels under a project
 or Unassigned, new recording is leaf-only, and historical parent work remains
-retained. The current grouped main/mini interface creates project-scoped roots;
-service-level nested development fixtures await the full nested UI and native
-qualification. C1 supplies Archive and Archived Items; C2 adds unused-only Delete.
-No template or branch-move GUI command is delivered.
+retained. Package D now renders the full active hierarchy. New Task creates an Unassigned
+root with no selection/Unassigned selected, a root with a project selected, or an
+immediate child with a task selected. Review the full UUID/path destination before
+entering the name. Level-three/running selected tasks cannot gain children; Stop or
+Switch explicitly first. C1 supplies Archive and Archived Items; C2 adds unused-only
+Delete. Templates and native qualification of the changed UI remain outstanding.
 
 The launcher resolves `src/chronicle` directly. `chronicle.bootstrap.main` is the
 single entry point; no project wheel or installation step is needed.
@@ -364,11 +366,41 @@ B1's supported image is exact fresh schema 2. These commands preserve and valida
 its task parentage, archive metadata, direct work and protected evidence, with no
 migration, backward-compatible mode or automatic conversion of version-1 datasets.
 Existing files remain protected; choose a different new/empty folder explicitly
-for fresh v2 creation. Branch movement, lifecycle actions, nested management UI
-and templates remain pending separate approval. Do not delete journals or old databases
+for fresh v2 creation. Hierarchy, lifecycle and movement are connected by D;
+templates remain unimplemented. Do not delete journals or old databases
 to bypass refusal. Any hypothetical future data-preserving transformation would
 require separate source/target and safety approval; no such engine exists now.
 See the [target boundary](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary).
+
+## Main hierarchy and Move / Reparent
+
+Expand Project → Task → Subtask → Sub-subtask, or the identical virtual Unassigned
+levels. Empty active projects remain visible. Sort A-Z sorts siblings without
+flattening membership; period, selection, expansion and meaningful scroll remain
+session-local. Individual is direct work, Cumulative includes descendants; group
+and application totals never count cumulative amounts twice. Archived descendants
+stay in accounting while hidden from main navigation. Parents retain direct History
+but cannot Start/Switch into new time. Running ancestors indicate a descendant's
+timer, not ownership. Main/mini share one active entry and worker report.
+
+Select an active task, then **Move / Reparent**. Review the source full path/UUID,
+descendant count and destination full path/UUID. Select a project/Unassigned for
+root placement, or an eligible task for immediate-child placement. Reasons explain
+ineligible destinations; **Confirm Move** enables only after a valid review. A same-
+destination selection is explicitly unchanged. Cancel writes nothing. The complete
+subtree/version review stays frozen; stale rejection requires closing and opening
+a fresh review. No rows move before authoritative completion. Success selects the
+moved UUID and opens its destination path. New Task similarly reveals its new UUID.
+An active leaf can move without Stop/restart when B2 permits; archived descendants
+retain their independent state. No drag-and-drop or alternate assignment UI exists.
+
+An unverified Move retains the original Request: **Retry/Reconcile exact Move**
+uses that same request, or explicitly exit despite unresolved Move after the
+owned default-No warning. Do not confuse this with Delete, which never retries.
+Close is blocked during accepted/unverified Move; destroyed views cannot discard
+the owner's accepted request. History, Timesheet, backup, Delete, correction and
+mini/modal guards remain in force. Native Windows input/topmost/focus validation
+remains separate; Stage 4 is IN PROGRESS and Stage 5 is NOT STARTED.
 
 ## Archive and Archived Items
 

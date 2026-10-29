@@ -62,8 +62,9 @@ GO instruction independently accepts Stage 4A. The later explicit Stage 4C GO
 independently accepts Stage 4B portable reliability. Subsequent independent review
 accepts Stage 4C cold read-only compatibility inspection, protected refusal and
 bounded owned SQLite-native rollback recovery for functional development.
-Package B1 implements exact fresh schema 2/application ID 0x4348524E for independent
-review. Version 1 is incompatible, never migrated/replaced; no upgrade is active.
+Package B1 implements exact fresh schema 2/application ID 0x4348524E. The later
+Package D GO accepts A/B1/B2/C1/C2 for functional development. Version 1 is
+incompatible, never migrated/replaced; no upgrade is active.
 Unit A's filesystem compatibility candidate is accepted for portable development;
 Unit B's collector, including its evidence-safety repair, is accepted only for
 limited native MetadataProbe use. The integration coverage audit is accepted:
@@ -91,8 +92,9 @@ administrative/protected receipt classes. B2 adds transactional subtree movement
 on unchanged schema 2, with multi-entity receipt validation. C1 implements four
 Archive/Unarchive services, chronological archive validation and modeless full-depth
 Archived Items. C2 implements unused-only Delete with exact volatile review, finite
-administrative retirement, strict survivor proof and no-retry uncertainty for
-independent review. Full nested active management UI and templates remain unimplemented. Read the
+administrative retirement, strict survivor proof and no-retry uncertainty.
+Package D connects the full active hierarchy, reviewed child creation
+and Move / Reparent for independent review. Templates remain unimplemented. Read the
 [approved behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation)
 and [packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).

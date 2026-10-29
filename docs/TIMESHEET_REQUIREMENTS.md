@@ -92,12 +92,13 @@ must not turn another task's work into a task's own Actual.
 
 ### Approved hierarchy target and fresh-data boundary
 
-The hierarchy target is partially implemented by Package B1 for independent review:
+The hierarchy foundation through B1/B2/C1/C2 is accepted for functional development:
 exact fresh schema 2, unchanged application ID 0x4348524E, parent adjacency and core
 recording/accounting. B2 implements transactional subtree movement. C1 implements
 Archive/Unarchive and full Archived Items navigation for independent review.
-C2 implements unused-only Delete for independent review. Movement UI, nested active
-management UI and templates remain unimplemented. B1 supersedes the former proposed foundation/identity gate,
+C2 implements unused-only Delete. D implements the complete active hierarchy,
+context-sensitive child creation and reviewed Move / Reparent for independent review.
+Templates remain unimplemented. B1 supersedes the former proposed foundation/identity gate,
 not the remaining package approvals or the no-migration boundary.
 
 Maximum structure is Project → Task → Subtask → Sub-subtask: three task levels
@@ -169,8 +170,8 @@ Project/task management offers Create, Rename, Move, Archive/Unarchive, Delete a
 direct Work History using reviewed UUIDs/versions, cancellation without writes,
 stale diagnostics and authoritative completion. B1 implements creation/rename,
 explicit child creation and existing standalone-root project assignment. B2 adds explicit service-level subtree movement; C1 adds Archive/Unarchive and
-Archived Items. C2 implements reviewed unused-only project/task Delete; movement UI
-remains unimplemented.
+Archived Items. C2 implements reviewed unused-only project/task Delete; D connects
+full nested active navigation, immediate-child creation and reviewed Move / Reparent.
 
 ### Unused-only Delete
 
@@ -452,17 +453,17 @@ exports and confirmations neither erase nor increase calendar Actual.
 
 ## SELECTED — Calendar Actual displays
 
-Package A's Project → Task presentation now runs on schema 2. Full nested tree
-navigation remains Package D; nested B1 development fixtures are not a qualified
-end-user workflow. Main Individual/Cumulative share Today/This Week: Individual is
+Package D connects full three-level main tree navigation on unchanged schema 2.
+Native Windows qualification of the changed interface remains outstanding. Main Individual/Cumulative share Today/This Week: Individual is
 direct Actual and Cumulative includes each descendant once. Group Cumulative sums
 member direct report facts,
 including applicable retained hidden task work. Groups have no Individual work;
 empty groups show zero only with a valid report. Both application totals remain
 visible and never add rollups twice. Mini retains Individual Today and Start/Stop.
-Existing-service New Task uses the selected project, selected task's current
-project, or Unassigned for no/virtual selection, with a visible fixed destination.
-This flat rule does not replace future selected-task child creation.
+Existing-service New Task uses the selected project/group as root destination,
+the selected eligible task as immediate parent, or Unassigned for no selection.
+The complete UUID/path and reviewed destination versions freeze before name entry.
+Move / Reparent uses the one B2 branch operation, not a second assignment policy.
 Application totals retain archived-task work when navigation hides it. Current
 schema-2 readers retain parent and archived work; live tasks/projects have no
 soft-delete fields. Frozen report task labels retain the existing is_deleted shape
@@ -830,12 +831,12 @@ gates; no automatic external allocation verification is established.
 | Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
-| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active UI/E templates remain unimplemented; nothing inherited from JSONL. |
+| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active UI delivered for review; E templates remain unimplemented; nothing inherited from JSONL. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
 
-Package B1's fresh schema-2 foundation is implemented for independent review.
+Package B1's fresh schema-2 foundation is accepted for functional development.
 Creation receipts own each project/task; retained administrative version effects
 are independently checked, with protected receipts retained. Service child creation
 supports three levels, matching project/Unassigned membership and reviewed destination
@@ -848,18 +849,19 @@ frozen evidence remain unchanged; current grouping/cumulative values follow the
 new structure. C1 adds selected-only Archive/Unarchive with exact accepted UTC
 current timestamps, inherited visibility and complete chronological receipt checks.
 C2 adds irreversible unused-only Delete and finite administrative retirement with
-strict survivor preservation and explicit no-retry uncertainty. No migration, movement
-UI or templates are delivered.
+strict survivor preservation and explicit no-retry uncertainty. D connects the full
+active hierarchy and reviewed movement UI; no migration or templates are delivered.
 
 Package A presentation remains implemented: empty project groups,
 typed task/group rows, session-local A-Z/period choice, green/red text states,
 in-place row/label updates preserving selection/expansion/scroll, project-scoped
-New Task and selected-project rename. Mini adds Show Main, Off-by-default session-
+New Task (superseded by D immediate-child selection) and selected-project rename. Mini adds Show Main, Off-by-default session-
 local Keep Mini Open and guarded topmost. Exact worker observations continue each
 second; only changed visible values repaint. C1 adds the modeless full-depth
 Archived Items tree, four sibling/top-level sorts, shared period values, explicit
-Unarchive and direct History, with existing modal/pending guards. No full nested
-active management UI or templates are implemented. C2 adds Delete in main and
+Unarchive and direct History, with existing modal/pending guards. D implements full
+nested active management, ancestor running states, context New Task and reviewed
+Move / Reparent; templates remain unimplemented. C2 adds Delete in main and
 Archived Items through complete preview and exact typed confirmation. Native Windows interface follow-up
 remains required.
 

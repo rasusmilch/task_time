@@ -425,7 +425,7 @@ Cancellation, pending/destroyed origins, lost acknowledgement/exact reconciliati
 and stale deliveries remain distinct from server-delivered Archive confirmation,
 cancel, Archived Items selection and Unarchive input. These are portable Linux
 Xorg/XTest tests, not native Windows focus/topmost/NTFS qualification. C1 alone establishes no C2 Delete; C2 evidence is inventoried below.
-Full nested active management remains unimplemented. Run Level C after this shared
+D now connects full nested active management. Run Level C after this shared
 lifecycle/application boundary change, plus focused runtime/UI evidence.
 The existing explorer viewport fixture settles pending child layout after its
 requested root resize before freezing the baseline; full scroll-fraction, selected
@@ -457,6 +457,26 @@ controls. These are portable tests, not Windows/NTFS/operator qualification.
 Run Level C for this persistence/application boundary; preserve cold inspection,
 native rollback recovery, immutable reporting formulas and the existing schema.
 
+## Package D connected hierarchy evidence
+
+[test_hierarchy_ui.py](../tests/rewrite/test_hierarchy_ui.py) uses real Tk widgets,
+DatabaseWorker and disposable schema-2 data for three-level/Unassigned/duplicate
+identity parentage, empty groups, hidden archived work, direct/cumulative totals,
+recursive unavailable/recovery, sorting/expansion/selection and unchanged refresh.
+It exercises reviewed child creation, depth/running/stale destination refusal,
+retained parent History, version purity and successful UUID reveal. Real B2 moves
+cover root/subtree/project/Unassigned/parent destinations, no-op receipt purity,
+advisory invalid choices, transactional races, active identity and full-path reveal,
+manual collapse, fresh nested-active startup and immutable saved/confirmed evidence.
+Blocked, destroyed, rejected, unverified and presentation-failure cases retain the
+accepted Request, exact Move retry and explicit shutdown; C2 remains no-retry.
+Existing modal/mini/Archived Items guards and lifecycle tests remain applicable.
+Separate XTest input selects/commits Move and inspects/cancels the real toolkit name
+dialog. These are Linux portable/input observations, not native Windows qualification.
+Carry forward compatible B1/B2/C mathematical, SQL, refusal, interruption and recovery
+evidence; run Level C for this shared owner/rendering boundary. Templates and remaining
+F/native/operator gates remain separate, Stage 4 IN PROGRESS and Stage 5 NOT STARTED.
+
 ## Package A explorer evidence
 
 [test_main_explorer.py](../tests/rewrite/test_main_explorer.py) uses actual Tk,
@@ -479,7 +499,7 @@ This section maps the later user-approved
 to [packages A–F](ROADMAP.md#hierarchy-target--bounded-packages-a-f). It does not
 claim all remaining tests exist or ran. Implemented B1/B2/C1 subsets are established
 in the inventory above and carried forward; this table retains required assertions
-and later D/E/F gates; C2 is inventoried above.
+and later E/F gates; C2 and D are inventoried above.
 Retained JSONL tests do not become SQLite qualification. The final owner decision selects Archive/Unarchive plus actual
 unused-only Delete without a recoverable tier or deletion ledger. Independently
 retain C2's now-selected finite dependency/transaction design on unchanged DDL; referenced-template Delete eligibility remains Open.
@@ -506,7 +526,8 @@ actively Windows-locked lock byte. Inject partial subtree/template writes and un
 failed COMMIT/independent probe/result delivery and cleanup failures. Preserve
 original diagnostics and exact pending Request, not an invented recovery ledger.
 Shared schema/accounting changes require Level C plus applicable integration;
-GUI restoration on existing flat data uses proportional focused/affected tests.
+D shared application/rendering changes require Level C and applicable real-Tk/input
+integration; isolated presentation changes use proportional focused/affected tests.
 Native Windows tree, modal/focus, topmost and actual operator input remain Level E
 evidence; Linux tests, source inspection and synthetic observations cannot replace
 them. Actual suspend/resume, external reporting policy, installation and Stage 5

@@ -76,6 +76,14 @@ class _DeleteSubmission:
 
 
 @dataclass
+class _MoveSubmission:
+    request: Request
+    token: int
+    origin: object
+    outcome: Outcome | None = None
+
+
+@dataclass
 class _BackupOperation:
     request_id: str
     token: int
@@ -127,6 +135,8 @@ class ChronicleApp:
         self._backup_return = None
         self._backup_operation = None
         self._active_group = None
+        self.movement = self._move_submission = None
+        self._reveal_after_read = None
         self._build()
         root.protocol("WM_DELETE_WINDOW", self.request_close)
         root.bind("<Destroy>", self._destroyed, add="+")
@@ -145,7 +155,7 @@ class ChronicleApp:
         for column, (label, callback) in enumerate((
             ("New Task", self.create_task), ("Rename task", self.rename_task),
             ("Create project", self.create_project), ("Rename project", self.rename_project),
-            ("Assign project", self.assign_project), ("Mini mode", self.open_mini),
+            ("Move / Reparent", self.open_move), ("Mini mode", self.open_mini),
             ("Delete", self.open_delete))):
             button = ttk.Button(bar, text=label, command=callback)
             button.grid(row=0, column=column, padx=2)
@@ -167,6 +177,8 @@ class ChronicleApp:
         self.keep_mini_open = tk.BooleanVar(self.root, False)
         self.keep_mini_control = ttk.Checkbutton(bar, text="Keep Mini Open", variable=self.keep_mini_open)
         self.keep_mini_control.grid(row=1, column=4, columnspan=2)
+        self.new_task_hint = ttk.Label(bar, text='', wraplength=760)
+        self.new_task_hint.grid(row=2, column=0, columnspan=7, sticky='w', pady=(4,0))
         self.headline = ttk.Label(self.root, text="Today: —    This week: —")
         self.headline.grid(row=1, column=0, sticky="w", padx=10)
         holder = ttk.Frame(self.root)
@@ -234,11 +246,12 @@ class ChronicleApp:
     def can_mutate(self, *, origin=None):
         owns_editor = (origin is not None and origin is self._work_editor
                        and self.editor is origin.window and origin.phase == "editing")
+        owns_move = origin is not None and origin is self.movement and origin.mutation_allowed()
         owns_delete = origin is not None and origin is self.deletion and origin.mutation_allowed()
         owns_history = origin is not None and origin is self.history and origin.mutation_allowed()
         owns_timesheet = origin is not None and origin is self.timesheet and origin.mutation_allowed()
         return (self.alive and self.ready and not self.closing and self.pending is None
-                and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor or owns_delete)
+                and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor or owns_delete or owns_move)
                 and not self._history_opening and (self.history is None or owns_history)
                 and not self._backup_opening and self.backup_dialog is None and not self._backup_busy()
                 and not self._timesheet_opening and (self.timesheet is None or owns_timesheet))
@@ -420,12 +433,12 @@ class ChronicleApp:
         eligible = task is not None and task['is_leaf'] and not task['effective_archived']
         for name, button in self.buttons.items():
             allowed = enabled
-            if name in ("Rename task", "Assign project", "Add timed work", "Add date-only work", "Work History"):
+            if name in ("Rename task", "Move / Reparent", "Add timed work", "Add date-only work", "Work History"):
                 allowed &= task is not None
             if name in ('Add timed work','Add date-only work'):
                 allowed &= eligible
-            if name == 'Assign project':
-                allowed &= eligible and task['parent_task_id'] is None
+            if name == 'New Task':
+                allowed &= self._new_task_reason() is None
             if name == "Start":
                 allowed &= eligible and active is None
             if name == "Stop" or name == "Correct active start":
@@ -440,6 +453,8 @@ class ChronicleApp:
             if name == "Rename project":
                 allowed &= bool(self.state["projects"])
             configure_changed(button, state="normal" if allowed else "disabled")
+        configure_changed(self.new_task_hint, text=self._new_task_reason() or
+                          'New Task: select a project/group for a root, or a task for an immediate child.')
         configure_changed(self.week_selector, state="readonly" if enabled else "disabled")
         configure_changed(self.period_selector, state="readonly" if enabled else "disabled")
         for control in (self.sort_control, self.keep_mini_control):
@@ -466,6 +481,8 @@ class ChronicleApp:
             self.delete_inspect_button.pack_forget(); self.delete_exit_button.pack_forget()
         if self.deletion is not None:
             self.deletion.controls()
+        if self.movement is not None:
+            self.movement.controls()
         if self.mini is not None:
             self.mini.render()
         self._render_reminder()
@@ -474,9 +491,14 @@ class ChronicleApp:
 
     def _selection_changed(self):
         self._controls()
+        reason = self._new_task_reason()
+        if reason and self.can_mutate():
+            configure_changed(self.status, text=reason)
 
     def _submit(self, operation, *, _origin=None, **arguments):
         if operation in ('delete_task','delete_project') and (_origin is None or _origin is not self.deletion or not _origin.mutation_allowed()):
+            return False
+        if operation == 'move_task_branch' and _origin is not None and (_origin is not self.movement or not _origin.mutation_allowed()):
             return False
         if not self.can_mutate(origin=_origin):
             return False
@@ -503,6 +525,9 @@ class ChronicleApp:
         if operation in ('delete_task','delete_project'):
             self._delete_submission = _DeleteSubmission(request,self._pending_token,_origin)
             _origin.request, _origin.token, _origin.phase = request,self._pending_token,'executing'
+        if _origin is not None and _origin is self.movement and operation == 'move_task_branch':
+            self._move_submission = _MoveSubmission(request,self._pending_token,_origin)
+            _origin.request, _origin.token, _origin.phase = request,self._pending_token,'executing'
         # Invalidate any read that predates this accepted mutation.
         self._read_again = True
         if self._reminder_inflight is not None:self._reminder_again=True
@@ -518,6 +543,8 @@ class ChronicleApp:
                 attempt.registration, attempt.error = "unavailable", exc
             if operation in ('delete_task','delete_project'):
                 self._delete_result(request,self._token,Outcome('unavailable',error=exc))
+            if operation == 'move_task_branch':
+                self._move_result(request,self._token,Outcome('unavailable',error=exc))
             self.status.configure(text=f"Action not submitted: {exc}")
             self._diagnose(exc)
             self._controls()
@@ -528,7 +555,7 @@ class ChronicleApp:
 
     def start(self):
         task = self._selected()
-        if task and self.state.get("active") is None:
+        if task and task["is_leaf"] and self.state.get("active") is None:
             return self._submit("start_timer", task_id=task["task_id"], entry_id=str(uuid4()), expected_task_version=task["version"])
         return False
 
@@ -538,7 +565,7 @@ class ChronicleApp:
 
     def switch(self):
         task, active = self._selected(), self.state.get("active")
-        if not task or not active:
+        if not task or not task["is_leaf"] or not active or task["task_id"] == active["task_id"]:
             return False
         return self._submit("switch_timer", expected_active_entry_id=active["entry_id"],
                             expected_active_version=active["version"], next_task_id=task["task_id"],
@@ -726,19 +753,45 @@ class ChronicleApp:
             self.executing = False
             self._controls()
 
-    def create_task(self):
-        if not self.can_mutate():
-            return False
-        project = self._selected_project()
+    def _new_task_reason(self):
         task = self._selected()
-        project_id = project["project_id"] if project else task["project_id"] if task else None
-        project = next((p for p in self.state["projects"] if p["project_id"] == project_id), None)
-        destination = f"{project['name']} ({project_id})" if project else "Unassigned"
-        name = self._ask_name("New Task", prompt=f"Destination: {destination}\nName (flat task, not a subtask)")
+        if task is not None:
+            if task['depth'] >= 3:
+                return 'New Task unavailable: level 3 cannot gain children.'
+            active = self.state.get('active')
+            if active and active['task_id'] == task['task_id']:
+                return 'New Task unavailable: Stop or Switch the running task explicitly before adding a child.'
+        return None
+
+    def _task_path_label(self, task_id, state=None):
+        from .hierarchy import task_paths
+        state = self.state if state is None else state
+        tasks = {t['task_id']:t for t in state['tasks']}
+        projects = {p['project_id']:p for p in state['projects']}
+        task = tasks[task_id]
+        group = projects.get(task['project_id'])
+        label = group['name'] + ' (' + group['project_id'] + ')' if group else 'Unassigned'
+        return label + ' → ' + ' → '.join(tasks[a]['name'] + ' (' + a + ')' for a in reversed(task_paths(state['tasks'])[task_id]))
+
+    def create_task(self):
+        if not self.can_mutate() or self.root.grab_current() is not None:
+            return False
+        reason = self._new_task_reason()
+        if reason:
+            self.status.configure(text=reason)
+            return False
+        # Freeze the complete reviewed destination before the toolkit name dialog.
+        task, project = deepcopy(self._selected()), deepcopy(self._selected_project())
+        project_id = project['project_id'] if project else task['project_id'] if task else None
+        project = deepcopy(next((p for p in self.state['projects'] if p['project_id'] == project_id), None))
+        destination = self._task_path_label(task['task_id']) if task else (f"{project['name']} ({project_id})" if project else 'Unassigned')
+        name = self._ask_name('New Task', prompt='Destination:\n' + destination.replace(' → ', '\n  → ') + '\nName (immediate child of this destination)')
         if name is not None:
-            self._submit("create_task", task_id=str(uuid4()), name=name, project_id=project_id,
-                         parent_task_id=None, expected_parent_version=None,
-                         expected_project_version=project['version'] if project else None)
+            return self._submit('create_task', task_id=str(uuid4()), name=name, project_id=project_id,
+                                parent_task_id=task['task_id'] if task else None,
+                                expected_parent_version=task['version'] if task else None,
+                                expected_project_version=project['version'] if project else None)
+        return False
 
     def rename_task(self):
         task = self._selected()
@@ -784,15 +837,44 @@ class ChronicleApp:
             self._choice("Rename project", [f"{p['name']} ({p['project_id']})" for p in projects],
                          lambda index: rename(projects[index]))
 
-    def assign_project(self):
+    def open_move(self):
         task = self._selected()
-        if not task:
+        if not self.can_mutate() or task is None or self.root.grab_current() is not None:
+            return False
+        from .move_window import MoveWindow
+        dialog = None
+        try:
+            dialog = MoveWindow(self, task['task_id'], self.state)
+            self.movement, self.editor = dialog, dialog.window
+            self._controls()
+            dialog.window.deiconify()
+            return True
+        except Exception as primary:
+            if dialog is not None:
+                try: dialog.window.destroy()
+                except Exception as secondary: primary.add_note(f'Move cleanup failed: {secondary!r}')
+            self.status.configure(text=f'Unable to open Move / Reparent: {primary}')
+            self._diagnose(primary)
+            return False
+
+    def _move_result(self, request, token, result):
+        submission = self._move_submission
+        if submission is None or submission.request is not request or submission.token != token:
             return
-        projects = [None] + list(self.state["projects"])
-        self._choice("Assign project", ["Unassigned"] + [f"{p['name']} ({p['project_id']})" for p in projects[1:]],
-                     lambda index: self._submit("assign_task_to_project", task_id=task["task_id"],
-                                                project_id=projects[index]["project_id"] if projects[index] else None,
-                                                expected_version=task["version"]))
+        submission.outcome = result
+        if result.status != 'unverified': self._move_submission = None
+        if self.movement is submission.origin:
+            self.movement.record_result(result)
+
+    def exit_move_uncertain(self):
+        if self.pending is None or self.pending.operation != 'move_task_branch' or self.executing:
+            return False
+        was_closing = self.closing
+        self.closing = True
+        try: return self.exceptional_exit()
+        finally:
+            if not self._shutdown_sent: self.closing = was_closing
+            self._controls()
 
     def _present_editor(self, top):
         top.protocol("WM_DELETE_WINDOW", lambda: self._close_editor(top))
@@ -818,6 +900,8 @@ class ChronicleApp:
             self._controls()
 
     def _close_editor(self, top):
+        if self.movement is not None and self.movement.window is top:
+            return self.movement.close()
         if self.deletion is not None and self.deletion.window is top:
             return self.deletion.close()
         session = self._work_editor
@@ -1684,23 +1768,22 @@ class ChronicleApp:
         active = self.state.get("active")
         active_id = active["task_id"] if active else None
         task = next((t for t in self.state["tasks"] if t["task_id"] == active_id), None)
-        for group in self.tree.get_children():
-            for key in (group, *self.tree.get_children(group)):
-                values = tuple(self.tree.item(key, "values"))
-                tags = ()
-                if key.startswith("task:"):
-                    running = key == self.task_row(active_id) if active else False
-                    status, tags = ("▶ Running", ("running",)) if running else ("■ Stopped", ("stopped",))
-                else:
-                    running = task is not None and group == self.project_row(task["project_id"])
-                    status = "Group — ▶ Running task" if running else "Group"
+        from .hierarchy import task_paths
+        paths = task_paths(self.state['tasks'])
+        def clear(parent):
+            for key in self.tree.get_children(parent):
+                status, tags = self._row_status(key, self.state, paths)
                 updates = {}
-                if values != (status, "—", "—"):
-                    updates["values"] = (status, "—", "—")
-                if tuple(self.tree.item(key, "tags")) != tags:
-                    updates["tags"] = tags
-                if updates:
-                    self.tree.item(key, **updates)
+                if tuple(self.tree.item(key, 'values')) != (status, '—', '—'):
+                    updates['values'] = (status, '—', '—')
+                if tuple(self.tree.item(key, 'tags')) != tags:
+                    updates['tags'] = tags
+                if updates: self.tree.item(key, **updates)
+                clear(key)
+        clear('')
+        visible = {self.project_row(None)} | {self.project_row(p['project_id']) for p in self.state['projects'] if not p['is_archived']} | {self.task_row(t['task_id']) for t in self.state['tasks'] if not t['effective_archived']}
+        invalid = tuple(row for row in self.tree.selection() if row not in visible)
+        if invalid: self.tree.selection_remove(*invalid)
         configure_changed(self.active_label, text=f"▶ Running: {task['name']}" if task else "■ Stopped — no active timer")
         configure_changed(self.headline, text="Today: —    This week: —")
         configure_changed(self.error, text="Time totals unavailable. " + str(exc))
@@ -1709,76 +1792,102 @@ class ChronicleApp:
             self.archived.render(self.state)
         self._diagnose(exc)
 
+    def _row_status(self, key, candidate, paths):
+        active = candidate['active']
+        active_id = active['task_id'] if active else None
+        if key.startswith('task:'):
+            task = next((t for t in candidate['tasks'] if self.task_row(t['task_id']) == key), None)
+            if task is None:
+                return 'Unavailable', ()  # An obsolete row can outlive a failed structural repaint.
+            running = task['task_id'] == active_id
+            descendant = active_id is not None and task['task_id'] in paths[active_id][1:]
+            text = '▶ Running' if running else '▶ Running descendant' if descendant else '■ Stopped' if task['is_leaf'] else 'Parent — Stopped'
+            return text, ('running' if running or descendant else 'stopped',)
+        active_task = next((t for t in candidate['tasks'] if t['task_id'] == active_id), None)
+        running = active_task is not None and self.project_row(active_task['project_id']) == key
+        return ('Group — Running task' if running else 'Group'), ()
+
     def _render(self, candidate):
-        report = candidate["report"]
-        field = "today_us" if self.period.get() == "Today" else "week_us"
-        projects = {p["project_id"]: p["name"] for p in candidate["projects"] if not p["is_archived"]}
+        from .hierarchy import task_paths
+        paths = task_paths(candidate['tasks'])
+        report = candidate['report']
+        field = 'today_us' if self.period.get() == 'Today' else 'week_us'
+        projects = {p['project_id']:p['name'] for p in candidate['projects'] if not p['is_archived']}
         groups = list(projects) + [None]
         if self.sort_alpha.get():
-            groups.sort(key=lambda key: (projects.get(key, "Unassigned").casefold(), key or ""))
-        active = candidate["active"]
-        active_id = active["task_id"] if active else None
-        active_group = next((t["project_id"] for t in candidate["tasks"] if t["task_id"] == active_id), None)
-        rows, children = {}, {}
+            groups.sort(key=lambda key:(projects.get(key,'Unassigned').casefold(),key or ''))
+        rows, children = {}, {'':[self.project_row(g) for g in groups]}
         for group in groups:
             key = self.project_row(group)
-            members = [t for t in candidate["tasks"] if t["project_id"] == group]
-            total = report["projects"][group][field] if report else None
-            running = active is not None and active_group == group
-            rows[key] = ("", projects.get(group, "Unassigned"),
-                         ("Group — ▶ Running task" if running else "Group", "—",
-                          format_duration(total) if total is not None else "—"), ())
+            total = report['projects'][group][field] if report else None
+            status, tags = self._row_status(key,candidate,paths)
+            rows[key] = ('',projects.get(group,'Unassigned'),(status,'—',format_duration(total) if total is not None else '—'),tags)
             children[key] = []
-            visible = [t for t in members if not t["effective_archived"]]
-            if self.sort_alpha.get():
-                visible.sort(key=lambda t: (t["name"].casefold(), t["task_id"]))
-            for task in visible:
-                row = self.task_row(task["task_id"])
-                amount = report["tasks"][task["task_id"]][field] if report else None
-                value = format_duration(amount) if amount is not None else "—"
-                cumulative = format_duration(report['cumulative'][task['task_id']][field]) if report else '—'
-                running = task["task_id"] == active_id
-                status = "▶ Running" if running else "■ Stopped" if task['is_leaf'] else "Parent — ■ Stopped"
-                rows[row] = (key, task["name"], (status, value, cumulative),
-                             ("running" if running else "stopped",))
-                children[key].append(row)
+        visible = [t for t in candidate['tasks'] if not t['effective_archived'] and t['project_id'] in groups]
+        for task in visible:
+            row = self.task_row(task['task_id'])
+            parent = self.task_row(task['parent_task_id']) if task['parent_task_id'] else self.project_row(task['project_id'])
+            status,tags = self._row_status(row,candidate,paths)
+            individual = format_duration(report['individual'][task['task_id']][field]) if report else '—'
+            cumulative = format_duration(report['cumulative'][task['task_id']][field]) if report else '—'
+            rows[row] = (parent,task['name'],(status,individual,cumulative),tags)
+            children.setdefault(parent,[]).append(row)
+            children.setdefault(row,[])
+        if self.sort_alpha.get():
+            for parent, siblings in children.items():
+                if parent: siblings.sort(key=lambda key:(rows[key][1].casefold(),key))
+        active = candidate['active']
+        active_id = active['task_id'] if active else None
         selected, scroll = self.tree.selection(), self.tree.yview()
         previous_week = self.state.get("week_start")
         self.state = deepcopy(candidate)
         if candidate["week_start"] != previous_week:
             self.week_selector.current(candidate["week_start"])
-        # Reparent surviving tasks before removing obsolete groups.
-        for key, (parent, name, values, tags) in rows.items():
-            if not self.tree.exists(key):
-                self.tree.insert(parent, "end", iid=key, text=name, values=values, tags=tags, open=not parent)
-            else:
-                if self.tree.parent(key) != parent:
-                    self.tree.move(key, parent, "end")
-                old = self.tree.item(key)
-                updates = {k: v for k, v in (("text", name), ("values", values), ("tags", tags))
-                           if (tuple(old[k]) if k in ("values", "tags") else old[k]) != v}
-                if updates:
-                    self.tree.item(key, **updates)
-        for group in self.tree.get_children():
-            for child in self.tree.get_children(group):
-                if child not in rows:
-                    self.tree.delete(child)
-            if group not in rows:
-                self.tree.delete(group)
-        for parent, ordered in [("", [self.project_row(g) for g in groups]), *children.items()]:
+        # Install/move ancestors first, before deleting obsolete former parents.
+        def install(parent):
+            for key in children[parent]:
+                target,name,values,tags = rows[key]
+                if not self.tree.exists(key):
+                    self.tree.insert(target,'end',iid=key,text=name,values=values,tags=tags,open=not target)
+                else:
+                    if self.tree.parent(key) != target: self.tree.move(key,target,'end')
+                    old = self.tree.item(key)
+                    updates = {k:v for k,v in (('text',name),('values',values),('tags',tags))
+                               if (tuple(old[k]) if k in ('values','tags') else old[k]) != v}
+                    if updates: self.tree.item(key,**updates)
+                install(key)
+        install('')
+        def remove(parent):
+            for key in self.tree.get_children(parent):
+                if key not in rows: self.tree.delete(key)
+                else: remove(key)
+        remove('')
+        for parent, ordered in children.items():
             if tuple(self.tree.get_children(parent)) != tuple(ordered):
-                for index, key in enumerate(ordered):
-                    self.tree.move(key, parent, index)
-        # Expand only on active identity/group transitions, allowing ordinary collapse.
-        marker = (active_id, active_group) if active else None
-        if marker != self._active_group and active and self.tree.exists(self.project_row(active_group)):
-            self.tree.item(self.project_row(active_group), open=True)
-        self._active_group = marker
+                for index,key in enumerate(ordered):
+                    if self.tree.index(key) != index: self.tree.move(key,parent,index)
+        active_path = (self.project_row(next(t['project_id'] for t in candidate['tasks'] if t['task_id']==active_id)),
+                       *[self.task_row(a) for a in reversed(paths[active_id])]) if active else None
+        if active_path != self._active_group and active_path:
+            for key in active_path[:-1]:
+                if self.tree.exists(key) and not self.tree.item(key,'open'): self.tree.item(key,open=True)
+        self._active_group = active_path
         surviving = tuple(key for key in selected if key in rows)
         if self.tree.selection() != surviving:
             self.tree.selection_set(surviving)
         if scroll and self.tree.yview() != scroll:
             self.tree.yview_moveto(scroll[0])
+        reveal = self._reveal_after_read
+        if reveal is not None:
+            self._reveal_after_read = None
+            row = self.task_row(reveal)
+            if row in rows:
+                parent = self.tree.parent(row)
+                while parent:
+                    if not self.tree.item(parent,'open'): self.tree.item(parent,open=True)
+                    parent = self.tree.parent(parent)
+                self.tree.selection_set(row)
+                self.tree.see(row)
         headline = "Today: —    This week: —" if not report else (
             f"Today: {format_duration(report['application']['today_us'])}    This week: {format_duration(report['application']['week_us'])}")
         task = next((t for t in candidate["tasks"] if t["task_id"] == active_id), None)
@@ -1817,6 +1926,8 @@ class ChronicleApp:
             request = self.pending
             self.executing = False
             self._mutation_outcome = result  # Authoritative matching delivery precedes all presentation.
+            if result.status == 'committed' and request.operation in ('create_task','move_task_branch'):
+                self._reveal_after_read = request.args()['task_id']
             if request.operation in ('delete_task','delete_project'):
                 if result.status!='unverified':self.pending,self._pending_token=None,None
                 self._delete_result(request,message.token,result)
@@ -1852,6 +1963,7 @@ class ChronicleApp:
                 exc.add_note(f'Authoritative mutation outcome remains {result.status}; status presentation failed.')
                 self._diagnose(exc)
             try:
+                self._move_result(request, message.token, result)
                 self._work_editor_result(request, message.token, result)
                 if self.history is not None:
                     self.history.mutation_result(request, message.token, result)
@@ -1930,6 +2042,8 @@ class ChronicleApp:
                 result = Outcome('unverified', error=RuntimeError('Worker stopped before authoritative delivery; operation may have committed. Exit explicitly; this session cannot reconcile.'))
                 self._mutation_outcome = result
                 try:
+                    if self.pending.operation == 'move_task_branch':
+                        self._move_result(self.pending,self._pending_token,result)
                     if self.pending.operation in ('delete_task','delete_project'):
                         self._delete_result(self.pending,self._pending_token,result)
                     self._work_editor_result(self.pending, self._pending_token, result)
@@ -2015,6 +2129,11 @@ class ChronicleApp:
         polr = getattr(self,'_polr_submission',None)
         if polr is not None and polr.request is self.pending:
             polr.token, polr.outcome = self._pending_token, None
+        move = self._move_submission
+        if move is not None and move.request is self.pending:
+            move.token, move.outcome = self._pending_token, None
+            if self.movement is move.origin:
+                move.origin.token, move.origin.phase = self._pending_token, 'executing'
         attempt = self._timesheet_attempt
         if attempt is not None and attempt.request is self.pending:
             attempt.token, attempt.registration = self._pending_token, 'registering'
@@ -2031,6 +2150,8 @@ class ChronicleApp:
             if attempt is not None and attempt.request is self.pending:
                 attempt.registration, attempt.error = 'unverified', exc
                 self._timesheet_notify()
+            if move is not None and move.request is self.pending:
+                self._move_result(self.pending,self._pending_token,Outcome('unverified',error=exc))
             self.status.configure(text=f"Reconciliation not submitted; original request retained. {exc}")
             self._diagnose(exc)
             self._controls()
@@ -2077,6 +2198,9 @@ class ChronicleApp:
                 self.history.exceptional_exit()
             return  # As with a manual form, close owned History before ordinary exit.
         if self.editor is not None:
+            if self.movement is not None and self.movement.phase=='unverified' and not self.executing:
+                self.exit_move_uncertain()
+                return
             if self.deletion is not None and self.deletion.phase=='unverified' and not self.executing:
                 self.exit_delete_uncertain()
                 return
@@ -2125,6 +2249,8 @@ class ChronicleApp:
         history = self.history
         sheet = self.timesheet
         deletion = self.deletion
+        movement = self.movement
+        if movement is not None: parent=movement.window
         if deletion is not None:parent=deletion.window
         if sheet is not None and not sheet.disposed: parent = sheet.window
         if history is not None and not history.disposed:
@@ -2136,6 +2262,9 @@ class ChronicleApp:
             confirmed = messagebox.askyesno("Unresolved save", explanation,
                                            parent=parent, default=messagebox.NO)
         except BaseException as primary:
+            if movement is not None and self.movement is movement:
+                try: movement.restore_modal()
+                except Exception as secondary: primary.add_note(f'Move modal return failed: {secondary!r}')
             if deletion is not None and self.deletion is deletion:
                 try:deletion.restore_modal()
                 except Exception as secondary:primary.add_note(f'Delete modal return also failed: {secondary!r}')
@@ -2158,6 +2287,10 @@ class ChronicleApp:
                 try:deletion.close(force=True)
                 except Exception as exc:self._diagnose(exc)
             self._delete_submission=None
+            self._move_submission=None
+            if movement is not None and self.movement is movement:
+                try: movement.close(force=True)
+                except Exception as exc: self._diagnose(exc)
             if sheet is not None and self.timesheet is sheet:
                 try: sheet.close(force=True)
                 except Exception as exc: self._diagnose(exc)
@@ -2173,6 +2306,7 @@ class ChronicleApp:
                     self._diagnose(exc)
             self._advance_close()
         else:
+            if movement is not None and self.movement is movement: movement.restore_modal()
             if deletion is not None and self.deletion is deletion:deletion.restore_modal()
             if sheet is not None and self.timesheet is sheet: sheet.restore_modal()
             if history is not None and self.history is history:

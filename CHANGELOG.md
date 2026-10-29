@@ -8,6 +8,16 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Deliver Package D full active Project → Task → Subtask → Sub-subtask navigation
+  on unchanged schema 2, context-sensitive reviewed child creation and one owned
+  Move / Reparent workflow using B2. Preserve UUID/expansion/selection/sibling sort,
+  incremental redraw, direct/cumulative amounts and archived history accounting.
+  Reveal active/moved/created paths, distinguish running descendants from timer
+  owners, and retain direct History/C1/C2/main/mini modal protections. Exact Move
+  retry remains separate from Delete no-retry uncertainty. Templates and native
+  changed-interface qualification remain pending; delivered for independent review,
+  Stage 4 IN PROGRESS, Stage 5 NOT STARTED.
+
 - Deliver C2 unused-only project/task Delete on unchanged schema 2: complete worker
   preview, exact frozen scope/administrative closure and typed DELETE, deepest-first
   atomic removal, strict surviving-history proof and full retained-evidence equality.

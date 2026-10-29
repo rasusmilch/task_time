@@ -50,14 +50,14 @@ def test_real_tk_typed_groups_empty_projects_duplicates_and_organization(connect
         select(app, app.task_row(a)); select(app, row)
         before = evidence(worker)
         assert app.selected_task_id() is None and not app.start() and not app.switch()
-        app.rename_task(); app.assign_project(); app.add_timed_work(); app.add_date_only_work(); app.open_history()
+        app.rename_task(); app.open_move(); app.add_timed_work(); app.add_date_only_work(); app.open_history()
         assert evidence(worker) == before and app.editor is None and app.history is None
-        for label in ('Start','Switch','Rename task','Work History','Assign project'):
+        for label in ('Start','Switch','Rename task','Work History','Move / Reparent'):
             assert app.buttons[label].instate(['disabled'])
 
 
 @pytest.mark.parametrize('destination', ['project','task','unassigned','none'])
-def test_real_tk_context_new_task_freezes_visible_flat_destination(connected, monkeypatch, destination):
+def test_real_tk_context_new_task_freezes_visible_destination(connected, monkeypatch, destination):
     app, worker, clock = connected
     p = project(app); a = task(app, group=p)
     row = {'project':app.project_row(p), 'task':app.task_row(a), 'unassigned':app.project_row(None)}.get(destination)
@@ -70,9 +70,10 @@ def test_real_tk_context_new_task_freezes_visible_flat_destination(connected, mo
     app.create_task();settled(app)
     created = next(t for t in app.state['tasks'] if t['name']=='Created')
     assert created['project_id'] == (p if destination in ('project','task') else None)
-    assert 'Destination:' in prompts[0] and 'not a subtask' in prompts[0]
+    assert 'Destination:' in prompts[0] and 'immediate child' in prompts[0]
     assert ('Unassigned' in prompts[0]) == (destination in ('unassigned','none'))
-    assert app.tree.parent(app.task_row(created['task_id'])) == app.project_row(created['project_id'])
+    assert created['parent_task_id'] == (a if destination=='task' else None)
+    assert app.tree.parent(app.task_row(created['task_id'])) == (app.task_row(a) if destination=='task' else app.project_row(created['project_id']))
 
 
 def test_real_tk_selected_empty_project_rename_and_task_reassignment_preserve_work(connected, monkeypatch):
@@ -84,11 +85,11 @@ def test_real_tk_selected_empty_project_rename_and_task_reassignment_preserve_wo
     monkeypatch.setattr('chronicle.app.simpledialog.askstring',lambda *a,**k:'Renamed')
     app.rename_project();settled(app)
     assert app.tree.item(app.project_row(target),'text')=='Renamed'
-    select(app,app.task_row(a));app.assign_project()
-    # Actual owned choice control and callback; no new database operation.
-    combo=next(w for w in app.editor.winfo_children() if w.winfo_class()=='TCombobox')
-    combo.current(1+next(i for i,p in enumerate(app.state['projects']) if p['project_id']==target))
-    next(w for w in app.editor.winfo_children() if w.winfo_class()=='TButton').invoke();settled(app)
+    select(app,app.task_row(a));app.open_move()
+    dialog=app.movement
+    pump(app.root,lambda:dialog.presented)
+    dialog.tree.selection_set(app.project_row(target));dialog.selected()
+    assert dialog.submit();settled(app);assert dialog.close()
     assert app.tree.parent(app.task_row(a))==app.project_row(target)
     assert app.selected_task_id()==a
     current=evidence(worker)

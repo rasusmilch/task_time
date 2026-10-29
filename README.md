@@ -47,13 +47,14 @@ The main banner checks previous week every used local day and current week Monda
 Friday. Open Timesheet navigates to reconciliation; explicit Dismiss for today
 survives same-day restart and changes no work or confirmation. Recheck POL-R is
 available after read failures. No external POL-R verification is claimed.
-Package A groups the current presentation into Project → Task plus virtual Unassigned,
+Package D connects Project → Task → Subtask → Sub-subtask plus virtual Unassigned,
 including empty projects. Typed rows keep task UUID authority distinct from groups.
 Main Individual/Cumulative share Today/This Week; B1 derives descendant Cumulative
 while groups/application sum each task's direct Actual once. Empty groups show zero
-only with a valid report. Full nested navigation remains pending.
-New Task shows its fixed project destination; selecting a task uses its current
-project, not a subtask. Selected empty projects can be renamed. Session-local A-Z
+only with a valid report. New Task shows its frozen full destination path;
+selecting a task creates its immediate child. Move / Reparent reviews a complete
+subtree and destination using B2; no assignment or accounting logic is duplicated.
+Selected empty projects can be renamed. Session-local A-Z
 preserves membership, selection and expansion. Mini adds green/red text state,
 Individual Today, Start/Stop and Show Main. Keep Mini Open defaults Off/session-local;
 On retains mini when showing main. Modal ownership blocks competing actions and
@@ -96,12 +97,15 @@ reverses it) and irreversible **Delete** of unused complete selected branches.
 No recoverable deletion tier, Deleted Items or separate Permanent Delete is selected.
 B1 implements fresh schema 2 and service-level parent adjacency, three task levels,
 reviewed child creation, effectively active leaf-only new recording and retained
-parent history. Package A remains a project/task grouped UI with root-only New Task;
-parent new-work controls are disabled. B1 nested development data is not a qualified
-end-user workflow. B2 service-level subtree movement is implemented. C1 delivers
-Archive/Unarchive and full Archived Items navigation for independent review.
-C2 delivers unused-only Delete for independent review. Movement UI, full nested
-active management and templates remain pending;
+parent history. Package D extends Package A with the complete active hierarchy
+and reviewed child creation;
+parent new-work controls are disabled. D now connects nested recording/management;
+native Windows qualification of this changed interface remains outstanding. B2
+service-level subtree movement and C1 Archive/Unarchive/Archived Items are accepted
+for functional development.
+C2 delivers unused-only Delete. Package D connects the full three-level active
+hierarchy, context-sensitive child creation and reviewed Move / Reparent for
+independent review. Templates remain pending;
 rollups/projects never add work or change frozen evidence.
 
 Archived Items shows the full expandable tree, independently archived branches
@@ -142,9 +146,9 @@ Current runtime supports only exact fresh schema 2, **without v1 migration,
 compatibility mode or legacy import**. Version-1 datasets/backups refuse and remain
 protected; failed remembered startup does not replace data or clear selection.
 Backup/restore/cold inspection completely validate v2 structure and evidence.
-B2 movement and C1 Archive/Unarchive/Archived Items are implemented. C2 unused-only
-Delete is delivered for independent review;
-D nested active UI and E templates require separate approvals. See
+B2 movement, C1 Archive/Unarchive/Archived Items and C2 unused-only Delete are
+accepted for functional development;
+D nested active UI is delivered for review; E templates require separate approval. See
 [selected behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation) and
 [bounded packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
