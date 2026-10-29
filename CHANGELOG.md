@@ -8,6 +8,17 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Deliver Package E reusable nested templates on fresh schema 3: STRICT definition/
+  node authority, active Python casefold uniqueness, atomic versioned Edit/Duplicate,
+  mapped independent Apply tasks and self-contained administrative creation receipts.
+  Add modeless manager and owned draft/Apply/typed Delete reviews. Template Delete
+  after Apply preserves tasks and retained Apply/Duplicate bytes; historical uniqueness
+  covers retained reconstructible states and erased source intervals stay unverifiable.
+  Extend C2 retirement only to complete unused Apply batches, retaining protected
+  evidence and no-retry Delete uncertainty. Version-1/2 data refuses without migration
+  or replacement. Delivered for independent review; F/native qualification pending,
+  Stage 4 IN PROGRESS and Stage 5 NOT STARTED.
+
 - Deliver Package D full active Project → Task → Subtask → Sub-subtask navigation
   on unchanged schema 2, context-sensitive reviewed child creation and one owned
   Move / Reparent workflow using B2. Preserve UUID/expansion/selection/sibling sort,

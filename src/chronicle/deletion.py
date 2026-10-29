@@ -4,9 +4,10 @@ import json
 
 from .administration import verify_records
 from .hierarchy import task_paths, task_observations
+from .templates import from_facts
 from .records import Request, canonical, integer, uuid_text, StaleState
 
-OPERATIONS = frozenset(('delete_task', 'delete_project'))
+OPERATIONS = frozenset(('delete_task', 'delete_project', 'delete_template'))
 PROJECT_ADMIN = frozenset(('create_project', 'rename_project', 'archive_project', 'unarchive_project'))
 TASK_ADMIN = frozenset(('create_task', 'rename_task', 'assign_task_to_project', 'archive_task', 'unarchive_task'))
 RETIRE_OPERATIONS = PROJECT_ADMIN | TASK_ADMIN | {'move_task_branch'}
@@ -70,6 +71,7 @@ def survivors(facts, task_ids, project_ids, request_ids):
 
 
 def preview(facts, entity, key):
+    if entity == 'template':return template_preview(facts,key)
     if entity not in ('project', 'task'): raise ValueError('Delete requires project or task identity')
     uuid_text(key)
     tasks, projects = facts['tasks'], facts['projects']
@@ -98,9 +100,15 @@ def preview(facts, entity, key):
             if refs & scope or project_refs & project_ids:
                 block('Protected request reference: ' + request.request_id + ' (' + op + ')')
             continue
-        if row['receipt_class'] != 'administrative' or op not in RETIRE_OPERATIONS:
+        from .templates import MANAGEMENT
+        if row['receipt_class']=='administrative' and op in MANAGEMENT:continue
+        if row['receipt_class'] != 'administrative' or op not in RETIRE_OPERATIONS | {'apply_template'}:
             raise ValueError('Unclassified administrative deletion dependency')
-        if op in PROJECT_ADMIN:
+        if op == 'apply_template':
+            members={r['task_id'] for r in result['created_tasks']}
+            relevant=bool(members & scope);owned=relevant and members<=scope
+            if relevant and not owned:block('Apply receipt spans surviving tasks: '+request.request_id)
+        elif op in PROJECT_ADMIN:
             owned = a['project_id'] in project_ids
         elif op in TASK_ADMIN:
             owned = a['task_id'] in scope
@@ -119,7 +127,8 @@ def preview(facts, entity, key):
     remaining = survivors(facts, scope, project_ids, retired)
     try:
         verify_records(remaining['projects'], remaining['tasks'],
-                       [(r['request_id'], request, result) for r, request, result in ordered if r['request_id'] not in retired])
+                       [(r['request_id'], request, result) for r, request, result in ordered if r['request_id'] not in retired],
+                       from_facts(remaining))
     except (ValueError, KeyError, StopIteration) as exc:
         block('Surviving administrative history requires retained dependencies: ' + str(exc))
     observations = task_observations(tasks, projects)
@@ -136,6 +145,7 @@ def preview(facts, entity, key):
 
 
 def apply(c, request, facts):
+    if request.operation=='delete_template':return apply_template_delete(c,request,facts)
     entity = 'project' if request.operation == 'delete_project' else 'task'
     a = request.args();field = entity + '_id'
     if set(a) != {field, 'expected_version', 'review', 'confirmed_text'}:
@@ -157,3 +167,42 @@ def apply(c, request, facts):
     return (dict(entity_type=entity, entity_id=key, removed_projects=len(project_ids),
                  removed_tasks=len(scope), removed_administrative_receipts=len(retired)),
             survivors(facts, scope, project_ids, retired))
+
+
+def template_preview(facts,key):
+    from .templates import from_facts, MANAGEMENT
+    uuid_text(key);definitions=from_facts(facts)
+    selected=next((d for d in definitions if d['template_id']==key),None)
+    if selected is None:raise StaleState('Template absent; absence is not proof of historical Delete')
+    ordered=list(receipts(facts));retire=[];context=[]
+    for row,request,result in ordered:
+        a=request.args()
+        if request.operation in MANAGEMENT and a['template_id']==key:retire.append(dict(row))
+        elif request.operation in ('apply_template','duplicate_template') and a.get('source_template_id',a.get('template_id'))==key:context.append(dict(row))
+    # Complete exact bytes remain JSON-safe canonical strings in the detached review.
+    def detached(row):return {k:(v.decode('utf-8') if type(v) is bytes else v) for k,v in row.items()}
+    retired={r['request_id'] for r in retire};remaining=template_survivors(facts,key,retired);reasons=[]
+    try:verify_records(remaining['projects'],remaining['tasks'],[(r['request_id'],request,result) for r,request,result in ordered if r['request_id'] not in retired],from_facts(remaining))
+    except (ValueError,KeyError,StopIteration) as exc:reasons.append('Surviving template/task dependency: '+str(exc))
+    return dict(dataset_id=facts['dataset_meta'][0]['dataset_id'],entity_type='template',entity_id=key,
+                selected=selected,nodes=selected['nodes'],tasks=[],project_count=0,task_count=0,node_count=len(selected['nodes']),
+                effective_archived=bool(selected['is_archived']),retire_receipts=[detached(r) for r in retire],
+                application_count=sum(r['operation']=='apply_template' for r in context),source_context=[detached(r) for r in context],eligible=not reasons,reasons=reasons)
+
+
+def template_survivors(facts,key,retired):
+    return {table:[r for r in rows if not(table in ('template_definitions','template_nodes') and r['template_id']==key or table=='committed_requests' and r['request_id'] in retired)] for table,rows in facts.items()}
+
+
+def apply_template_delete(c,request,facts):
+    from .templates import fields
+    a=request.args();fields(a,{'template_id','expected_version','review','confirmed_text'})
+    key=uuid_text(a['template_id']);integer(a['expected_version'],'Template version',1,2**63-1)
+    current=template_preview(facts,key)
+    if canonical(current)!=canonical(a['review']) or current['selected']['version']!=a['expected_version']:raise StaleState('Template Delete review changed')
+    if a['confirmed_text']!='DELETE' or not current['eligible']:raise ValueError('Template Delete requires eligible exact review and typed DELETE')
+    retired={r['request_id'] for r in current['retire_receipts']}
+    c.execute('DELETE FROM template_nodes WHERE template_id=?',(key,))
+    c.execute('DELETE FROM template_definitions WHERE template_id=?',(key,))
+    for key in sorted(retired):c.execute("DELETE FROM committed_requests WHERE request_id=? AND receipt_class='administrative'",(key,))
+    return dict(template_id=a['template_id'],removed_nodes=current['node_count'],removed_administrative_receipts=len(retired)),template_survivors(facts,a['template_id'],retired)

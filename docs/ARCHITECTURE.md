@@ -27,11 +27,10 @@ development (schema 1 at that acceptance). Stage 4 remains IN PROGRESS; native
 qualification is incomplete and Stage 5 is not started. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
-Package B1 implements the selected fresh hierarchy/recording foundation for
-independent review: schema 2, unchanged application ID 0x4348524E. Version 1 is
-incompatible and never migrated, replaced or adopted through a compatibility mode.
-Movement, lifecycle operations, nested management UI and templates remain targets,
-with their own later technical adjudication; B1 does not authorize them.
+The accepted A/B1/B2/C1/C2/D foundation is retained. Package E implements fresh
+schema 3 and reusable templates for independent review, with application ID
+0x4348524E unchanged. Versions 1/2 are incompatible and never migrated, replaced or
+adopted through a compatibility mode. Remaining F/native qualification is separate.
 
 ## Small application and responsibility boundaries
 
@@ -75,7 +74,7 @@ complete behavioral slices follow the roadmap, not optional post-pilot bolt-ons:
 | Absolute confirmation batches/cells | Immutable batch identity/audit/source and selected task/day absolute integer quarter counts, reviewed prior identity and exact cell-specific acknowledgement. One batch is atomic. No arbitrary hundredth confirmations. |
 | Current confirmed references | Each known task/day points to its latest committed immutable confirmation cell/batch; absence means Unknown, an explicit zero row means known zero. No additive confirmed balance. |
 | Committed request receipts | Unique request identity, strictly comparable request content and committed result, atomically tied to the use case. Not file-availability state. |
-| Dataset metadata | Schema identity, explicit IANA timezone, selected week convention and one nullable canonical reminder-dismissed local date. No computed status/summary ledger or legacy import. Current supported runtime is exact fresh version 2; no old layout is accepted. |
+| Dataset metadata | Schema identity, explicit IANA timezone, selected week convention and one nullable canonical reminder-dismissed local date. No computed status/summary ledger or legacy import. Current supported runtime is exact fresh version 3; no old layout is accepted. |
 
 Use enforced foreign keys and appropriate STRICT, CHECK and UNIQUE constraints;
 validate bounded integer/date ranges and shapes in services as well. Stage 1A SQL
@@ -87,7 +86,7 @@ their UI is delivered.
 ## Transactions and exact request reconciliation
 
 Explicit services own complete use cases. For ordinary retained mutating requests
-(schema-2 mutations other than C2 Delete):
+(schema-3 mutations other than project/task/template Delete):
 
 1. Validate shape/identity and resolve the same request ID in authoritative SQLite.
 2. An exact committed reuse returns its original committed result **before** stale
@@ -270,7 +269,7 @@ The CLI reports deterministic statuses documented in [RUNNING.md](../RUNNING.md#
 
 | Classification | Required observation |
 | --- | --- |
-| SUPPORTED_CURRENT | Chronicle identity/version 2, supported profile, exact DDL/STRICT/guards, complete SQLite/FK and all Chronicle evidence/receipt validation, successful close and stable final fingerprint. |
+| SUPPORTED_CURRENT | Chronicle identity/version 3, supported profile, exact DDL/STRICT/guards, complete SQLite/FK and all Chronicle evidence/receipt validation, successful close and stable final fingerprint. |
 | OLDER_UNSUPPORTED / NEWER_UNSUPPORTED | Chronicle identity and differing version marker after generic SQLite integrity/FK checks; current Chronicle semantics are not applied to an unknown version. A lower marker does not prove an authentic older schema. |
 | UNSUPPORTED_LAYOUT | Current identity/version with a different DDL signature. `_verify_schema` is the sole existing schema authority, now separated from semantic checks; token comparison preserves quoted literals. |
 | FOREIGN_DATABASE | A trustworthy SQLite application identity differs. |
@@ -372,10 +371,10 @@ Native Windows theme/topmost/focus/operator qualification remains outstanding.
 
 ## Fresh hierarchy foundation
 
-**A/B1/B2/C1/C2 ACCEPTED FOR FUNCTIONAL DEVELOPMENT; D DELIVERED FOR REVIEW.**
-Template contracts below remain PROPOSED where identified. Schema version 2 and application
+**A/B1/B2/C1/C2/D ACCEPTED FOR FUNCTIONAL DEVELOPMENT; E DELIVERED FOR REVIEW.**
+Package E implements templates for independent review. Schema version 3 and application
 ID 0x4348524E identify the sole supported fresh layout, together with exact DDL.
-Version 1 refuses without conversion/replacement or clearing remembered selection.
+Versions 1/2 refuse without conversion/replacement or clearing remembered selection.
 Creation uses the existing exclusive new/empty-directory path. Current normal
 owned native SQLite recovery and cold non-recovering inspection retain their
 separate guarantees; recovery is not compatibility or migration.
@@ -504,8 +503,8 @@ cache, new worker or Python hierarchy projection becomes authoritative.
 | projects | B1: stable UUID, name, reviewed version, explicit archive flag, nullable current UTC archive timestamp and owning created_request_id deferred FK. No target soft-delete flag. Eligible unused Delete removes the row, not protected evidence. Duplicate names are valid; projects own no work/timer. |
 | tasks | B1: stable UUID, optional project FK, optional self-parent FK, name, reviewed version, explicit archive flag/current UTC timestamp and owning created_request_id deferred FK. No target soft-delete flag; parent cannot be self. Duplicate names are valid. Eligible unused Delete removes the row under the dependency boundary below. |
 | task structure | Parent adjacency is the authority. A subtree shares current project membership; root project may be NULL. B1 stores matching project_id on every descendant; root membership may be NULL. Parent adjacency is the only hierarchy authority, with tasks_project/tasks_parent indexes. B2 implements atomic subtree movement with the unchanged guards; do not add a second mutable membership authority. |
-| template definitions (not implemented) | Stable UUID/name/version and Archive/Unarchive availability, not a recoverable deletion state. Active names are unique after trim/casefold; Unarchive rechecks uniqueness. Proposed normalized-key/UNIQUE representation needs review; SQLite lower/NOCASE does not establish Python casefold equivalence. Actual definition Delete eligibility for applied/referenced templates remains Open before E. |
-| template nodes (not implemented) | Template UUID, node identity, name and optional parent within the same template. Proposed compound FK binds (template, parent node) to that template; root NULL has no parent. No work/timer/confirmation/source-task identity is embedded. |
+| template_definitions | Implemented E: template_id/name/name_key/version/is_archived/archived_at_utc_us/unique creation receipt/created and updated UTC timestamps. STRICT range/archive guards, partial unique name_key index for active rows; Python canonical casefold verified independently. |
+| template_nodes | Implemented E: node_id/template_id/parent_node_id/name/position. Same-template composite deferred parent FK, unique positions/identities, canonical contiguous preorder, one or more nodes, three levels. Current graph is owned by definition version; no work/timer state. |
 | existing evidence families | Retain direct task ownership in work_entries/revisions, active timer/corrections, frozen export/task/basis/cells, confirmation batches/cells/current references and committed_requests. Adapt fresh FK/guards to the reviewed fresh schema; never introduce parent cumulative work rows. |
 
 Use canonical UUID, type, NOT NULL, FK, CHECK, UNIQUE and STRICT guards for local
@@ -554,7 +553,7 @@ materialized cumulative-time authority is selected.
 Extend the existing explicit TimerService/worker route, not a generic update-dict
 API. B1/B2 implement creation/rename, standalone assignment, explicit subtree
 movement, recording, C1 Archive/Unarchive, C2 unused-only Delete and detached reads
-as above. Template operations below remain **proposed future contracts**:
+as above. E implements the template operations below on fresh schema 3:
 
 | Use case | Strict reviewed inputs / result |
 | --- | --- |
@@ -563,7 +562,7 @@ as above. Template operations below remain **proposed future contracts**:
 | Move task branch / assign project | Root UUID and expected version, reviewed source/destination identities and versions, new parent/project (or selected root/Unassigned); return affected identities/versions. Validate current subtree, ancestry, membership and active eligibility atomically; refuse effectively archived selection and retain descendant states. |
 | Archive/Unarchive project or task branch | Exactly project_id/expected_version or task_id/expected_version; operation name selects the explicit flag. Archive stores the Request accepted UTC instant, Unarchive clears current flag/time. Validate active descendants/inherited context and preserve independent child flags/work. |
 | Preview/Delete unused branch | Implemented C2: read_delete_preview(entity_type,entity_id), then delete_task/delete_project with exact entity UUID, expected_version, frozen review and confirmed_text="DELETE". Complete closure/counts, cannot-undo warning and exact transactional recheck. No archive prerequisite, persistent Delete receipt or retained deletion state. |
-| Create/Edit/Duplicate/Archive/Unarchive/Delete template | Explicit definition UUID/version and complete typed node set for changes; validate graph and active trim/casefold name uniqueness. Duplicate uses fresh definition/node IDs; applied tasks are independent. Referenced-definition Delete eligibility remains Open, with no tombstones or silent reference removal. |
+| Create/Edit/Duplicate/Archive/Unarchive/Delete template | Explicit definition UUID/version and complete typed node set for changes; validate graph and active trim/casefold name uniqueness. Duplicate uses fresh definition/node IDs; applied tasks are independent. Definition Delete may follow Apply; only owned management history retires, preserving self-contained Apply/Duplicate evidence without tombstones. |
 | Apply template | Reviewed template UUID/version, fixed destination UUID/version, and a frozen mapping of every template node to a fresh task UUID; return that same created mapping. Validate full prospective depth and leaf/active eligibility before insertion. |
 | Detached reads | One consistent structure/state snapshot plus current direct daily facts at one cutoff; management/archived/template readers expose stable IDs/versions and archive-time provenance, never widget row indices as authority. |
 
@@ -600,7 +599,8 @@ and reasons. Canonical full values, not just a digest/count, authorize final rec
 
 The exact retirement allowlist is create_project, rename_project, archive_project,
 unarchive_project, create_task, rename_task, assign_task_to_project, archive_task,
-unarchive_task and move_task_branch. Project effects require that project in scope;
+unarchive_task, move_task_branch and E apply_template (only the whole unused created
+task set). Project effects require that project in scope;
 single-task effects require that task in scope. Creation's reviewed parent/project
 is passive context, not a mutation of that destination. A move requires its entire
 reviewed_subtree and changed_tasks within scope; mixed survivor effects refuse.
@@ -663,7 +663,63 @@ Items. Stale/refused decisions require a new preview. Pending context belongs to
 ChronicleApp even if the view is destroyed. Known commitment precedes fallible
 presentation, while lost delivery/worker stop retains uncertainty. Main, mini,
 History, Timesheet, backup, focus/grab and shutdown guards remain authoritative.
-D connects full nested active management; templates remain separate.
+D connects full nested active management; E adds the template boundary below.
+
+### Package E template authority and erased provenance
+
+`templates.py` validates canonical complete graphs, current definitions and finite
+operation effects. `administration.verify_records` extends transient chronological
+verification to definitions and Apply-created task batches; it is never runtime
+state. Schema 3 adds only template_definitions/template_nodes and active-name/node
+indexes, and replaces tasks.created_request_id UNIQUE with a nonunique indexed
+deferred FK. Ordinary create_task still owns exactly one task; apply_template owns
+its complete mapped task set. Application identity/profile/worker/locking remain.
+Versions 1/2 are refused without migration, import, replacement or remembered-data
+clearing. Current exact DDL, cold inspection, backup validation and restore all use
+schema 3 and complete template/receipt verification.
+
+create_template, edit_template, duplicate_template, archive_template,
+unarchive_template and apply_template are finite administrative operations. Request
+identity/content and original results remain immutable; exact retry precedes stale
+checks and no-ops write no receipt. Edit replaces the current graph atomically,
+retains continuing UUIDs and rejects reuse of removed IDs in retained history.
+Duplicate freezes full source and a UUID-sorted fresh node mapping. Apply freezes
+full source/version, exact destination/versions and position-ordered node/task pairs.
+It validates the complete proposed forest/active leaf before parent-first insertion,
+sets version 1/current archive false/accepted timestamps and one owning receipt,
+and performs complete verification before commit. No parent bump or copied work.
+
+Historical active-name uniqueness covers retained reconstructible states only,
+under the explicit Package E clarification. Canonical names/keys, all retained
+versions/archives/effects/results and contradictions are verified. While a source
+history survives, Apply/Duplicate snapshots must equal that source at commit order.
+If the source and its owned management history were erased, only the complete
+frozen source graph, mapping/result and surviving entity effects can be verified.
+No claim about erased earlier name/archive occupancy is made; those intervals are
+historically unverifiable. Current name-key uniqueness always covers ALL active
+definitions, transactionally and at independent startup/inspection/backup/restore.
+No missing-management exception exists for a surviving definition.
+
+Template Delete extends the existing C2 unreceipted boundary, not ordinary transact.
+Its exact worker preview contains the graph/version/archive state, retained Apply/
+Duplicate context and finite owned management receipts. Typed DELETE, BEGIN
+IMMEDIATE, complete before/after verification and exact unrelated survivor equality
+remain mandatory. Delete nodes, definition, then only its create/edit/duplicate/
+archive/unarchive management receipts. Retain every Apply and surviving Duplicate
+byte unchanged; unsafe survivor dependencies refuse. No tombstone, Delete receipt,
+name registry or replacement proof is installed. An unknown COMMIT remains
+UNVERIFIED, blocks mutation, allows readonly presence and requires explicit exit/
+reopen; no destructive retry. Task/project C2 retirement additionally recognizes
+apply_template only for its ENTIRE unused created set, never partial batch splitting.
+
+`template_window.py` supplies one modeless manager and owned draft/Apply modals,
+with app-owned accepted Request lifetime and exact tokens, existing modal/main/mini/
+Archived Items guards, no SQL/Tk worker crossing and no nested authored event loop.
+The graph editor holds only volatile drafts; normal refresh uses typed rows in
+place. Duplicate IDs and Apply mappings freeze once; ordinary uncertainty uses exact
+Retry/Reconcile. Definition Delete reuses the owned C2 preview/confirmation modal
+and its distinct no-retry policy. Applied tasks enter existing D/B/C services as
+independent tasks; all protected accounting/reporting remains unchanged.
 
 ### Archived Items presentation
 
@@ -826,7 +882,7 @@ Stage 1A established explicit data-dir/create/zone startup; current `bootstrap`
 also supports the source setup/remembered selection described above. `dataset_lock` holds
 OS ownership before writable open; unknown/nonempty create targets and unknown
 schema versions refuse without data cleanup. `sqlite_store` owns isolation_level=None,
-BEGIN IMMEDIATE/COMMIT/ROLLBACK and checked STRICT fresh schema (originally version 1; B1 now supports only version 2). Dataset/task/
+BEGIN IMMEDIATE/COMMIT/ROLLBACK and checked STRICT fresh schema (originally version 1; E now supports only version 3). Dataset/task/
 project UUIDs, optional membership, timed work identities/current immutable revisions,
 one active row, immutable active-start audits and committed receipts are relational.
 Original start never changes; active effective start/version follows its audit chain.
@@ -893,7 +949,7 @@ Stage 2A extends the fresh development schema directly for date-only revisions;
 older development signatures refuse, without a migration path. Export
 basis/cells are added in Stage 3A; three confirmation batch/cell/current-reference
 tables are added in Stage 3C, preserving stable identities. The exact expanded fresh
-schema used version 1 at those stages; B1 now uses only version 2 and refuses
+schema used version 1 at those stages; E now uses only version 3 and refuses
 all earlier signatures without conversion. The
 current application exposes Timesheet Preview, protected file Save/recovery and
 explicit absolute confirmation and derived reconciliation/reminders. Stage 3D adds
@@ -1109,7 +1165,7 @@ Selected rejects empty/duplicate/unknown IDs. Each intersecting week retains sev
 basis dates even for one-day Custom, while visible cells cover exactly the requested
 task/dates. Valid empty All is distinct from failure. There is no preparation write.
 
-Four STRICT immutable tables originated in schema 1 and remain protected in schema 2: `timesheet_exports`,
+Four STRICT immutable tables originated in schema 1 and remain protected in schema 3: `timesheet_exports`,
 `timesheet_export_tasks`, `timesheet_export_week_basis`, `timesheet_export_cells`.
 Deferred foreign keys allow validated task/basis/cell rows before the master; the
 master seals further child inserts. UPDATE/DELETE triggers protect all evidence.

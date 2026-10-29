@@ -94,11 +94,19 @@ Archive/Unarchive services, chronological archive validation and modeless full-d
 Archived Items. C2 implements unused-only Delete with exact volatile review, finite
 administrative retirement, strict survivor proof and no-retry uncertainty.
 Package D connects the full active hierarchy, reviewed child creation
-and Move / Reparent for independent review. Templates remain unimplemented. Read the
+and Move / Reparent, accepted for functional development under the E GO. E now
+connects the modeless Templates manager and owned editing/Apply/Delete reviews. Read the
 [approved behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation)
 and [packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
-B1's fresh schema 2 is the sole supported layout; later structural DDL/services still require review; C2 changes no schema. Hierarchy starts fresh without v1 migration,
+Package E implements the approved fresh schema 3/application ID 0x4348524E for
+independent review. Versions 1 and 2 refuse without conversion or replacement.
+Templates use relational definitions/nodes, casefold active-name uniqueness, atomic
+Edit/Duplicate/Apply and self-contained Apply creation receipts. Template Delete may
+retire only owned management history; retained Apply/Duplicate snapshots remain
+immutable. Historical uniqueness covers retained reconstructible states only; erased
+intervals remain unverifiable. No tombstone or replacement proof is stored.
+Hierarchy starts fresh without v1/v2 migration,
 compatibility mode or legacy import. Protect retained old files rather than
 converting/deleting/reusing them.
 The final owner lifecycle decision supersedes soft-delete/Deleted Items/separate
@@ -111,8 +119,8 @@ administrative requests may be erased after complete proof; their historical ret
 recovery is deliberately no longer promised, with no persistent deletion registry.
 C2 implements the [bounded deletion/receipt design](docs/ARCHITECTURE.md#unused-entity-deletion-and-receipt-boundary)
 on the existing DDL. Delete stores no receipt and must never enter ordinary retry;
-current presence cannot prove an uncertain historical outcome. Applied/referenced-template actual Delete eligibility
-is Open before E. No historical work/evidence deletion or automatic cleanup is
+current presence cannot prove an uncertain historical outcome. E authorizes actual template definition Delete after Apply, preserving applied
+tasks and complete self-contained receipts; current name uniqueness never relaxes. No historical work/evidence deletion or automatic cleanup is
 authorized. Packages B–F require separately approved implementation tasks after
 their dependencies are adjudicated. Package A authorizes no Stage 4 completion,
 Stage 5, merge or release.

@@ -62,12 +62,13 @@ class TimerService:
             return preview(capture(c), entity_type, entity_id)
 
     def read_delete_presence(self, entity_type: str, entity_id: str) -> dict:
-        if entity_type not in ('task', 'project'):
+        if entity_type not in ('task', 'project', 'template'):
             raise ValueError('Unknown Delete entity type')
         uuid_text(entity_id)
         with self._read_transaction() as c:
             self.store._verify_complete(c)
-            row = c.execute(f'SELECT version FROM {entity_type}s WHERE {entity_type}_id=?', (entity_id,)).fetchone()
+            table='template_definitions' if entity_type=='template' else entity_type+'s'
+            row = c.execute(f'SELECT version FROM {table} WHERE {entity_type}_id=?', (entity_id,)).fetchone()
         return dict(dataset_id=self.store.dataset_id, entity_type=entity_type, entity_id=entity_id,
                     present=row is not None, version=row['version'] if row else None,
                     historical_outcome='unverified')
@@ -101,6 +102,27 @@ class TimerService:
                        request_id: str, action_utc_us: int) -> Outcome:
         return self._make('unarchive_task', request_id, action_utc_us,
                           dict(task_id=task_id, expected_version=expected_version))
+
+    def create_template(self, template_id, name, nodes, *, request_id, action_utc_us):
+        return self._make('create_template',request_id,action_utc_us,dict(template_id=template_id,name=name,nodes=nodes))
+
+    def edit_template(self, template_id, *, expected_version, name, nodes, request_id, action_utc_us):
+        return self._make('edit_template',request_id,action_utc_us,dict(template_id=template_id,expected_version=expected_version,name=name,nodes=nodes))
+
+    def duplicate_template(self, source_template_id, *, expected_source_version, reviewed_source, template_id, name, node_mapping, request_id, action_utc_us):
+        return self._make('duplicate_template',request_id,action_utc_us,dict(source_template_id=source_template_id,expected_source_version=expected_source_version,reviewed_source=reviewed_source,template_id=template_id,name=name,node_mapping=node_mapping))
+
+    def archive_template(self, template_id, *, expected_version, request_id, action_utc_us):
+        return self._make('archive_template',request_id,action_utc_us,dict(template_id=template_id,expected_version=expected_version))
+
+    def unarchive_template(self, template_id, *, expected_version, request_id, action_utc_us):
+        return self._make('unarchive_template',request_id,action_utc_us,dict(template_id=template_id,expected_version=expected_version))
+
+    def apply_template(self, template_id, *, expected_template_version, reviewed_definition, destination_parent_task_id, destination_project_id, expected_destination_parent_version, expected_destination_project_version, node_mapping, request_id, action_utc_us):
+        return self._make('apply_template',request_id,action_utc_us,dict(template_id=template_id,expected_template_version=expected_template_version,reviewed_definition=reviewed_definition,destination_parent_task_id=destination_parent_task_id,destination_project_id=destination_project_id,expected_destination_parent_version=expected_destination_parent_version,expected_destination_project_version=expected_destination_project_version,node_mapping=node_mapping))
+
+    def delete_template(self, template_id, *, expected_version, review, confirmed_text, request_id, action_utc_us):
+        return self._make('delete_template',request_id,action_utc_us,dict(template_id=template_id,expected_version=expected_version,review=review,confirmed_text=confirmed_text))
 
     def move_task_branch(self, task_id: str, *, expected_version: int,
                          source_parent_task_id: str | None, source_project_id: str | None,
@@ -563,6 +585,8 @@ class TimerService:
         def operation(c):
             a, op, now = request.args(), request.operation, request.action_utc_us
             local_date(now, self.store.zone)
+            from .templates import OPERATIONS as TEMPLATE_OPS, execute as execute_template
+            if op in TEMPLATE_OPS:return execute_template(c,request)
             from .lifecycle import OPERATIONS, transition
             if op in OPERATIONS:
                 tasks = [dict(r) for r in c.execute('SELECT * FROM tasks')]
@@ -771,6 +795,8 @@ class TimerService:
             row = c.execute("SELECT * FROM active_timer").fetchone()
             active = dict(row) if row else None
             weekday = self.store.week_start
+            from .templates import read as read_templates
+            templates = list(read_templates(c).values())
             structure = self.store.assert_structure(c)
             tasks = [{**t, **structure[t['task_id']]} for t in tasks]
         # Calculation failure must not hide the current identities or disable recovery controls.
@@ -782,7 +808,7 @@ class TimerService:
         except (ValueError, OverflowError) as exc:
             report, error = None, str(exc)
         return {"dataset_id": self.store.dataset_id, "timezone": self.store.timezone,
-                "tasks": tasks, "projects": projects, "active": active, "report": report,
+                "tasks": tasks, "projects": projects, "templates": templates, "active": active, "report": report,
                 "calculation_error": error, "cutoff_utc_us": cutoff_utc_us, "week_start": weekday}
 
 

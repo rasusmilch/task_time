@@ -186,13 +186,13 @@ MetadataProbe use. Windows qualification is NOT COMPLETE. The accepted integrati
 coverage audit identified no material missing portable cross-boundary coverage
 at its flat-schema baseline. B1 separately exercises changed v2 boundaries. See
 [acceptance provenance](DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
-Package B1 now implements exact fresh schema 2 for independent review, with the
-same application ID. Version 1 refuses without transformation, replacement or a
-compatibility mode. Stage 4C's historical future-transition safety contract is not
+B1 originally introduced schema 2. E now implements exact fresh schema 3 for
+independent review, with the same application ID; versions 1/2 refuse without
+transformation, replacement or compatibility mode. Stage 4C's historical future-transition safety contract is not
 a hierarchy migration requirement; no migration engine is active. B2 movement is implemented for review.
 C1 Archive/Unarchive/Archived Items and C2 unused-only Delete are accepted for
 functional development. D nested active management UI is delivered for independent
-review; E templates remain unimplemented.
+review; E templates are delivered for independent review on fresh schema 3.
 Remaining stabilization and the complete gate include actual native Windows source/
 NTFS, operator GUI/modal/focus, backup/restore, hot-journal recovery, actual
 suspend/resume and deployment qualification. Any hypothetical future data-preserving
@@ -213,15 +213,15 @@ broader than isolated unit success.
 
 ## Hierarchy target — bounded packages A-F
 
-**A/B1/B2/C1/C2 ACCEPTED FOR FUNCTIONAL DEVELOPMENT; D DELIVERED FOR REVIEW; E–F PENDING.** The later explicit hierarchy-design
+**A/B1/B2/C1/C2 ACCEPTED FOR FUNCTIONAL DEVELOPMENT; D ACCEPTED FOR FUNCTIONAL DEVELOPMENT; E DELIVERED FOR REVIEW; F PENDING.** The later explicit hierarchy-design
 instruction selects tree-oriented main/mini, three task levels, branch management
 and nested templates. It supersedes their earlier Open/Stage 6 template placement.
 This is a proposed execution sequence for separately reviewed tasks, not permission
 to begin them or a declaration of complete Stage 4/5. Requirements own the behavior;
 [architecture](ARCHITECTURE.md#fresh-hierarchy-foundation) owns B1's implemented
 fresh model and the separately proposed later operations. Current runtime supports
-only schema 2; historical schema-1 evidence retains its original limits, with
-applicable regression rerun on fresh v2 fixtures.
+only schema 3; historical schema-1/2 evidence retains its original limits, with
+applicable regression rerun on fresh v3 fixtures.
 
 | Package | Bounded implementation and dependencies | Review/acceptance gate |
 | --- | --- | --- |
@@ -231,13 +231,13 @@ applicable regression rerun on fresh v2 fixtures.
 | C1 — Reversible lifecycle and Archived Items | Implemented for independent review on unchanged schema 2: four typed Archive/Unarchive services, selected-only timestamps/versions, chronological archive/move/active validation and modeless full-depth Archived Items with four sorts/direct History. No Delete control. | Active-containing Archive refusal; independent/inherited state, nearest timestamp/DST, no-op/exact retry/uncertainty, main/mini/modal ownership, in-place selection/expansion, backup/cold restore and full regression. Native changed UI remains unqualified. |
 | C2 — Irreversible unused-only Delete | Implemented for independent review on unchanged schema 2: worker preview, exact frozen review and typed DELETE, finite retirement/survivor proof, deepest-first atomic deletion and full retained-image equality/validation. No Archive prerequisite or persistent Delete receipt. | Scope/counts/cannot-undo warning, typed DELETE and final closure recheck. All-or-none unused-row/exclusively owned administration removal; protected references/unresolved dependencies refuse. No recoverable tier, tombstones or deletion ledger. |
 | D — Connected main/archived hierarchy trees | Implemented for independent review on unchanged schema 2. Connect A presentation to B1/B2/C snapshots/services: context New Task, project distinctions, active ancestors, direct History, management, full expansion and targeted structural refresh in both trees. | Selected UUID/expansion survive sorting and ordinary refresh while visible. Archived Items sibling/top-level Name A–Z/Z–A and Date Archived Newest/Oldest, newest default, deterministic ties. No flattening/duplicate identities, double count, flicker or recording eligibility from archived selection. Existing modal main/mini ownership remains. |
-| E — Nested templates | After B1/B2/D and adjudication of deletion dependencies for applied/referenced definitions, connect Create/Edit/Duplicate/Archive/Unarchive/actual Delete/Apply. Preserve active trim/casefold name uniqueness and atomic fresh task UUID insertion. | Nested depth/active destination guards, duplicate project/task names allowed, conflicting Unarchive-name refusal, no merging/copied work, applied instances unchanged. No soft-delete template tier, tombstones or silent loss of retained request/evidence references. Protected retained requests still retry exactly. |
+| E — Nested templates | Implemented for independent review on fresh schema 3 after accepted B1/B2/D: connect Create/Edit/Duplicate/Archive/Unarchive/actual Delete/Apply. Preserve active trim/casefold name uniqueness and atomic fresh task UUID insertion. | Nested depth/active destination guards, duplicate project/task names allowed, conflicting Unarchive-name refusal, no merging/copied work, applied instances unchanged. No soft-delete template tier, tombstones or silent loss of retained request/evidence references. Protected retained requests still retry exactly. |
 | F — Target integration and native qualification | Exercise recording → hierarchy/archive changes → direct History → frozen report → confirmation → correction/reconciliation → backup/cold restore/fresh operation; separately exercise unused-branch Delete, atomic refusal and its explicit historical-outcome limit. Carry forward compatible mathematics/failure evidence. | Full applicable regression for shared schema/accounting, real Tk and native Windows/NTFS main/archived tree, sorting, mini/modal/input and file/recovery. No manufactured success for erased administrative request uncertainty; protected evidence unchanged. Earlier flat-schema results do not qualify changed behavior. No Stage 4 completion/pilot/cutover follows without adjudication. |
 
 Package D connects the accepted A/B1/B2/C1/C2 foundations to full active hierarchy,
 context-sensitive child creation, reviewed Move / Reparent and existing lifecycle/
-direct History. E templates remain unimplemented; F complete changed-product/native
-qualification remains outstanding. No migration, schema change or installation
+direct History. E delivers nested templates for review; F complete changed-product/native
+qualification remains outstanding. No migration, further schema change or installation
 approval follows. Stage 4 remains IN PROGRESS; Stage 5 is NOT STARTED.
 Keep each package coherent rather than one helper per task.
 
@@ -248,8 +248,8 @@ supersedes the former soft-delete/Deleted Items/Permanent Delete and tombstone
 plans. Only Archive (with Unarchive reversal) and unused-only irreversible Delete
 are selected. The finite administrative deletion allowlist,
 closure/survivor proof, stale/uncertain handling and complete validation are now
-implemented by C2 on unchanged DDL; referenced-template Delete dependencies remain
-Open before E. Fully erased
+implemented by C2 on unchanged DDL; E resolves referenced-template Delete through retained self-contained snapshots
+and the explicitly limited erased-provenance contract. Fully erased
 administrative requests deliberately have no exact historical retry promise; retain
 normal guarantees for every surviving/protected request. Add no permanent identity
 registry or deletion ledger. See [remaining decisions](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions).

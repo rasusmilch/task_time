@@ -105,7 +105,7 @@ service-level subtree movement and C1 Archive/Unarchive/Archived Items are accep
 for functional development.
 C2 delivers unused-only Delete. Package D connects the full three-level active
 hierarchy, context-sensitive child creation and reviewed Move / Reparent for
-independent review. Templates remain pending;
+independent review. E templates are delivered on fresh schema 3 for independent review;
 rollups/projects never add work or change frozen evidence.
 
 Archived Items shows the full expandable tree, independently archived branches
@@ -127,7 +127,7 @@ Use Archive for protected history. New project/task names may duplicate, but nor
 creation always uses fresh UUIDs. Exclusively owned administrative requests may be
 erased with eligible unused rows: their exact historical retry/replay protection
 is no longer promised. No identity/tombstone/audit registry is selected. Its bounded
-Delete transaction/closure is implemented on unchanged schema 2 for review. B1 introduces finite
+C2 originally implemented its Delete closure on schema 2; E preserves it on schema 3 with whole-Apply-batch retirement. B1 introduces finite
 administrative/protected receipt classes, forbids all receipt UPDATEs/protected
 DELETEs and verifies surviving creation/version effects; only C2 retires the finite
 proven exclusively owned administrative set. Delete has no persistent receipt: an
@@ -135,20 +135,23 @@ uncertain result blocks mutation, permits current-presence inspection and requir
 explicit exit/reopen. Presence or absence is not historical success; never retry Delete.
 Backups/copies stay untouched; no automatic cleanup or secure erasure.
 
-Nested template instances stay independent. Definitions use Archive/Unarchive and
-intended actual Delete; applied/referenced definition eligibility is Open before
-Package E, not a soft-delete tier. Active template names stay trim/casefold unique,
-while task/project names may duplicate. Keep Mini Open defaults Off/session-local;
-Show Main retains mini only when On, never stealing modal focus/grabs. Main Sort
-A-Z is session-local. Exact Actual, frozen Timesheet and task/day POL-R rules remain.
+**Templates...** opens the reusable nested blueprint manager: Create/Edit,
+Duplicate, Archive/Unarchive, Delete and Apply. Active names use trim/casefold
+uniqueness; node names may duplicate. Apply reviews the full destination and creates
+fresh independent task UUIDs atomically. Later definition changes never alter
+instances. Definition Delete preserves applied tasks and self-contained historical
+Apply/Duplicate receipts; erased source intervals remain unverifiable. Current
+uniqueness stays strict. Typed Delete never retries uncertainty; ordinary template
+operations retain exact Retry/Reconcile. No scheduler, sync or copied time.
 
-Current runtime supports only exact fresh schema 2, **without v1 migration,
-compatibility mode or legacy import**. Version-1 datasets/backups refuse and remain
+
+Current runtime supports only exact fresh schema 3, **without v1/v2 migration,
+compatibility mode or legacy import**. Version-1/2 datasets/backups refuse and remain
 protected; failed remembered startup does not replace data or clear selection.
-Backup/restore/cold inspection completely validate v2 structure and evidence.
+Backup/restore/cold inspection completely validate v3 structure and evidence.
 B2 movement, C1 Archive/Unarchive/Archived Items and C2 unused-only Delete are
 accepted for functional development;
-D nested active UI is delivered for review; E templates require separate approval. See
+D nested active UI is accepted for functional development; E templates are delivered for review; F qualification requires separate approval. See
 [selected behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation) and
 [bounded packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
@@ -225,7 +228,7 @@ GO. Stage 4C adds `python run_chronicle.py --inspect-dataset DATA_DIR`: close ot
 sessions first. This cold read-only command classifies current/unsupported versions,
 layout, foreign identity, profile and unsafe/unavailable data without creating a
 lock or starting Tk/worker. Healthy current data passes complete independent
-validation; all other cases refuse ordinary startup. B1 supports only schema 2,
+validation; all other cases refuse ordinary startup. E supports only schema 3,
 with no automatic upgrade, downgrade or repair. Stage 4C inspection, protected
 refusal and bounded owned SQLite-native rollback recovery are independently
 accepted for functional development.

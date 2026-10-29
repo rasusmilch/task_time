@@ -57,6 +57,14 @@ B1/B2/C1 implement schema-2 hierarchy/movement/archive foundations; C2 adds
 unused-only Delete without DDL changes or old-data conversion. Existing frozen
 evidence semantics and the POL-R formula are unchanged.
 
+E's fresh schema 3 adds structure-only templates without changing this formula or
+frozen representation. Apply creates fresh task identities under one self-contained
+administrative receipt. Definition Edit/Archive/Delete never changes applied work,
+exports or confirmations. Definition Delete retains Apply/Duplicate bytes. Task/
+project Delete may retire an Apply receipt only with its entire unused created set;
+any protected reference still blocks. Erased template source intervals make no new
+historical reporting assertions or replacement proof records.
+
 Any protected reporting reference unequivocally blocks project/task Delete,
 including retained frozen labels/project context, scope, full-week basis, zero-valued
 cells, all confirmation/history/current references (including confirmed zero),

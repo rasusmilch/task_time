@@ -40,7 +40,7 @@ class DatabaseWorker(Thread):
                 try:
                     if message.kind in ('mutate', 'reconcile') and unresolved_delete is not None:
                         value = Outcome('unverified', error=RuntimeError('Delete outcome unresolved; mutation/retry blocked. Inspect current presence, then exit and reopen.'))
-                    elif message.kind == 'mutate' and message.value.operation in ('delete_task','delete_project') and unresolved is not None:
+                    elif message.kind == 'mutate' and message.value.operation in ('delete_task','delete_project','delete_template') and unresolved is not None:
                         value = Outcome('unavailable', error=RuntimeError('Delete refused while another accepted request is unresolved'))
                     elif message.kind == 'delete_preview':
                         value = service.read_delete_preview(**message.value)
@@ -101,7 +101,7 @@ class DatabaseWorker(Thread):
                 if message.kind in ('mutate', 'reconcile'):
                     if value.status == 'unverified':
                         unresolved = message.value.request_id
-                        if message.value.operation in ('delete_task', 'delete_project') and unresolved_delete is None:
+                        if message.value.operation in ('delete_task', 'delete_project', 'delete_template') and unresolved_delete is None:
                             unresolved_delete = message.value
                     elif unresolved == message.value.request_id:
                         unresolved = None

@@ -45,16 +45,16 @@ def verify(store):
 @pytest.mark.parametrize('change',[
     'is_archived=1','archived_at_utc_us=0','is_archived=2',
     'is_archived=1,archived_at_utc_us=9223372036854775807'])
-def test_fresh_v2_exact_shape_archive_constraints(store,service,entity,change):
+def test_fresh_v3_exact_shape_archive_constraints(store,service,entity,change):
     p=group(service);t=create(service,p)
     c=store.connection
-    assert SCHEMA_VERSION==2 and c.execute('PRAGMA user_version').fetchone()[0]==2
+    assert SCHEMA_VERSION==3 and c.execute('PRAGMA user_version').fetchone()[0]==3
     assert c.execute('PRAGMA application_id').fetchone()[0]==APPLICATION_ID==0x4348524E
     for table in ('projects','tasks'):
         fields={r[1] for r in c.execute(f'PRAGMA table_info({table})')}
         assert 'is_deleted' not in fields and {'created_request_id','is_archived','archived_at_utc_us'}<=fields
     assert 'parent_task_id' in {r[1] for r in c.execute('PRAGMA table_info(tasks)')}
-    assert not any(any(word in r[0] for word in ('tombstone','closure','template','trash'))
+    assert not any(any(word in r[0] for word in ('tombstone','closure','trash'))
                    for r in c.execute("SELECT name FROM sqlite_schema WHERE type='table'"))
     with pytest.raises(sqlite3.IntegrityError): c.execute(f'UPDATE {entity} SET {change}')
     verify(store)
@@ -440,7 +440,7 @@ def test_real_tk_b1_parent_history_root_creation_and_leaf_controls(connected,mon
     created=next(t for t in app.state['tasks'] if t['name']=='New child')
     assert created['parent_task_id']==a and created['project_id']==p
     assert app.tree.item(app.task_row(a),'values')[1:]==('00:10','00:30')
-    assert not any(word in label.lower() for label in app.buttons for word in ('template','subtask'))
+    assert not any(word in label.lower() for label in app.buttons for word in ('subtask',))
 
 
 @pytest.mark.parametrize('start,end,hours',[

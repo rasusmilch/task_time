@@ -103,14 +103,14 @@ Reopen that same dataset without `--create`:
 python run_chronicle.py --data-dir PATH
 ```
 
-B1 creates schema 2 only: task parentage has at most three levels under a project
+E creates fresh schema 3 only: task parentage has at most three levels under a project
 or Unassigned, new recording is leaf-only, and historical parent work remains
 retained. Package D now renders the full active hierarchy. New Task creates an Unassigned
 root with no selection/Unassigned selected, a root with a project selected, or an
 immediate child with a task selected. Review the full UUID/path destination before
 entering the name. Level-three/running selected tasks cannot gain children; Stop or
 Switch explicitly first. C1 supplies Archive and Archived Items; C2 adds unused-only
-Delete. Templates and native qualification of the changed UI remain outstanding.
+Delete. Templates are delivered for review; native qualification of the changed UI remains outstanding.
 
 The launcher resolves `src/chronicle` directly. `chronicle.bootstrap.main` is the
 single entry point; no project wheel or installation step is needed.
@@ -336,16 +336,16 @@ the dataset and acquires its normal ownership lock.
 
 | Exit | Classification / meaning |
 | --- | --- |
-| 0 | SUPPORTED_CURRENT: complete version-2 schema, integrity and evidence verified; ordinary current-version startup permitted. |
+| 0 | SUPPORTED_CURRENT: complete version-3 schema, integrity and evidence verified; ordinary current-version startup permitted. |
 | 2 | OLDER_UNSUPPORTED / NEWER_UNSUPPORTED: trustworthy observed version marker differs; no automatic migration or downgrade. A lower marker does not authenticate a historical Chronicle schema. |
 | 3 | FOREIGN_DATABASE / UNSUPPORTED_LAYOUT / UNSUPPORTED_PROFILE: wrong application identity, differing current-version DDL or unsupported SQLite format/profile. |
 | 4 | UNSAFE_OR_UNAVAILABLE: safe identity/integrity or successful inspection/cleanup/reporting could not be established. |
 
-Argument-parser errors also use exit 2 and print usage. Only exact fresh schema 2
-with application ID 0x4348524E is supported. Version 1 refuses; no migration,
-downgrade or automatic replacement is available. A failed remembered v1 open
+Argument-parser errors also use exit 2 and print usage. Only exact fresh schema 3
+with application ID 0x4348524E is supported. Versions 1/2 refuse; no migration,
+downgrade or automatic replacement is available. A failed remembered old-version open
 retains its selection and all prior data; choose a different new/empty directory
-explicitly to create v2. Never use --create on retained data.
+explicitly to create v3. Never use --create on retained data.
 
 Missing/unreadable/unstable files, symlinks (including directory aliases), unsuitable
 objects and explicit network paths refuse. WAL-format headers refuse before SQLite
@@ -362,12 +362,12 @@ Do not delete sidecars or change permissions to force inspection. Metadata/diges
 checks are bounded observations, not reliable exclusion of another writer or
 hostile-directory protection. Use Backup Chronicle for a consistent live image.
 
-B1's supported image is exact fresh schema 2. These commands preserve and validate
+E's supported image is exact fresh schema 3. These commands preserve and validate
 its task parentage, archive metadata, direct work and protected evidence, with no
-migration, backward-compatible mode or automatic conversion of version-1 datasets.
+migration, backward-compatible mode or automatic conversion of version-1/2 datasets.
 Existing files remain protected; choose a different new/empty folder explicitly
-for fresh v2 creation. Hierarchy, lifecycle and movement are connected by D;
-templates remain unimplemented. Do not delete journals or old databases
+for fresh v3 creation. Hierarchy, lifecycle and movement are connected by D;
+E templates are implemented for independent review. Do not delete journals or old databases
 to bypass refusal. Any hypothetical future data-preserving transformation would
 require separate source/target and safety approval; no such engine exists now.
 See the [target boundary](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary).
@@ -401,6 +401,37 @@ Close is blocked during accepted/unverified Move; destroyed views cannot discard
 the owner's accepted request. History, Timesheet, backup, Delete, correction and
 mini/modal guards remain in force. Native Windows input/topmost/focus validation
 remains separate; Stage 4 is IN PROGRESS and Stage 5 is NOT STARTED.
+
+## Reusable nested templates
+
+Open **Templates...** for the modeless definition/structure list. Select a definition
+row to Edit, Duplicate, Archive/Unarchive, Delete or Apply; nodes themselves cannot
+receive time. Create/Edit opens a draft-only editor: enter the template name, Add
+root/Add child, Rename node, Remove subtree, choose a Root/node destination and
+Reparent, or use Up/Down among siblings. The full tree previews the saved graph.
+Save commits the entire versioned definition; Cancel writes nothing. Depth/cycle,
+empty graph, reused removed-node ID and stale version refuse. Active names must be
+distinct after trim/casefold (including Straße/STRASSE). Archived definitions may
+be edited/duplicated but cannot Apply; Unarchive refuses current name collisions.
+
+Duplicate requires a distinct active name and creates fresh definition/node UUIDs.
+Apply reviews the whole blueprint, explicit project/Unassigned/task destination,
+UUID/path, count and maximum depth. Confirm Apply inserts all fresh independent
+tasks or none. Running/archived/stale/overflow destinations refuse without stopping
+a timer. Successful Apply expands the inserted hierarchy and selects its first root.
+Normal template uncertainty uses the original Request and exact mapping via
+Retry/Reconcile; close/destroy does not discard accepted work.
+
+Delete reviews the definition/current graph, finite management receipts and retained
+application context. Type exactly DELETE. This removes the definition, not applied
+tasks or surviving self-contained Apply/Duplicate receipts. Earlier source-name/
+archive intervals are erased and historically unverifiable; current uniqueness and
+all surviving evidence still validate. No Trash/tombstone/ledger exists. Uncertain
+Delete MUST NOT retry: inspect current presence, then explicitly exit/reopen under
+the existing C2 warning. Current absence is not historical proof. Existing backups
+are untouched and no secure erasure is promised. Source schema 1/2 refuses and is
+preserved; create a different new/empty dataset explicitly, never delete journals
+or convert an old dataset. Native Windows qualification remains separate.
 
 ## Archive and Archived Items
 
@@ -471,7 +502,7 @@ form does not stop an existing timer.
 
 Week starts accepts Monday through Sunday (initially Sunday) and saves the choice
 in this dataset. It changes containing-week totals, not work dates or amounts.
-Stages 1–3 originally used fresh schema 1. B1 now supports exact fresh schema 2:
+Stages 1–3 originally used fresh schema 1. E now supports exact fresh schema 3:
 version-1 datasets and older development schema signatures
 refuse without migration/recreation. Choose a new disposable directory explicitly;
 never delete or overwrite an existing dataset as an automatic startup action.

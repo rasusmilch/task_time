@@ -11,6 +11,7 @@ from uuid import UUID
 ADMINISTRATIVE_OPERATIONS = frozenset({
     'create_project', 'rename_project', 'create_task', 'rename_task', 'assign_task_to_project', 'move_task_branch',
     'archive_project', 'unarchive_project', 'archive_task', 'unarchive_task',
+    'create_template', 'edit_template', 'duplicate_template', 'archive_template', 'unarchive_template', 'apply_template',
 })
 
 

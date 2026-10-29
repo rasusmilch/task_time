@@ -1399,6 +1399,30 @@ entries describe their original delivery, not restrictions on this approved UI.
 Schema 2/DDL and protected evidence are unchanged. Templates, native Windows changed-
 interface qualification and remaining Stage 4 gates stay separate; Stage 5 NOT STARTED.
 
+### Package E template and erased-provenance approval
+
+**Status:** approved implementation, delivered for independent review.
+**Provenance:** explicit Package E GO at accepted D source
+`393d906e15be8cc43b3ec907ef93838835f4f2ea`, followed by the Historical Uniqueness and
+Erased-Provenance clarification. This resolves the former Open referenced-template
+Delete policy; prior entries preserve their original historical status.
+
+Select fresh schema 3, unchanged application ID, no v1/v2 migration. Definitions/
+nodes use canonical preorder and Python strip/casefold active uniqueness. Versioned
+Edit/Duplicate and mapped all-or-none Apply use one exact administrative receipt;
+Apply creates fresh independent task identities, never work/evidence. Definition
+Delete may follow Apply and retires only owned management history, keeping surviving
+Apply/Duplicate requests self-contained and immutable. C2 permits Apply retirement
+only with the whole unused created task set. No Delete receipt or tombstone exists.
+
+Historical uniqueness covers retained reconstructible administrative states, not
+erased intervals. Current active uniqueness remains complete. Frozen snapshots do
+not prove earlier source-name occupancy. Missing surviving management history,
+orphan receipts or retained contradictions refuse; erased source history is not
+replaced by assertions/registries/proof records. Ordinary exact retry and C2 no-retry
+uncertainty remain distinct. Stage 4 IN PROGRESS; Stage 5 NOT STARTED; F/native gates
+remain separate.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT
@@ -1410,8 +1434,6 @@ owner or candidate implementation design.
 - Allocation defaults/overrides and their interaction with week-start changes.
 - Exact installation replacement and old-data cutover.
 - Dataset-timezone changes before affected configuration/accounting.
-- Exact actual Delete eligibility for applied/referenced template definitions before
-  Package E; no silently erased references or recoverable third deletion tier.
 
 The later rewrite approval places allocations in optional Stage 6; earlier
 first-release inclusion is superseded, not a remaining core pilot decision.

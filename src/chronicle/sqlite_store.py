@@ -16,7 +16,7 @@ from .records import Outcome, Request, canonical, uuid_text, integer, receipt_cl
 from .timekeeping import MIN_US, MAX_US, load_zone, parse_date, instant
 from .timesheet_files import metadata, same_domain_metadata, path_matches_handle
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 APPLICATION_ID = 0x4348524E
 DATABASE = "chronicle.sqlite3"
 BUSY_MS = 750
@@ -55,10 +55,28 @@ CREATE TABLE tasks (
  name TEXT NOT NULL CHECK(length(trim(name))>0), version INTEGER NOT NULL CHECK(version>0),
  is_archived INTEGER NOT NULL DEFAULT 0 CHECK(is_archived IN (0,1)),
  archived_at_utc_us INTEGER CHECK(archived_at_utc_us {STAMP}),
- created_request_id TEXT NOT NULL UNIQUE REFERENCES committed_requests(request_id) DEFERRABLE INITIALLY DEFERRED,
+ created_request_id TEXT NOT NULL REFERENCES committed_requests(request_id) DEFERRABLE INITIALLY DEFERRED,
  created_utc_us INTEGER NOT NULL CHECK(created_utc_us {STAMP}),
  updated_utc_us INTEGER NOT NULL CHECK(updated_utc_us {STAMP}),
  CHECK((is_archived=0 AND archived_at_utc_us IS NULL) OR (is_archived=1 AND archived_at_utc_us IS NOT NULL))
+) STRICT;
+CREATE INDEX tasks_creation_request ON tasks(created_request_id);
+CREATE TABLE template_definitions (
+ template_id TEXT PRIMARY KEY {uuid_constraint('template_id')},
+ name TEXT NOT NULL CHECK(length(trim(name))>0 AND name=trim(name)), name_key TEXT NOT NULL,
+ version INTEGER NOT NULL CHECK(version>0), is_archived INTEGER NOT NULL CHECK(is_archived IN (0,1)),
+ archived_at_utc_us INTEGER CHECK(archived_at_utc_us {STAMP}),
+ created_request_id TEXT NOT NULL UNIQUE REFERENCES committed_requests(request_id) DEFERRABLE INITIALLY DEFERRED,
+ created_utc_us INTEGER NOT NULL CHECK(created_utc_us {STAMP}), updated_utc_us INTEGER NOT NULL CHECK(updated_utc_us {STAMP}),
+ CHECK((is_archived=0 AND archived_at_utc_us IS NULL) OR (is_archived=1 AND archived_at_utc_us IS NOT NULL))
+) STRICT;
+CREATE UNIQUE INDEX active_template_name ON template_definitions(name_key) WHERE is_archived=0;
+CREATE TABLE template_nodes (
+ node_id TEXT PRIMARY KEY {uuid_constraint('node_id')}, template_id TEXT NOT NULL REFERENCES template_definitions(template_id),
+ parent_node_id TEXT CHECK(parent_node_id IS NULL OR parent_node_id!=node_id) {uuid_constraint('parent_node_id')},
+ name TEXT NOT NULL CHECK(length(trim(name))>0 AND name=trim(name)), position INTEGER NOT NULL CHECK(position>=0),
+ UNIQUE(template_id,node_id), UNIQUE(template_id,position),
+ FOREIGN KEY(template_id,parent_node_id) REFERENCES template_nodes(template_id,node_id) DEFERRABLE INITIALLY DEFERRED
 ) STRICT;
 CREATE TABLE committed_requests (
  commit_seq INTEGER PRIMARY KEY AUTOINCREMENT, request_id TEXT NOT NULL UNIQUE {uuid_constraint('request_id')},
@@ -537,14 +555,14 @@ class SQLiteStore:
         definitions = {r[0]: normalize(r[1]) for r in c.execute("SELECT name,sql FROM sqlite_schema WHERE sql IS NOT NULL")}
         expected_names = set()
         for statement in schema_statements():
-            name = re.match(r"CREATE (?:TABLE|INDEX|TRIGGER) (\w+)", statement)[1]
+            name = re.match(r"CREATE (?:UNIQUE )?(?:TABLE|INDEX|TRIGGER) (\w+)", statement)[1]
             expected_names.add(name)
             if definitions.get(name) != normalize(statement):
                 raise UnsupportedSchemaLayout(f"Schema definition differs: {name}")
         if {name for name in definitions if not name.startswith("sqlite_")} != expected_names:
             raise UnsupportedSchemaLayout("Unexpected schema objects; no automatic repair/upgrade")
         tables = {r[1]: r for r in c.execute("PRAGMA table_list")}
-        for name in ("dataset_meta", "projects", "tasks", "committed_requests", "work_entries",
+        for name in ("dataset_meta", "projects", "tasks", "template_definitions", "template_nodes", "committed_requests", "work_entries",
                      "work_revisions", "active_timer", "active_start_corrections", *EXPORT_TABLES, *CONFIRMATION_TABLES):
             if name not in tables or tables[name][5] != 1:
                 raise UnsupportedSchemaLayout(f"Missing STRICT table: {name}")
@@ -593,7 +611,7 @@ class SQLiteStore:
             for key in ('expected_version','expected_task_version','expected_active_version','expected_revision'):
                 if key in a and (type(a[key]) is not int or not 1 <= a[key] <= 2**63-1):
                     raise ValueError('Invalid reviewed version in receipt')
-            if op in ('create_task','rename_task','assign_task_to_project','create_project','rename_project','move_task_branch','archive_project','unarchive_project','archive_task','unarchive_task'):
+            if op in ('create_task','rename_task','assign_task_to_project','create_project','rename_project','move_task_branch','archive_project','unarchive_project','archive_task','unarchive_task','create_template','edit_template','duplicate_template','archive_template','unarchive_template','apply_template'):
                 pass  # Complete bidirectional entity/version closure is checked below.
             elif op == 'set_week_start':
                 if (type(a.get('week_start')) is not int or not 0 <= a['week_start'] <= 6
@@ -767,7 +785,7 @@ class SQLiteStore:
         from .timesheet import validate
         value = validate(candidate)
         if any(t.is_deleted for t in value.tasks):
-            raise ValueError('Schema 2 has no live deleted-task state to freeze')
+            raise ValueError('Current schema has no live deleted-task state to freeze')
         for task in value.tasks:
             c.execute("""INSERT INTO timesheet_export_tasks
               (export_id,task_id,name,project_id,project_name,is_deleted,ordinal) VALUES(?,?,?,?,?,?,?)""",
@@ -1066,6 +1084,9 @@ class SQLiteStore:
             c.execute("INSERT INTO committed_requests(request_id,operation,receipt_class,request_bytes,result_bytes,action_utc_us) VALUES(?,?,?,?,?,?)",
                       (request.request_id, request.operation, receipt_class(request.operation), content, canonical(result), request.action_utc_us))
             self.assert_confirmations(c)
+            from .templates import OPERATIONS as TEMPLATE_OPS
+            if request.operation in TEMPLATE_OPS:
+                self._verify_complete(c)
             c.execute("COMMIT")
             return Outcome("committed", result)
         except Exception as primary:

@@ -21,7 +21,7 @@ class DeleteWindow:
         self.window = tk.Toplevel(owner.root)
         try:
             self.window.withdraw()
-            self.window.title('Delete unused ' + entity)
+            self.window.title('Delete ' + entity)
             self.window.transient(owner.root)
             self.window.geometry('850x540')
             self.window.columnconfigure(0, weight=1)
@@ -41,7 +41,7 @@ class DeleteWindow:
             scroll.grid(row=0,column=1,sticky='ns');self.tree.configure(yscrollcommand=scroll.set)
             self.status=ttk.Label(self.window,text='',wraplength=810)
             self.status.grid(row=2,column=0,padx=12,pady=8,sticky='w')
-            ttk.Label(self.window,text='Delete permanently removes this unused structure. It cannot be undone.').grid(row=3,column=0,padx=12,sticky='w')
+            ttk.Label(self.window,text='Delete permanently removes this template definition, not its applied tasks. It cannot be undone.' if entity=='template' else 'Delete permanently removes this unused structure. It cannot be undone.').grid(row=3,column=0,padx=12,sticky='w')
             ttk.Label(self.window,text='Type exactly DELETE to confirm the frozen scope:').grid(row=4,column=0,padx=12,sticky='w')
             self.confirmed=tk.StringVar(self.window,'')
             self.entry=ttk.Entry(self.window,textvariable=self.confirmed,width=30)
@@ -123,8 +123,11 @@ class DeleteWindow:
             else:parent_row='project:'+self.key if self.entity=='project' else ''
             self.tree.insert(parent_row,'end',iid=row,text=task['name'],values=(key,task['version'],bool(task['is_archived'])),open=True)
         for key in sorted(tasks):install(key)
-        self.status.configure(text=('Eligible unused scope. Review every row and type DELETE.' if value['eligible'] else
+        self.status.configure(text=(('Eligible template definition. Applied instances remain independent. Type DELETE.' if self.entity=='template' else 'Eligible unused scope. Review every row and type DELETE.') if value['eligible'] else
                                    'Delete refused. Use Archive for history-bearing items.\n'+'\n'.join(value['reasons'])))
+        if self.entity=='template':
+            self.context.configure(text=f"Template: {selected['name']} ({self.key}) — version {selected['version']}\nNodes: {value['node_count']}; retained applications: {value['application_count']}; management receipts: {len(value['retire_receipts'])}\nApplied tasks and immutable Apply/Duplicate receipts are preserved.")
+            for n in value['nodes']:self.tree.insert(n['parent_node_id'] or '', 'end',iid=n['node_id'],text=n['name'],values=(n['node_id'],'',''),open=True)
         self.controls()
 
     def submit(self):
@@ -138,7 +141,7 @@ class DeleteWindow:
         self.outcome=result;self.phase='complete' if result.status=='committed' else 'unverified' if result.status=='unverified' else 'failed'
         if not self.current():return
         self.status.configure(text=UNCERTAIN if result.status=='unverified' else
-            'Deleted the reviewed unused structure. No work or protected evidence was removed.' if result.status=='committed' else
+            ('Deleted template definition. Applied tasks and retained evidence are preserved.' if self.entity=='template' else 'Deleted the reviewed unused structure. No work or protected evidence was removed.') if result.status=='committed' else
             f'Delete did not commit. Obtain a new preview before another confirmation. {result.error or result.status}')
         self.confirmed.set('');self.controls()
 

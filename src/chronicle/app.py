@@ -137,6 +137,9 @@ class ChronicleApp:
         self._active_group = None
         self.movement = self._move_submission = None
         self._reveal_after_read = None
+        self._expand_after_read = ()
+        self._template_reveal = None
+        self.templates_window = self.template_dialog = self._template_submission = None
         self._build()
         root.protocol("WM_DELETE_WINDOW", self.request_close)
         root.bind("<Destroy>", self._destroyed, add="+")
@@ -177,6 +180,8 @@ class ChronicleApp:
         self.keep_mini_open = tk.BooleanVar(self.root, False)
         self.keep_mini_control = ttk.Checkbutton(bar, text="Keep Mini Open", variable=self.keep_mini_open)
         self.keep_mini_control.grid(row=1, column=4, columnspan=2)
+        self.buttons['Templates...'] = ttk.Button(bar,text='Templates...',command=self.open_templates)
+        self.buttons['Templates...'].grid(row=1,column=6,padx=3)
         self.new_task_hint = ttk.Label(bar, text='', wraplength=760)
         self.new_task_hint.grid(row=2, column=0, columnspan=7, sticky='w', pady=(4,0))
         self.headline = ttk.Label(self.root, text="Today: —    This week: —")
@@ -246,12 +251,13 @@ class ChronicleApp:
     def can_mutate(self, *, origin=None):
         owns_editor = (origin is not None and origin is self._work_editor
                        and self.editor is origin.window and origin.phase == "editing")
+        owns_template = origin is not None and origin is self.template_dialog and origin.mutation_allowed()
         owns_move = origin is not None and origin is self.movement and origin.mutation_allowed()
         owns_delete = origin is not None and origin is self.deletion and origin.mutation_allowed()
         owns_history = origin is not None and origin is self.history and origin.mutation_allowed()
         owns_timesheet = origin is not None and origin is self.timesheet and origin.mutation_allowed()
         return (self.alive and self.ready and not self.closing and self.pending is None
-                and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor or owns_delete or owns_move)
+                and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor or owns_delete or owns_move or owns_template)
                 and not self._history_opening and (self.history is None or owns_history)
                 and not self._backup_opening and self.backup_dialog is None and not self._backup_busy()
                 and not self._timesheet_opening and (self.timesheet is None or owns_timesheet))
@@ -459,7 +465,7 @@ class ChronicleApp:
         configure_changed(self.period_selector, state="readonly" if enabled else "disabled")
         for control in (self.sort_control, self.keep_mini_control):
             configure_changed(control, state="normal" if enabled else "disabled")
-        delete_wait = self.pending is not None and self.pending.operation in ('delete_task', 'delete_project') and not self.executing
+        delete_wait = self.pending is not None and self.pending.operation in ('delete_task', 'delete_project', 'delete_template') and not self.executing
         if delete_wait:
             self.retry_button.pack_forget(); self.exit_button.pack_forget(); self.cancel_close_button.pack_forget()
             self.delete_inspect_button.configure(state='disabled' if self._worker_stopped or self._delete_inspection_token is not None else 'normal')
@@ -483,6 +489,8 @@ class ChronicleApp:
             self.deletion.controls()
         if self.movement is not None:
             self.movement.controls()
+        if self.template_dialog is not None:self.template_dialog.controls()
+        if self.templates_window is not None:self.templates_window.controls()
         if self.mini is not None:
             self.mini.render()
         self._render_reminder()
@@ -496,7 +504,7 @@ class ChronicleApp:
             configure_changed(self.status, text=reason)
 
     def _submit(self, operation, *, _origin=None, **arguments):
-        if operation in ('delete_task','delete_project') and (_origin is None or _origin is not self.deletion or not _origin.mutation_allowed()):
+        if operation in ('delete_task','delete_project','delete_template') and (_origin is None or _origin is not self.deletion or not _origin.mutation_allowed()):
             return False
         if operation == 'move_task_branch' and _origin is not None and (_origin is not self.movement or not _origin.mutation_allowed()):
             return False
@@ -522,12 +530,15 @@ class ChronicleApp:
         if _origin is not None and _origin is self.timesheet and operation == 'register_timesheet_export':
             attempt = self._timesheet_attempt
             attempt.request, attempt.token, attempt.registration = request, self._pending_token, "registering"
-        if operation in ('delete_task','delete_project'):
+        if operation in ('delete_task','delete_project','delete_template'):
             self._delete_submission = _DeleteSubmission(request,self._pending_token,_origin)
             _origin.request, _origin.token, _origin.phase = request,self._pending_token,'executing'
         if _origin is not None and _origin is self.movement and operation == 'move_task_branch':
             self._move_submission = _MoveSubmission(request,self._pending_token,_origin)
             _origin.request, _origin.token, _origin.phase = request,self._pending_token,'executing'
+        if _origin is not None and _origin is self.template_dialog:
+            self._template_submission = _MoveSubmission(request,self._pending_token,_origin)
+            _origin.request,_origin.token,_origin.phase=request,self._pending_token,'executing'
         # Invalidate any read that predates this accepted mutation.
         self._read_again = True
         if self._reminder_inflight is not None:self._reminder_again=True
@@ -541,8 +552,10 @@ class ChronicleApp:
                 self._polr_result(request,self._token,Outcome('unavailable',error=exc))
             if _origin is not None and _origin is self.timesheet and operation == 'register_timesheet_export':
                 attempt.registration, attempt.error = "unavailable", exc
-            if operation in ('delete_task','delete_project'):
+            if operation in ('delete_task','delete_project','delete_template'):
                 self._delete_result(request,self._token,Outcome('unavailable',error=exc))
+            if _origin is self.template_dialog and _origin is not None:
+                self._template_result(request,self._token,Outcome('unavailable',error=exc))
             if operation == 'move_task_branch':
                 self._move_result(request,self._token,Outcome('unavailable',error=exc))
             self.status.configure(text=f"Action not submitted: {exc}")
@@ -685,7 +698,7 @@ class ChronicleApp:
             except Exception as exc:
                 presentation_error = exc
             if result.status=='unverified':text=UNCERTAIN
-            elif result.status=='committed':text='Deleted reviewed unused structure. No work or protected evidence was removed.'
+            elif result.status=='committed':text=('Deleted template definition. Applied tasks and retained evidence are preserved.' if request.operation=='delete_template' else 'Deleted reviewed unused structure. No work or protected evidence was removed.')
             else:text=f'Delete did not commit. A fresh preview is required. {result.error or result.status}'
             try:
                 self.status.configure(text=text)
@@ -707,10 +720,10 @@ class ChronicleApp:
     def inspect_delete_state(self):
         request = self.pending
         if (not self.alive or self.closing or self.executing or self._worker_stopped or request is None
-                or request.operation not in ('delete_task','delete_project') or self._delete_inspection_token is not None):return False
+                or request.operation not in ('delete_task','delete_project','delete_template') or self._delete_inspection_token is not None):return False
         grab=self.root.grab_current()
         if grab is not None and (self.deletion is None or grab is not self.deletion.window or grab.grab_status()!='local'):return False
-        entity='project' if request.operation=='delete_project' else 'task'
+        entity=request.operation.removeprefix('delete_')
         self._token+=1;self._delete_inspection_token=self._token
         try:self.worker.requests.put(Message('delete_presence',self._token,dict(entity_type=entity,entity_id=request.args()[entity+'_id'])))
         except Exception as exc:
@@ -720,9 +733,9 @@ class ChronicleApp:
         self._controls();return True
 
     def _delete_presence_result(self, message):
-        if message.token!=self._delete_inspection_token or self.pending is None or self.pending.operation not in ('delete_task','delete_project'):return
+        if message.token!=self._delete_inspection_token or self.pending is None or self.pending.operation not in ('delete_task','delete_project','delete_template'):return
         self._delete_inspection_token=None
-        request=self.pending;entity='project' if request.operation=='delete_project' else 'task'
+        request=self.pending;entity=request.operation.removeprefix('delete_')
         value=message.value
         from .delete_window import UNCERTAIN
         if isinstance(value,Outcome):text=UNCERTAIN+' Inspection unavailable: '+str(value.error)
@@ -734,7 +747,7 @@ class ChronicleApp:
         self._controls()
 
     def exit_delete_uncertain(self):
-        if self.pending is None or self.pending.operation not in ('delete_task','delete_project') or self.executing:return False
+        if self.pending is None or self.pending.operation not in ('delete_task','delete_project','delete_template') or self.executing:return False
         was_closing=self.closing;self.closing=True
         try:return self.exceptional_exit()
         finally:
@@ -837,6 +850,56 @@ class ChronicleApp:
             self._choice("Rename project", [f"{p['name']} ({p['project_id']})" for p in projects],
                          lambda index: rename(projects[index]))
 
+    def open_templates(self):
+        if self.templates_window is not None or not self.can_mutate() or self.root.grab_current() is not None:return False
+        from .template_window import TemplatesWindow
+        window=None
+        try:
+            window=TemplatesWindow(self);self.templates_window=window;window.render(self.state);window.window.deiconify();return True
+        except Exception as exc:
+            if window is not None:window.window.destroy()
+            self.status.configure(text=f'Unable to open Templates: {exc}');self._diagnose(exc);return False
+
+    def open_template_dialog(self,kind,source):
+        if not self.can_mutate() or self.root.grab_current() is not None:return False
+        from .template_window import TemplateEditor,TemplateApply
+        dialog=None
+        try:
+            cls=TemplateApply if kind=='apply' else TemplateEditor
+            dialog=cls.__new__(cls)
+            if kind=='apply':cls.__init__(dialog,self,source)
+            else:cls.__init__(dialog,self,source,duplicate=kind=='duplicate')
+            self.template_dialog,self.editor=dialog,dialog.window;self._controls();dialog.window.deiconify();return True
+        except Exception as exc:
+            if dialog is not None and getattr(dialog,'window',None) is not None:dialog.window.destroy()
+            self.status.configure(text=f'Unable to open template review: {exc}');self._diagnose(exc);return False
+
+    def open_template_delete(self,source,origin):
+        if not self.can_mutate() or self.root.grab_current() is not None or self.templates_window is not origin or not origin.current():return False
+        from .delete_window import DeleteWindow
+        dialog=None
+        try:
+            dialog=DeleteWindow(self,'template',source['template_id'],origin.window)
+            self.deletion,self.editor=dialog,dialog.window;self._controls();dialog.window.deiconify();return True
+        except Exception as exc:
+            if dialog is not None:dialog.window.destroy()
+            self.status.configure(text=f'Unable to review template Delete: {exc}');self._diagnose(exc);return False
+
+    def _template_result(self,request,token,result):
+        submission=getattr(self,'_template_submission',None)
+        if submission is None or submission.request is not request or submission.token!=token:return
+        submission.outcome=result
+        if result.status!='unverified':self._template_submission=None
+        if self.template_dialog is submission.origin:self.template_dialog.record_result(result)
+
+    def exit_template_uncertain(self):
+        if self.pending is None or self.pending.operation not in ('create_template','edit_template','duplicate_template','archive_template','unarchive_template','apply_template') or self.executing:return False
+        was_closing=self.closing;self.closing=True
+        try:return self.exceptional_exit()
+        finally:
+            if not self._shutdown_sent:self.closing=was_closing
+            self._controls()
+
     def open_move(self):
         task = self._selected()
         if not self.can_mutate() or task is None or self.root.grab_current() is not None:
@@ -900,6 +963,7 @@ class ChronicleApp:
             self._controls()
 
     def _close_editor(self, top):
+        if self.template_dialog is not None and self.template_dialog.window is top:return self.template_dialog.close()
         if self.movement is not None and self.movement.window is top:
             return self.movement.close()
         if self.deletion is not None and self.deletion.window is top:
@@ -1790,6 +1854,7 @@ class ChronicleApp:
         self._controls()
         if self.archived is not None:
             self.archived.render(self.state)
+        if self.templates_window is not None:self.templates_window.render(self.state)
         self._diagnose(exc)
 
     def _row_status(self, key, candidate, paths):
@@ -1877,6 +1942,10 @@ class ChronicleApp:
             self.tree.selection_set(surviving)
         if scroll and self.tree.yview() != scroll:
             self.tree.yview_moveto(scroll[0])
+        for task_id in self._expand_after_read:
+            key=self.task_row(task_id)
+            if self.tree.exists(key) and self.tree.get_children(key) and not self.tree.item(key,'open'):self.tree.item(key,open=True)
+        self._expand_after_read=()
         reveal = self._reveal_after_read
         if reveal is not None:
             self._reveal_after_read = None
@@ -1897,6 +1966,7 @@ class ChronicleApp:
         self._controls()
         if self.archived is not None:
             self.archived.render(self.state)
+        if self.templates_window is not None:self.templates_window.render(self.state)
 
     def _handle(self, message):
         if message.kind == 'backup':
@@ -1926,9 +1996,14 @@ class ChronicleApp:
             request = self.pending
             self.executing = False
             self._mutation_outcome = result  # Authoritative matching delivery precedes all presentation.
+            if result.status=='committed' and request.operation in ('create_template','duplicate_template'):
+                self._template_reveal=result.result['template_id']
+            if result.status=='committed' and request.operation=='apply_template':
+                self._expand_after_read=tuple(p['task_id'] for p in result.result['created_tasks'])
+                self._reveal_after_read=self._expand_after_read[0]
             if result.status == 'committed' and request.operation in ('create_task','move_task_branch'):
                 self._reveal_after_read = request.args()['task_id']
-            if request.operation in ('delete_task','delete_project'):
+            if request.operation in ('delete_task','delete_project','delete_template'):
                 if result.status!='unverified':self.pending,self._pending_token=None,None
                 self._delete_result(request,message.token,result)
                 return
@@ -1963,6 +2038,7 @@ class ChronicleApp:
                 exc.add_note(f'Authoritative mutation outcome remains {result.status}; status presentation failed.')
                 self._diagnose(exc)
             try:
+                self._template_result(request,message.token,result)
                 self._move_result(request, message.token, result)
                 self._work_editor_result(request, message.token, result)
                 if self.history is not None:
@@ -2042,9 +2118,10 @@ class ChronicleApp:
                 result = Outcome('unverified', error=RuntimeError('Worker stopped before authoritative delivery; operation may have committed. Exit explicitly; this session cannot reconcile.'))
                 self._mutation_outcome = result
                 try:
+                    self._template_result(self.pending,self._pending_token,result)
                     if self.pending.operation == 'move_task_branch':
                         self._move_result(self.pending,self._pending_token,result)
-                    if self.pending.operation in ('delete_task','delete_project'):
+                    if self.pending.operation in ('delete_task','delete_project','delete_template'):
                         self._delete_result(self.pending,self._pending_token,result)
                     self._work_editor_result(self.pending, self._pending_token, result)
                     if self.history is not None:
@@ -2106,7 +2183,7 @@ class ChronicleApp:
         self._tick_id = self.root.after(1000, self._tick)
 
     def retry(self):
-        if self.pending is not None and self.pending.operation in ('delete_task','delete_project'):
+        if self.pending is not None and self.pending.operation in ('delete_task','delete_project','delete_template'):
             return False  # Delete never enters ordinary reconcile-absent-then-execute.
         if self.alive and (self.closing or self._cleanup_failed) and not self.executing and self.pending is None and not self._shutdown_sent:
             self.retry_button.pack_forget()
@@ -2129,6 +2206,10 @@ class ChronicleApp:
         polr = getattr(self,'_polr_submission',None)
         if polr is not None and polr.request is self.pending:
             polr.token, polr.outcome = self._pending_token, None
+        template=getattr(self,'_template_submission',None)
+        if template is not None and template.request is self.pending:
+            template.token,template.outcome=self._pending_token,None
+            if self.template_dialog is template.origin:template.origin.token,template.origin.phase=self._pending_token,'executing'
         move = self._move_submission
         if move is not None and move.request is self.pending:
             move.token, move.outcome = self._pending_token, None
@@ -2150,6 +2231,7 @@ class ChronicleApp:
             if attempt is not None and attempt.request is self.pending:
                 attempt.registration, attempt.error = 'unverified', exc
                 self._timesheet_notify()
+            if template is not None and template.request is self.pending:self._template_result(self.pending,self._pending_token,Outcome('unverified',error=exc))
             if move is not None and move.request is self.pending:
                 self._move_result(self.pending,self._pending_token,Outcome('unverified',error=exc))
             self.status.configure(text=f"Reconciliation not submitted; original request retained. {exc}")
@@ -2198,6 +2280,8 @@ class ChronicleApp:
                 self.history.exceptional_exit()
             return  # As with a manual form, close owned History before ordinary exit.
         if self.editor is not None:
+            if self.template_dialog is not None and self.template_dialog.phase=='unverified' and not self.executing:
+                self.exit_template_uncertain();return
             if self.movement is not None and self.movement.phase=='unverified' and not self.executing:
                 self.exit_move_uncertain()
                 return
@@ -2223,7 +2307,7 @@ class ChronicleApp:
             self.status.configure(text="Waiting for the accepted database operation before exit…")
         elif self.pending is not None:
             self.status.configure(text=("Delete outcome is uncertain. Do not retry. Inspect current presence, then explicitly exit and reopen."
-                if self.pending.operation in ('delete_task','delete_project') else
+                if self.pending.operation in ('delete_task','delete_project','delete_template') else
                 "Save is unresolved and may have committed. Retry/Reconcile, or explicitly exit and lose volatile retry context."))
             self._controls()
         elif self._worker_stopped:
@@ -2250,6 +2334,8 @@ class ChronicleApp:
         sheet = self.timesheet
         deletion = self.deletion
         movement = self.movement
+        template_dialog=self.template_dialog
+        if template_dialog is not None:parent=template_dialog.window
         if movement is not None: parent=movement.window
         if deletion is not None:parent=deletion.window
         if sheet is not None and not sheet.disposed: parent = sheet.window
@@ -2257,11 +2343,14 @@ class ChronicleApp:
             parent = history.window
         try:
             explanation = ("Delete outcome is uncertain. Current absence is not historical proof. No retry is available. Exit and reopen for fresh review?"
-                if self.pending.operation in ('delete_task','delete_project') else
+                if self.pending.operation in ('delete_task','delete_project','delete_template') else
                 "The operation may already have committed. Exit loses this session's retry inputs. No work or evidence is undone. Exit anyway?")
             confirmed = messagebox.askyesno("Unresolved save", explanation,
                                            parent=parent, default=messagebox.NO)
         except BaseException as primary:
+            if template_dialog is not None and self.template_dialog is template_dialog:
+                try:template_dialog.restore_modal()
+                except Exception as secondary:primary.add_note(f'Template modal return failed: {secondary!r}')
             if movement is not None and self.movement is movement:
                 try: movement.restore_modal()
                 except Exception as secondary: primary.add_note(f'Move modal return failed: {secondary!r}')
@@ -2288,6 +2377,10 @@ class ChronicleApp:
                 except Exception as exc:self._diagnose(exc)
             self._delete_submission=None
             self._move_submission=None
+            self._template_submission=None
+            if template_dialog is not None and self.template_dialog is template_dialog:
+                try:template_dialog.close(force=True)
+                except Exception as exc:self._diagnose(exc)
             if movement is not None and self.movement is movement:
                 try: movement.close(force=True)
                 except Exception as exc: self._diagnose(exc)
@@ -2306,6 +2399,7 @@ class ChronicleApp:
                     self._diagnose(exc)
             self._advance_close()
         else:
+            if template_dialog is not None and self.template_dialog is template_dialog:template_dialog.restore_modal()
             if movement is not None and self.movement is movement: movement.restore_modal()
             if deletion is not None and self.deletion is deletion:deletion.restore_modal()
             if sheet is not None and self.timesheet is sheet: sheet.restore_modal()

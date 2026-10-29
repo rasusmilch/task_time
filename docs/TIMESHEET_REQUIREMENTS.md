@@ -98,7 +98,7 @@ recording/accounting. B2 implements transactional subtree movement. C1 implement
 Archive/Unarchive and full Archived Items navigation for independent review.
 C2 implements unused-only Delete. D implements the complete active hierarchy,
 context-sensitive child creation and reviewed Move / Reparent for independent review.
-Templates remain unimplemented. B1 supersedes the former proposed foundation/identity gate,
+E implements templates on fresh schema 3 for independent review. B1 supersedes the former proposed foundation/identity gate,
 not the remaining package approvals or the no-migration boundary.
 
 Maximum structure is Project → Task → Subtask → Sub-subtask: three task levels
@@ -126,7 +126,7 @@ Stop/Switch; an active timer also blocks Delete's unused-only eligibility. No
 hierarchy operation silently stops, switches or restarts a timer. Archived or
 effectively archived leaves accept no new time; their history remains retained.
 
-The hierarchy runtime requires fresh schema-2 data: no version-1 migration,
+The current runtime requires fresh schema-3 data: no version-1/2 migration,
 backward-compatible mode, conversion engine, compatibility shim, JSONL import or
 old-runtime fallback. Its schema must identify itself distinctly so an old dataset
 cannot be mistaken for supported new data. Incompatible datasets may refuse.
@@ -283,30 +283,60 @@ shared exact totals and main/mini observation remain unchanged by visibility.
 
 ### Reusable nested templates
 
-Templates have their own UUID/name and a collection of named task nodes with
-parent relationships fitting the depth limit. They contain **no Actual, active
-timer, confirmations, committed operation receipts or work revisions copied from
-tasks**. Template-management operations still have their own ordinary request
-receipts. Template edits do not modify previously applied instances.
+Package E implements reusable relational template definitions/nodes on fresh schema 3
+for independent review. Templates contain structure, never copied work, timers,
+revisions, reports, confirmations or existing task identities. Applied instances are
+ordinary independent tasks; later template Edit/Archive/Delete changes none of them.
 
-Provide Create, Edit, Duplicate, Archive/Unarchive, Delete and Apply in a
-discoverable Templates manager. Archive/Unarchive makes a definition unavailable/
-available. Delete is intended as actual definition removal, not a hidden
-recoverable state. Exact eligibility for an already applied/referenced template
-is an Open technical dependency question before Package E; never silently discard
-retained request/evidence references or introduce tombstones. Task/project unused-
-only Delete does not authorize a broad template/history purge. Active template
-names remain unique after trim/casefold; Create/Duplicate/Rename/Unarchive must
-respect this without overwriting another definition. Applied instances remain
-independent and unchanged; project/task names remain duplicable. Apply
-fixes the selected project/parent task, shows the structure/destination for review,
-and inserts template roots immediately
-beneath it. Every inserted task receives a fresh UUID, preserving nested
-relationships; the entire insertion and receipt commit atomically. Refuse depth
-overflow, stale/ineligible destination and attempts to make a running task a
-parent; never overwrite unrelated tasks or leave partial insertion. Duplicate
-names do not authorize merging. No recurrence, scheduling or automatic external
-task creation is selected.
+Templates... opens one modeless manager with name/UUID/version/state/count and an
+expandable full graph. Create/Edit use an owned draft editor: name, root/child nodes,
+rename, subtree removal, reparent and sibling reorder. Retained node UUIDs stay fixed;
+new nodes get fresh IDs; removed IDs cannot be reused within retained definition
+history. Save atomically replaces the complete graph after version/depth validation;
+Cancel writes nothing. Nodes follow canonical contiguous preorder with at least one
+root and at most three levels. Duplicate freezes the source/version and UUID-sorted
+fresh node mapping, creating a separately named independent active definition.
+
+Names use Python strip/casefold. Every actual Create/Edit/Duplicate/Unarchive
+transaction checks all current active definitions. Archived names may collide;
+Unarchive collision refuses without automatic renaming. Nodes/tasks/projects retain
+duplicate-name support. Archive/Unarchive sets/clears only definition availability
+and current accepted UTC archive time; archived definitions may be edited/duplicated.
+
+Apply reviews the complete blueprint and explicit project/Unassigned/task destination,
+full path/UUID, node count and resulting depth. Freeze template/version/complete
+reviewed definition, destination identities/versions and position-ordered node/task
+mapping before submission. Insert all fresh tasks parent-first in one transaction,
+one administrative creation receipt, without bumping destination parent version or
+copying work/evidence. Reject archived/running/stale/overflow destinations; never
+flatten/drop nodes or implicitly Stop/Switch. Success reveals the inserted hierarchy
+and selects its first root. Ordinary exact retry retains the same mapping/Request.
+
+Template Delete is irreversible definition removal, without an Archive prerequisite,
+including after Apply. The worker previews its complete current graph, version,
+retained application context and exact finite management-receipt retirement set.
+Require typed DELETE and final transactional equality/recheck. Remove only this
+definition/current nodes and its owned create_template/edit_template/duplicate_template/
+archive_template/unarchive_template receipts. Surviving Apply/Duplicate requests remain
+byte-identical and self-contained; all surviving task/definition histories and protected
+facts must verify. No Delete receipt, tombstone, identity registry or proof ledger.
+Uncertainty follows C2: no retry, readonly current presence, blocked mutation and
+explicit exit/reopen. Current absence does not prove historical success.
+
+Historical uniqueness is verified over retained reconstructible administrative
+history. When source history remains, Apply/Duplicate frozen sources must match it
+at their commit position. After legitimate physical source deletion, validate the
+canonical frozen graph/mapping/result and every surviving entity/version effect,
+without asserting erased name/archive intervals. Erased intervals are historically
+unverifiable; a snapshot does not prove earlier name occupancy. Missing history for
+a surviving definition, incomplete retirement, orphaned operations or contradictions
+within retained evidence refuse. Current active uniqueness always remains complete.
+
+An Apply receipt may retire under task/project Delete only if its entire created
+set is in the reviewed unused scope and every surviving dependency still verifies.
+Partial batches refuse without splitting receipts or expanding scope. Definition
+management receipts never retire through project/task Delete. Template operations
+introduce no recurrence, synchronization or external task creation.
 
 ### Target main and mini presentation
 
@@ -453,7 +483,7 @@ exports and confirmations neither erase nor increase calendar Actual.
 
 ## SELECTED — Calendar Actual displays
 
-Package D connects full three-level main tree navigation on unchanged schema 2.
+Package D navigation is retained on E fresh schema 3.
 Native Windows qualification of the changed interface remains outstanding. Main Individual/Cumulative share Today/This Week: Individual is
 direct Actual and Cumulative includes each descendant once. Group Cumulative sums
 member direct report facts,
@@ -465,9 +495,9 @@ the selected eligible task as immediate parent, or Unassigned for no selection.
 The complete UUID/path and reviewed destination versions freeze before name entry.
 Move / Reparent uses the one B2 branch operation, not a second assignment policy.
 Application totals retain archived-task work when navigation hides it. Current
-schema-2 readers retain parent and archived work; live tasks/projects have no
+schema-3 readers retain parent and archived work; live tasks/projects have no
 soft-delete fields. Frozen report task labels retain the existing is_deleted shape
-with value false in newly registered v2 reports. One coordinated refresh
+with value false in newly registered v3 reports. One coordinated refresh
 uses one aware UTC cutoff and local observation date for main/mini. This week is the complete containing calendar
 week. Timed work is cutoff-capped; dated amounts belong wholly to their declared
 dates, including later dates within that week.
@@ -677,7 +707,7 @@ is blocked while timers continue. Fresh preview defaults to This week/All tasks;
 Last week and Custom, typed dates/pickers, All or explicit task UUIDs are supported.
 Do not expand descendants. Duplicate names remain separate; archived-task work
 stays reportable. Parent selection means only its direct task/day Actual; new
-schema-2 frozen task is_deleted labels are false, with no recoverable-Delete tier.
+schema-3 frozen task is_deleted labels are false, with no recoverable-Delete tier.
 Calendar selection only edits drafts;
 cancellation preserves them and invalid drafts remain correctable. Resolve relative periods at explicit
 Preview/Refresh, not by silently advancing an old preview.
@@ -831,7 +861,7 @@ gates; no automatic external allocation verification is established.
 | Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
-| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active UI delivered for review; E templates remain unimplemented; nothing inherited from JSONL. |
+| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active UI delivered for review; E templates delivered for review; nothing inherited from JSONL. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
@@ -850,7 +880,7 @@ new structure. C1 adds selected-only Archive/Unarchive with exact accepted UTC
 current timestamps, inherited visibility and complete chronological receipt checks.
 C2 adds irreversible unused-only Delete and finite administrative retirement with
 strict survivor preservation and explicit no-retry uncertainty. D connects the full
-active hierarchy and reviewed movement UI; no migration or templates are delivered.
+active hierarchy and reviewed movement UI. E adds templates on schema 3; no migration is delivered.
 
 Package A presentation remains implemented: empty project groups,
 typed task/group rows, session-local A-Z/period choice, green/red text states,
@@ -861,7 +891,7 @@ second; only changed visible values repaint. C1 adds the modeless full-depth
 Archived Items tree, four sibling/top-level sorts, shared period values, explicit
 Unarchive and direct History, with existing modal/pending guards. D implements full
 nested active management, ancestor running states, context New Task and reviewed
-Move / Reparent; templates remain unimplemented. C2 adds Delete in main and
+Move / Reparent; E adds reusable templates for independent review. C2 adds Delete in main and
 Archived Items through complete preview and exact typed confirmation. Native Windows interface follow-up
 remains required.
 
@@ -953,7 +983,7 @@ GO. Native qualification and the remaining Stage 4 gate precede complete pilot.
 
 ## SELECTED — Schema compatibility and future upgrade safety
 
-Current supported fresh schema is version 2 with application ID 0x4348524E.
+Current supported fresh schema is version 3 with application ID 0x4348524E; versions 1/2 are incompatible and preserved.
 A healthy complete current dataset permits ordinary work; older/newer markers,
 same-version differing schema, foreign identity, unsupported profile and damaged or
 unavailable inspection refuse without conversion, recreation or automatic repair.
@@ -973,13 +1003,13 @@ validation and protected destination contracts.
 The later hierarchy approval selects fresh creation rather than a version-1
 transformation. No migration/backward compatibility obligation belongs to that
 plan; old files remain protected and incompatible data refuses. The current
-runtime supports only its exact version-2 schema; all version-1 datasets and
+runtime supports only its exact version-3 schema; all version-1/2 datasets and
 backups refuse without conversion, replacement or clearing remembered selection.
 A hypothetical later
 data-preserving transition would require a separate explicit approval and complete
 source/target, evidence, ownership, installation/failure and recovery contract;
 Stage 4C's historical safety contract is not permission or an implementation
-requirement to build one for hierarchy. B1 creates schema 2 only on a new/empty
+requirement to build one for hierarchy. E creates schema 3 only on a new/empty
 protected destination; future revisions need separate approval.
 The [technical boundary](ARCHITECTURE.md#cold-compatibility-inspection-and-future-transition-boundary)
 remains strict. Stage 4C is independently accepted for functional development;
@@ -990,7 +1020,6 @@ Stage 4 remains IN PROGRESS and no pilot is authorized.
 | Decision | First affected gate |
 | --- | --- |
 | Dataset-timezone changes and historical date attribution under changes | Stage 1 dataset configuration / Stage 2 accounting, before implementation. Explicit fixed dataset zone is required; change policy is not guessed. |
-| Referenced template deletion | Before Package E: exact eligibility and retained administrative/request/evidence dependency handling for already applied/referenced definitions. Archive/Unarchive and actual Delete intent are selected; no silent reference removal or tombstones. |
 | Exact release paths, installation/cutover and retired-data cleanup | Before affected deployment/Stage 5 fresh pilot setup; startup deletion is unauthorized. |
 | Allocation controls/recurrence/overrides/week-change effects | Before optional Stage 6 allocation work. |
 
