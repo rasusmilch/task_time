@@ -96,7 +96,8 @@ The hierarchy target is partially implemented by Package B1 for independent revi
 exact fresh schema 2, unchanged application ID 0x4348524E, parent adjacency and core
 recording/accounting. B2 implements transactional subtree movement. C1 implements
 Archive/Unarchive and full Archived Items navigation for independent review.
-Delete, movement UI, nested active management UI and templates remain unimplemented. B1 supersedes the former proposed foundation/identity gate,
+C2 implements unused-only Delete for independent review. Movement UI, nested active
+management UI and templates remain unimplemented. B1 supersedes the former proposed foundation/identity gate,
 not the remaining package approvals or the no-migration boundary.
 
 Maximum structure is Project → Task → Subtask → Sub-subtask: three task levels
@@ -168,7 +169,8 @@ Project/task management offers Create, Rename, Move, Archive/Unarchive, Delete a
 direct Work History using reviewed UUIDs/versions, cancellation without writes,
 stale diagnostics and authoritative completion. B1 implements creation/rename,
 explicit child creation and existing standalone-root project assignment. B2 adds explicit service-level subtree movement; C1 adds Archive/Unarchive and
-Archived Items. Movement UI and project/task Delete remain unimplemented.
+Archived Items. C2 implements reviewed unused-only project/task Delete; movement UI
+remains unimplemented.
 
 ### Unused-only Delete
 
@@ -190,8 +192,8 @@ A separately selected unused child may be eligible despite its parent's work,
 only when its complete dependency closure is independently removable.
 
 Before Delete show the exact scope, affected project/task counts and an explicit
-cannot-be-undone warning. Require confirmation, **typed DELETE for branch
-deletion**, followed by final transactional validation against the reviewed scope.
+cannot-be-undone warning. Require **typed DELETE for every Delete**, followed by
+final transactional validation against the reviewed scope.
 Reject stale/racing decisions and require fresh review. Remove all or none of the
 eligible entity rows, parent-child relationships, exclusively owned administrative
 facts and safely proven exclusively associated administrative request records.
@@ -216,18 +218,20 @@ reintroducing its old UUID. Normal creation uses fresh IDs; stale queued/concurr
 operations must still pass final transactional dependency checks. Do not claim
 permanent replay protection or silently reinstate a registry.
 
-If Delete committed but acknowledgement was lost and its own receipt was erased,
-present existence checks can establish current state, not prove that request's
+Delete deliberately stores no receipt. If COMMIT was attempted and acknowledgement
+was lost, present existence checks can establish current state, not prove that request's
 historical outcome. Report failure/uncertainty truthfully; do not automatically
 reexecute or invent a retained deletion journal to conceal this limit. The
-[proposed deletion/receipt boundary](ARCHITECTURE.md#proposed-unused-entity-deletion-and-receipt-boundary)
-requires separate engineering adjudication of its finite allowlist, closure,
-cross-entity/survivor dependencies, transaction order, stale/uncertain handling,
-independent verification and fresh DDL. Unsafe/unprovable scopes refuse.
+[implemented deletion/receipt boundary](ARCHITECTURE.md#unused-entity-deletion-and-receipt-boundary)
+uses C2's exact finite allowlist, complete scope/typed closure, strict survivor-history
+proof and deepest-first transaction on unchanged schema 2. Unsafe/unprovable scopes
+refuse. No ordinary Delete retry or reconcile-absent execution is available; current
+presence inspection does not resolve history. Block mutation until explicit exit
+and reopen; another Delete requires fresh review and typed confirmation.
 B1 classifies retained receipts as administrative or protected. All UPDATEs and
-protected DELETEs remain SQL-prohibited. No B1 service retires any receipt; complete
-validation requires every surviving entity's creation receipt and all version effects.
-Future administrative retirement and its uncertainty policy still require Package C.
+protected DELETEs remain SQL-prohibited. Only C2 may retire the proven exclusively
+owned administrative set; complete validation still requires every surviving
+entity's creation receipt and all version effects.
 
 A task/project with protected history must be archived instead of deleted. Its
 retained history stays available to History, Timesheet and POL-R/reconciliation.
@@ -242,8 +246,8 @@ independently archived task branches and descendants hidden by archived ancestor
 Preserve Project → Task → Subtask → Sub-subtask relationships and support full
 expand/collapse at every available level, historical Individual/Cumulative values,
 direct-task Work History, selected explicit-node Unarchive and eligible-branch
-Delete (later C2). C1 implements this view with Unarchive and direct History only;
-no Delete command is present. Explain ineligible Delete/Unarchive. The view is read-only for recording:
+Delete through C2's separate owned full-preview/typed-confirmation workflow. C1
+provides Unarchive and direct History; C2 adds the Delete command. Explain ineligible Delete/Unarchive. The view is read-only for recording:
 no Start, Switch into archived tasks or new manual work beneath archived parents.
 Selection, sorting and expansion never make an archived leaf eligible for time.
 
@@ -826,7 +830,7 @@ gates; no automatic external allocation verification is established.
 | Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
-| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 Delete/D full nested active UI/E templates remain unimplemented; nothing inherited from JSONL. |
+| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active UI/E templates remain unimplemented; nothing inherited from JSONL. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
@@ -843,7 +847,9 @@ retry/no-op behavior and changed-row-only versions/timestamps. Direct work and
 frozen evidence remain unchanged; current grouping/cumulative values follow the
 new structure. C1 adds selected-only Archive/Unarchive with exact accepted UTC
 current timestamps, inherited visibility and complete chronological receipt checks.
-No migration, movement UI, irreversible Delete or templates are delivered.
+C2 adds irreversible unused-only Delete and finite administrative retirement with
+strict survivor preservation and explicit no-retry uncertainty. No migration, movement
+UI or templates are delivered.
 
 Package A presentation remains implemented: empty project groups,
 typed task/group rows, session-local A-Z/period choice, green/red text states,
@@ -853,7 +859,8 @@ local Keep Mini Open and guarded topmost. Exact worker observations continue eac
 second; only changed visible values repaint. C1 adds the modeless full-depth
 Archived Items tree, four sibling/top-level sorts, shared period values, explicit
 Unarchive and direct History, with existing modal/pending guards. No full nested
-active management UI, Delete or templates are implemented. Native Windows interface follow-up
+active management UI or templates are implemented. C2 adds Delete in main and
+Archived Items through complete preview and exact typed confirmation. Native Windows interface follow-up
 remains required.
 
 The sole shipped source route uses `src/chronicle`: explicit fresh SQLite
@@ -981,7 +988,6 @@ Stage 4 remains IN PROGRESS and no pilot is authorized.
 | Decision | First affected gate |
 | --- | --- |
 | Dataset-timezone changes and historical date attribution under changes | Stage 1 dataset configuration / Stage 2 accounting, before implementation. Explicit fixed dataset zone is required; change policy is not guessed. |
-| Unused-only Delete engineering | Before affected B/C implementation: finite administrative allowlist, complete closure/cross-entity survivor proof, transaction/constraint design, stale/uncertain handling and complete independent verification. The owner approves retiring exclusively owned administrative requests without historical retry guarantees; no tombstones/registry/ledger or executable DDL is selected. |
 | Referenced template deletion | Before Package E: exact eligibility and retained administrative/request/evidence dependency handling for already applied/referenced definitions. Archive/Unarchive and actual Delete intent are selected; no silent reference removal or tombstones. |
 | Exact release paths, installation/cutover and retired-data cleanup | Before affected deployment/Stage 5 fresh pilot setup; startup deletion is unauthorized. |
 | Allocation controls/recurrence/overrides/week-change effects | Before optional Stage 6 allocation work. |

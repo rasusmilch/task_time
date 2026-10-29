@@ -29,6 +29,7 @@ class DatabaseWorker(Thread):
             store = SQLiteStore(self.directory, create=self.create, timezone=self.timezone)
             service = TimerService(store)
             unresolved = None
+            unresolved_delete = None
             self.results.put(Message("ready", value={"dataset_id": store.dataset_id,
                                                      "timezone": store.timezone, "zone": store.zone,
                                                      "runtime": store.info, "week_start": store.week_start}))
@@ -37,7 +38,15 @@ class DatabaseWorker(Thread):
                 if message.kind == "shutdown":
                     break
                 try:
-                    if message.kind == "read":
+                    if message.kind in ('mutate', 'reconcile') and unresolved_delete is not None:
+                        value = Outcome('unverified', error=RuntimeError('Delete outcome unresolved; mutation/retry blocked. Inspect current presence, then exit and reopen.'))
+                    elif message.kind == 'mutate' and message.value.operation in ('delete_task','delete_project') and unresolved is not None:
+                        value = Outcome('unavailable', error=RuntimeError('Delete refused while another accepted request is unresolved'))
+                    elif message.kind == 'delete_preview':
+                        value = service.read_delete_preview(**message.value)
+                    elif message.kind == 'delete_presence':
+                        value = service.read_delete_presence(**message.value)
+                    elif message.kind == "read":
                         value = service.read_current_state(cutoff_utc_us=message.value)
                     elif message.kind == "history":
                         value = service.read_task_work_history(**message.value)
@@ -92,6 +101,8 @@ class DatabaseWorker(Thread):
                 if message.kind in ('mutate', 'reconcile'):
                     if value.status == 'unverified':
                         unresolved = message.value.request_id
+                        if message.value.operation in ('delete_task', 'delete_project') and unresolved_delete is None:
+                            unresolved_delete = message.value
                     elif unresolved == message.value.request_id:
                         unresolved = None
                 if message.kind == 'backup':

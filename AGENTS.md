@@ -90,13 +90,13 @@ leaf-only new recording, retained parent history, derived cumulative values and
 administrative/protected receipt classes. B2 adds transactional subtree movement
 on unchanged schema 2, with multi-entity receipt validation. C1 implements four
 Archive/Unarchive services, chronological archive validation and modeless full-depth
-Archived Items for independent review. Irreversible Delete, full nested active
-management UI and templates remain unimplemented. Read the
+Archived Items. C2 implements unused-only Delete with exact volatile review, finite
+administrative retirement, strict survivor proof and no-retry uncertainty for
+independent review. Full nested active management UI and templates remain unimplemented. Read the
 [approved behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation)
 and [packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
-B1's fresh schema 2 is the sole supported layout; later structural/Delete DDL and
-services still require review. Hierarchy starts fresh without v1 migration,
+B1's fresh schema 2 is the sole supported layout; later structural DDL/services still require review; C2 changes no schema. Hierarchy starts fresh without v1 migration,
 compatibility mode or legacy import. Protect retained old files rather than
 converting/deleting/reusing them.
 The final owner lifecycle decision supersedes soft-delete/Deleted Items/separate
@@ -107,8 +107,9 @@ plus irreversible unused-only Delete without an Archive prerequisite. Protected
 work/report/confirmation references always block Delete. Exclusively owned
 administrative requests may be erased after complete proof; their historical retry
 recovery is deliberately no longer promised, with no persistent deletion registry.
-Independently adjudicate the [bounded deletion/receipt design](docs/ARCHITECTURE.md#proposed-unused-entity-deletion-and-receipt-boundary)
-and any future Delete DDL before C2; B2 retains the existing DDL; applied/referenced-template actual Delete eligibility
+C2 implements the [bounded deletion/receipt design](docs/ARCHITECTURE.md#unused-entity-deletion-and-receipt-boundary)
+on the existing DDL. Delete stores no receipt and must never enter ordinary retry;
+current presence cannot prove an uncertain historical outcome. Applied/referenced-template actual Delete eligibility
 is Open before E. No historical work/evidence deletion or automatic cleanup is
 authorized. Packages B–F require separately approved implementation tasks after
 their dependencies are adjudicated. Package A authorizes no Stage 4 completion,

@@ -59,7 +59,8 @@ def test_real_tk_archived_project_three_levels_context_duplicates_and_empty(conn
     assert view.unarchive_button.instate(['disabled']) and not view.unarchive()
     assert 'Same' in view.status.cget('text') and 'ancestor' in view.status.cget('text')
     assert b in view.status.cget('text')  # Duplicate names cannot obscure the hiding identity.
-    assert all('Delete' not in str(w.cget('text')) for w in (view.unarchive_button,view.history_button,view.close_button))
+    assert view.delete_button.cget('text') == 'Delete'
+    assert all(word not in view.delete_button.cget('text') for word in ('Trash','Purge','Restore'))
     assert not app.root.test_errors
 
 

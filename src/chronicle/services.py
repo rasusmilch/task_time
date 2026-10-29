@@ -55,6 +55,33 @@ class TimerService:
         return self._make("assign_task_to_project", request_id, action_utc_us,
                           dict(task_id=task_id, project_id=project_id, expected_version=expected_version))
 
+    def read_delete_preview(self, entity_type: str, entity_id: str) -> dict:
+        from .deletion import capture, preview
+        with self._read_transaction() as c:
+            self.store._verify_complete(c)
+            return preview(capture(c), entity_type, entity_id)
+
+    def read_delete_presence(self, entity_type: str, entity_id: str) -> dict:
+        if entity_type not in ('task', 'project'):
+            raise ValueError('Unknown Delete entity type')
+        uuid_text(entity_id)
+        with self._read_transaction() as c:
+            self.store._verify_complete(c)
+            row = c.execute(f'SELECT version FROM {entity_type}s WHERE {entity_type}_id=?', (entity_id,)).fetchone()
+        return dict(dataset_id=self.store.dataset_id, entity_type=entity_type, entity_id=entity_id,
+                    present=row is not None, version=row['version'] if row else None,
+                    historical_outcome='unverified')
+
+    def delete_task(self, task_id: str, *, expected_version: int, review: dict, confirmed_text: str,
+                    request_id: str, action_utc_us: int) -> Outcome:
+        return self._make('delete_task', request_id, action_utc_us,
+                          dict(task_id=task_id, expected_version=expected_version, review=review, confirmed_text=confirmed_text))
+
+    def delete_project(self, project_id: str, *, expected_version: int, review: dict, confirmed_text: str,
+                       request_id: str, action_utc_us: int) -> Outcome:
+        return self._make('delete_project', request_id, action_utc_us,
+                          dict(project_id=project_id, expected_version=expected_version, review=review, confirmed_text=confirmed_text))
+
     def archive_project(self, project_id: str, *, expected_version: int,
                        request_id: str, action_utc_us: int) -> Outcome:
         return self._make('archive_project', request_id, action_utc_us,
@@ -529,6 +556,9 @@ class TimerService:
         return self._make('dismiss_polr_reminder_today',request_id,action_utc_us,dict(local_date=local_date))
 
     def execute(self, request: Request) -> Outcome:
+        from .deletion import OPERATIONS
+        if request.operation in OPERATIONS:
+            return self.store.delete_unused(request)
         # The transaction resolves exact receipts before calling this current-state validator.
         def operation(c):
             a, op, now = request.args(), request.operation, request.action_utc_us
@@ -693,6 +723,9 @@ class TimerService:
         return self.store.transact(request, operation)
 
     def reconcile_request(self, request: Request) -> Outcome:
+        from .deletion import OPERATIONS
+        if request.operation in OPERATIONS:
+            return Outcome('unverified', error=ValueError('Delete has no retained receipt. Do not retry; inspect current presence, then exit and reopen.'))
         evidence = self.store.reconcile(request)
         if evidence.status == "unverified" and self.store._retired is not None:
             try:

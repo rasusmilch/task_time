@@ -977,6 +977,64 @@ class SQLiteStore:
         except Exception as exc:
             return Outcome("unverified", error=exc)
 
+    def delete_unused(self, request: Request) -> Outcome:
+        """No-receipt Delete boundary; an uncertain COMMIT is never reconciled/retried."""
+        from .deletion import OPERATIONS, capture, apply
+        try:
+            request.content()
+        except (ValueError, TypeError) as exc:
+            return Outcome('rejected', error=exc)
+        if request.operation not in OPERATIONS or request.dataset_id != self.dataset_id:
+            return Outcome('rejected', error=ValueError('Wrong Delete operation/dataset identity'))
+        c = None
+        begun = commit_attempted = False
+        try:
+            self._recover_connection()
+            c = self.connection
+            c.execute('BEGIN IMMEDIATE')
+            begun = True
+            self._verify_complete(c)
+            # A surviving request UUID belongs to its original exact content, never Delete.
+            if c.execute('SELECT 1 FROM committed_requests WHERE request_id=?', (request.request_id,)).fetchone():
+                raise RequestConflict('Delete request identity already belongs to a retained request')
+            before = capture(c)
+            result, expected = apply(c, request, before)
+            self._verify_complete(c)
+            if capture(c) != expected:
+                raise ValueError('Delete changed protected/unrelated survivors or failed to remove exact scope')
+            commit_attempted = True
+            c.execute('COMMIT')
+            return Outcome('committed', result)
+        except Exception as primary:
+            active = False
+            if c is not None:
+                try:
+                    active = c.in_transaction
+                except Exception as secondary:
+                    primary.add_note(f'Delete transaction inspection failed: {secondary!r}')
+                    active = True
+            if not begun and not active:
+                return Outcome('unverified' if self._retired is not None else 'unavailable', error=primary)
+            cleaned = False
+            try:
+                if c.in_transaction:
+                    c.execute('ROLLBACK')
+                cleaned = not c.in_transaction
+            except Exception as secondary:
+                primary.add_note(f'Delete rollback failed: {secondary!r}')
+            self.connection, self._retired = None, c
+            try:
+                c.close()  # Before COMMIT, successful close also establishes rollback.
+                self._retired = None
+                cleaned = True
+            except Exception as secondary:
+                primary.add_note(f'Delete connection close failed: {secondary!r}')
+                cleaned = False
+            if commit_attempted or not cleaned:
+                primary.add_note('Delete outcome is uncertain. Do not retry; inspect current presence, then exit and reopen. Absence is not historical proof.')
+                return Outcome('unverified', error=primary)
+            return Outcome('rejected' if isinstance(primary, ValueError) else 'rolled_back', error=primary)
+
     def transact(self, request: Request, operation) -> Outcome:
         content = request.content()
         if request.dataset_id != self.dataset_id:

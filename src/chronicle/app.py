@@ -68,6 +68,14 @@ class _PolrSubmission:
 
 
 @dataclass
+class _DeleteSubmission:
+    request: Request
+    token: int
+    origin: object
+    outcome: Outcome | None = None
+
+
+@dataclass
 class _BackupOperation:
     request_id: str
     token: int
@@ -92,6 +100,8 @@ class ChronicleApp:
         self._work_editor = None
         self.history = None
         self.archived = None
+        self.deletion = self._delete_submission = None
+        self._delete_inspection_token = None
         self.timesheet = None
         self._timesheet_opening = False
         self._timesheet_return = None
@@ -135,7 +145,8 @@ class ChronicleApp:
         for column, (label, callback) in enumerate((
             ("New Task", self.create_task), ("Rename task", self.rename_task),
             ("Create project", self.create_project), ("Rename project", self.rename_project),
-            ("Assign project", self.assign_project), ("Mini mode", self.open_mini))):
+            ("Assign project", self.assign_project), ("Mini mode", self.open_mini),
+            ("Delete", self.open_delete))):
             button = ttk.Button(bar, text=label, command=callback)
             button.grid(row=0, column=column, padx=2)
             self.buttons[label] = button
@@ -200,6 +211,8 @@ class ChronicleApp:
         self.retry_button = ttk.Button(self.recovery, text="Retry/Reconcile", command=self.retry)
         self.exit_button = ttk.Button(self.recovery, text="Exit despite unresolved save", command=self.exceptional_exit)
         self.cancel_close_button = ttk.Button(self.recovery, text="Cancel exit", command=self.cancel_close)
+        self.delete_inspect_button = ttk.Button(self.recovery, text='Inspect Delete state', command=self.inspect_delete_state)
+        self.delete_exit_button = ttk.Button(self.recovery, text='Exit and reopen', command=self.exit_delete_uncertain)
         self.reminder_banner = ttk.Frame(self.root)
         self.reminder_banner.grid(row=8,column=0,sticky='ew',padx=8,pady=3)
         self.reminder_label=ttk.Label(self.reminder_banner,text='',wraplength=680)
@@ -221,10 +234,11 @@ class ChronicleApp:
     def can_mutate(self, *, origin=None):
         owns_editor = (origin is not None and origin is self._work_editor
                        and self.editor is origin.window and origin.phase == "editing")
+        owns_delete = origin is not None and origin is self.deletion and origin.mutation_allowed()
         owns_history = origin is not None and origin is self.history and origin.mutation_allowed()
         owns_timesheet = origin is not None and origin is self.timesheet and origin.mutation_allowed()
         return (self.alive and self.ready and not self.closing and self.pending is None
-                and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor)
+                and not self.executing and not self._cleanup_failed and (self.editor is None or owns_editor or owns_delete)
                 and not self._history_opening and (self.history is None or owns_history)
                 and not self._backup_opening and self.backup_dialog is None and not self._backup_busy()
                 and not self._timesheet_opening and (self.timesheet is None or owns_timesheet))
@@ -418,6 +432,8 @@ class ChronicleApp:
                 allowed &= active is not None
             if name == "Switch":
                 allowed &= eligible and active is not None and task["task_id"] != active["task_id"]
+            if name == 'Delete':
+                allowed &= self._archive_selection()[1] is not None
             if name == 'Archive':
                 entity, item = self._archive_selection()
                 allowed &= item is not None and not self._archive_contains_active(entity, item)
@@ -428,7 +444,13 @@ class ChronicleApp:
         configure_changed(self.period_selector, state="readonly" if enabled else "disabled")
         for control in (self.sort_control, self.keep_mini_control):
             configure_changed(control, state="normal" if enabled else "disabled")
-        if (self.pending is not None or self._cleanup_failed) and not self.executing:
+        delete_wait = self.pending is not None and self.pending.operation in ('delete_task', 'delete_project') and not self.executing
+        if delete_wait:
+            self.retry_button.pack_forget(); self.exit_button.pack_forget(); self.cancel_close_button.pack_forget()
+            self.delete_inspect_button.configure(state='disabled' if self._worker_stopped or self._delete_inspection_token is not None else 'normal')
+            self.delete_inspect_button.pack(side='left', padx=3)
+            self.delete_exit_button.pack(side='left', padx=3)
+        elif (self.pending is not None or self._cleanup_failed) and not self.executing:
             self.retry_button.configure(state="disabled" if self._worker_stopped else "normal")
             self.retry_button.pack(side="left", padx=3)
             if self.closing and self.pending is not None:
@@ -440,6 +462,10 @@ class ChronicleApp:
         else:
             for widget in (self.retry_button, self.exit_button, self.cancel_close_button):
                 widget.pack_forget()
+        if not delete_wait:
+            self.delete_inspect_button.pack_forget(); self.delete_exit_button.pack_forget()
+        if self.deletion is not None:
+            self.deletion.controls()
         if self.mini is not None:
             self.mini.render()
         self._render_reminder()
@@ -450,6 +476,8 @@ class ChronicleApp:
         self._controls()
 
     def _submit(self, operation, *, _origin=None, **arguments):
+        if operation in ('delete_task','delete_project') and (_origin is None or _origin is not self.deletion or not _origin.mutation_allowed()):
+            return False
         if not self.can_mutate(origin=_origin):
             return False
         try:
@@ -472,6 +500,9 @@ class ChronicleApp:
         if _origin is not None and _origin is self.timesheet and operation == 'register_timesheet_export':
             attempt = self._timesheet_attempt
             attempt.request, attempt.token, attempt.registration = request, self._pending_token, "registering"
+        if operation in ('delete_task','delete_project'):
+            self._delete_submission = _DeleteSubmission(request,self._pending_token,_origin)
+            _origin.request, _origin.token, _origin.phase = request,self._pending_token,'executing'
         # Invalidate any read that predates this accepted mutation.
         self._read_again = True
         if self._reminder_inflight is not None:self._reminder_again=True
@@ -485,6 +516,8 @@ class ChronicleApp:
                 self._polr_result(request,self._token,Outcome('unavailable',error=exc))
             if _origin is not None and _origin is self.timesheet and operation == 'register_timesheet_export':
                 attempt.registration, attempt.error = "unavailable", exc
+            if operation in ('delete_task','delete_project'):
+                self._delete_result(request,self._token,Outcome('unavailable',error=exc))
             self.status.configure(text=f"Action not submitted: {exc}")
             self._diagnose(exc)
             self._controls()
@@ -575,6 +608,111 @@ class ChronicleApp:
             self.status.configure(text=f'Unable to open Archived Items: {primary}')
             self._diagnose(primary)
             return False
+
+    def open_delete(self, *, _archived_origin=None):
+        if not self.can_mutate() or self.deletion is not None or self.root.grab_current() is not None:
+            return False
+        entity,item = self._archive_selection()
+        origin = self.root
+        if _archived_origin is not None:
+            if self.archived is not _archived_origin or not _archived_origin.current():return False
+            selected = _archived_origin.selected()
+            if selected is None:return False
+            entity,item = selected['entity'],selected['item']
+            origin = _archived_origin.window
+        if item is None:return False
+        from .delete_window import DeleteWindow
+        dialog = None
+        try:
+            dialog = DeleteWindow(self,entity,item[entity+'_id'],origin)
+            self.deletion,self.editor = dialog,dialog.window
+            self._controls()
+            dialog.window.deiconify()
+            return True
+        except Exception as primary:
+            if dialog is not None:
+                try:dialog.window.destroy()
+                except Exception as secondary:primary.add_note(f'Delete launch cleanup failed: {secondary!r}')
+            self.status.configure(text=f'Unable to open Delete: {primary}')
+            self._diagnose(primary)
+            return False
+
+    def _delete_read(self, dialog, kind):
+        if self.deletion is not dialog or not dialog.current() or self.closing or self.pending is not None:
+            raise ValueError('Delete preview session is no longer current')
+        self._token += 1
+        self.worker.requests.put(Message(kind,self._token,dict(entity_type=dialog.entity,entity_id=dialog.key)))
+        return self._token
+
+    def _delete_result(self, request, token, result):
+        submission = self._delete_submission
+        if submission is None or submission.request is not request or submission.token != token:return
+        submission.outcome = result
+        if result.status != 'unverified':self._delete_submission=None
+        from .delete_window import UNCERTAIN
+        presentation_error = None
+        try:
+            try:
+                if self.deletion is submission.origin:
+                    self.deletion.record_result(result)
+            except Exception as exc:
+                presentation_error = exc
+            if result.status=='unverified':text=UNCERTAIN
+            elif result.status=='committed':text='Deleted reviewed unused structure. No work or protected evidence was removed.'
+            else:text=f'Delete did not commit. A fresh preview is required. {result.error or result.status}'
+            try:
+                self.status.configure(text=text)
+            except Exception as exc:
+                if presentation_error is None:presentation_error=exc
+                else:presentation_error.add_note(f'Main Delete status also failed: {exc!r}')
+            if result.error:self._diagnose(result.error)
+            if presentation_error is not None:
+                presentation_error.add_note(f'Authoritative Delete outcome remains {result.status}; presentation failed.')
+                self._diagnose(presentation_error)
+        finally:
+            try:self._controls()
+            finally:
+                if self.closing:self._advance_close()
+                else:
+                    self.refresh()
+                    if result.status=='committed':self.recheck_polr()
+
+    def inspect_delete_state(self):
+        request = self.pending
+        if (not self.alive or self.closing or self.executing or self._worker_stopped or request is None
+                or request.operation not in ('delete_task','delete_project') or self._delete_inspection_token is not None):return False
+        grab=self.root.grab_current()
+        if grab is not None and (self.deletion is None or grab is not self.deletion.window or grab.grab_status()!='local'):return False
+        entity='project' if request.operation=='delete_project' else 'task'
+        self._token+=1;self._delete_inspection_token=self._token
+        try:self.worker.requests.put(Message('delete_presence',self._token,dict(entity_type=entity,entity_id=request.args()[entity+'_id'])))
+        except Exception as exc:
+            self._delete_inspection_token=None
+            self.status.configure(text=f'Delete inspection unavailable; historical outcome remains uncertain. {exc}')
+            self._controls();return False
+        self._controls();return True
+
+    def _delete_presence_result(self, message):
+        if message.token!=self._delete_inspection_token or self.pending is None or self.pending.operation not in ('delete_task','delete_project'):return
+        self._delete_inspection_token=None
+        request=self.pending;entity='project' if request.operation=='delete_project' else 'task'
+        value=message.value
+        from .delete_window import UNCERTAIN
+        if isinstance(value,Outcome):text=UNCERTAIN+' Inspection unavailable: '+str(value.error)
+        elif (value.get('dataset_id')!=self.dataset_id or value.get('entity_type')!=entity
+              or value.get('entity_id')!=request.args()[entity+'_id']):text=UNCERTAIN+' Rejected inspection from another context.'
+        else:text=UNCERTAIN+(' Current target: PRESENT.' if value['present'] else ' Current target: ABSENT.')
+        self.status.configure(text=text)
+        if self.deletion is not None:self.deletion.status.configure(text=text)
+        self._controls()
+
+    def exit_delete_uncertain(self):
+        if self.pending is None or self.pending.operation not in ('delete_task','delete_project') or self.executing:return False
+        was_closing=self.closing;self.closing=True
+        try:return self.exceptional_exit()
+        finally:
+            if not self._shutdown_sent:self.closing=was_closing
+            self._controls()
 
     def _ask_name(self, title, initial="", *, prompt="Name"):
         if not self.can_mutate():
@@ -680,6 +818,8 @@ class ChronicleApp:
             self._controls()
 
     def _close_editor(self, top):
+        if self.deletion is not None and self.deletion.window is top:
+            return self.deletion.close()
         session = self._work_editor
         if self.editor is top and session is not None and session.window is top:
             if session.request is not None:
@@ -1677,6 +1817,10 @@ class ChronicleApp:
             request = self.pending
             self.executing = False
             self._mutation_outcome = result  # Authoritative matching delivery precedes all presentation.
+            if request.operation in ('delete_task','delete_project'):
+                if result.status!='unverified':self.pending,self._pending_token=None,None
+                self._delete_result(request,message.token,result)
+                return
             polr = getattr(self,'_polr_submission',None)
             if polr is not None and polr.request is request and request.operation == 'confirm_polr_absolute':
                 if result.status != 'unverified': self.pending, self._pending_token = None, None
@@ -1724,6 +1868,10 @@ class ChronicleApp:
                     if result.status in ('committed','unchanged') and request.operation!='register_timesheet_export':
                         if self.timesheet is not None:self.timesheet.reconciliation_committed()
                     else:self._queue_reminder()
+        elif message.kind == 'delete_preview':
+            if self.deletion is not None:self.deletion.receive(message.token,message.value)
+        elif message.kind == 'delete_presence':
+            self._delete_presence_result(message)
         elif message.kind == 'polr_reminder':
             self._receive_reminder(message)
         elif message.kind in ("timesheet_status", "timesheet_publish"):
@@ -1782,6 +1930,8 @@ class ChronicleApp:
                 result = Outcome('unverified', error=RuntimeError('Worker stopped before authoritative delivery; operation may have committed. Exit explicitly; this session cannot reconcile.'))
                 self._mutation_outcome = result
                 try:
+                    if self.pending.operation in ('delete_task','delete_project'):
+                        self._delete_result(self.pending,self._pending_token,result)
                     self._work_editor_result(self.pending, self._pending_token, result)
                     if self.history is not None:
                         self.history.mutation_result(self.pending, self._pending_token, result)
@@ -1842,6 +1992,8 @@ class ChronicleApp:
         self._tick_id = self.root.after(1000, self._tick)
 
     def retry(self):
+        if self.pending is not None and self.pending.operation in ('delete_task','delete_project'):
+            return False  # Delete never enters ordinary reconcile-absent-then-execute.
         if self.alive and (self.closing or self._cleanup_failed) and not self.executing and self.pending is None and not self._shutdown_sent:
             self.retry_button.pack_forget()
             self._advance_close()
@@ -1925,6 +2077,9 @@ class ChronicleApp:
                 self.history.exceptional_exit()
             return  # As with a manual form, close owned History before ordinary exit.
         if self.editor is not None:
+            if self.deletion is not None and self.deletion.phase=='unverified' and not self.executing:
+                self.exit_delete_uncertain()
+                return
             session = self._work_editor
             if session is not None and session.phase == "unverified" and not self.executing:
                 self._work_editor_exit(session)
@@ -1943,7 +2098,9 @@ class ChronicleApp:
         if self.executing:
             self.status.configure(text="Waiting for the accepted database operation before exit…")
         elif self.pending is not None:
-            self.status.configure(text="Save is unresolved and may have committed. Retry/Reconcile, or explicitly exit and lose volatile retry context.")
+            self.status.configure(text=("Delete outcome is uncertain. Do not retry. Inspect current presence, then explicitly exit and reopen."
+                if self.pending.operation in ('delete_task','delete_project') else
+                "Save is unresolved and may have committed. Retry/Reconcile, or explicitly exit and lose volatile retry context."))
             self._controls()
         elif self._worker_stopped:
             self.root.destroy()
@@ -1967,13 +2124,21 @@ class ChronicleApp:
         parent = session.window if session is not None and self.editor is session.window else self.root
         history = self.history
         sheet = self.timesheet
+        deletion = self.deletion
+        if deletion is not None:parent=deletion.window
         if sheet is not None and not sheet.disposed: parent = sheet.window
         if history is not None and not history.disposed:
             parent = history.window
         try:
-            confirmed = messagebox.askyesno("Unresolved save", "The operation may already have committed. Exit loses this session's retry inputs. No work or evidence is undone. Exit anyway?",
+            explanation = ("Delete outcome is uncertain. Current absence is not historical proof. No retry is available. Exit and reopen for fresh review?"
+                if self.pending.operation in ('delete_task','delete_project') else
+                "The operation may already have committed. Exit loses this session's retry inputs. No work or evidence is undone. Exit anyway?")
+            confirmed = messagebox.askyesno("Unresolved save", explanation,
                                            parent=parent, default=messagebox.NO)
         except BaseException as primary:
+            if deletion is not None and self.deletion is deletion:
+                try:deletion.restore_modal()
+                except Exception as secondary:primary.add_note(f'Delete modal return also failed: {secondary!r}')
             if sheet is not None and self.timesheet is sheet:
                 try: sheet.restore_modal()
                 except Exception as secondary: primary.add_note(f'Timesheet modal return also failed: {secondary!r}')
@@ -1989,6 +2154,10 @@ class ChronicleApp:
             # No executing operation is interrupted. The worker still closes orderly.
             self.pending = None
             self._timesheet_attempt = None
+            if deletion is not None and self.deletion is deletion:
+                try:deletion.close(force=True)
+                except Exception as exc:self._diagnose(exc)
+            self._delete_submission=None
             if sheet is not None and self.timesheet is sheet:
                 try: sheet.close(force=True)
                 except Exception as exc: self._diagnose(exc)
@@ -2004,6 +2173,7 @@ class ChronicleApp:
                     self._diagnose(exc)
             self._advance_close()
         else:
+            if deletion is not None and self.deletion is deletion:deletion.restore_modal()
             if sheet is not None and self.timesheet is sheet: sheet.restore_modal()
             if history is not None and self.history is history:
                 history.restore_modal()

@@ -440,7 +440,7 @@ def test_real_tk_b1_parent_history_root_creation_and_leaf_controls(connected,mon
     created=next(t for t in app.state['tasks'] if t['name']=='New flat root')
     assert created['parent_task_id'] is None and created['project_id']==p
     assert app.tree.item(app.task_row(a),'values')[1:]==('00:10','00:30')
-    assert not any(word in label.lower() for label in app.buttons for word in ('delete','template','subtask'))
+    assert not any(word in label.lower() for label in app.buttons for word in ('template','subtask'))
 
 
 @pytest.mark.parametrize('start,end,hours',[

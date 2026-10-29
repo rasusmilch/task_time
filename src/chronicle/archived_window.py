@@ -116,7 +116,8 @@ class ArchivedItemsWindow:
             self.unarchive_button = ttk.Button(actions, text='Unarchive selected', command=self.unarchive)
             self.history_button = ttk.Button(actions, text='Work History', command=self.history)
             self.close_button = ttk.Button(actions, text='Close', command=self.close)
-            for button in (self.unarchive_button, self.history_button, self.close_button):
+            self.delete_button = ttk.Button(actions, text='Delete', command=self.delete)
+            for button in (self.unarchive_button, self.history_button, self.delete_button, self.close_button):
                 button.pack(side='left', padx=4)
             self.status = ttk.Label(self.window, text='', wraplength=1000)
             self.status.grid(row=3, column=0, sticky='w', padx=8, pady=8)
@@ -145,6 +146,7 @@ class ArchivedItemsWindow:
         explicit = selected and selected['item']['is_archived']
         configure_changed(self.unarchive_button, state='normal' if allowed and explicit else 'disabled')
         configure_changed(self.history_button, state='normal' if allowed and selected and selected['entity'] == 'task' else 'disabled')
+        configure_changed(self.delete_button, state='normal' if allowed and selected else 'disabled')
         for control in (self.sort_control, self.period_control):
             configure_changed(control, state='readonly' if allowed else 'disabled')
         text = self.owner.status.cget('text')
@@ -209,6 +211,10 @@ class ArchivedItemsWindow:
             return False
         entity, item = selected['entity'], selected['item']
         return self.owner._submit('unarchive_' + entity, **{entity + '_id': item[entity + '_id'], 'expected_version': item['version']})
+
+    def delete(self):
+        if not self.current() or self.selected() is None:return False
+        return self.owner.open_delete(_archived_origin=self)
 
     def history(self):
         if not self.current():

@@ -1228,12 +1228,12 @@ framework is authorized. Stage 4 remains IN PROGRESS; Stage 5 NOT STARTED.
 ### Final Archive/Delete and Archived Items supersession
 
 **Status:** current selected target; originally unimplemented. C1 later implements
-Archive/Unarchive and Archived Items; Delete remains unimplemented. **Provenance:** the explicit
+Archive/Unarchive and Archived Items; C2 later implements unused-only Delete. **Provenance:** the explicit
 owner Archive / Delete Design Reconciliation instruction, following independently
 verified source `18198fe7a166daf970eb18669c7c4d5fb551267a`. Current owners are the
 [lifecycle requirements](TIMESHEET_REQUIREMENTS.md#projecttask-management-and-branch-lifecycle),
 [Archived Items design](TIMESHEET_REQUIREMENTS.md#archived-items-tree-archive-dates-and-sorting)
-and [proposed administrative boundary](ARCHITECTURE.md#proposed-unused-entity-deletion-and-receipt-boundary).
+and [proposed administrative boundary](ARCHITECTURE.md#unused-entity-deletion-and-receipt-boundary).
 This documentation-only instruction supersedes the preceding project/task soft-
 delete/Deleted Items/separate Permanent Delete model and full-content/digest
 anti-replay tombstone or purge-proof-ledger proposals. They were earlier approvals/
@@ -1356,6 +1356,34 @@ original implementation stage, not a competing current approval. C2 still requir
 separate dependency/receipt/DDL adjudication; Stage 4 is IN PROGRESS, Stage 5 NOT STARTED,
 and native Windows qualification of these changes remains outstanding.
 
+
+### Package C2 unused-only Delete approval
+
+**Status:** current approved architecture; implemented for independent review.
+**Provenance:** explicit Package C2 GO at reviewed C1 source
+`fa65261e2d487fd50486f26d505ad25cc468fc05`. This resolves the previously proposed
+project/task Delete allowlist, survivor proof, transaction order and uncertainty
+boundary without DDL changes. Earlier proposal entries retain their original
+chronology; the [current architecture](ARCHITECTURE.md#unused-entity-deletion-and-receipt-boundary)
+owns the executable contract.
+
+Delete removes only complete unused project/task scopes and their finite proven
+administrative requests. Typed relational/canonical protected references block,
+including zero and deleted-work evidence. Whole reviewed move scopes/results are
+required; unchanged surviving chronology must verify. Delete uses a specialized
+BEGIN IMMEDIATE path, deepest-first removal, full final validation and exact
+survivor equality, with foreign keys and immutable guards active.
+
+No Delete receipt, tombstone or registry is stored. Known normal completion returns
+counts to the caller. COMMIT/cleanup uncertainty never permits normal reconciliation
+or resubmission: retain volatile owner context, inspect current presence without
+historical claims, block mutation, and explicitly exit/reopen. A fresh operation
+needs fresh review and typed DELETE. Surviving/protected requests retain exact
+retries; erased administrative requests deliberately have no permanent recognition
+promise. Main/Archived Items expose the same owned preview/confirmation. Template
+Delete, full nested active management and native qualification remain separate.
+Stage 4 remains IN PROGRESS; Stage 5 is NOT STARTED.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT
@@ -1367,11 +1395,6 @@ owner or candidate implementation design.
 - Allocation defaults/overrides and their interaction with week-start changes.
 - Exact installation replacement and old-data cutover.
 - Dataset-timezone changes before affected configuration/accounting.
-- Exact Delete retirement allowlist within B1's fixed administrative classification,
-  cross-entity closure/survivor proof,
-  transactional constraints/order, stale/uncertain handling and independent complete
-  validation in the separately reviewed fresh schema, without tombstones or a
-  deletion ledger. Its narrowed historical-retry promise is owner-selected.
 - Exact actual Delete eligibility for applied/referenced template definitions before
   Package E; no silently erased references or recoverable third deletion tier.
 

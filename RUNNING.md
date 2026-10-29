@@ -107,8 +107,8 @@ B1 creates schema 2 only: task parentage has at most three levels under a projec
 or Unassigned, new recording is leaf-only, and historical parent work remains
 retained. The current grouped main/mini interface creates project-scoped roots;
 service-level nested development fixtures await the full nested UI and native
-qualification. C1 supplies Archive and Archived Items; no Delete/template or
-branch-move GUI command is delivered.
+qualification. C1 supplies Archive and Archived Items; C2 adds unused-only Delete.
+No template or branch-move GUI command is delivered.
 
 The launcher resolves `src/chronicle` directly. `chronicle.bootstrap.main` is the
 single entry point; no project wheel or installation step is needed.
@@ -392,9 +392,40 @@ archived children stay hidden after parent Unarchive. **Work History** opens the
 existing direct-task modal, including permitted retained work corrections/deleted
 revisions. Close History before further management/main/mini actions. Pending or
 uncertain operations retain the owner's exact Request even if Archived Items is
-closed; use the existing Retry/Reconcile controls. No Delete control exists in C1.
+closed; Archive/Unarchive uses the existing Retry/Reconcile controls. C2 Delete
+has the distinct no-retry uncertainty boundary below.
 Full nested active-tree management and templates remain later packages. Native
 Windows focus/topmost/input qualification of this changed interface remains pending.
+
+## Delete unused projects and task branches
+
+Select a real project/task in main or Archived Items, then **Delete**. No prior
+Archive is required; virtual Unassigned is not deletable. The owned preview reads
+the complete selected hierarchy and administrative closure on the worker. Review
+name/UUID, every task, removal counts, eligibility and refusal reasons. Protected
+work (including deleted revisions), active timers/corrections, frozen zero/scope/
+basis/project references, confirmations or unresolved survivor dependencies refuse
+the entire scope. Use Archive for history-bearing items; no automatic Archive occurs.
+
+For an eligible review, read **Delete permanently removes this unused structure.
+It cannot be undone.** Type exactly **DELETE**, then click **Delete**. Cancel or
+incorrect text writes nothing. The service rechecks the complete original review
+inside one transaction; stale scope/version/dependencies refuse and require **New
+preview**, with a new confirmation. No rows hide before authoritative completion.
+Only unused entity rows and proven exclusively owned administrative requests are
+removed. Work, frozen reports, confirmations, unrelated records and backups remain.
+No Trash, retained deleted identity, deletion ledger or secure-byte-erasure exists.
+A reused name creates a fresh UUID through ordinary creation.
+
+Delete writes no persistent receipt. If acknowledgement is uncertain, **do not
+retry**. **Inspect current state / Inspect Delete state** may show PRESENT or ABSENT;
+this establishes current presence only, never historical success. Further mutation
+is blocked. Choose **Exit and reopen**, confirm the default-No warning explicitly,
+then make a fresh selection/review/typed confirmation if a new Delete is still
+appropriate. Ordinary Retry/Reconcile never resubmits Delete. Failed connection
+cleanup retains dataset ownership and uses the established explicit shutdown
+cleanup retry. No unresolved-delete journal is created. Native Windows UI/NTFS
+qualification remains separate; Stage 4 is IN PROGRESS and Stage 5 NOT STARTED.
 
 ## Manual work and week configuration
 

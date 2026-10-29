@@ -8,6 +8,17 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Deliver C2 unused-only project/task Delete on unchanged schema 2: complete worker
+  preview, exact frozen scope/administrative closure and typed DELETE, deepest-first
+  atomic removal, strict surviving-history proof and full retained-evidence equality.
+  Protected work/deleted revisions, frozen zero/project/basis references and all
+  confirmations block; shared/unknown dependencies refuse. Add owned main/Archived
+  Items confirmation without an Archive prerequisite. Write no Delete receipt or
+  tombstone: uncertain acknowledgement blocks mutation, offers read-only presence
+  inspection and explicit exit/reopen, never destructive retry. No protected history,
+  backups, schema, migration, templates or full nested active management changes.
+  Delivered for independent review; Stage 4 IN PROGRESS, Stage 5 NOT STARTED.
+
 - Deliver C1 selected-node Archive/Unarchive on unchanged schema 2: exact accepted
   UTC current timestamps, inherited visibility, active-containing branch refusal,
   no-op purity, exact retries and complete chronological archive/move validation.

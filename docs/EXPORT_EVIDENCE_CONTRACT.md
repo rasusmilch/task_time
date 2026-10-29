@@ -53,8 +53,9 @@ a parent UUID does not expand descendants. A former leaf's retained direct work
 stays reportable; move/archive/unarchive never rewrites frozen labels,
 basis/text/digest, confirmations or prior receipts. Current project membership
 continues grouping current reports; registered reports retain original context.
-Hierarchy implementation is pending separately reviewed fresh DDL, with no old-data
-conversion selected; existing frozen-evidence semantics are unchanged.
+B1/B2/C1 implement schema-2 hierarchy/movement/archive foundations; C2 adds
+unused-only Delete without DDL changes or old-data conversion. Existing frozen
+evidence semantics and the POL-R formula are unchanged.
 
 Any protected reporting reference unequivocally blocks project/task Delete,
 including retained frozen labels/project context, scope, full-week basis, zero-valued
@@ -65,11 +66,11 @@ no external report file does not establish unused status. Never rewrite referenc
 to manufacture eligibility. Use Archive for entities with protected history.
 
 Export/confirmation receipts, cells/text/digests and prior/current chains remain
-immutable and are never administrative deletion candidates. The owner's narrow
-fresh-target exception allows only proven exclusively owned administrative requests
-to be erased, without historical retry recovery, identity tombstones or a deletion
-ledger. It grants no exception to this reporting contract or surviving exact
-receipts. Existing external files/backups stay untouched; no secure-erasure promise.
+immutable and are never administrative deletion candidates. C2 implements the
+owner's narrow exception for proven exclusively owned administrative requests only, without
+historical retry recovery, identity tombstones or a deletion ledger. No Delete
+receipt is stored; uncertain current absence cannot prove historical success.
+It grants no exception to this reporting contract or surviving exact receipts. Existing external files/backups stay untouched; no secure-erasure promise.
 
 ## Export identity and contents
 

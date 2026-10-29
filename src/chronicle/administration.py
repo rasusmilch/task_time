@@ -6,15 +6,24 @@ from .lifecycle import OPERATIONS, transition
 
 
 def verify(c, receipts):
-    # Only disposable validation state. Ordinary reads/mutations use SQLite rows.
+    actual_projects = [dict(r) for r in c.execute('SELECT * FROM projects')]
+    actual_tasks = [dict(r) for r in c.execute('SELECT * FROM tasks')]
+    ordered = [(key, *receipts[key]) for _, key in c.execute(
+        'SELECT commit_seq,request_id FROM committed_requests ORDER BY commit_seq')]
+    verify_records(actual_projects, actual_tasks, ordered)
+
+
+def verify_records(actual_projects, actual_tasks, ordered):
+    """Strict independent survivor verification; also used for volatile Delete review."""
+    # No missing-entity exception: every supplied survivor and retained effect must agree.
     tasks,projects={},{}
     active=None
     def version(rows,key,wanted):
         integer(wanted,'Reviewed administrative version',1,2**63-1)
         if key not in rows or rows[key]['version']!=wanted:raise ValueError('Administrative reviewed version differs')
         return rows[key]
-    for _,request_id in c.execute('SELECT commit_seq,request_id FROM committed_requests ORDER BY commit_seq'):
-        request,result=receipts[request_id];op=request.operation;a=request.args();now=request.action_utc_us
+    for request_id, request, result in ordered:
+        op=request.operation;a=request.args();now=request.action_utc_us
         if op in ('start_timer','switch_timer'):
             active=dict(task_id=a['next_task_id' if op=='switch_timer' else 'task_id'])
         elif op=='stop_timer':
@@ -88,8 +97,8 @@ def verify(c, receipts):
         if canonical(result)!=canonical({entity+'_id':key,'version':rows[key]['version']}):
             raise ValueError('Administrative result/version differs')
         task_paths(list(tasks.values()))
-    for table,rows,key in (('projects',projects,'project_id'),('tasks',tasks,'task_id')):
-        actual={r[key]:dict(r) for r in c.execute(f'SELECT * FROM {table}')}
+    for observations,rows,key in ((actual_projects,projects,'project_id'),(actual_tasks,tasks,'task_id')):
+        actual={r[key]:dict(r) for r in observations}
         if set(actual)!=set(rows):raise ValueError('Administrative creation/survivor coverage differs')
         for identity,row in rows.items():
             for field,value in row.items():
