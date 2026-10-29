@@ -103,6 +103,12 @@ Reopen that same dataset without `--create`:
 python run_chronicle.py --data-dir PATH
 ```
 
+B1 creates schema 2 only: task parentage has at most three levels under a project
+or Unassigned, new recording is leaf-only, and historical parent work remains
+retained. The current grouped main/mini interface creates project-scoped roots;
+service-level nested development fixtures await the full nested UI and native
+qualification. No Archive/Delete/template or branch-move command is delivered.
+
 The launcher resolves `src/chronicle` directly. `chronicle.bootstrap.main` is the
 single entry point; no project wheel or installation step is needed.
 [scripts/run.ps1](scripts/run.ps1) is an optional thin convenience accepting
@@ -327,13 +333,16 @@ the dataset and acquires its normal ownership lock.
 
 | Exit | Classification / meaning |
 | --- | --- |
-| 0 | SUPPORTED_CURRENT: complete version-1 schema, integrity and evidence verified; ordinary current-version startup permitted. |
+| 0 | SUPPORTED_CURRENT: complete version-2 schema, integrity and evidence verified; ordinary current-version startup permitted. |
 | 2 | OLDER_UNSUPPORTED / NEWER_UNSUPPORTED: trustworthy observed version marker differs; no automatic migration or downgrade. A lower marker does not authenticate a historical Chronicle schema. |
 | 3 | FOREIGN_DATABASE / UNSUPPORTED_LAYOUT / UNSUPPORTED_PROFILE: wrong application identity, differing current-version DDL or unsupported SQLite format/profile. |
 | 4 | UNSAFE_OR_UNAVAILABLE: safe identity/integrity or successful inspection/cleanup/reporting could not be established. |
 
-Argument-parser errors also use exit 2 and print usage. Schema version 1 and the
-application identity remain unchanged. No upgrade is currently available.
+Argument-parser errors also use exit 2 and print usage. Only exact fresh schema 2
+with application ID 0x4348524E is supported. Version 1 refuses; no migration,
+downgrade or automatic replacement is available. A failed remembered v1 open
+retains its selection and all prior data; choose a different new/empty directory
+explicitly to create v2. Never use --create on retained data.
 
 Missing/unreadable/unstable files, symlinks (including directory aliases), unsuitable
 objects and explicit network paths refuse. WAL-format headers refuse before SQLite
@@ -350,11 +359,12 @@ Do not delete sidecars or change permissions to force inspection. Metadata/diges
 checks are bounded observations, not reliable exclusion of another writer or
 hostile-directory protection. Use Backup Chronicle for a consistent live image.
 
-The approved hierarchy target is not implemented by these commands. It will require
-a separately reviewed distinct fresh schema and fresh data, without migration,
-backward-compatible mode or automatic conversion of this runtime's version-1
-datasets. Existing files remain protected; choose a new/empty folder explicitly
-when that runtime is separately approved. Do not delete journals or old databases
+B1's supported image is exact fresh schema 2. These commands preserve and validate
+its task parentage, archive metadata, direct work and protected evidence, with no
+migration, backward-compatible mode or automatic conversion of version-1 datasets.
+Existing files remain protected; choose a different new/empty folder explicitly
+for fresh v2 creation. Branch movement, lifecycle actions, nested management UI
+and templates remain pending separate approval. Do not delete journals or old databases
 to bypass refusal. Any hypothetical future data-preserving transformation would
 require separate source/target and safety approval; no such engine exists now.
 See the [target boundary](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary).
@@ -371,7 +381,8 @@ form does not stop an existing timer.
 
 Week starts accepts Monday through Sunday (initially Sunday) and saves the choice
 in this dataset. It changes containing-week totals, not work dates or amounts.
-Stage 2A uses a revised fresh schema version 1: older development schema signatures
+Stages 1–3 originally used fresh schema 1. B1 now supports exact fresh schema 2:
+version-1 datasets and older development schema signatures
 refuse without migration/recreation. Choose a new disposable directory explicitly;
 never delete or overwrite an existing dataset as an automatic startup action.
 Select a task and open Work History to browse Current week, inclusive Custom or
@@ -389,7 +400,7 @@ Close History or another work form, then choose Timesheet / POL-R. Fresh opening
 start This week/All tasks and require Preview. Last week uses the committed week
 convention; Custom accepts inclusive dates or draft-only inline calendar choices.
 Selected tasks uses explicit UUID rows (Ctrl/Shift selection), not names or
-hierarchy. Current schema-1 retained-deleted identities remain available; they do
+hierarchy. Schema-2 archived/parent identities remain reportable; they do
 not define the future Archive/Delete controls, which are not implemented. Preview
 observes a running timer without stopping it and shows Actual separately from
 suggested POL-R.

@@ -93,7 +93,7 @@ result or native qualification; current command outcomes belong in receipts.
 | [test_timesheet_files.py](../tests/rewrite/test_timesheet_files.py) | Actual SQLite registration gate and frozen-byte publication: five fresh states, full matching reuse without rewrite, exclusive absent publication, strict consent/typed conflicts, dataset paths/resolved aliases, unsuitable objects, incomplete/unstable/unreadable inspections, owned staging write/flush/fsync/close/content/cleanup and link/replace/final-verification faults. Target real changes plus injected final ctime (other compared metadata preserved) exercise the actual replacement decision; no native ctime advancement assumption. Fresh complete pre-replacement reinspection also rejects same-size/restored-mtime changed bytes with all six observations injected unchanged, preserves original read errors, and retains the immediate metadata guard afterward. Narrow native FIFO/symlink capability skips affect only setup, unexpected failures remain failures. Separate barrier-controlled child deaths immediately before/after link/replace independently reopen registered evidence and retry exact bytes; no automatic orphan cleanup or power-loss/hostile-directory claim. |
 | [test_timesheet_save_ui.py](../tests/rewrite/test_timesheet_save_ui.py) | Actual Tk/app/worker/SQLite callback fault coverage: readiness/path cancellation/draft recheck, original preferred-path metadata, exact registration-before-publication, uncertainty both injected and actual committed-but-unprobed receipt, unchanged Request reconciliation, overwrite default-No/reentry/one-call gates, alternate paths, restart recovery without renderer/current labels, current status after removal, known completion before presentation, close/exit confirmations, busy/obsolete deliveries, destroyed views and primary/secondary diagnostics. Read-only recovery render failure cannot offer unreviewed publication. These direct callbacks isolate effects, not server-input evidence. |
 | [test_timesheet_file_operator.py](../tests/rewrite/test_timesheet_file_operator.py) | Server-delivered XTest input through production Timesheet → explicit Preview → Save/cancel → Saved Reports/load → Check READY/MISSING → Retry → native default-No/affirmative Overwrite → Copy/cancel → New Preview/Close. Actual modal ownership blocks enabled main/mini probes; scheduled processing and the running timer continue. Frozen text/UUID and work evidence survive retry; fresh Preview has a new identity and current labels. File chooser decisions are doubled; overwrite confirmation uses actual toolkit buttons with bounded server input. Linux local-grab evidence is distinct from window-manager focus, native Windows/NTFS and release qualification. |
-| [test_polr_confirmation.py](../tests/rewrite/test_polr_confirmation.py) | Real three-table SQLite confirmation: exact quarter parsing/bounds, Unknown/explicit zero, new equal-value evidence, whole/checked/manual batches, complete source including unchecked/zero, canonical metadata/names/selection, individual stale acknowledgements, selected identity changes versus unchecked newer priors, commit_seq precedence independent of audit time, duplicate/deleted tasks, partial-source basis exclusion, mandatory A/B/F, immutable exports/files/work, and optional unavailable manual calculation context. UPDATE/DELETE guards, current/prior/source/receipt corruption, exact old retries, partial SQL/COMMIT/independent-probe faults and barrier-controlled child death at batch/cell/current/receipt/pre/post-COMMIT establish atomicity/reopen refusal. Disposable process kills are not hardware power-loss proof. |
+| [test_polr_confirmation.py](../tests/rewrite/test_polr_confirmation.py) | Real three-table SQLite confirmation: exact quarter parsing/bounds, Unknown/explicit zero, new equal-value evidence, whole/checked/manual batches, complete source including unchecked/zero, canonical metadata/names/selection, individual stale acknowledgements, selected identity changes versus unchecked newer priors, commit_seq precedence independent of audit time, duplicate/archived tasks (frozen status false), partial-source basis exclusion, mandatory A/B/F, immutable exports/files/work, and optional unavailable manual calculation context. UPDATE/DELETE guards, current/prior/source/receipt corruption, exact old retries, partial SQL/COMMIT/independent-probe faults and barrier-controlled child death at batch/cell/current/receipt/pre/post-COMMIT establish atomicity/reopen refusal. Disposable process kills are not hardware power-loss proof. |
 | [test_polr_confirmation_ui.py](../tests/rewrite/test_polr_confirmation_ui.py) | Actual app/Timesheet/worker/SQLite source subset and manual replacement, checked zero, defer/read purity, invalid retained decimal drafts, stale prior requiring explicit refresh, individual consent reset, known rollback/unavailability, actual committed-but-unprobed uncertainty/exact Request retry, exceptional-exit cancellation, busy/destroyed origins/late responses, restart source/manual reads, optional unavailable context, worker/UI thread instrumentation and known commitment despite read/widget failure. Direct callbacks isolate these faults; server-input evidence is separate. |
 | [test_polr_confirmation_operator.py](../tests/rewrite/test_polr_confirmation_operator.py) | Server-delivered XTest task/work/timer → Timesheet Preview/Save → source review/defer → checked subset and explicit zero → manual invalid/valid decimal → individual stale acknowledgement → immutable history/Close. Actual source/manual/history controls, positive defaults, native keyboard decimal input, enabled main/mini probes blocked by local modality and scheduled timer processing are exercised. File chooser decisions are doubled; no external POL-R connection, native Windows/NTFS or complete pilot qualification is claimed. |
 | [test_reconciliation.py](../tests/rewrite/test_reconciliation.py) | Pure classifier and actual SQLite current projection: A/B/F, Unknown/known zero, opposing gaps, explained Delta, full-week/partial scope, cell-rounded rollups, independent task ceilings/deleted work, all weekdays, exact microseconds, DST/non-hour transitions, running/future work, one read/no writes, current/frozen reallocation and committed-sequence flags. Shared basis is calculated once, not a second allocator. |
@@ -127,7 +127,7 @@ Subsequent independent review accepts Stage 4C inspection, protected refusal and
 bounded owned SQLite-native rollback recovery for functional development. The
 Stage 4 integration coverage audit is independently accepted: existing connected
 and compatible composite evidence establishes the portable cross-boundary workflow;
-no material gap or new portable integration test is currently warranted. This is
+no material gap or new portable integration test was warranted at that flat baseline. This is
 coverage sufficiency, not a new execution result or complete Stage 4 acceptance.
 Stage 4 remains IN PROGRESS; Stage 5 is NOT STARTED. See
 [acceptance provenance](DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
@@ -353,6 +353,37 @@ import or backward-compatibility fixture obligation is selected.
 Linux fault injection does not prove arbitrary concurrent-writer, power-loss or
 native Windows/NTFS safety.
 
+## Package B1 fresh hierarchy evidence
+
+[test_hierarchy_foundation.py](../tests/rewrite/test_hierarchy_foundation.py)
+uses real fresh-v2 SQLite services for project/Unassigned three-level forests,
+duplicate names, exact reviewed creation and retry, no parent version bump, depth/
+cycle/project refusal, running-parent prevention and effective archive eligibility.
+Mixed parent/child/grandchild direct work independently establishes derived amounts,
+zero-direct parents, deleted work revisions, complete-period conservation and DST/
+cutoff behavior. Parent corrections/History remain direct; frozen parent selection
+never includes descendants and later edits leave frozen bytes/values unchanged.
+
+Creation/rename/assignment closure and strict receipt classes protect survivors.
+Negative fixtures temporarily bypass guards only on disposable data, restore exact
+DDL, then test full startup/inspection/backup/restore and worker-readiness refusal
+for invalid forests, active-parent/archive states, missing/orphaned administration,
+wrong ownership/current versions/names/results/classification. Refusal preserves
+all damaged-source bytes/metadata and creates no restore target. Pre/post-COMMIT
+child deaths and lost acknowledgement test atomic structure/receipt/evidence,
+rollback, committed survival and exact retry without duplicated children.
+Rich v2 backup/restore preserves parentage, archive fields, every fact/receipt and
+frozen export/confirmation evidence; a fresh restored worker resumes the active
+identity and commits new work without changing source/image.
+
+Real Tk checks parent Individual/Cumulative, disabled new-work/assignment controls,
+direct History, eligible mini context and unchanged GUI root-creation behavior.
+Full nested operator workflow is not qualified by B1. Existing schema, history,
+Timesheet/POL-R, interruption/hot-journal and GUI suites run on fresh v2 fixtures.
+Former live soft-delete fixtures now exercise retained archived identities; work
+Delete still means immutable revisions. Frozen report is_deleted remains false in
+new v2 evidence. Native Windows/NTFS qualification of these changes remains pending.
+
 ## Package A explorer evidence
 
 [test_main_explorer.py](../tests/rewrite/test_main_explorer.py) uses actual Tk,
@@ -368,20 +399,21 @@ backup/startup cases now address typed rows without weakening service assertions
 manual-work tests explicitly exercise the shared period. Linux evidence does not
 qualify native Windows theme/topmost/focus behavior.
 
-## Hierarchy target evidence — planned, not implemented
+## Remaining hierarchy target evidence — planned, not implemented
 
 This section maps the later user-approved
 [target requirements](TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary)
 to [packages A–F](ROADMAP.md#hierarchy-target--bounded-packages-a-f). It does not
-claim tests exist or ran, and does not turn retained JSONL tests into SQLite
-qualification. The final owner decision selects Archive/Unarchive plus actual
+claim all remaining tests exist or ran. The B1 foundation subset is established
+in the inventory above and carried forward; this section retains later gates.
+Retained JSONL tests do not become SQLite qualification. The final owner decision selects Archive/Unarchive plus actual
 unused-only Delete without a recoverable tier or deletion ledger. Independently
 adjudicate finite administrative dependency/transaction design and exact fresh DDL
 before dependent tests; referenced-template Delete eligibility remains Open.
 
 | Guarantee | Required focused evidence |
 | --- | --- |
-| Fresh schema boundary | Current runtime remains v1 until separately approved implementation. New schema is distinctly identified; new/empty creation is exclusive. Old/foreign/partial/damaged/WAL candidates refuse without conversion, replacement, file deletion or repair. Cold inspection stays read-only/non-recovering; supported new images retain locked native rollback recovery and complete validation before readiness. |
+| Fresh schema boundary | B1 now supports only exact fresh v2; maintain refusal and validation for every subsequent approved change. new/empty creation is exclusive. Old/foreign/partial/damaged/WAL candidates refuse without conversion, replacement, file deletion or repair. Cold inspection stays read-only/non-recovering; supported new images retain locked native rollback recovery and complete validation before readiness. |
 | Forest and depth | Real SQLite task/project UUIDs and duplicate task names; virtual Unassigned has the same three task levels as real projects. No-selection New Task creates an Unassigned root; otherwise use the selected project/group or eligible task. Cycles/self-parent/cross-dataset/depth overflow reject. Moving a height-two subtree must check its deepest leaf, not just destination depth. Test SQL-enforced constraints separately from transactional cross-row postconditions. |
 | New-time eligibility | Start, Switch destination and both manual writers accept only eligible leaves. Existing parent direct work remains readable/correctable/deletable as work. Adding child/move/template cannot make a running task ineligible; archive/delete active containing branches refuse. No implicit timer event or synthetic Stop. |
 | Name reuse | Existing, archived and actually deleted project/task names may be reused through normal Create, always with fresh UUIDs. No automatic restore, merge, overwrite or reuse of an existing identity. Do not transfer the active-template trim/casefold uniqueness rule to tasks/projects. Erased old raw requests have the separate explicitly limited historical-retry promise. |
@@ -405,7 +437,7 @@ GUI restoration on existing flat data uses proportional focused/affected tests.
 Native Windows tree, modal/focus, topmost and actual operator input remain Level E
 evidence; Linux tests, source inspection and synthetic observations cannot replace
 them. Actual suspend/resume, external reporting policy, installation and Stage 5
-remain separate gates. No tests or datasets are created by this documentation task.
+remain separate gates. This evidence inventory authorizes no later package execution.
 
 ## Tk thread, interaction and lifecycle evidence
 

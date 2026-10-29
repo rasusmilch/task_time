@@ -32,7 +32,7 @@ def test_own_tasks_deleted_work_and_no_project_double_count(service, task, store
     service.stop_timer(entry, expected_version=1, request_id=uid(), action_utc_us=NOW + 1234567)
     second = uid()
     service.create_task(second, "Child label is independent", request_id=uid(), action_utc_us=NOW)
-    store.connection.execute("UPDATE tasks SET is_deleted=1 WHERE task_id=?", (task,))
+    store.connection.execute("UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?", (task,))
     state = service.read_current_state(cutoff_utc_us=NOW + 5_000_000)
     assert state["report"]["tasks"][task]["today_us"] == 1234567
     assert state["report"]["tasks"][second]["today_us"] == 0

@@ -264,7 +264,7 @@ def scope_labels(tasks, projects, scope_kind, task_ids):
     chosen = tasks if scope_kind=='all' else [known[k] for k in task_ids]
     project_names = {p['project_id']:p['name'] for p in projects}
     labels = [TaskLabel(t['task_id'],t['name'],t['project_id'],
-                        project_names[t['project_id']] if t['project_id'] else 'Unassigned',bool(t['is_deleted']),0) for t in chosen]
+                        project_names[t['project_id']] if t['project_id'] else 'Unassigned',False,0) for t in chosen]
     labels = tuple(replace(t,ordinal=i) for i,t in enumerate(sorted(labels,key=lambda t:(t.project_name,t.name,t.task_id))))
     return labels,chosen
 

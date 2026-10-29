@@ -42,7 +42,7 @@ class MiniModeWindow:
         owner, state = self.owner, self.owner.state
         active = state.get("active")
         task_id = active["task_id"] if active else owner.selected_task_id()
-        task = next((r for r in state.get("tasks", []) if r["task_id"] == task_id and not r["is_deleted"]), None)
+        task = next((r for r in state.get("tasks", []) if r["task_id"] == task_id and r["is_leaf"] and not r["effective_archived"]), None)
         configure_changed(self.name, text=task["name"] if task else "No task selected")
         configure_changed(self.state_bar, text="▶ Running" if active else "■ Stopped",
                           background="#08752c" if active else "#ad2525")

@@ -8,7 +8,7 @@ def test_mixed_precision_future_dates_and_independent_tasks(service,task,store):
     second,project=uid(),uid()
     service.create_project(project,'P',request_id=uid(),action_utc_us=NOW)
     service.assign_task_to_project(task,project,expected_version=1,request_id=uid(),action_utc_us=NOW)
-    service.create_task(second,'Example',project,request_id=uid(),action_utc_us=NOW)
+    service.create_task(second,'Example',project,expected_project_version=1,request_id=uid(),action_utc_us=NOW)
     dated(service,task,'2026-10-24','14:00')
     dated(service,second,'2026-10-19','0:15')
     timed(service,task)
@@ -20,7 +20,7 @@ def test_mixed_precision_future_dates_and_independent_tasks(service,task,store):
     assert a['daily_us'].get('2026-10-23',0)==a['daily_us'].get('2026-10-25',0)==0
     assert b['today_us']==15*M
     assert state['report']['application']['week_us']==a['week_us']+b['week_us']
-    store.connection.execute('UPDATE tasks SET is_deleted=1 WHERE task_id=?',(second,))
+    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(second,))
     assert service.read_current_state(cutoff_utc_us=NOW)['report']['application']==state['report']['application']
 
 

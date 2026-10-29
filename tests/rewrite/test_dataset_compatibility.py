@@ -35,11 +35,11 @@ def image(store,rich,tmp_path):
 
 
 def damage(directory,kind):
-    """Test-only unsupported/corrupt copies; never a supported version-2 target."""
+    """Test-only unsupported/corrupt copies; never a supported future schema."""
     path=directory/DATABASE;c=sqlite3.connect(path,isolation_level=None)
     try:
         if kind in ('older','newer','future','corrupt_lower'):
-            c.execute(f"PRAGMA user_version={0 if kind in ('older','corrupt_lower') else 2 if kind=='newer' else 99999}")
+            c.execute(f"PRAGMA user_version={1 if kind in ('older','corrupt_lower') else SCHEMA_VERSION+1 if kind=='newer' else 99999}")
         elif kind=='foreign':c.execute('PRAGMA application_id=123')
         elif kind=='missing_table':c.execute('DROP TABLE projects')
         elif kind=='table_definition':c.execute('ALTER TABLE tasks ADD COLUMN not_supported TEXT')
@@ -79,14 +79,14 @@ def test_real_images_classify_and_preserve_source_and_external_evidence(image,ri
     before=preserved(image,report,store.path)
     result=br.inspect_dataset(image)
     assert result.classification==classification and result.exit_status==status
-    assert result.candidate_path==image/DATABASE and result.supported_schema_version==1
+    assert result.candidate_path==image/DATABASE and result.supported_schema_version==SCHEMA_VERSION
     assert result.full_validation_completed==(kind=='supported')
     assert result.ordinary_startup_permitted==(kind=='supported')
     assert preserved(image,report,store.path)==before
     assert not (image/'.chronicle.lock').exists()
     if kind in ('older','newer','future'):
         assert result.observed_application_id==APPLICATION_ID
-        assert result.observed_user_version=={'older':0,'newer':2,'future':99999}[kind]
+        assert result.observed_user_version=={'older':1,'newer':SCHEMA_VERSION+1,'future':99999}[kind]
         assert 'migration' in result.explanation
     if kind=='supported':
         assert result.error is None and result.observed_journal_profile=='delete'

@@ -8,6 +8,17 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Deliver Package B1's fresh-only schema 2 (same Chronicle application ID): parent
+  adjacency, matching project/Unassigned membership, three-level bounds, reviewed
+  atomic child creation without parent version changes, active-leaf new recording
+  and retained parent direct History. Derive Individual/Cumulative/project amounts
+  at the existing cutoff without changing direct Timesheet/POL-R facts. Add owning
+  creation-receipt FKs, finite administrative/protected classification, immutable
+  receipt UPDATE/protected DELETE guards and complete survivor/version validation.
+  Adapt grouped main/mini and exact startup/inspection/backup/restore to v2; v1
+  refuses without migration or replacement. No branch movement, lifecycle actions,
+  receipt retirement, nested management UI or templates. Delivered for independent
+  review; Stage 4/native qualification remain incomplete and Stage 5 not started.
 - Deliver Package A main/mini presentation on unchanged flat schema 1: Project →
   Task/empty groups/virtual Unassigned, typed row IDs, current-project New Task,
   selected empty-project rename and existing assignment. Add shared Today/This Week

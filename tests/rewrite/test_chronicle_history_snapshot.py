@@ -44,7 +44,7 @@ def test_snapshot_all_custom_empty_deleted_task_and_audit_order(service, task, s
     service.edit_date_only_work(task, e, '2026-10-20', '2:00', expected_revision=1,
                                request_id=uid(), action_utc_us=NOW-1)
     service.delete_work_entry(task, e, expected_revision=2, request_id=uid(), action_utc_us=NOW-2)
-    store.connection.execute('UPDATE tasks SET is_deleted=1 WHERE task_id=?', (task,))
+    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?', (task,))
     snap = service.read_history_snapshot(task, cutoff_utc_us=NOW, period='custom', start_date='2026-10-19', end_date='2026-10-19')
     assert snap['rows'] == [] and len(snap['deleted_entries']) == 1
     text = details_text(service.read_work_entry_revisions(e))

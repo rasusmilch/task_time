@@ -368,7 +368,7 @@ class ChronicleApp:
         if not selected or not selected[0].startswith("task:"):
             return None
         key = selected[0][5:]
-        return key if any(t["task_id"] == key and not t["is_deleted"] for t in self.state["tasks"]) else None
+        return key if any(t["task_id"] == key and not t["effective_archived"] for t in self.state["tasks"]) else None
 
     def _selected_project(self):
         if not self.alive:
@@ -386,7 +386,7 @@ class ChronicleApp:
 
     def _selected(self):
         key = self.selected_task_id()
-        return next((t for t in self.state["tasks"] if t["task_id"] == key and not t["is_deleted"]), None)
+        return next((t for t in self.state["tasks"] if t["task_id"] == key and not t["effective_archived"]), None)
 
     def _diagnose(self, exc):
         if self.alive:
@@ -398,16 +398,21 @@ class ChronicleApp:
         if not self.alive:
             return
         task, active, enabled = self._selected(), self.state.get("active"), self.can_mutate()
+        eligible = task is not None and task['is_leaf'] and not task['effective_archived']
         for name, button in self.buttons.items():
             allowed = enabled
             if name in ("Rename task", "Assign project", "Add timed work", "Add date-only work", "Work History"):
                 allowed &= task is not None
+            if name in ('Add timed work','Add date-only work'):
+                allowed &= eligible
+            if name == 'Assign project':
+                allowed &= eligible and task['parent_task_id'] is None
             if name == "Start":
-                allowed &= task is not None and active is None
+                allowed &= eligible and active is None
             if name == "Stop" or name == "Correct active start":
                 allowed &= active is not None
             if name == "Switch":
-                allowed &= task is not None and active is not None and task["task_id"] != active["task_id"]
+                allowed &= eligible and active is not None and task["task_id"] != active["task_id"]
             if name == "Rename project":
                 allowed &= bool(self.state["projects"])
             configure_changed(button, state="normal" if allowed else "disabled")
@@ -518,7 +523,9 @@ class ChronicleApp:
         destination = f"{project['name']} ({project_id})" if project else "Unassigned"
         name = self._ask_name("New Task", prompt=f"Destination: {destination}\nName (flat task, not a subtask)")
         if name is not None:
-            self._submit("create_task", task_id=str(uuid4()), name=name, project_id=project_id)
+            self._submit("create_task", task_id=str(uuid4()), name=name, project_id=project_id,
+                         parent_task_id=None, expected_parent_version=None,
+                         expected_project_version=project['version'] if project else None)
 
     def rename_task(self):
         task = self._selected()
@@ -1477,7 +1484,7 @@ class ChronicleApp:
     def _render(self, candidate):
         report = candidate["report"]
         field = "today_us" if self.period.get() == "Today" else "week_us"
-        projects = {p["project_id"]: p["name"] for p in candidate["projects"]}
+        projects = {p["project_id"]: p["name"] for p in candidate["projects"] if not p["is_archived"]}
         groups = list(projects) + [None]
         if self.sort_alpha.get():
             groups.sort(key=lambda key: (projects.get(key, "Unassigned").casefold(), key or ""))
@@ -1488,21 +1495,23 @@ class ChronicleApp:
         for group in groups:
             key = self.project_row(group)
             members = [t for t in candidate["tasks"] if t["project_id"] == group]
-            total = sum(report["tasks"][t["task_id"]][field] for t in members) if report else None
+            total = report["projects"][group][field] if report else None
             running = active is not None and active_group == group
             rows[key] = ("", projects.get(group, "Unassigned"),
                          ("Group — ▶ Running task" if running else "Group", "—",
                           format_duration(total) if total is not None else "—"), ())
             children[key] = []
-            visible = [t for t in members if not t["is_deleted"]]
+            visible = [t for t in members if not t["effective_archived"]]
             if self.sort_alpha.get():
                 visible.sort(key=lambda t: (t["name"].casefold(), t["task_id"]))
             for task in visible:
                 row = self.task_row(task["task_id"])
                 amount = report["tasks"][task["task_id"]][field] if report else None
                 value = format_duration(amount) if amount is not None else "—"
+                cumulative = format_duration(report['cumulative'][task['task_id']][field]) if report else '—'
                 running = task["task_id"] == active_id
-                rows[row] = (key, task["name"], ("▶ Running" if running else "■ Stopped", value, value),
+                status = "▶ Running" if running else "■ Stopped" if task['is_leaf'] else "Parent — ■ Stopped"
+                rows[row] = (key, task["name"], (status, value, cumulative),
                              ("running" if running else "stopped",))
                 children[key].append(row)
         selected, scroll = self.tree.selection(), self.tree.yview()

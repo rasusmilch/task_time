@@ -263,12 +263,12 @@ def test_real_tk_choice_labels_deleted_tasks_and_last_week_drafts(connected,root
     original=TimerService.read_timesheet_task_choices
     def retained(self):
         # Explicit fixture mutation on the real owning worker, never a GUI SQL call.
-        self.store.connection.execute('UPDATE tasks SET is_deleted=1 WHERE task_id=?',(second,))
+        self.store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(second,))
         return original(self)
     with monkeypatch.context() as m:
         m.setattr(TimerService,'read_timesheet_task_choices',retained)
         sheet=open_sheet(app)
-    assert sheet.tasks.item(second,'values')[-1]=='Deleted'
+    assert sheet.tasks.item(second,'values')[-1]=='Archived'
     assert second in sheet.tasks.item(second,'values')[0]
     sheet.start.set('invalid draft');sheet.end.set('another draft');sheet.period.set('Last week')
     c=refresh(app,sheet)
@@ -276,7 +276,7 @@ def test_real_tk_choice_labels_deleted_tasks_and_last_week_drafts(connected,root
     assert sheet.start.get()=='invalid draft' and sheet.end.get()=='another draft'
     sheet.scope.set('Selected tasks');sheet.tasks.selection_set(second)
     c=refresh(app,sheet)
-    assert c.selected_task_ids==(second,) and c.tasks[0].is_deleted
+    assert c.selected_task_ids==(second,) and not c.tasks[0].is_deleted
 
 
 def test_real_tk_close_during_loading_and_newer_attempt_wins(connected,root,monkeypatch):

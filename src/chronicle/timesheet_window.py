@@ -256,7 +256,7 @@ class TimesheetWindow:
         if isinstance(value,Outcome): return self.failure(value.error or ValueError('Task choices unavailable'))
         try:
             if value['dataset_id'] != self.owner.dataset_id: raise ValueError('Task choices belong to another dataset')
-            rows = [(t['task_id'],(f"{t['name']} / {t['task_id']}",t['project_name'],'Deleted' if t['is_deleted'] else 'Active')) for t in value['tasks']]
+            rows = [(t['task_id'],(f"{t['name']} / {t['task_id']}",t['project_name'],'Archived' if t['effective_archived'] else 'Active')) for t in value['tasks']]
             for key,values in rows: self.tasks.insert('', 'end',iid=key,values=values)
             self._reconciliation_choices()
         except Exception as exc: self.failure(exc)

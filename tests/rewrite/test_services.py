@@ -18,7 +18,7 @@ def start(service, task, now=NOW):
 def test_project_duplicate_names_independent_membership(service, task, store):
     p, second = uid(), uid()
     assert service.create_project(p, "Example", request_id=uid(), action_utc_us=NOW).status == "committed"
-    assert service.create_task(second, "Example", p, request_id=uid(), action_utc_us=NOW).status == "committed"
+    assert service.create_task(second, "Example", p, expected_project_version=1, request_id=uid(), action_utc_us=NOW).status == "committed"
     assert service.assign_task_to_project(task, p, expected_version=1, request_id=uid(), action_utc_us=NOW).status == "committed"
     assert service.rename_project(p, "Renamed", expected_version=1, request_id=uid(), action_utc_us=NOW).status == "committed"
     assert service.rename_task(second, "Renamed", expected_version=1, request_id=uid(), action_utc_us=NOW).status == "committed"
@@ -83,7 +83,7 @@ def test_bad_id_owner_deleted_task_and_stale_version(service, task, store):
         assert service.start_timer(target, uid(), expected_task_version=1, request_id=uid(), action_utc_us=NOW).status == "rejected"
     assert service.start_timer(task, uid(), expected_task_version=2, request_id=uid(), action_utc_us=NOW).status == "rejected"
     store._recover_connection()
-    store.connection.execute("UPDATE tasks SET is_deleted=1 WHERE task_id=?", (task,))
+    store.connection.execute("UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?", (task,))
     assert service.start_timer(task, uid(), expected_task_version=1, request_id=uid(), action_utc_us=NOW).status == "rejected"
 
 
@@ -212,7 +212,7 @@ def test_uncommitted_same_connection_receipt_never_proves_commit(service, store,
     frozen = make_request("create_project", project_id=uid(), name="Not committed")
     c = store.connection
     c.execute("BEGIN IMMEDIATE")
-    c.execute("INSERT INTO committed_requests(request_id,operation,request_bytes,result_bytes,action_utc_us) VALUES(?,?,?,?,?)",
+    c.execute("INSERT INTO committed_requests(request_id,operation,receipt_class,request_bytes,result_bytes,action_utc_us) VALUES(?,?,'administrative',?,?,?)",
               (frozen.request_id, frozen.operation, frozen.content(), canonical({"not": "committed"}), NOW))
     assert store._receipt(c, frozen, frozen.content()) == {"not": "committed"}
     assert service.reconcile_request(frozen).status == "unverified"

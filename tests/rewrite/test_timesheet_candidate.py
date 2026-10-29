@@ -59,18 +59,18 @@ def test_periods_use_committed_week_all_seven(service,task,weekday):
 def test_multieweek_task_independence_duplicate_names_projects_deleted_and_labels(service,task,store):
     second,project=uid(),uid()
     service.create_project(project,'Project\nForged\trow',request_id=uid(),action_utc_us=NOW)
-    service.create_task(second,'Example',project,request_id=uid(),action_utc_us=NOW)
+    service.create_task(second,'Example',project,expected_project_version=1,request_id=uid(),action_utc_us=NOW)
     for t in (task,second):
         dated(service,t,day='2026-10-19',duration='0:03')
         dated(service,t,day='2026-10-26',duration='0:03')
-    store.connection.execute('UPDATE tasks SET is_deleted=1 WHERE task_id=?',(second,))
+    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(second,))
     c=preview(service,period='custom',start_date='2026-10-19',end_date='2026-10-26')
     assert len(c.basis)==28 and len(c.cells)==16
     assert all(sum(b.suggested_quarters for b in c.basis if b.task_id==t)==2 for t in (task,second))
-    assert c.tasks[0].project_name=='Project\nForged\trow' and c.tasks[0].is_deleted
+    assert c.tasks[0].project_name=='Project\nForged\trow' and not c.tasks[0].is_deleted
     assert 'Project: Project\\u000aForged\\u0009row' in c.report_text
     selected=preview(service,scope_kind='selected',task_ids=(second,))
-    assert [t.task_id for t in selected.tasks]==[second] and selected.tasks[0].is_deleted
+    assert [t.task_id for t in selected.tasks]==[second] and not selected.tasks[0].is_deleted
     assert selected.selected_task_ids==(second,)
 
 

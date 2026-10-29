@@ -12,11 +12,11 @@ import sqlite3
 from uuid import uuid4
 
 from .dataset_lock import DatasetLock
-from .records import Outcome, Request, canonical, uuid_text
-from .timekeeping import MIN_US, MAX_US, load_zone, parse_date
+from .records import Outcome, Request, canonical, uuid_text, integer, receipt_class, ADMINISTRATIVE_OPERATIONS
+from .timekeeping import MIN_US, MAX_US, load_zone, parse_date, instant
 from .timesheet_files import metadata, same_domain_metadata, path_matches_handle
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 APPLICATION_ID = 0x4348524E
 DATABASE = "chronicle.sqlite3"
 BUSY_MS = 750
@@ -42,21 +42,31 @@ CREATE TABLE dataset_meta (
 ) STRICT;
 CREATE TABLE projects (
  project_id TEXT PRIMARY KEY {uuid_constraint('project_id')}, name TEXT NOT NULL CHECK(length(trim(name))>0),
- version INTEGER NOT NULL CHECK(version>0), is_deleted INTEGER NOT NULL DEFAULT 0 CHECK(is_deleted IN (0,1)),
+ version INTEGER NOT NULL CHECK(version>0), is_archived INTEGER NOT NULL DEFAULT 0 CHECK(is_archived IN (0,1)),
+ archived_at_utc_us INTEGER CHECK(archived_at_utc_us {STAMP}),
+ created_request_id TEXT NOT NULL UNIQUE REFERENCES committed_requests(request_id) DEFERRABLE INITIALLY DEFERRED,
  created_utc_us INTEGER NOT NULL CHECK(created_utc_us {STAMP}),
- updated_utc_us INTEGER NOT NULL CHECK(updated_utc_us {STAMP})
+ updated_utc_us INTEGER NOT NULL CHECK(updated_utc_us {STAMP}),
+ CHECK((is_archived=0 AND archived_at_utc_us IS NULL) OR (is_archived=1 AND archived_at_utc_us IS NOT NULL))
 ) STRICT;
 CREATE TABLE tasks (
  task_id TEXT PRIMARY KEY {uuid_constraint('task_id')}, project_id TEXT REFERENCES projects(project_id),
+ parent_task_id TEXT REFERENCES tasks(task_id) CHECK(parent_task_id IS NULL OR parent_task_id!=task_id),
  name TEXT NOT NULL CHECK(length(trim(name))>0), version INTEGER NOT NULL CHECK(version>0),
- is_deleted INTEGER NOT NULL DEFAULT 0 CHECK(is_deleted IN (0,1)),
+ is_archived INTEGER NOT NULL DEFAULT 0 CHECK(is_archived IN (0,1)),
+ archived_at_utc_us INTEGER CHECK(archived_at_utc_us {STAMP}),
+ created_request_id TEXT NOT NULL UNIQUE REFERENCES committed_requests(request_id) DEFERRABLE INITIALLY DEFERRED,
  created_utc_us INTEGER NOT NULL CHECK(created_utc_us {STAMP}),
- updated_utc_us INTEGER NOT NULL CHECK(updated_utc_us {STAMP})
+ updated_utc_us INTEGER NOT NULL CHECK(updated_utc_us {STAMP}),
+ CHECK((is_archived=0 AND archived_at_utc_us IS NULL) OR (is_archived=1 AND archived_at_utc_us IS NOT NULL))
 ) STRICT;
 CREATE TABLE committed_requests (
  commit_seq INTEGER PRIMARY KEY AUTOINCREMENT, request_id TEXT NOT NULL UNIQUE {uuid_constraint('request_id')},
- operation TEXT NOT NULL, request_bytes BLOB NOT NULL, result_bytes BLOB NOT NULL,
- action_utc_us INTEGER NOT NULL CHECK(action_utc_us {STAMP})
+ operation TEXT NOT NULL, receipt_class TEXT NOT NULL CHECK(receipt_class IN ('administrative','protected')),
+ request_bytes BLOB NOT NULL, result_bytes BLOB NOT NULL,
+ action_utc_us INTEGER NOT NULL CHECK(action_utc_us {STAMP}),
+ CHECK(receipt_class=CASE WHEN operation IN ({','.join(repr(op) for op in sorted(ADMINISTRATIVE_OPERATIONS))})
+       THEN 'administrative' ELSE 'protected' END)
 ) STRICT;
 CREATE TABLE work_entries (
  entry_id TEXT PRIMARY KEY {uuid_constraint('entry_id')}, task_id TEXT NOT NULL REFERENCES tasks(task_id),
@@ -102,6 +112,7 @@ CREATE TABLE active_start_corrections (
  DEFERRABLE INITIALLY DEFERRED, PRIMARY KEY(entry_id,version)
 ) STRICT;
 CREATE INDEX tasks_project ON tasks(project_id);
+CREATE INDEX tasks_parent ON tasks(parent_task_id);
 CREATE INDEX work_task ON work_entries(task_id);
 CREATE TRIGGER work_identity_immutable BEFORE UPDATE OF entry_id,task_id,kind,original_start_utc_us,created_request_id
  ON work_entries BEGIN SELECT RAISE(ABORT,'immutable work identity'); END;
@@ -205,10 +216,74 @@ for _table in EXPORT_TABLES[1:]:
     SCHEMA += (f"CREATE TRIGGER sealed_{_table} BEFORE INSERT ON {_table} "
                "WHEN EXISTS(SELECT 1 FROM timesheet_exports WHERE export_id=NEW.export_id) "
                "BEGIN SELECT RAISE(ABORT,'sealed export'); END;\n")
-for _table in ("work_revisions", "active_start_corrections", "committed_requests", *EXPORT_TABLES, *CONFIRMATION_TABLES[:2]):
+for _table in ("work_revisions", "active_start_corrections", *EXPORT_TABLES, *CONFIRMATION_TABLES[:2]):
     for _verb in ("UPDATE", "DELETE"):
         SCHEMA += (f"CREATE TRIGGER immutable_{_table}_{_verb.lower()} BEFORE {_verb} ON {_table} "
                    "BEGIN SELECT RAISE(ABORT,'immutable evidence'); END;\n")
+
+# Administrative retirement has no service in B1; all retained updates remain forbidden.
+SCHEMA += """
+CREATE TRIGGER immutable_committed_requests_update BEFORE UPDATE ON committed_requests
+ BEGIN SELECT RAISE(ABORT,'immutable evidence'); END;
+CREATE TRIGGER immutable_committed_requests_delete BEFORE DELETE ON committed_requests
+ WHEN OLD.receipt_class='protected'
+ BEGIN SELECT RAISE(ABORT,'immutable protected evidence'); END;
+"""
+for _table, _key in (("tasks", "task_id"), ("projects", "project_id")):
+    SCHEMA += (f"CREATE TRIGGER {_table}_identity_immutable BEFORE UPDATE OF {_key},created_request_id,created_utc_us ON {_table} "
+               "BEGIN SELECT RAISE(ABORT,'immutable entity identity'); END;\n")
+
+# Bound recursive SQL walks even for a damaged candidate; independent validation
+# still reconstructs the complete forest and checks every edge after writes.
+for _event in ("INSERT", "UPDATE OF parent_task_id,project_id"):
+    _suffix = "insert" if _event == "INSERT" else "update"
+    SCHEMA += f"""
+CREATE TRIGGER tasks_forest_{_suffix} BEFORE {_event} ON tasks
+ BEGIN
+ SELECT RAISE(ABORT,'invalid task parent/project') WHERE NEW.parent_task_id IS NOT NULL AND
+   NOT EXISTS(SELECT 1 FROM tasks p WHERE p.task_id=NEW.parent_task_id AND p.project_id IS NEW.project_id);
+ SELECT RAISE(ABORT,'task children have different project') WHERE
+   EXISTS(SELECT 1 FROM tasks ch WHERE ch.parent_task_id=NEW.task_id AND ch.project_id IS NOT NEW.project_id);
+ SELECT RAISE(ABORT,'running task cannot become a parent') WHERE
+   EXISTS(SELECT 1 FROM active_timer WHERE task_id=NEW.parent_task_id);
+ SELECT RAISE(ABORT,'task cycle or depth overflow') WHERE (
+   WITH RECURSIVE ancestors(task_id,parent_task_id,n) AS (
+     SELECT task_id,parent_task_id,1 FROM tasks WHERE task_id=NEW.parent_task_id
+     UNION ALL SELECT p.task_id,p.parent_task_id,a.n+1 FROM tasks p JOIN ancestors a ON p.task_id=a.parent_task_id WHERE a.n<3
+   ), descendants(task_id,n) AS (
+     SELECT NEW.task_id,1 UNION ALL SELECT ch.task_id,d.n+1 FROM tasks ch JOIN descendants d ON ch.parent_task_id=d.task_id WHERE d.n<4
+   ) SELECT EXISTS(SELECT 1 FROM ancestors WHERE task_id=NEW.task_id)
+       OR COALESCE((SELECT max(n) FROM ancestors),0)+(SELECT max(n) FROM descendants)>3
+ );
+ END;
+"""
+for _table in ("work_entries", "active_timer"):
+    SCHEMA += f"""
+CREATE TRIGGER {_table}_eligible_task BEFORE INSERT ON {_table}
+ BEGIN
+ SELECT RAISE(ABORT,'new recording requires an active leaf') WHERE
+   EXISTS(SELECT 1 FROM tasks WHERE parent_task_id=NEW.task_id) OR (
+   WITH RECURSIVE path(task_id,parent_task_id,project_id,is_archived,n) AS (
+     SELECT task_id,parent_task_id,project_id,is_archived,1 FROM tasks WHERE task_id=NEW.task_id
+     UNION ALL SELECT p.task_id,p.parent_task_id,p.project_id,p.is_archived,a.n+1 FROM tasks p JOIN path a ON p.task_id=a.parent_task_id WHERE a.n<3
+   ) SELECT EXISTS(SELECT 1 FROM path WHERE is_archived=1)
+       OR EXISTS(SELECT 1 FROM path a JOIN projects p ON a.project_id=p.project_id WHERE p.is_archived=1)
+ );
+ END;
+"""
+SCHEMA += """
+CREATE TRIGGER tasks_archive_active BEFORE UPDATE OF is_archived ON tasks WHEN NEW.is_archived=1
+ BEGIN
+ SELECT RAISE(ABORT,'archive would hide active timer') WHERE (
+   WITH RECURSIVE branch(task_id,n) AS (
+     SELECT NEW.task_id,1 UNION ALL SELECT t.task_id,b.n+1 FROM tasks t JOIN branch b ON t.parent_task_id=b.task_id WHERE b.n<3
+   ) SELECT EXISTS(SELECT 1 FROM branch JOIN active_timer USING(task_id))
+ );
+ END;
+CREATE TRIGGER projects_archive_active BEFORE UPDATE OF is_archived ON projects WHEN NEW.is_archived=1
+ AND EXISTS(SELECT 1 FROM active_timer a JOIN tasks t USING(task_id) WHERE t.project_id=NEW.project_id)
+ BEGIN SELECT RAISE(ABORT,'archive would hide active timer'); END;
+"""
 
 
 def schema_statements():
@@ -435,7 +510,7 @@ class SQLiteStore:
     def _verify(c):
         if (c.execute("PRAGMA application_id").fetchone()[0] != APPLICATION_ID or
                 c.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION):
-            raise ValueError("Not a supported Chronicle schema; no automatic repair/upgrade")
+            raise ValueError(f"Not a supported Chronicle schema (require version {SCHEMA_VERSION}); no automatic repair/upgrade")
         SQLiteStore._verify_schema(c)
         if c.execute("PRAGMA quick_check").fetchone()[0] != "ok" or list(c.execute("PRAGMA foreign_key_check")):
             raise ValueError("Dataset integrity check failed")
@@ -513,16 +588,13 @@ class SQLiteStore:
                 raise ValueError('Noncanonical committed request receipt')
             receipts[request.request_id] = (request, result)
             a, op = request.args(), request.operation
+            if row['receipt_class'] != receipt_class(op):
+                raise ValueError('Incorrect committed receipt classification')
             for key in ('expected_version','expected_task_version','expected_active_version','expected_revision'):
                 if key in a and (type(a[key]) is not int or not 1 <= a[key] <= 2**63-1):
                     raise ValueError('Invalid reviewed version in receipt')
             if op in ('create_task','rename_task','assign_task_to_project','create_project','rename_project'):
-                entity = 'project' if op.endswith('project') and op != 'assign_task_to_project' else 'task'
-                key = a.get(f'{entity}_id')
-                expected = 1 if op.startswith('create_') else a['expected_version']+1
-                fact = c.execute(f'SELECT version FROM {entity}s WHERE {entity}_id=?', (key,)).fetchone()
-                if fact is None or fact[0] < expected or canonical(result) != canonical({f'{entity}_id':key,'version':expected}):
-                    raise ValueError('Entity receipt relationship differs')
+                pass  # Complete bidirectional entity/version closure is checked below.
             elif op == 'set_week_start':
                 if (type(a.get('week_start')) is not int or not 0 <= a['week_start'] <= 6
                         or type(a.get('expected_week_start')) is not int or not 0 <= a['expected_week_start'] <= 6
@@ -545,6 +617,7 @@ class SQLiteStore:
                     raise ValueError('Correction receipt has no audit evidence')
             else:
                 raise ValueError('Unsupported committed receipt operation')
+        SQLiteStore.verify_administration(c, receipts)
         for entry in c.execute('SELECT * FROM work_entries'):
             request, result = receipts[entry['created_request_id']]
             a = request.args()
@@ -611,6 +684,128 @@ class SQLiteStore:
                 raise ValueError('Active-start evidence differs from frozen input')
 
     @staticmethod
+    def verify_administration(c, receipts):
+        """Compare each surviving row with its finite immutable version effects.
+
+        This is validation only; it installs no replayed state or hierarchy authority.
+        Parent/project context is checked against versions committed before creation.
+        """
+        events = {}
+        sequence = {r['request_id']: r['commit_seq'] for r in c.execute('SELECT request_id,commit_seq FROM committed_requests')}
+        for request, result in receipts.values():
+            op, a = request.operation, request.args()
+            if op not in ('create_project','rename_project','create_task','rename_task','assign_task_to_project'):
+                continue
+            entity = 'project' if op in ('create_project','rename_project') else 'task'
+            key = uuid_text(a.get(entity + '_id'))
+            required = {entity + '_id', 'name'} if op.startswith('create_') else (
+                {'task_id','project_id','expected_version'} if op == 'assign_task_to_project' else {entity + '_id','name','expected_version'})
+            allowed = required | ({'project_id','parent_task_id','expected_project_version','expected_parent_version'} if op == 'create_task' else set())
+            if not required <= set(a) or not set(a) <= allowed:
+                raise ValueError('Invalid administrative receipt fields')
+            if 'name' in a and (type(a['name']) is not str or not a['name'].strip()):
+                raise ValueError('Invalid administrative name')
+            if 'project_id' in a and a['project_id'] is not None: uuid_text(a['project_id'])
+            if a.get('parent_task_id') is not None: uuid_text(a['parent_task_id'])
+            events.setdefault((entity,key),[]).append((sequence[request.request_id],request,result))
+        histories = {}
+        for entity in ('project','task'):
+            for fact in c.execute(f'SELECT * FROM {entity}s'):
+                key = fact[entity + '_id']
+                history = sorted(events.pop((entity,key),[]),key=lambda r:r[0])
+                if not history or history[0][1].operation != 'create_' + entity:
+                    raise ValueError('Surviving entity has no creation receipt')
+                first = history[0][1]
+                if first.request_id != fact['created_request_id'] or first.action_utc_us != fact['created_utc_us']:
+                    raise ValueError('Entity creation receipt ownership differs')
+                name = None
+                parent = first.args().get('parent_task_id') if entity == 'task' else None
+                group = first.args().get('project_id', fact['project_id'] if parent else None) if entity == 'task' else None
+                states = []
+                for version, (seq, request, result) in enumerate(history,1):
+                    a, op = request.args(), request.operation
+                    if canonical(result) != canonical({entity + '_id':key,'version':version}):
+                        raise ValueError('Administrative result/version differs')
+                    if version == 1:
+                        if op != 'create_' + entity: raise ValueError('Invalid entity creation')
+                        name = a['name'].strip()
+                    else:
+                        if a.get('expected_version') != version-1 or op == 'create_' + entity:
+                            raise ValueError('Missing or reordered administrative version effect')
+                        if op == 'assign_task_to_project':
+                            if parent is not None or a['project_id'] == group:
+                                raise ValueError('Invalid standalone-root assignment receipt')
+                            group = a['project_id']
+                        else:
+                            new = a['name'].strip()
+                            if new == name: raise ValueError('No-op rename cannot have a receipt')
+                            name = new
+                    states.append((seq,version,group))
+                if (fact['version'] != len(history) or fact['name'] != name
+                        or fact['updated_utc_us'] != history[-1][1].action_utc_us):
+                    raise ValueError('Entity/current administrative version effects differ')
+                if entity == 'task' and (fact['project_id'] != group or fact['parent_task_id'] != parent):
+                    raise ValueError('Task structure differs from administrative effects')
+                histories[(entity,key)] = (history,states)
+        if events:
+            raise ValueError('Administrative receipt has no owning surviving entity')
+
+        def reviewed(entity, key, seq):
+            history = histories.get((entity,key))
+            prior = [r for r in history[1] if r[0] < seq] if history else []
+            if not prior: raise ValueError('Reviewed administrative destination did not yet exist')
+            return prior[-1]
+
+        for (entity,key), (history,states) in histories.items():
+            if entity != 'task': continue
+            for (seq,request,result), (_,version,group) in zip(history,states):
+                a = request.args()
+                if request.operation == 'create_task':
+                    parent = a.get('parent_task_id')
+                    parent_version = a.get('expected_parent_version')
+                    project_version = a.get('expected_project_version')
+                    if parent is not None:
+                        integer(parent_version,'Reviewed parent version',1,2**63-1)
+                        prior = reviewed('task',parent,seq)
+                        if prior[1] != parent_version or prior[2] != group:
+                            raise ValueError('Child creation parent context differs')
+                    elif parent_version is not None:
+                        raise ValueError('Root creation has unexpected parent review')
+                    if group is not None:
+                        prior = reviewed('project',group,seq)
+                        if parent is None or project_version is not None:
+                            integer(project_version,'Reviewed project version',1,2**63-1)
+                            if prior[1] != project_version: raise ValueError('Creation project context differs')
+                    elif project_version is not None:
+                        raise ValueError('Unassigned creation has unexpected project review')
+                elif request.operation == 'assign_task_to_project':
+                    if group is not None: reviewed('project',group,seq)
+                    for child in c.execute('SELECT created_request_id FROM tasks WHERE parent_task_id=?',(key,)):
+                        if sequence[child[0]] < seq:
+                            raise ValueError('Assignment receipt moved a branch')
+
+    @staticmethod
+    def assert_structure(c):
+        from .hierarchy import task_observations
+        tasks = [dict(r) for r in c.execute('SELECT * FROM tasks')]
+        projects = [dict(r) for r in c.execute('SELECT * FROM projects')]
+        for row in [*projects,*tasks]:
+            uuid_text(row['created_request_id'])
+            integer(row['version'],'Entity version',1,2**63-1)
+            if type(row['name']) is not str or not row['name'].strip(): raise ValueError('Invalid entity name')
+            instant(row['created_utc_us']); instant(row['updated_utc_us'])
+            integer(row['is_archived'],'Archive flag',0,1)
+            if bool(row['is_archived']) != (row['archived_at_utc_us'] is not None):
+                raise ValueError('Invalid archive metadata')
+            if row['archived_at_utc_us'] is not None: instant(row['archived_at_utc_us'])
+        observations = task_observations(tasks,projects)
+        for active in c.execute('SELECT task_id FROM active_timer'):
+            value = observations.get(active[0])
+            if value is None or not value['is_leaf'] or value['effective_archived']:
+                raise ValueError('Active task must be an eligible leaf')
+        return observations
+
+    @staticmethod
     def dismissed_date(c):
         from .polr_allocation import civil
         value = c.execute('SELECT polr_reminder_dismissed_local_date FROM dataset_meta').fetchone()[0]
@@ -620,6 +815,7 @@ class SQLiteStore:
 
     @staticmethod
     def assert_lifecycle(c):
+        SQLiteStore.assert_structure(c)
         bad = c.execute("""SELECT e.entry_id FROM work_entries e LEFT JOIN active_timer a USING(entry_id)
           WHERE (a.entry_id IS NOT NULL AND e.kind!='timed')
              OR (e.current_revision IS NULL AND a.entry_id IS NULL)
@@ -665,6 +861,8 @@ class SQLiteStore:
         """Validated children first, immutable master last, receipt owned by transact."""
         from .timesheet import validate
         value = validate(candidate)
+        if any(t.is_deleted for t in value.tasks):
+            raise ValueError('Schema 2 has no live deleted-task state to freeze')
         for task in value.tasks:
             c.execute("""INSERT INTO timesheet_export_tasks
               (export_id,task_id,name,project_id,project_name,is_deleted,ordinal) VALUES(?,?,?,?,?,?,?)""",
@@ -706,7 +904,7 @@ class SQLiteStore:
         data['tasks'] = [dict(r) for r in c.execute("""SELECT task_id,name,project_id,project_name,is_deleted,ordinal
           FROM timesheet_export_tasks WHERE export_id=? ORDER BY ordinal""",(export_id,))]
         for task in data['tasks']:
-            if type(task['is_deleted']) is not int or task['is_deleted'] not in (0,1):
+            if type(task['is_deleted']) is not int or task['is_deleted'] != 0:
                 raise ValueError('Invalid frozen deleted flag')
             task['is_deleted'] = bool(task['is_deleted'])
         for table,fields,key in (
@@ -902,8 +1100,8 @@ class SQLiteStore:
                 c.execute("ROLLBACK")
                 return Outcome("unchanged")
             self.assert_lifecycle(c)  # Cross-table final invariant, before any commit.
-            c.execute("INSERT INTO committed_requests(request_id,operation,request_bytes,result_bytes,action_utc_us) VALUES(?,?,?,?,?)",
-                      (request.request_id, request.operation, content, canonical(result), request.action_utc_us))
+            c.execute("INSERT INTO committed_requests(request_id,operation,receipt_class,request_bytes,result_bytes,action_utc_us) VALUES(?,?,?,?,?,?)",
+                      (request.request_id, request.operation, receipt_class(request.operation), content, canonical(result), request.action_utc_us))
             self.assert_confirmations(c)
             c.execute("COMMIT")
             return Outcome("committed", result)

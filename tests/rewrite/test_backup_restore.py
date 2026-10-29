@@ -70,7 +70,7 @@ def rich(service, task, store, tmp_path):
     removed = dated(service, second)
     assert service.delete_work_entry(second,removed,expected_revision=1,request_id=uid(),action_utc_us=NOW).status=='committed'
     dated(service, deleted)
-    store.connection.execute('UPDATE tasks SET is_deleted=1 WHERE task_id=?',(deleted,))
+    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(deleted,))
     assert service.set_week_start(0,expected_week_start=6,request_id=uid(),action_utc_us=NOW).status=='committed'
     active = uid()
     assert service.start_timer(second,active,expected_task_version=1,request_id=uid(),action_utc_us=NOW-5*M).status=='committed'

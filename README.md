@@ -27,7 +27,7 @@ draft-only inline calendars, session date direction, complete-entry inline editi
 confirmed deletion and immutable revision/deleted-entry details. One modal owner
 blocks main/mini input while timers and worker delivery continue.
 Timesheet / POL-R opens one modal preview/save workflow: This week/Last week/Custom,
-All or explicit task UUIDs (including deleted tasks), draft-only calendars and
+All or explicit task UUIDs (including archived tasks), draft-only calendars and
 explicit Preview/Refresh. Actual HH:MM/decimal and suggested quarter-hour amounts
 are separate, with complete-week target/adjustment context for partial views.
 Preview writes no evidence or files. Save freezes the chosen original destination,
@@ -47,10 +47,11 @@ The main banner checks previous week every used local day and current week Monda
 Friday. Open Timesheet navigates to reconciliation; explicit Dismiss for today
 survives same-day restart and changes no work or confirmation. Recheck POL-R is
 available after read failures. No external POL-R verification is claimed.
-Package A groups the current flat schema into Project → Task plus virtual Unassigned,
+Package A groups the current presentation into Project → Task plus virtual Unassigned,
 including empty projects. Typed rows keep task UUID authority distinct from groups.
-Main Individual/Cumulative share Today/This Week; task values match in this flat
-model and groups sum member direct Actual once. Application totals remain separate.
+Main Individual/Cumulative share Today/This Week; B1 derives descendant Cumulative
+while groups/application sum each task's direct Actual once. Empty groups show zero
+only with a valid report. Full nested navigation remains pending.
 New Task shows its fixed project destination; selecting a task uses its current
 project, not a subtask. Selected empty projects can be renamed. Session-local A-Z
 preserves membership, selection and expansion. Mini adds green/red text state,
@@ -86,16 +87,19 @@ permanently block later Stage 2 development.
 Stage 0 was independently accepted at `a24aca706740b7e02cc1f856baa194042785bbcb`. Active work is
 `feature/chronicle-rewrite`; the old feature branch/history is preserved.
 
-## Approved hierarchy target — not yet implemented
+## Hierarchy foundation and remaining target
 
 The approved target restores tree-oriented main/mini and Project → Task → Subtask
 → Sub-subtask, leaf-only new time and independent Individual/Cumulative values.
 There are exactly two primary lifecycle actions: reversible **Archive** (Unarchive
 reverses it) and irreversible **Delete** of unused complete selected branches.
 No recoverable deletion tier, Deleted Items or separate Permanent Delete is selected.
-Current source remains flat schema 1 with Package A project/task grouping only.
-Nested tasks and lifecycle controls remain unimplemented; neither rollups nor
-projects add work or change frozen evidence.
+B1 implements fresh schema 2 and service-level parent adjacency, three task levels,
+reviewed child creation, effectively active leaf-only new recording and retained
+parent history. Package A remains a project/task grouped UI with root-only New Task;
+parent new-work controls are disabled. B1 nested development data is not a qualified
+end-user workflow. Nested management, lifecycle actions and templates remain pending;
+rollups/projects never add work or change frozen evidence.
 
 Archived Items shows the full expandable tree, independently archived branches
 with ancestor context, direct History and eligible Unarchive/Delete. Current archive
@@ -115,8 +119,10 @@ Use Archive for protected history. New project/task names may duplicate, but nor
 creation always uses fresh UUIDs. Exclusively owned administrative requests may be
 erased with eligible unused rows: their exact historical retry/replay protection
 is no longer promised. No identity/tombstone/audit registry is selected. Its bounded
-engineering design still needs adjudication; current version-1 receipt semantics
-remain unchanged. Backups/copies stay untouched; no automatic cleanup or secure erasure.
+Delete transaction/closure design still needs adjudication. B1 introduces finite
+administrative/protected receipt classes, forbids all receipt UPDATEs/protected
+DELETEs and verifies surviving creation/version effects; no service retires receipts.
+Backups/copies stay untouched; no automatic cleanup or secure erasure.
 
 Nested template instances stay independent. Definitions use Archive/Unarchive and
 intended actual Delete; applied/referenced definition eligibility is Open before
@@ -125,12 +131,13 @@ while task/project names may duplicate. Keep Mini Open defaults Off/session-loca
 Show Main retains mini only when On, never stealing modal focus/grabs. Main Sort
 A-Z is session-local. Exact Actual, frozen Timesheet and task/day POL-R rules remain.
 
-Implementation will start with a distinctly identified fresh SQLite schema and
-fresh data, **without v1 migration, compatibility mode or legacy import**. Old files
-remain protected and may refuse; nothing automatically deletes or recreates them.
-Exact DDL is proposed for separate review. See
+Current runtime supports only exact fresh schema 2, **without v1 migration,
+compatibility mode or legacy import**. Version-1 datasets/backups refuse and remain
+protected; failed remembered startup does not replace data or clear selection.
+Backup/restore/cold inspection completely validate v2 structure and evidence.
+B2 movement and C/D/E lifecycle/nested UI/templates require separate approvals. See
 [selected behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
-[proposed foundation](docs/ARCHITECTURE.md#proposed-fresh-hierarchy-foundation) and
+[fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation) and
 [bounded packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
 Stage 4 remains IN PROGRESS, Stage 5 NOT STARTED; native qualification, external
 reporting and installation/cutover gates remain separate.
@@ -205,7 +212,7 @@ GO. Stage 4C adds `python run_chronicle.py --inspect-dataset DATA_DIR`: close ot
 sessions first. This cold read-only command classifies current/unsupported versions,
 layout, foreign identity, profile and unsafe/unavailable data without creating a
 lock or starting Tk/worker. Healthy current data passes complete independent
-validation; all other cases refuse ordinary startup. Schema remains version 1,
+validation; all other cases refuse ordinary startup. B1 supports only schema 2,
 with no automatic upgrade, downgrade or repair. Stage 4C inspection, protected
 refusal and bounded owned SQLite-native rollback recovery are independently
 accepted for functional development.
@@ -249,7 +256,8 @@ filesystem compatibility repair is accepted for portable development. Unit B's
 collector and evidence-safety repair are accepted for limited native MetadataProbe
 use; Windows qualification is not complete. The accepted integration coverage
 audit found no material missing portable cross-boundary coverage and warrants no
-new portable integration test. See [acceptance provenance](docs/DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
+new portable integration test at its reviewed flat baseline. B1 separately validates
+changed v2 boundaries. See [acceptance provenance](docs/DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
 Stage 3A connected frozen Preview, exact weekly suggestions
 and immutable SQLite registration/recovery are independently accepted at
 `d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B protected file Save/status and

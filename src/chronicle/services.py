@@ -17,6 +17,9 @@ def name_text(value: str) -> str:
     return value.strip()
 
 
+_UNSPECIFIED_PROJECT = object()
+
+
 class TimerService:
     def __init__(self, store: SQLiteStore):
         self.store = store
@@ -24,9 +27,17 @@ class TimerService:
     def _make(self, operation: str, request_id: str, action_utc_us: int, arguments: dict) -> Outcome:
         return self.execute(Request.make(request_id, self.store.dataset_id, operation, action_utc_us, **arguments))
 
-    def create_task(self, task_id: str, name: str, project_id: str | None = None, *,
+    def create_task(self, task_id: str, name: str, project_id=_UNSPECIFIED_PROJECT, *,
+                    parent_task_id: str | None = None, expected_project_version: int | None = None,
+                    expected_parent_version: int | None = None,
                     request_id: str, action_utc_us: int) -> Outcome:
-        return self._make("create_task", request_id, action_utc_us, dict(task_id=task_id, name=name, project_id=project_id))
+        arguments = dict(task_id=task_id, name=name, parent_task_id=parent_task_id,
+                         expected_project_version=expected_project_version, expected_parent_version=expected_parent_version)
+        if project_id is not _UNSPECIFIED_PROJECT:
+            arguments['project_id'] = project_id
+        elif parent_task_id is None:
+            arguments['project_id'] = None
+        return self._make('create_task', request_id, action_utc_us, arguments)
 
     def rename_task(self, task_id: str, name: str, *, expected_version: int,
                     request_id: str, action_utc_us: int) -> Outcome:
@@ -141,8 +152,7 @@ class TimerService:
         if adding:
             uuid_text(a["task_id"])
             uuid_text(a["entry_id"])
-            if not c.execute("SELECT 1 FROM tasks WHERE task_id=? AND is_deleted=0", (a["task_id"],)).fetchone():
-                raise StaleState("Task is missing or deleted")
+            self._recordable(c, a['task_id'])
             old, revision = None, 1
         else:
             old = self._reviewed_work(c, a["task_id"], a["entry_id"], a["expected_revision"],
@@ -178,21 +188,50 @@ class TimerService:
     @staticmethod
     def _task(c, task_id, version):
         uuid_text(task_id)
-        row = c.execute("SELECT * FROM tasks WHERE task_id=? AND is_deleted=0", (task_id,)).fetchone()
+        row = c.execute("SELECT * FROM tasks WHERE task_id=?", (task_id,)).fetchone()
         if row is None:
-            raise StaleState("Task is missing or deleted")
+            raise StaleState("Task is missing")
         integer(version, "Task version", 1, 2**63 - 1)
         if row["version"] != version:
             raise StaleState("Task changed; refresh before trying again")
         return row
 
     @staticmethod
-    def _project(c, project_id):
+    def _project(c, project_id, expected_version=None):
         if project_id is None:
-            return
+            if expected_version is not None: raise ValueError('Unassigned has no project version')
+            return None
         uuid_text(project_id)
-        if not c.execute("SELECT 1 FROM projects WHERE project_id=? AND is_deleted=0", (project_id,)).fetchone():
-            raise StaleState("Project is missing or deleted")
+        row = c.execute('SELECT * FROM projects WHERE project_id=?',(project_id,)).fetchone()
+        if row is None or row['is_archived']:
+            raise StaleState('Project is missing or archived')
+        if expected_version is not None:
+            integer(expected_version,'Project version',1,2**63-1)
+            if row['version'] != expected_version: raise StaleState('Reviewed project version changed')
+        return row
+
+    @staticmethod
+    def _active_path(c, task_id):
+        """Bounded transactional ancestry; no cached hierarchy may authorize work."""
+        uuid_text(task_id)
+        rows = list(c.execute("""WITH RECURSIVE path(task_id,parent_task_id,project_id,is_archived,n) AS (
+          SELECT task_id,parent_task_id,project_id,is_archived,1 FROM tasks WHERE task_id=?
+          UNION ALL SELECT p.task_id,p.parent_task_id,p.project_id,p.is_archived,a.n+1
+          FROM tasks p JOIN path a ON p.task_id=a.parent_task_id WHERE a.n<4
+        ) SELECT * FROM path""",(task_id,)))
+        if not rows: raise StaleState('Task is missing')
+        if len(rows)>3 or rows[-1]['parent_task_id'] is not None or len({r['task_id'] for r in rows})!=len(rows):
+            raise ValueError('Invalid task ancestry')
+        if any(r['project_id'] != rows[0]['project_id'] for r in rows): raise ValueError('Task project ancestry differs')
+        if any(r['is_archived'] for r in rows): raise StaleState('Task is effectively archived')
+        TimerService._project(c,rows[0]['project_id'])
+        return rows
+
+    @staticmethod
+    def _recordable(c, task_id):
+        TimerService._active_path(c,task_id)
+        if c.execute('SELECT 1 FROM tasks WHERE parent_task_id=?',(task_id,)).fetchone():
+            raise StaleState('New recording requires a leaf task')
 
     @staticmethod
     def _active(c, entry_id, version):
@@ -241,9 +280,11 @@ class TimerService:
 
     def read_timesheet_task_choices(self):
         with self._read_transaction() as c:
-            rows = [dict(r) for r in c.execute("""SELECT t.task_id,t.name,t.is_deleted,t.project_id,
+            rows = [dict(r) for r in c.execute("""SELECT t.task_id,t.name,t.is_archived,t.project_id,
               COALESCE(p.name,'Unassigned') AS project_name FROM tasks t LEFT JOIN projects p USING(project_id)
               ORDER BY project_name,t.name,t.task_id""")]
+            structure = self.store.assert_structure(c)
+            rows = [{**r, **structure[r['task_id']]} for r in rows]
         return {"dataset_id":self.store.dataset_id,"tasks":rows}
 
     def register_timesheet_export(self, candidate, *, request_id: str, action_utc_us: int) -> Outcome:
@@ -329,7 +370,7 @@ class TimerService:
         values=tuple(((first+timedelta(days=i)).isoformat(),daily.get((first+timedelta(days=i)).isoformat(),0)) for i in range(7))
         allocation=dict(allocate_week(first.isoformat(),values));actual=daily.get(work_date,0);hundredths=actual_hundredths(actual)
         current,_=self.store.confirmation_state(c);prior=current.get((task_id,work_date));confirmed=prior[1] if prior else None
-        return dict(task_id=task_id,task_name=task['name'],is_deleted=bool(task['is_deleted']),work_date=work_date,
+        return dict(task_id=task_id,task_name=task['name'],is_archived=bool(task['is_archived']),work_date=work_date,
                     cutoff_utc_us=cutoff,timezone=self.store.timezone,week_start=self.store.week_start,
                     actual_us=actual,actual_hundredths=hundredths,suggested_quarters=allocation[work_date],
                     confirmed_quarters=confirmed,current_batch_id=prior[0] if prior else None,
@@ -349,7 +390,7 @@ class TimerService:
             current,_=self.store.confirmation_state(c);prior=current.get((task_id,work_date))
             try:return self._polr_day_status(c,task_id,work_date,cutoff_utc_us)
             except (ValueError,OverflowError) as exc:
-                return dict(task_id=task_id,task_name=task['name'],is_deleted=bool(task['is_deleted']),work_date=work_date,
+                return dict(task_id=task_id,task_name=task['name'],is_archived=bool(task['is_archived']),work_date=work_date,
                     cutoff_utc_us=cutoff_utc_us,timezone=self.store.timezone,week_start=self.store.week_start,
                     actual_us=None,actual_hundredths=None,suggested_quarters=None,
                     confirmed_quarters=prior[1] if prior else None,current_batch_id=prior[0] if prior else None,
@@ -465,7 +506,12 @@ class TimerService:
                              "edit_date_only_work": dated_fields | {"expected_revision"},
                              "delete_work_entry": {"task_id", "entry_id", "expected_revision", "comment"},
                              "set_week_start": {"week_start", "expected_week_start"}})
-            if op not in expected or set(a) != expected[op]:
+            if op == 'create_task':
+                required = {'task_id','name'}
+                allowed = required | {'project_id','parent_task_id','expected_project_version','expected_parent_version'}
+                if not required <= set(a) or not set(a) <= allowed:
+                    raise ValueError('Incorrect create_task fields')
+            elif op not in expected or set(a) != expected[op]:
                 raise ValueError("Unknown operation or incorrect request fields")
             if op in ("add_timed_work", "add_date_only_work", "edit_closed_timed_work", "edit_date_only_work", "delete_work_entry"):
                 return self._work_mutation(c, request, a)
@@ -481,17 +527,35 @@ class TimerService:
             if op in ("create_task", "create_project"):
                 entity = "task" if op == "create_task" else "project"
                 key, name = uuid_text(a[f"{entity}_id"]), name_text(a["name"])
-                if entity == "task":
-                    self._project(c, a["project_id"])
-                    c.execute("INSERT INTO tasks(task_id,project_id,name,version,is_deleted,created_utc_us,updated_utc_us) VALUES(?,?,?,1,0,?,?)", (key, a["project_id"], name, now, now))
+                if entity == 'task':
+                    parent, parent_version = a.get('parent_task_id'), a.get('expected_parent_version')
+                    group, project_version = a.get('project_id'), a.get('expected_project_version')
+                    if parent is not None:
+                        if parent == key: raise ValueError('Task cannot parent itself')
+                        row = self._task(c,parent,parent_version)
+                        path = self._active_path(c,parent)
+                        if len(path)>=3: raise ValueError('Maximum three task levels')
+                        if 'project_id' in a and group != row['project_id']:
+                            raise ValueError('Child project must match parent project exactly')
+                        group = row['project_id']
+                        if c.execute('SELECT 1 FROM active_timer WHERE task_id=?',(parent,)).fetchone():
+                            raise StaleState('Running task cannot become a parent')
+                    elif parent_version is not None:
+                        raise ValueError('Root task has no reviewed parent version')
+                    if group is not None and parent is None:
+                        integer(project_version,'Reviewed project version',1,2**63-1)
+                    self._project(c,group,project_version)
+                    c.execute("""INSERT INTO tasks(task_id,project_id,parent_task_id,name,version,created_request_id,created_utc_us,updated_utc_us)
+                      VALUES(?,?,?,?,1,?,?,?)""",(key,group,parent,name,request.request_id,now,now))
                 else:
-                    c.execute("INSERT INTO projects(project_id,name,version,is_deleted,created_utc_us,updated_utc_us) VALUES(?,?,1,0,?,?)", (key, name, now, now))
+                    c.execute("""INSERT INTO projects(project_id,name,version,created_request_id,created_utc_us,updated_utc_us)
+                      VALUES(?,?,1,?,?,?)""",(key,name,request.request_id,now,now))
                 return {f"{entity}_id": key, "version": 1}
             if op in ("rename_task", "rename_project"):
                 entity = "task" if op == "rename_task" else "project"
                 key = uuid_text(a[f"{entity}_id"])
                 version = integer(a["expected_version"], "Version", 1, 2**63 - 1)
-                row = c.execute(f"SELECT * FROM {entity}s WHERE {entity}_id=? AND is_deleted=0", (key,)).fetchone()
+                row = c.execute(f"SELECT * FROM {entity}s WHERE {entity}_id=?", (key,)).fetchone()
                 if row is None or row["version"] != version:
                     raise StaleState("Reviewed identity/version changed")
                 name = name_text(a["name"])
@@ -504,10 +568,14 @@ class TimerService:
                 self._project(c, a["project_id"])
                 if row["project_id"] == a["project_id"]:
                     return None
+                self._active_path(c,a['task_id'])
+                if row['parent_task_id'] is not None or c.execute('SELECT 1 FROM tasks WHERE parent_task_id=?',(row['task_id'],)).fetchone():
+                    raise ValueError('Nested branch assignment requires separately approved structural movement')
                 c.execute("UPDATE tasks SET project_id=?,version=version+1,updated_utc_us=? WHERE task_id=?", (a["project_id"], now, a["task_id"]))
                 return {"task_id": a["task_id"], "version": row["version"] + 1}
             if op == "start_timer":
                 self._task(c, a["task_id"], a["expected_task_version"])
+                self._recordable(c, a['task_id'])
                 if c.execute("SELECT 1 FROM active_timer").fetchone():
                     raise StaleState("Another timer is active; use Switch")
                 self._open(c, a["task_id"], a["entry_id"], request)
@@ -519,6 +587,7 @@ class TimerService:
             if op == "switch_timer":
                 active = self._active(c, a["expected_active_entry_id"], a["expected_active_version"])
                 self._task(c, a["next_task_id"], a["expected_task_version"])
+                self._recordable(c, a['next_task_id'])
                 if active["task_id"] == a["next_task_id"]:
                     raise ValueError("Switch requires a different task")
                 self._close(c, active, request)
@@ -579,15 +648,19 @@ class TimerService:
         instant(cutoff_utc_us)
         with self._read_transaction() as c:
             tasks = [dict(r) for r in c.execute("SELECT * FROM tasks ORDER BY created_utc_us,task_id")]
-            projects = [dict(r) for r in c.execute("SELECT * FROM projects WHERE is_deleted=0 ORDER BY name,project_id")]
+            projects = [dict(r) for r in c.execute("SELECT * FROM projects ORDER BY name,project_id")]
             rows = [dict(r) for r in c.execute("""SELECT e.task_id,r.* FROM work_entries e JOIN work_revisions r
               ON r.entry_id=e.entry_id AND r.revision=e.current_revision WHERE r.is_deleted=0""")]
             row = c.execute("SELECT * FROM active_timer").fetchone()
             active = dict(row) if row else None
             weekday = self.store.week_start
+            structure = self.store.assert_structure(c)
+            tasks = [{**t, **structure[t['task_id']]} for t in tasks]
         # Calculation failure must not hide the current identities or disable recovery controls.
         try:
             report = calculate(tasks, rows, active, cutoff_utc_us, self.store.zone, weekday)
+            for project in projects:
+                report['projects'].setdefault(project['project_id'],dict(today_us=0,week_us=0))
             error = None
         except (ValueError, OverflowError) as exc:
             report, error = None, str(exc)

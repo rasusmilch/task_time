@@ -144,7 +144,7 @@ def test_real_tk_open_existing_owned_chooser_cancel_and_timezone_preserved(launc
     assert flow.app.dataset_id == identity and flow.app.timezone == 'Australia/Lord_Howe'
 
 
-@pytest.mark.parametrize('kind', ['missing', 'foreign', 'schema', 'unreadable_record', 'corrupt_record'])
+@pytest.mark.parametrize('kind', ['missing', 'foreign', 'schema', 'v1', 'unreadable_record', 'corrupt_record'])
 def test_real_tk_bad_remembered_selection_refuses_preserves_and_allows_cancel(launch, root, tmp_path, kind, click):
     data, record = tmp_path/'existing', tmp_path/'user-local'/'launcher-selection.json'
     if kind != 'missing': seed(data)
@@ -152,6 +152,9 @@ def test_real_tk_bad_remembered_selection_refuses_preserves_and_allows_cancel(la
     if kind == 'foreign':
         import sqlite3
         with sqlite3.connect(data/'chronicle.sqlite3') as c: c.execute('PRAGMA application_id=123')
+    if kind == 'v1':
+        import sqlite3
+        with sqlite3.connect(data/'chronicle.sqlite3') as c: c.execute('PRAGMA user_version=1')
     if kind == 'schema':
         import sqlite3
         with sqlite3.connect(data/'chronicle.sqlite3') as c: c.execute('CREATE TABLE extra(x)')
@@ -163,6 +166,7 @@ def test_real_tk_bad_remembered_selection_refuses_preserves_and_allows_cancel(la
     flow = launch()
     pump(root, lambda: flow.discover_id is None and flow.worker is None and bool(flow.status.cget('text')))
     assert flow.app is None
+    if kind == 'v1': assert 'schema' in flow.status.cget('text').lower()
     assert (record.read_bytes() if record.is_file() else None) == raw
     assert ({p.name: p.read_bytes() for p in data.iterdir()} if data.exists() else {}) == files
     click(flow.cancel_button, closes_root=True)

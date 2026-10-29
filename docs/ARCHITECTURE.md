@@ -23,15 +23,15 @@ Stage 3 functional acceptance. The later Stage 4B GO independently accepts Stage
 recovery. The later Stage 4C GO independently accepts Stage 4B portable reliability;
 subsequent independent review accepts Stage 4C cold compatibility inspection,
 protected refusal and bounded owned SQLite-native rollback recovery for functional
-development, with schema 1 unchanged. Stage 4 remains IN PROGRESS; native
+development (schema 1 at that acceptance). Stage 4 remains IN PROGRESS; native
 qualification is incomplete and Stage 5 is not started. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
-The later user-approved hierarchy design is documented below as an **unimplemented
-target**. Product behavior is selected; the fresh relational model, exact DDL,
-schema marker and proposed service shapes require separate review before coding.
-Current source still implements flat schema 1. No migration or compatibility mode
-is required for the hierarchy target, and no runtime schema changes in this task.
+Package B1 implements the selected fresh hierarchy/recording foundation for
+independent review: schema 2, unchanged application ID 0x4348524E. Version 1 is
+incompatible and never migrated, replaced or adopted through a compatibility mode.
+Movement, lifecycle operations, nested management UI and templates remain targets,
+with their own later technical adjudication; B1 does not authorize them.
 
 ## Small application and responsibility boundaries
 
@@ -66,7 +66,7 @@ complete behavioral slices follow the roadmap, not optional post-pilot bolt-ons:
 
 | Facts | Required relationships and invariants |
 | --- | --- |
-| Projects/tasks | Stable UUIDs, optional current membership and preserved archived identities/history. Target Delete removes only eligible unused structure under the administrative boundary below; current version-1 retained flags are unchanged. Projects own no work/timer. |
+| Projects/tasks | Stable UUIDs, optional current membership and preserved archived identities/history. Target Delete removes only eligible unused structure under the administrative boundary below; B1 stores explicit archive metadata and no live soft-delete flag; lifecycle mutations remain pending. Projects own no work/timer. |
 | Timed work | Stable entry UUID, task UUID, genuine UTC endpoints, current revision and deletion state. Closed spans positive; active timer represented explicitly without a fabricated stop. |
 | Date-only work | Stable entry UUID, task UUID, civil work date and integer duration; no synthetic endpoints. Distinct shape and constraints. |
 | Work revisions | Immutable typed prior/new revision facts, audit time, optional comment, ownership and deletion evidence. Current reference changes atomically with revision. |
@@ -75,7 +75,7 @@ complete behavioral slices follow the roadmap, not optional post-pilot bolt-ons:
 | Absolute confirmation batches/cells | Immutable batch identity/audit/source and selected task/day absolute integer quarter counts, reviewed prior identity and exact cell-specific acknowledgement. One batch is atomic. No arbitrary hundredth confirmations. |
 | Current confirmed references | Each known task/day points to its latest committed immutable confirmation cell/batch; absence means Unknown, an explicit zero row means known zero. No additive confirmed balance. |
 | Committed request receipts | Unique request identity, strictly comparable request content and committed result, atomically tied to the use case. Not file-availability state. |
-| Dataset metadata | Schema identity, explicit IANA timezone, selected week convention and one nullable canonical reminder-dismissed local date. No computed status/summary ledger or legacy import. Current runtime stays version 1; proposed hierarchy requires a distinct fresh schema identity. |
+| Dataset metadata | Schema identity, explicit IANA timezone, selected week convention and one nullable canonical reminder-dismissed local date. No computed status/summary ledger or legacy import. Current supported runtime is exact fresh version 2; no old layout is accepted. |
 
 Use enforced foreign keys and appropriate STRICT, CHECK and UNIQUE constraints;
 validate bounded integer/date ranges and shapes in services as well. Stage 1A SQL
@@ -87,7 +87,7 @@ their UI is delivered.
 ## Transactions and exact request reconciliation
 
 Explicit services own complete use cases. For ordinary retained mutating requests
-(all current schema-1 mutations):
+(all current schema-2 mutations):
 
 1. Validate shape/identity and resolve the same request ID in authoritative SQLite.
 2. An exact committed reuse returns its original committed result **before** stale
@@ -157,7 +157,7 @@ orderly DELETE commit removes it. Never delete journals/sidecars as application
 cleanup. Development datasets are disposable, but incompatible/damaged/unknown
 files are refused, not recreated, repaired or converted. No production SQLite
 datasets exist; no migration or old-schema compatibility is provided. The executing
-schema stays 1; the proposed hierarchy schema is distinct and unimplemented.
+schema is now exactly 2. Schema-1 files/backups refuse and remain protected.
 Cold compatibility inspection below is diagnostic only, not a conversion route.
 
 Stage 4A implements online consistent backup on the existing worker-owned source
@@ -270,7 +270,7 @@ The CLI reports deterministic statuses documented in [RUNNING.md](../RUNNING.md#
 
 | Classification | Required observation |
 | --- | --- |
-| SUPPORTED_CURRENT | Chronicle identity/version 1, supported profile, exact DDL/STRICT/guards, complete SQLite/FK and all Chronicle evidence/receipt validation, successful close and stable final fingerprint. |
+| SUPPORTED_CURRENT | Chronicle identity/version 2, supported profile, exact DDL/STRICT/guards, complete SQLite/FK and all Chronicle evidence/receipt validation, successful close and stable final fingerprint. |
 | OLDER_UNSUPPORTED / NEWER_UNSUPPORTED | Chronicle identity and differing version marker after generic SQLite integrity/FK checks; current Chronicle semantics are not applied to an unknown version. A lower marker does not prove an authentic older schema. |
 | UNSUPPORTED_LAYOUT | Current identity/version with a different DDL signature. `_verify_schema` is the sole existing schema authority, now separated from semantic checks; token comparison preserves quoted literals. |
 | FOREIGN_DATABASE | A trustworthy SQLite application identity differs. |
@@ -322,7 +322,7 @@ implemented or authorized. No UPGRADE_AVAILABLE result exists. Normal locked nat
 rollback recovery of a supported image is not schema conversion. Native
 qualification and the complete Stage 4 gate remain separate.
 
-## Implemented Package A presentation on flat schema 1
+## Implemented main and mini presentation
 
 `task_row`/`project_row` distinguish task:UUID, project:UUID and group:unassigned;
 only a validated task row authorizes a task UUID. Selected project rows cannot
@@ -331,9 +331,9 @@ identity/version, with the existing chooser otherwise. New Task freezes selected
 project, selected task's current project or Unassigned before its owned prompt,
 then calls existing create_task(project_id). No new SQL or service operation.
 
-Main Individual/Cumulative use session Today/This Week; flat tasks match, group
-Individual is a placeholder and group Cumulative sums existing member report
-amounts, including retained hidden facts. Headline totals come from the report's
+Main Individual/Cumulative use session Today/This Week. B1 reads direct Individual,
+derived descendant Cumulative and project sums from the same worker report. Group
+Individual is a placeholder; retained archived/parent direct work still counts. Headline totals come from the report's
 application values, never widget rollups. Failure clears all amounts without
 repeating a failing formatter; later valid reads recover.
 
@@ -353,36 +353,57 @@ Off. Presentation/Show Main require a ready idle owner without competing modal,
 grab, pending mutation, backup or shutdown. Mini drops topmost while blocked and
 never takes focus/grabs. Existing root destruction owns child/worker cleanup; no
 new timer, root, connection or worker. Package A awaits independent review and
-native Windows theme/topmost/focus qualification. Deeper hierarchy below remains
-unimplemented.
+native Windows theme/topmost/focus qualification. B1's service hierarchy below is
+implemented; full nested UI remains Package D. Parent new-work controls are disabled;
+History remains direct and New Task still creates a project-scoped root.
 
-## Proposed fresh hierarchy foundation
+## Fresh hierarchy foundation
 
-**Status: PROPOSED technical model for the approved target behavior, not active
-DDL or an implementation authorization.** See the
-[hierarchy requirements](TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary)
-and [bounded packages](ROADMAP.md#hierarchy-target--bounded-packages-a-f).
-Do not edit `SCHEMA_VERSION`, `APPLICATION_ID` or live tables to implement this
-document. Before package B, review exact fresh STRICT DDL/guards/indexes and a
-distinct supported schema marker; never accept old flat schema 1 as hierarchy.
-Whether the existing application ID is retained is part of that identity review,
-not an independently selected new application ID here.
+**B1 IMPLEMENTED FOR INDEPENDENT REVIEW; later movement/lifecycle/template
+contracts below remain PROPOSED where identified.** Schema version 2 and application
+ID 0x4348524E identify the sole supported fresh layout, together with exact DDL.
+Version 1 refuses without conversion/replacement or clearing remembered selection.
+Creation uses the existing exclusive new/empty-directory path. Current normal
+owned native SQLite recovery and cold non-recovering inspection retain their
+separate guarantees; recovery is not compatibility or migration.
 
-Source grounding: [sqlite_store.py](../src/chronicle/sqlite_store.py) currently
-defines flat `projects`/`tasks`, schema 1, retained identity and immutable evidence
-guards; [services.py](../src/chronicle/services.py) provides `create_task`,
-`assign_task_to_project`, `read_current_state` and explicit Request operations.
-[app.py](../src/chronicle/app.py) groups flat data into Project → Task/Unassigned
-in `_build`/`_render` (Package A);
-[mini_mode.py](../src/chronicle/mini_mode.py) delegates to that owner and currently
-implements guarded Show Main/Keep Mini Open/state bar in Package A. [accounting.py](../src/chronicle/accounting.py)
-calculates direct task/day values; [timesheet.py](../src/chronicle/timesheet.py)
-freezes task identities/current-at-export grouping. The legacy
-[tree UI](../src/task_timer/app.py), [mini](../src/task_timer/mini_mode.py) and
-[template store](../src/task_timer/subtask_templates.py) demonstrate practical
-controls, not reusable runtime authority: do not import the old service or copy
-its separate JSON template persistence. [Design Notes](../DESIGN_NOTES.md) remains
-unchanged historical evidence.
+`sqlite_store.py` owns the schema, SQL guards, complete forest and receipt checks.
+`services.py` extends create_task with nullable parent and reviewed destination
+versions. `hierarchy.py` reconstructs bounded paths/derived observations afresh from
+one relational snapshot; it stores no projection or cache. `accounting.py` retains
+direct task/day values and derives Individual/Cumulative/project dictionaries at
+the same cutoff. `timesheet.py`/POL-R still use direct facts, never rollups.
+Main/mini remain Package A grouping with B1-compatible contracts, not the nested UI.
+Legacy tree/template source remains interface evidence, never runtime authority.
+
+B1 task creation is atomic with its administrative receipt. Child creation reviews
+parent identity/version, effective archive path, depth and running state inside
+BEGIN IMMEDIATE. Omitted child project inherits the parent's project; an explicitly
+supplied value, including NULL, must match exactly. Root creation in a real project
+requires its reviewed version; child creation requires the reviewed parent version
+and checks a project version if supplied. Root creation has no parent review.
+Parents receive no artificial version increment. Standalone-root assignment stays
+available; changing membership of a nested task/branch refuses pending B2.
+
+Every new work identity and active insert has SQL active-leaf guards. Task edge
+INSERT/UPDATE guards enforce matching project, no running parent and bounded
+cycle/depth checks; archive-flag updates cannot hide an active timer. Complete
+validation independently walks every forest and verifies active eligibility, not
+just service results. Historical work remains owned by the same UUID and can be
+corrected/deleted by immutable revisions even after it becomes a parent.
+
+`committed_requests.receipt_class` is constrained to administrative/protected and
+derived from the finite operation list in `records.py`, never caller metadata.
+Implemented administrative operations are create/rename project, create/rename task
+and assign_task_to_project. The reserved move_task_branch and archive/unarchive
+project/task names are classified but not executable. All other operations are
+protected. SQL prohibits every receipt UPDATE and every protected receipt DELETE.
+No B1 service deletes administrative receipts. Creation ownership FKs are deferred;
+independent validation proves each creation owns a surviving entity and every
+survivor has its creation, canonical result, contiguous version effects, current
+name/membership/timestamps and historically reviewed destination versions. Missing
+or orphaned administration is damage, not an assumed prior Delete. This detached
+validation installs no replayed hierarchy authority.
 
 ### Relational shape and invariant ownership
 
@@ -391,13 +412,13 @@ BEGIN IMMEDIATE/COMMIT/ROLLBACK, immutable evidence and exact atomic receipts.
 No separate JSON tree, template JSON store, persistent descendant totals, closure
 cache, new worker or Python hierarchy projection becomes authoritative.
 
-| Proposed relation | Fields/relationships and purpose |
+| Relation / implementation status | Fields/relationships and purpose |
 | --- | --- |
-| projects | Stable UUID, name, reviewed version, explicit archive flag and nullable current UTC archive timestamp. No target soft-delete flag. Eligible unused Delete removes the row, not protected evidence. Duplicate names are valid; projects own no work/timer. |
-| tasks | Stable UUID, optional project FK, optional self-parent FK, name, reviewed version, explicit archive flag and current UTC archive timestamp. No target soft-delete flag; parent cannot be self. Duplicate names are valid. Eligible unused Delete removes the row under the dependency boundary below. |
-| task structure | Parent adjacency is the authority. A subtree shares current project membership; root project may be NULL. Whether membership is stored per task with transactional subtree updates or derived from roots is an exact-DDL review choice; do not keep two independently mutable memberships. Proposed preference: per-task membership, consistent with existing report reads, validated on every affected edge. |
-| template definitions | Stable UUID/name/version and Archive/Unarchive availability, not a recoverable deletion state. Active names are unique after trim/casefold; Unarchive rechecks uniqueness. Proposed normalized-key/UNIQUE representation needs review; SQLite lower/NOCASE does not establish Python casefold equivalence. Actual definition Delete eligibility for applied/referenced templates remains Open before E. |
-| template nodes | Template UUID, node identity, name and optional parent within the same template. Proposed compound FK binds (template, parent node) to that template; root NULL has no parent. No work/timer/confirmation/source-task identity is embedded. |
+| projects | B1: stable UUID, name, reviewed version, explicit archive flag, nullable current UTC archive timestamp and owning created_request_id deferred FK. No target soft-delete flag. Eligible unused Delete removes the row, not protected evidence. Duplicate names are valid; projects own no work/timer. |
+| tasks | B1: stable UUID, optional project FK, optional self-parent FK, name, reviewed version, explicit archive flag/current UTC timestamp and owning created_request_id deferred FK. No target soft-delete flag; parent cannot be self. Duplicate names are valid. Eligible unused Delete removes the row under the dependency boundary below. |
+| task structure | Parent adjacency is the authority. A subtree shares current project membership; root project may be NULL. B1 stores matching project_id on every descendant; root membership may be NULL. Parent adjacency is the only hierarchy authority, with tasks_project/tasks_parent indexes. B2 must separately adjudicate atomic subtree movement and corresponding guards; do not add a second mutable membership authority. |
+| template definitions (not implemented) | Stable UUID/name/version and Archive/Unarchive availability, not a recoverable deletion state. Active names are unique after trim/casefold; Unarchive rechecks uniqueness. Proposed normalized-key/UNIQUE representation needs review; SQLite lower/NOCASE does not establish Python casefold equivalence. Actual definition Delete eligibility for applied/referenced templates remains Open before E. |
+| template nodes (not implemented) | Template UUID, node identity, name and optional parent within the same template. Proposed compound FK binds (template, parent node) to that template; root NULL has no parent. No work/timer/confirmation/source-task identity is embedded. |
 | existing evidence families | Retain direct task ownership in work_entries/revisions, active timer/corrections, frozen export/task/basis/cells, confirmation batches/cells/current references and committed_requests. Adapt fresh FK/guards to the reviewed fresh schema; never introduce parent cumulative work rows. |
 
 Use canonical UUID, type, NOT NULL, FK, CHECK, UNIQUE and STRICT guards for local
@@ -409,11 +430,11 @@ materialized daily/project/ancestor aggregate tables are selected.
 
 Foreign keys alone cannot prove bounded acyclic ancestry, same-project consistency
 when NULL is involved, effective inherited visibility, leaf eligibility, subtree
-height at a new destination or absence of an active descendant. Proposed service
+height at a new destination or absence of an active descendant. B1 service
 validation uses bounded ancestry/subtree reads (recursive CTE or equivalent
 transactional queries) and final lifecycle checks inside the write transaction.
-Review database triggers for enforceable active-leaf and structural guards as part
-of the exact DDL; do not claim a CHECK with cross-row reads exists in SQLite.
+B1 SQL triggers enforce local active-leaf/structural guards; do not claim a CHECK
+with cross-row reads exists in SQLite. Further movement guards need B2 review.
 Full startup/image validation must independently establish the complete forest,
 depth, membership and lifecycle invariants as well as every existing evidence
 chain. Direct-SQL invalid states must reject wherever selected constraints can
@@ -422,13 +443,14 @@ enforce them; service-only guards must be identified explicitly in that review.
 Real projects and virtual Unassigned both allow three task levels. Unassigned is
 presented as a group, with no additional persisted project UUID; proposed root
 membership remains NULL. No selection for New Task means an Unassigned root;
-otherwise the destination is the selected group/project or eligible parent task.
+the future nested GUI uses the selected group/project or eligible parent task.
+B1's current GUI intentionally retains project-scoped root creation.
 
 Archive changes only the selected node's explicit flag and stores the exact
 accepted UTC instant. Unarchive clears that flag/current timestamp, never descendant
-flags or edges. Propose a CHECK binding explicit flag to non-NULL archive timestamp
-with the existing valid UTC-integer range; column spellings/exact DDL remain
-proposals. Effective archived state comes from ancestry. Independently archived
+flags or edges. B1 implements a CHECK binding explicit is_archived to non-NULL
+archived_at_utc_us within the existing valid UTC-integer range. No archive mutation
+service is delivered yet. Effective archived state comes from ancestry. Independently archived
 nodes use their own timestamp; inherited-only nodes use the nearest archived
 ancestor's timestamp for display. Convert with the stored IANA zone/DST rules;
 date sorting uses the genuine UTC instant, not ambiguous formatted local text.
@@ -444,8 +466,8 @@ materialized cumulative-time authority is selected.
 ### Explicit operations, atomicity and uncertainty
 
 Extend the existing explicit TimerService/worker route, not a generic update-dict
-API. The following are **proposed service contracts**, names/signatures to finalize
-with fresh DDL review:
+API. B1 implements creation/rename, standalone assignment, recording and detached
+reads as above. Other operations below remain **proposed future contracts**:
 
 | Use case | Strict reviewed inputs / result |
 | --- | --- |
@@ -484,16 +506,17 @@ soft-delete/Permanent Delete model and rejects full-content or digest tombstones
 anti-replay registries and permanent unused-entity audit/purge-proof ledgers. The
 fresh target has Archive/Unarchive plus irreversible unused-only Delete, with no
 project/task soft-delete flag, Deleted Items relation or retained recoverable
-identity. Current flat schema 1, its application ID and its guards remain unchanged;
-exact fresh schema identity, DDL and executable receipt design need separate review.
+identity. B1 schema 2 contains no Delete service or tombstones. Its receipt classes
+and strict survivor verifier prepare the boundary; actual Delete closure, request
+retirement, SQL ordering and uncertainty handling require separate review.
 
 Source constraint: `SQLiteStore.verify_receipts()` currently requires administrative
 creation/rename/assignment receipts to reference a surviving entity/version.
 `_receipt()` compares exact canonical Request bytes and returns the stored result;
-immutable triggers prohibit receipt UPDATE/DELETE. Do not weaken that executing
-validator or disable its triggers. The fresh design must deliberately distinguish
-retained protected requests from the finite exclusively administrative requests
-that an approved unused-branch Delete may erase. It must not make unused branches
+immutable triggers prohibit every receipt UPDATE and protected DELETE. B1 services
+retire no receipts. Do not weaken the executing survivor validator or disable its
+guards. Actual unused-branch Delete must prove which exclusively administrative
+requests can be erased without breaking any surviving relationship. It must not make unused branches
 undeletable merely by retaining every abandoned administrative receipt forever.
 
 The existing `transact()` always inserts a committed receipt for a changed use case;
@@ -668,9 +691,8 @@ or per-tick persistence. Week calculations use civil-date arithmetic and the
 selected weekday (Sunday initially), not fixed 168-hour UTC spans.
 
 Main/mini share a coordinated cutoff; each task's Individual remains its own work
-and application totals include archived-task work (also existing schema-1 retained-
-deleted task work in the current runtime). The approved hierarchy
-target adds only the derived Cumulative presentation described above. Current
+and application totals include archived/parent direct work. B1 adds only the
+derived Cumulative presentation described above; no live soft-delete flag exists. Current
 project grouping is derived, non-additive. Displayed Actual rounds each task/day
 once to integer hundredths;
 its rollups sum those cells. **Submission is a distinct pure calculation** over
@@ -736,10 +758,11 @@ not interrupted. No repaint/shutdown infers missing stops.
 
 ## Implemented Stage 1A boundary
 
-`bootstrap` requires explicit data-dir/create/zone arguments. `dataset_lock` holds
+Stage 1A established explicit data-dir/create/zone startup; current `bootstrap`
+also supports the source setup/remembered selection described above. `dataset_lock` holds
 OS ownership before writable open; unknown/nonempty create targets and unknown
 schema versions refuse without data cleanup. `sqlite_store` owns isolation_level=None,
-BEGIN IMMEDIATE/COMMIT/ROLLBACK and checked STRICT fresh schema version 1. Dataset/task/
+BEGIN IMMEDIATE/COMMIT/ROLLBACK and checked STRICT fresh schema (originally version 1; B1 now supports only version 2). Dataset/task/
 project UUIDs, optional membership, timed work identities/current immutable revisions,
 one active row, immutable active-start audits and committed receipts are relational.
 Original start never changes; active effective start/version follows its audit chain.
@@ -806,7 +829,8 @@ Stage 2A extends the fresh development schema directly for date-only revisions;
 older development signatures refuse, without a migration path. Export
 basis/cells are added in Stage 3A; three confirmation batch/cell/current-reference
 tables are added in Stage 3C, preserving stable identities. The exact expanded fresh
-schema still uses version 1 and refuses older signatures without conversion. The
+schema used version 1 at those stages; B1 now uses only version 2 and refuses
+all earlier signatures without conversion. The
 current application exposes Timesheet Preview, protected file Save/recovery and
 explicit absolute confirmation and derived reconciliation/reminders. Stage 3D adds
 only `dataset_meta.polr_reminder_dismissed_local_date TEXT NULL`, SQL shape checks
@@ -854,7 +878,7 @@ active-only start audits and timed-only active ownership. Final transaction/reop
 checks validate complete contiguous chains, current references, deletion terminality,
 real dates and original/active-start evidence. Exact schema-object signatures
 reject incompatible or unknown structures. The profile and schema version remain
-DELETE/EXTRA/FK and 1; there is no automatic upgrade, conversion or recreation.
+DELETE/EXTRA/FK and 2; there is no automatic upgrade, conversion or recreation.
 
 The explicit `TimerService` mutation interfaces below all return Outcome and
 require keyword-only `request_id: str, action_utc_us: int`; dataset identity comes
@@ -1016,12 +1040,12 @@ Explicit `TimerService` APIs:
 
 Preparation captures task/project metadata, effective mixed work, active start,
 zone and committed weekday within one read transaction, then calculates detached
-facts under the explicit UI observation. All includes retained deleted tasks;
+facts under the explicit UI observation. All includes archived tasks and direct parent work;
 Selected rejects empty/duplicate/unknown IDs. Each intersecting week retains seven
 basis dates even for one-day Custom, while visible cells cover exactly the requested
 task/dates. Valid empty All is distinct from failure. There is no preparation write.
 
-Four STRICT immutable tables extend fresh schema version 1: `timesheet_exports`,
+Four STRICT immutable tables originated in schema 1 and remain protected in schema 2: `timesheet_exports`,
 `timesheet_export_tasks`, `timesheet_export_week_basis`, `timesheet_export_cells`.
 Deferred foreign keys allow validated task/basis/cell rows before the master; the
 master seals further child inserts. UPDATE/DELETE triggers protect all evidence.

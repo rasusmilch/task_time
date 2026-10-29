@@ -27,7 +27,7 @@ def project(app, name='Project', key=None):
 
 def task(app, name='Task', group=None, key=None):
     key = key or uid()
-    submit(app, 'create_task', task_id=key, name=name, project_id=group)
+    submit(app, 'create_task', task_id=key, name=name, project_id=group, expected_project_version=1 if group else None)
     return key
 
 
@@ -103,7 +103,7 @@ def test_real_tk_shared_period_totals_hidden_work_and_read_only_navigation(conne
         submit(app,'add_date_only_work',task_id=t,entry_id=uid(),work_date=day,duration_text=duration,comment='')
     before=evidence(worker)
     # Existing reader includes retained hidden identities; navigation is a projection only.
-    snapshot=deepcopy(app.state);next(t for t in snapshot['tasks'] if t['task_id']==hidden)['is_deleted']=1
+    snapshot=deepcopy(app.state);next(t for t in snapshot['tasks'] if t['task_id']==hidden)['effective_archived']=True
     app._render(snapshot)
     assert not app.tree.exists(app.task_row(hidden))
     assert app.tree.item(app.project_row(p),'values')[2]=='01:40'

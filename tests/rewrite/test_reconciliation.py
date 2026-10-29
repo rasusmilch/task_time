@@ -94,13 +94,13 @@ def test_cell_display_rounding_per_task_independence_deleted_and_scope(service,t
     project_id=uid();service.create_project(project_id,'Group',request_id=uid(),action_utc_us=NOW)
     service.assign_task_to_project(other,project_id,expected_version=1,request_id=uid(),action_utc_us=NOW)
     for t in (task,other):dated(service,t,duration='0:03')
-    store.connection.execute('UPDATE tasks SET is_deleted=1 WHERE task_id=?',(other,))
+    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(other,))
     r=read(service);assert r['cross_task_weeks'][0]['weekly_target_quarters']==2
     assert r['cross_task_weeks'][0]['exact_actual_us']==6*M
     assert r['cross_task_weeks'][0]['weekly_adjustment_us']==24*M
     assert r['visible_totals']['actual_hundredths']==10
     selected=read(service,scope_kind='selected',task_ids=(other,))
-    assert len(selected['tasks'])==1 and selected['tasks'][0]['is_deleted'] and len(selected['daily_cells'])==7
+    assert len(selected['tasks'])==1 and not selected['tasks'][0]['is_deleted'] and len(selected['daily_cells'])==7
     assert selected['visible_totals']['exact_actual_us']==3*M
     with pytest.raises(ValueError):read(service,scope_kind='selected',task_ids=())
 

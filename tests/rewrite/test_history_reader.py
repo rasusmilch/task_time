@@ -53,7 +53,7 @@ def test_running_cutoff_and_active_audit_never_save_a_stop(service,task,store):
 def test_retained_task_deleted_effective_work_and_revision_details(service,task,store):
     e=dated(service,task)
     service.edit_date_only_work(task,e,'2026-10-20','2:00',expected_revision=1,request_id=uid(),action_utc_us=NOW)
-    store.connection.execute('UPDATE tasks SET is_deleted=1 WHERE task_id=?',(task,))
+    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(task,))
     assert service.read_task_work_history(task,cutoff_utc_us=NOW)[0]['duration_us']==2*H
     service.delete_work_entry(task,e,expected_revision=2,request_id=uid(),action_utc_us=NOW)
     assert service.read_task_work_history(task,cutoff_utc_us=NOW,period='all')==[]

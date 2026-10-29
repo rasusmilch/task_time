@@ -92,11 +92,11 @@ must not turn another task's work into a task's own Actual.
 
 ### Approved hierarchy target and fresh-data boundary
 
-The later explicit hierarchy-design instruction selects the following target;
-it is **not implemented** in the current flat SQLite runtime. It supersedes the
-former Open/optional placement of replacement templates and the assumption that
-this hierarchy change would transform existing version-1 data. Exact fresh DDL
-and its distinct supported schema identity remain PROPOSED pending separate review.
+The hierarchy target is partially implemented by Package B1 for independent review:
+exact fresh schema 2, unchanged application ID 0x4348524E, parent adjacency and core
+recording/accounting. Movement, lifecycle actions, nested management UI and templates
+remain unimplemented. B1 supersedes the former proposed foundation/identity gate,
+not the remaining package approvals or the no-migration boundary.
 
 Maximum structure is Project → Task → Subtask → Sub-subtask: three task levels
 below a project. Each task has an independent UUID, optional project membership
@@ -123,7 +123,7 @@ Stop/Switch; an active timer also blocks Delete's unused-only eligibility. No
 hierarchy operation silently stops, switches or restarts a timer. Archived or
 effectively archived leaves accept no new time; their history remains retained.
 
-The new hierarchy runtime will require fresh data: no version-1 migration,
+The hierarchy runtime requires fresh schema-2 data: no version-1 migration,
 backward-compatible mode, conversion engine, compatibility shim, JSONL import or
 old-runtime fallback. Its schema must identify itself distinctly so an old dataset
 cannot be mistaken for supported new data. Incompatible datasets may refuse.
@@ -165,8 +165,9 @@ to view/sort abandoned unused items.
 
 Project/task management offers Create, Rename, Move, Archive/Unarchive, Delete and
 direct Work History using reviewed UUIDs/versions, cancellation without writes,
-stale diagnostics and authoritative completion. These remain unimplemented target
-operations; current schema-1 functionality is not being relabeled as delivered.
+stale diagnostics and authoritative completion. B1 implements creation/rename,
+explicit child creation and existing standalone-root project assignment. Nested
+branch movement, Archive/Unarchive and project/task Delete remain unimplemented.
 
 ### Unused-only Delete
 
@@ -222,7 +223,10 @@ reexecute or invent a retained deletion journal to conceal this limit. The
 requires separate engineering adjudication of its finite allowlist, closure,
 cross-entity/survivor dependencies, transaction order, stale/uncertain handling,
 independent verification and fresh DDL. Unsafe/unprovable scopes refuse.
-Current version-1 receipts and immutable evidence guards remain unchanged.
+B1 classifies retained receipts as administrative or protected. All UPDATEs and
+protected DELETEs remain SQL-prohibited. No B1 service retires any receipt; complete
+validation requires every surviving entity's creation receipt and all version effects.
+Future administrative retirement and its uncertainty policy still require Package C.
 
 A task/project with protected history must be archived instead of deleted. Its
 retained history stays available to History, Timesheet and POL-R/reconciliation.
@@ -441,9 +445,11 @@ exports and confirmations neither erase nor increase calendar Actual.
 
 ## SELECTED — Calendar Actual displays
 
-Package A implements Project → Task grouping on current flat schema 1, not nested
-task relationships. Main Individual/Cumulative share Today/This Week: a task's
-Cumulative equals its direct Individual; group Cumulative sums member report facts,
+Package A's Project → Task presentation now runs on schema 2. Full nested tree
+navigation remains Package D; nested B1 development fixtures are not a qualified
+end-user workflow. Main Individual/Cumulative share Today/This Week: Individual is
+direct Actual and Cumulative includes each descendant once. Group Cumulative sums
+member direct report facts,
 including applicable retained hidden task work. Groups have no Individual work;
 empty groups show zero only with a valid report. Both application totals remain
 visible and never add rollups twice. Mini retains Individual Today and Start/Stop.
@@ -451,8 +457,9 @@ Existing-service New Task uses the selected project, selected task's current
 project, or Unassigned for no/virtual selection, with a visible fixed destination.
 This flat rule does not replace future selected-task child creation.
 Application totals retain archived-task work when navigation hides it. Current
-schema-1 readers also preserve their existing retained-deleted task identities;
-that representation is not a new-target soft-delete tier. One coordinated refresh
+schema-2 readers retain parent and archived work; live tasks/projects have no
+soft-delete fields. Frozen report task labels retain the existing is_deleted shape
+with value false in newly registered v2 reports. One coordinated refresh
 uses one aware UTC cutoff and local observation date for main/mini. This week is the complete containing calendar
 week. Timed work is cutoff-capped; dated amounts belong wholly to their declared
 dates, including later dates within that week.
@@ -661,8 +668,9 @@ One modal Timesheet/POL-R workflow replaces old export workflows. Main/mini inpu
 is blocked while timers continue. Fresh preview defaults to This week/All tasks;
 Last week and Custom, typed dates/pickers, All or explicit task UUIDs are supported.
 Do not expand descendants. Duplicate names remain separate; archived-task work
-stays reportable. Existing schema-1 retained-deleted task inclusion is unchanged,
-not a target recoverable-Delete workflow. Calendar selection only edits drafts;
+stays reportable. Parent selection means only its direct task/day Actual; new
+schema-2 frozen task is_deleted labels are false, with no recoverable-Delete tier.
+Calendar selection only edits drafts;
 cancellation preserves them and invalid drafts remain correctable. Resolve relative periods at explicit
 Preview/Refresh, not by silently advancing an old preview.
 
@@ -815,17 +823,26 @@ gates; no automatic external allocation verification is established.
 | Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
-| Hierarchy, branch lifecycle, tree main/mini and nested templates | Approved target packages A–F in the roadmap; not implemented, not silently inherited from JSONL and not authorized for execution by this design task. |
+| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation and B1 fresh hierarchy/recording foundation implemented for review. B2 movement/C lifecycle/D full nested UI/E templates remain unimplemented, separately approved packages; nothing inherited from JSONL. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
 
-Package A presentation is implemented for independent review: empty project groups,
+Package B1's fresh schema-2 foundation is implemented for independent review.
+Creation receipts own each project/task; retained administrative version effects
+are independently checked, with protected receipts retained. Service child creation
+supports three levels, matching project/Unassigned membership and reviewed destination
+versions. A running leaf cannot become a parent; only effectively active leaves
+accept new work. Parent direct history remains editable/deletable by revision.
+Derived Individual/Cumulative/project amounts never add extra Actual to reporting.
+No migration, movement, lifecycle actions or templates are delivered.
+
+Package A presentation remains implemented: empty project groups,
 typed task/group rows, session-local A-Z/period choice, green/red text states,
 in-place row/label updates preserving selection/expansion/scroll, project-scoped
 New Task and selected-project rename. Mini adds Show Main, Off-by-default session-
 local Keep Mini Open and guarded topmost. Exact worker observations continue each
-second; only changed visible values repaint. No nested tasks, Archive/Delete,
+second; only changed visible values repaint. No full nested management UI, Archive/Delete actions,
 Archived Items or templates are implemented. Native Windows interface follow-up
 remains required.
 
@@ -917,7 +934,7 @@ GO. Native qualification and the remaining Stage 4 gate precede complete pilot.
 
 ## SELECTED — Schema compatibility and future upgrade safety
 
-Current production schema remains version 1 with the same application identity.
+Current supported fresh schema is version 2 with application ID 0x4348524E.
 A healthy complete current dataset permits ordinary work; older/newer markers,
 same-version differing schema, foreign identity, unsupported profile and damaged or
 unavailable inspection refuse without conversion, recreation or automatic repair.
@@ -937,11 +954,14 @@ validation and protected destination contracts.
 The later hierarchy approval selects fresh creation rather than a version-1
 transformation. No migration/backward compatibility obligation belongs to that
 plan; old files remain protected and incompatible data refuses. The current
-runtime still supports only its exact version-1 schema. A hypothetical later
+runtime supports only its exact version-2 schema; all version-1 datasets and
+backups refuse without conversion, replacement or clearing remembered selection.
+A hypothetical later
 data-preserving transition would require a separate explicit approval and complete
 source/target, evidence, ownership, installation/failure and recovery contract;
 Stage 4C's historical safety contract is not permission or an implementation
-requirement to build one for hierarchy. No target version or DDL is activated here.
+requirement to build one for hierarchy. B1 creates schema 2 only on a new/empty
+protected destination; future revisions need separate approval.
 The [technical boundary](ARCHITECTURE.md#cold-compatibility-inspection-and-future-transition-boundary)
 remains strict. Stage 4C is independently accepted for functional development;
 Stage 4 remains IN PROGRESS and no pilot is authorized.

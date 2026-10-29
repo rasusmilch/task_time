@@ -160,11 +160,11 @@ def test_direct_strict_check_unique_fk_guards(store, task, service):
     c = store.connection
     for statement, args in [
         ("UPDATE tasks SET version='wrong' WHERE task_id=?", (task,)),
-        ("UPDATE tasks SET is_deleted=2 WHERE task_id=?", (task,)),
+        ("UPDATE tasks SET is_archived=2 WHERE task_id=?", (task,)),
         ("UPDATE tasks SET created_utc_us=? WHERE task_id=?", (2**63 - 1, task)),
         ("UPDATE tasks SET project_id=? WHERE task_id=?", (uid(), task)),
         ("INSERT INTO tasks SELECT * FROM tasks", ()),
-        ("INSERT INTO tasks VALUES('bad',NULL,'Invalid',1,0,0,0)", ()),
+        ("INSERT INTO tasks(task_id,name,version,created_request_id,created_utc_us,updated_utc_us) VALUES('bad','Invalid',1,'bad',0,0)", ()),
     ]:
         with pytest.raises(sqlite3.IntegrityError):
             c.execute(statement, args)

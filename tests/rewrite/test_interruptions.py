@@ -521,7 +521,7 @@ def test_process_interruption_atomic_facts_and_exact_receipt(tmp_path, operation
     first, second, project, entry, next_entry = [uid() for _ in range(5)]
     assert service.create_project(project, 'P', request_id=uid(), action_utc_us=NOW).status == 'committed'
     for task in (first, second):
-        assert service.create_task(task, 'Duplicate', project, request_id=uid(), action_utc_us=NOW).status == 'committed'
+        assert service.create_task(task, 'Duplicate', project, expected_project_version=1, request_id=uid(), action_utc_us=NOW).status == 'committed'
     if operation != 'start_timer':
         assert service.start_timer(first, entry, expected_task_version=1, request_id=uid(), action_utc_us=NOW).status == 'committed'
     args = {

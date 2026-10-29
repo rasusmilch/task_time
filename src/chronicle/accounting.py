@@ -3,6 +3,7 @@
 from datetime import date, datetime, time, timedelta
 
 from .records import ClockWarning, integer
+from .hierarchy import task_paths
 from .timekeeping import instant, local_date, to_us, week_dates
 
 
@@ -82,5 +83,18 @@ def calculate(tasks: list[dict], work: list[dict], active: dict | None,
     totals = {key: sum(row[key] for row in by_task.values()) for key in ("today_us", "week_us")}
     for value in totals.values():
         integer(value, "Application total", 0, 2**63 - 1)
+    paths = task_paths(tasks)
+    individual = {key: {field: row[field] for field in ('today_us','week_us')} for key,row in by_task.items()}
+    cumulative = {key: dict(today_us=0,week_us=0) for key in by_task}
+    projects = {None: dict(today_us=0,week_us=0)}
+    for task in tasks:
+        key, group = task['task_id'], task.get('project_id')
+        amounts = projects.setdefault(group,dict(today_us=0,week_us=0))
+        for field in ('today_us','week_us'):
+            amounts[field] += individual[key][field]
+            for ancestor in paths[key]:
+                cumulative[ancestor][field] = integer(cumulative[ancestor][field]+individual[key][field],
+                                                      'Cumulative work',0,2**63-1)
     return {"cutoff_utc_us": cutoff, "today": today.isoformat(), "week_start": first.isoformat(),
-            "week_end": last.isoformat(), "tasks": by_task, "application": totals}
+            "week_end": last.isoformat(), "tasks": by_task, "application": totals,
+            "individual": individual, "cumulative": cumulative, "projects": projects}

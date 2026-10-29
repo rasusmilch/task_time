@@ -1117,13 +1117,14 @@ review remain required. No Stage 4 completion, pilot or release follows.
 
 ### Hierarchy, tree presentation, lifecycle and fresh-data approval
 
-**Status:** approved hierarchy target, unimplemented; its earlier lifecycle model
+**Status:** historical hierarchy approval (then unimplemented), extended by B1
+below; its earlier lifecycle model
 is superseded by the final Archive/Delete decision below. **Provenance:** the later
 explicit user documentation/design-consolidation instruction, following reviewed
 source `3cdfd012bd7afe6c979034d65689ac91c6c51ead`, supplies these choices. It
 authorizes documentation only, not schema/service/UI execution. Current owners:
 [requirements](TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
-[proposed model](ARCHITECTURE.md#proposed-fresh-hierarchy-foundation) and
+[proposed model](ARCHITECTURE.md#fresh-hierarchy-foundation) and
 [packages A–F](ROADMAP.md#hierarchy-target--bounded-packages-a-f).
 
 The user selects Project → Task → Subtask → Sub-subtask, stable independent task
@@ -1163,7 +1164,8 @@ refuse incompatibility; do not delete/recreate/convert them. Stage 4C's earlier
 hypothetical cold-transformation safety contract remains historical provenance and
 a boundary for any separately authorized future preservation task, not a hierarchy
 upgrade-engine requirement. Exact fresh DDL and distinct schema marker are PROPOSED
-for separate approval; actual runtime version 1/application identity are unchanged.
+for separate approval; at that documentation approval the runtime remained version 1.
+B1 below subsequently selects and implements fresh version 2.
 
 The relational table/service shapes in Architecture and package boundaries in
 Roadmap are engineering proposals derived from inspected source dependencies,
@@ -1275,7 +1277,8 @@ the earlier proposal to retain exact payload tombstones; do not hide the limit
 with a new registry, automatic retry or forensic ledger. The finite administrative
 allowlist, cross-entity closure, survivor proof, constraints/transaction order,
 stale/uncertain handling and independent complete validation remain PROPOSED
-engineering work for B/C. Executing schema 1 and its receipt guards are unchanged.
+engineering work for B/C. At that documentation approval schema 1 and its receipt
+guards remained unchanged; B1 below subsequently selects the fresh foundation.
 
 Templates use Archive/Unarchive availability and intended actual definition Delete,
 not soft-delete/Restore terminology. Applied tasks remain independent and active
@@ -1286,6 +1289,37 @@ Package A is the next executable slice only after independent acceptance of this
 documentation; no implementation occurs here. Stage 4 remains IN PROGRESS,
 Stage 5 NOT STARTED, with native, external-policy, installation and release gates
 unchanged.
+
+### Package B1 fresh hierarchy and core recording approval
+
+**Status:** selected B1 contract, implemented for independent review; no acceptance
+claim. **Provenance:** explicit Package B1 GO following independently verified
+`f4828c4fcbc9354ffe439792a790d2fd46e41f7f`. This selects schema version 2 with unchanged
+application ID 0x4348524E, overriding the earlier proposed-identity gate. Schema 1
+is incompatible and retained without migration, import, fallback or replacement.
+Remembered old datasets refuse without clearing the selection.
+
+B1 selects task parent adjacency with matching per-task project membership, NULL
+Unassigned and at most three levels. Child creation requires reviewed eligible
+parent context and does not increment its version. New timers/manual work require
+an effectively active leaf; a running leaf cannot acquire a child. Historical
+parent work/revisions remain direct, readable and correctable. Individual is direct;
+Cumulative includes descendants once; Timesheet/POL-R remain direct task/day scope.
+Package A's current GUI creates roots and is adapted to v2, not a full nested UI.
+
+The finite administrative classification is create/rename project, create/rename
+task and assign_task_to_project, plus reserved move_task_branch and archive/unarchive
+project/task names (not executable in B1). All other operations are protected.
+All receipt UPDATEs and protected DELETEs are prohibited; no B1 service retires any
+receipt. Deferred creation FKs and independent creation/version-effect validation
+protect every survivor. This preparation does not approve a Delete transaction or
+weaken exact retry for any retained request. Later Delete eligibility/closure and
+its owner-selected erased-history limitation remain as documented above.
+
+B2 structural movement, C lifecycle/Delete, D full nested management and E templates
+are unimplemented and need separate approvals. Windows Package A follow-up remains
+deferred; portable execution is not native qualification. Stage 4 remains IN
+PROGRESS, Stage 5 NOT STARTED; no installation/cutover, merge or release follows.
 
 ## Open decisions
 
@@ -1298,7 +1332,8 @@ owner or candidate implementation design.
 - Allocation defaults/overrides and their interaction with week-start changes.
 - Exact installation replacement and old-data cutover.
 - Dataset-timezone changes before affected configuration/accounting.
-- Exact finite administrative Delete allowlist, cross-entity closure/survivor proof,
+- Exact Delete retirement allowlist within B1's fixed administrative classification,
+  cross-entity closure/survivor proof,
   transactional constraints/order, stale/uncertain handling and independent complete
   validation in the separately reviewed fresh schema, without tombstones or a
   deletion ledger. Its narrowed historical-retry promise is owner-selected.

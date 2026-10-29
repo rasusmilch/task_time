@@ -289,7 +289,7 @@ def test_interrupted_confirmation_is_atomic_and_exact_retry_preserves_newer(serv
 def test_duplicate_names_deleted_tasks_partial_source_and_current_independence(service,task,store):
     other=uid();service.create_task(other,'Example',request_id=uid(),action_utc_us=NOW)
     for t in (task,other):dated(service,t,day=DAY,duration='0:15')
-    store.connection.execute('UPDATE tasks SET is_deleted=1 WHERE task_id=?',(other,))
+    store.connection.execute('UPDATE tasks SET is_archived=1,archived_at_utc_us=0 WHERE task_id=?',(other,))
     c=preview(service,period='custom',start_date=DAY,end_date=DAY)
     service.register_timesheet_export(c,request_id=uid(),action_utc_us=NOW)
     a=source_args(service,c);assert len(a['reviewed_rows'])==2 and len(a['selected_keys'])==2 and len(c.basis)==14

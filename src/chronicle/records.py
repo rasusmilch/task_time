@@ -8,6 +8,17 @@ import json
 from uuid import UUID
 
 
+ADMINISTRATIVE_OPERATIONS = frozenset({
+    'create_project', 'rename_project', 'create_task', 'rename_task', 'assign_task_to_project',
+    # Classified now, deliberately not executable until separately approved packages.
+    'move_task_branch', 'archive_project', 'unarchive_project', 'archive_task', 'unarchive_task',
+})
+
+
+def receipt_class(operation):
+    return 'administrative' if operation in ADMINISTRATIVE_OPERATIONS else 'protected'
+
+
 class StaleState(ValueError):
     """Reviewed identity/version is no longer current."""
 

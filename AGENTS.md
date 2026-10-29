@@ -62,11 +62,13 @@ GO instruction independently accepts Stage 4A. The later explicit Stage 4C GO
 independently accepts Stage 4B portable reliability. Subsequent independent review
 accepts Stage 4C cold read-only compatibility inspection, protected refusal and
 bounded owned SQLite-native rollback recovery for functional development.
-Schema version 1 remains current; no upgrade target or transformation is active.
+Package B1 implements exact fresh schema 2/application ID 0x4348524E for independent
+review. Version 1 is incompatible, never migrated/replaced; no upgrade is active.
 Unit A's filesystem compatibility candidate is accepted for portable development;
 Unit B's collector, including its evidence-safety repair, is accepted only for
 limited native MetadataProbe use. The integration coverage audit is accepted:
-no material portable cross-boundary coverage gap or new portable test is identified.
+no material portable cross-boundary gap was identified at the reviewed flat baseline.
+B1 separately validates the newly changed schema/recording boundaries.
 See [decision provenance](docs/DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
 Stage 4 remains IN PROGRESS. Native Windows/NTFS, operator modal/focus, backup/restore,
 hot-journal recovery and actual suspend/resume qualification remain outstanding.
@@ -83,14 +85,17 @@ legacy behavior as permanent replacement-product policy.
 
 The later hierarchy-design approval selects tree main/mini, leaf-only new time,
 branch lifecycle and nested templates as a target. Package A grouped main/mini
-presentation on flat schema 1 is delivered for independent review; deeper task
-hierarchy, lifecycle and templates remain unimplemented. Read the
+presentation is adapted to B1 schema 2. B1 implements parent adjacency, three levels,
+leaf-only new recording, retained parent history, derived cumulative values and
+administrative/protected receipt classes. Structural movement, lifecycle mutations,
+nested management UI and templates remain unimplemented. Read the
 [approved behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
-[proposed fresh foundation](docs/ARCHITECTURE.md#proposed-fresh-hierarchy-foundation)
+[fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation)
 and [packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
-Exact fresh DDL/schema identity needs separate review; current runtime stays
-schema 1. Hierarchy starts fresh without v1 migration, compatibility mode or legacy
-import. Protect retained old files rather than converting/deleting/reusing them.
+B1's fresh schema 2 is the sole supported layout; later structural/Delete DDL and
+services still require review. Hierarchy starts fresh without v1 migration,
+compatibility mode or legacy import. Protect retained old files rather than
+converting/deleting/reusing them.
 The final owner lifecycle decision supersedes soft-delete/Deleted Items/separate
 Permanent Delete and tombstone/anti-replay-ledger proposals. Select Archive with
 Unarchive reversal, current accepted UTC archive timestamps and the hierarchical
@@ -100,7 +105,7 @@ work/report/confirmation references always block Delete. Exclusively owned
 administrative requests may be erased after complete proof; their historical retry
 recovery is deliberately no longer promised, with no persistent deletion registry.
 Independently adjudicate the [bounded deletion/receipt design](docs/ARCHITECTURE.md#proposed-unused-entity-deletion-and-receipt-boundary)
-and exact fresh DDL before B/C; applied/referenced-template actual Delete eligibility
+and movement/Delete DDL before B2/C; applied/referenced-template actual Delete eligibility
 is Open before E. No historical work/evidence deletion or automatic cleanup is
 authorized. Packages B–F require separately approved implementation tasks after
 their dependencies are adjudicated. Package A authorizes no Stage 4 completion,
