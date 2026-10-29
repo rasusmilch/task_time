@@ -498,8 +498,9 @@ Existing modal/mini/Archived Items guards and lifecycle tests remain applicable.
 Separate XTest input selects/commits Move and inspects/cancels the real toolkit name
 dialog. These are Linux portable/input observations, not native Windows qualification.
 Carry forward compatible B1/B2/C mathematical, SQL, refusal, interruption and recovery
-evidence; run Level C for this shared owner/rendering boundary. Templates and remaining
-F/native/operator gates remain separate, Stage 4 IN PROGRESS and Stage 5 NOT STARTED.
+evidence; run Level C for this shared owner/rendering boundary. Package E evidence
+is inventoried above; remaining F/native/operator gates stay separate,
+Stage 4 IN PROGRESS and Stage 5 NOT STARTED.
 
 ## Package A explorer evidence
 
@@ -742,6 +743,66 @@ or universal power-loss proof. UI consent cannot make an unreadable/unstable or
 unsuitable target safe.
 
 ## Windows desktop and release qualification
+
+### Package F connected and native gate evidence
+
+[test_package_f_integration.py](../tests/rewrite/test_package_f_integration.py)
+uses the real serialized worker/Store/services on one connected disposable schema-3
+dataset: nested/multi-root template Duplicate/Edit/Apply, retained parent work,
+Start/Switch/Stop/manual work/revisions, archive/move, full/partial frozen scope,
+protected publication, checked/manual/zero confirmation, A/B corrections and
+opposing daily mismatches, explicit dismissal, active backup and cold restore to
+a fresh owner. Complete logical equality is distinct from SQLite page bytes;
+original/image/report bytes stay fixed after restored work. Separate C–G cases
+carry independent expected quarters through registration/backup/restore. Another
+dataset covers whole-Apply deletion closure, protected/partial/stale/cancel refusal,
+source retirement and retained Apply/Duplicate evidence, name reuse and erased
+provenance. Lost Apply acknowledgement reconciles exactly; lost Delete never retries.
+Temporal cases cover midnight/week rollover, Chicago DST gap/repeat, impossible
+backward observation and a simulated long gap with no tick writes or duplicate timer.
+
+[test_package_f_operator.py](../tests/rewrite/test_package_f_operator.py) connects
+actual app/worker/Tk child creation, direct parent History correction, template draft/
+cancel/Apply, reviewed Move, main/mini modality, archive management and blocked/eligible
+Delete, frozen Save/recovery/confirmation/reconciliation, active backup and fresh
+restored Tk operation. Callback and XTest variants are distinct. Names/file chooser
+responses are local test doubles; XTest drives actual buttons, not Windows dialogs.
+Existing adversarial suites remain required for queued shutdown, stale tokens,
+destroyed accepted views, storage/presentation faults, process death, genuine hot
+journals, protected v1/v2 refusal and corrupted evidence. F does not duplicate all
+their algorithms or reinterpret process death as power loss.
+
+[test_stage4_qualification.py](../tests/rewrite/test_stage4_qualification.py)
+exercises the new full-wrapper plugin in real tiny pytest subprocesses, original
+inventory/parametrization, actual outcome/JUnit mapping, incomplete evidence,
+dialog obstruction, bounded POSIX monitor deaths, exclusive manifest/sentinel
+protection, traversal/archive/publication failure and verified ZIP membership.
+Synthetic cleanup inputs test aggregation only; POSIX children are not Win32 proof.
+The PowerShell parser/runtime test skips explicitly when unavailable. Existing
+collector behavioral tests continue validating the reused monitor/Job design;
+source/static checks are never native execution evidence.
+
+F1 portable tests and full regression support the development deliverable, not
+Stage 4 closure. F2 current-source native automation, F3 actual Windows operator
+input and F4 actual Sleep/resume remain distinct pending gates. The separate
+[full wrapper](../scripts/qualify_stage4_windows.ps1) uses full original collection,
+fresh basetemps, guarded callbacks, raw logs/events and structurally verified
+pytest JUnit. Every selected node must complete once; ambiguous/missing mapping,
+unclean source, cleanup/capture uncertainty or incomplete delivery prevents PASS.
+Skipped/xfail/xpass cases conservatively leave full-source evidence incomplete
+pending independent applicability adjudication. Raw pytest/process codes and
+archive delivery remain separate. Exclusive archive-manifest reservation,
+explicit link exclusions, fatal traversal errors, reopen/CRC/member checks and
+absent-target ZIP publication preserve source/data safety. Failed ZIP retains the
+directory. Existing frozen MetadataProbe/Critical/Storage/Extended sets do not
+silently become Package F and remain unchanged.
+
+Use [WINDOWS_OPERATOR_QUALIFICATION.md](WINDOWS_OPERATOR_QUALIFICATION.md) for
+per-scenario actions/expected outcomes, isolated first-run settings, NTFS/runtime
+inspection, native files/hot recovery and genuine Sleep evidence. A prior revision,
+callback double, Linux XTest or simulated interval cannot fill a native gate.
+Record exact commands/counts/skips/elapsed/runtime in receipts; no proposed command
+is a claim that it ran. Current native F2/F3/F4 execution is NOT RUN on Linux.
 
 The opt-in [Windows collector](../scripts/qualify_windows.ps1) and its private
 [pytest helper](../scripts/qualification_pytest.py) implement bounded automated

@@ -286,6 +286,25 @@ broader scopes, operator qualification, suspend/resume or pilot. See
 
 ## Backup and cold recovery
 
+Package F's opt-in full-source Windows automation is separate from the frozen
+bounded scopes above:
+
+```powershell
+.\scripts\qualify_stage4_windows.ps1 -Repo 'C:\src\task_time' -ExpectedRevision REVIEWED_FULL_SHA -OutputParent 'C:\Chronicle qualification'
+```
+
+Use an existing approved local NTFS parent outside source/data/cloud sync. The
+wrapper reserves a new directory, prints it immediately, captures collection,
+events, actual JUnit and raw logs, and publishes a ZIP beside it only after
+verification. It requires clean expected source and installed prerequisites;
+installs/pulls/policy changes are never automatic. Missing evidence/cleanup or
+skipped cases cannot silently yield full qualification PASS. ZIP failure retains
+the evidence directory and raw pytest status separately from final delivery.
+This is not operator or Sleep qualification. Follow the complete
+[supervised runbook](docs/WINDOWS_OPERATOR_QUALIFICATION.md) for safe launcher-profile
+isolation, commands, exact controls, expected results and per-scenario evidence.
+F2–F4 native execution is pending; Stage 4 remains IN PROGRESS.
+
 Close other modal views, then choose **Backup Chronicle**. Choose a new file outside
 the dataset and click Create Backup. Opening/canceling writes nothing. Timers
 continue; wait for **Backup verified** before treating the operation as complete.

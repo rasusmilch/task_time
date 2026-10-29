@@ -105,7 +105,7 @@ service-level subtree movement and C1 Archive/Unarchive/Archived Items are accep
 for functional development.
 C2 delivers unused-only Delete. Package D connects the full three-level active
 hierarchy, context-sensitive child creation and reviewed Move / Reparent for
-independent review. E templates are delivered on fresh schema 3 for independent review;
+independent review at their original delivery. E templates are implemented on fresh schema 3;
 rollups/projects never add work or change frozen evidence.
 
 Archived Items shows the full expandable tree, independently archived branches
@@ -151,7 +151,12 @@ protected; failed remembered startup does not replace data or clear selection.
 Backup/restore/cold inspection completely validate v3 structure and evidence.
 B2 movement, C1 Archive/Unarchive/Archived Items and C2 unused-only Delete are
 accepted for functional development;
-D nested active UI is accepted for functional development; E templates are delivered for review; F qualification requires separate approval. See
+D nested active UI and E templates are accepted for functional development under their
+subsequent GO instructions. Package F adds connected portable qualification tests,
+a separate opt-in full-source Windows wrapper and the
+[Windows operator/Sleep runbook](docs/WINDOWS_OPERATOR_QUALIFICATION.md).
+Native F2–F4 execution remains NOT RUN on the Linux development host; independent
+qualification review is required. The frozen bounded collector is separate. See
 [selected behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation) and
 [bounded packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).

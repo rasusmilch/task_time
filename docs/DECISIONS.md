@@ -1423,6 +1423,23 @@ replaced by assertions/registries/proof records. Ordinary exact retry and C2 no-
 uncertainty remain distinct. Stage 4 IN PROGRESS; Stage 5 NOT STARTED; F/native gates
 remain separate.
 
+### Package F integration and native acceptance preparation
+
+**Status:** approved development/qualification package; delivered for independent
+review, not Stage 4 acceptance. **Provenance:** explicit Package F GO at reviewed
+E source `458ae9d130d1c091934eb910242dbc5e62f42d9a`.
+
+Preserve exact schema 3/application ID, worker/receipt/immutable evidence, Delete
+no-retry and all accounting/reporting rules. Add connected production-code tests
+on shared disposable data and independent C–G expected outcomes. Reuse existing
+failure/process-death/ownership evidence without inventing another coordinator.
+Native gates are separate: F2 current-source Windows automation, F3 supervised
+desktop controls, F4 actual Sleep/resume. Prepare an opt-in full-source evidence
+wrapper separately from frozen bounded scopes and an executable operator runbook.
+Linux and simulated-time evidence cannot establish those gates. Preparation without
+execution stays pending. Only a separately reviewed native evidence decision can
+close Stage 4; Stage 5, external policy and installation/cutover stay unauthorized.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

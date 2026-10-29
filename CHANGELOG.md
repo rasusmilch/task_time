@@ -8,6 +8,17 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Deliver Package F development qualification: connected schema-3 worker/SQLite
+  and callback/XTest workflows through templates, hierarchy, work/revisions, frozen
+  reports, confirmations, correction/reconciliation and active backup/cold restore/
+  fresh operation. Add lifecycle/erased-provenance, independent C–G and temporal/
+  restart evidence. Add separate opt-in full-source Windows automation with actual
+  inventory/events/JUnit, guarded dialogs, owned watchdog/cleanup, exclusive verified
+  ZIP publication and retained partial evidence. Add supervised operator/actual Sleep
+  runbook. Production source/schema and frozen bounded collectors are unchanged.
+  Native F2/F3/F4 execution remains pending, Stage 4 IN PROGRESS, Stage 5 NOT STARTED;
+  no installation/cutover, external-policy, release or acceptance claim.
+
 - Deliver Package E reusable nested templates on fresh schema 3: STRICT definition/
   node authority, active Python casefold uniqueness, atomic versioned Edit/Duplicate,
   mapped independent Apply tasks and self-contained administrative creation receipts.

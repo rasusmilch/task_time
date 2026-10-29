@@ -28,9 +28,28 @@ qualification is incomplete and Stage 5 is not started. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
 The accepted A/B1/B2/C1/C2/D foundation is retained. Package E implements fresh
-schema 3 and reusable templates for independent review, with application ID
+schema 3 and reusable templates, independently reviewed under the F GO, with application ID
 0x4348524E unchanged. Versions 1/2 are incompatible and never migrated, replaced or
-adopted through a compatibility mode. Remaining F/native qualification is separate.
+adopted through a compatibility mode. F adds qualification evidence and tooling;
+native qualification remains separate.
+
+Package F tests connect the existing authorities on one disposable dataset:
+worker recording/template/hierarchy → frozen registration/protected publication →
+absolute confirmation → correction/reconciliation → worker backup → cold restore →
+fresh owner and further work. Separate callback and XTest paths connect actual Tk
+controls without another application coordinator. Production DDL, transactions,
+uncertainty and accounting remain unchanged.
+
+`scripts/qualify_stage4_windows.ps1` invokes `stage4_qualification.py` for opt-in
+full-source evidence, separate from the unchanged frozen collector scopes. It
+reuses reviewed Job Object containment, watchdog, dialog guard, event/JUnit matching
+and exclusive evidence writes. Full callback tests may create Tk; unknown dialogs
+receive no answer. Original collection and execution inventories remain distinct;
+collection-only has no JUnit requirement. Raw execution, completeness and delivery
+are separate. Only a verified archive candidate is exclusively published beside
+its owned directory; failed delivery retains original evidence. See the
+[native runbook](WINDOWS_OPERATOR_QUALIFICATION.md) for F2/F3/F4 boundaries. Tooling
+or Linux execution cannot establish Windows operator/Sleep acceptance.
 
 ## Small application and responsibility boundaries
 
@@ -371,8 +390,8 @@ Native Windows theme/topmost/focus/operator qualification remains outstanding.
 
 ## Fresh hierarchy foundation
 
-**A/B1/B2/C1/C2/D ACCEPTED FOR FUNCTIONAL DEVELOPMENT; E DELIVERED FOR REVIEW.**
-Package E implements templates for independent review. Schema version 3 and application
+**A/B1/B2/C1/C2/D/E ACCEPTED FOR FUNCTIONAL DEVELOPMENT; F DEVELOPMENT REVIEW PENDING.**
+Package E implements templates. Schema version 3 and application
 ID 0x4348524E identify the sole supported fresh layout, together with exact DDL.
 Versions 1/2 refuse without conversion/replacement or clearing remembered selection.
 Creation uses the existing exclusive new/empty-directory path. Current normal

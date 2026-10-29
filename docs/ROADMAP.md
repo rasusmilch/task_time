@@ -192,7 +192,7 @@ transformation, replacement or compatibility mode. Stage 4C's historical future-
 a hierarchy migration requirement; no migration engine is active. B2 movement is implemented for review.
 C1 Archive/Unarchive/Archived Items and C2 unused-only Delete are accepted for
 functional development. D nested active management UI is delivered for independent
-review; E templates are delivered for independent review on fresh schema 3.
+review at their original delivery; E templates are independently reviewed on fresh schema 3.
 Remaining stabilization and the complete gate include actual native Windows source/
 NTFS, operator GUI/modal/focus, backup/restore, hot-journal recovery, actual
 suspend/resume and deployment qualification. Any hypothetical future data-preserving
@@ -213,7 +213,7 @@ broader than isolated unit success.
 
 ## Hierarchy target — bounded packages A-F
 
-**A/B1/B2/C1/C2 ACCEPTED FOR FUNCTIONAL DEVELOPMENT; D ACCEPTED FOR FUNCTIONAL DEVELOPMENT; E DELIVERED FOR REVIEW; F PENDING.** The later explicit hierarchy-design
+**A/B1/B2/C1/C2/D/E ACCEPTED FOR FUNCTIONAL DEVELOPMENT; F DEVELOPMENT DELIVERABLE FOR REVIEW; NATIVE GATES PENDING.** The later explicit hierarchy-design
 instruction selects tree-oriented main/mini, three task levels, branch management
 and nested templates. It supersedes their earlier Open/Stage 6 template placement.
 This is a proposed execution sequence for separately reviewed tasks, not permission
@@ -232,11 +232,11 @@ applicable regression rerun on fresh v3 fixtures.
 | C2 — Irreversible unused-only Delete | Implemented for independent review on unchanged schema 2: worker preview, exact frozen review and typed DELETE, finite retirement/survivor proof, deepest-first atomic deletion and full retained-image equality/validation. No Archive prerequisite or persistent Delete receipt. | Scope/counts/cannot-undo warning, typed DELETE and final closure recheck. All-or-none unused-row/exclusively owned administration removal; protected references/unresolved dependencies refuse. No recoverable tier, tombstones or deletion ledger. |
 | D — Connected main/archived hierarchy trees | Implemented for independent review on unchanged schema 2. Connect A presentation to B1/B2/C snapshots/services: context New Task, project distinctions, active ancestors, direct History, management, full expansion and targeted structural refresh in both trees. | Selected UUID/expansion survive sorting and ordinary refresh while visible. Archived Items sibling/top-level Name A–Z/Z–A and Date Archived Newest/Oldest, newest default, deterministic ties. No flattening/duplicate identities, double count, flicker or recording eligibility from archived selection. Existing modal main/mini ownership remains. |
 | E — Nested templates | Implemented for independent review on fresh schema 3 after accepted B1/B2/D: connect Create/Edit/Duplicate/Archive/Unarchive/actual Delete/Apply. Preserve active trim/casefold name uniqueness and atomic fresh task UUID insertion. | Nested depth/active destination guards, duplicate project/task names allowed, conflicting Unarchive-name refusal, no merging/copied work, applied instances unchanged. No soft-delete template tier, tombstones or silent loss of retained request/evidence references. Protected retained requests still retry exactly. |
-| F — Target integration and native qualification | Exercise recording → hierarchy/archive changes → direct History → frozen report → confirmation → correction/reconciliation → backup/cold restore/fresh operation; separately exercise unused-branch Delete, atomic refusal and its explicit historical-outcome limit. Carry forward compatible mathematics/failure evidence. | Full applicable regression for shared schema/accounting, real Tk and native Windows/NTFS main/archived tree, sorting, mini/modal/input and file/recovery. No manufactured success for erased administrative request uncertainty; protected evidence unchanged. Earlier flat-schema results do not qualify changed behavior. No Stage 4 completion/pilot/cutover follows without adjudication. |
+| F — Target integration and native qualification | Dedicated connected schema-3 worker/SQLite and callback/XTest suites, independent C–G expectations, lifecycle/erased-provenance and temporal/restart scenarios; unchanged production code. Separate opt-in full-source Windows wrapper and supervised operator/Sleep runbook prepared. | F1 portable execution requires independent review. F2 automated Windows, F3 operator and F4 actual Sleep are NOT RUN on the Linux development host, so native gates remain pending. Exact revision/inventory/JUnit/cleanup and verified artifact delivery required; historical results cannot qualify changed source. No Stage 4 completion/pilot/cutover follows without adjudication. |
 
 Package D connects the accepted A/B1/B2/C1/C2 foundations to full active hierarchy,
 context-sensitive child creation, reviewed Move / Reparent and existing lifecycle/
-direct History. E delivers nested templates for review; F complete changed-product/native
+direct History. E delivers nested templates; F complete changed-product/native
 qualification remains outstanding. No migration, further schema change or installation
 approval follows. Stage 4 remains IN PROGRESS; Stage 5 is NOT STARTED.
 Keep each package coherent rather than one helper per task.

@@ -99,8 +99,8 @@ connects the modeless Templates manager and owned editing/Apply/Delete reviews. 
 [approved behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation)
 and [packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
-Package E implements the approved fresh schema 3/application ID 0x4348524E for
-independent review. Versions 1 and 2 refuse without conversion or replacement.
+Package E implements the approved fresh schema 3/application ID 0x4348524E,
+independently reviewed under the Package F GO. Versions 1 and 2 refuse without conversion or replacement.
 Templates use relational definitions/nodes, casefold active-name uniqueness, atomic
 Edit/Duplicate/Apply and self-contained Apply creation receipts. Template Delete may
 retire only owned management history; retained Apply/Duplicate snapshots remain
@@ -126,6 +126,14 @@ their dependencies are adjudicated. Package A authorizes no Stage 4 completion,
 Stage 5, merge or release.
 
 ## Reading map
+
+Package F adds connected worker/SQLite and separate callback/XTest qualification
+tests, plus an opt-in full-source Windows wrapper and
+[supervised native runbook](docs/WINDOWS_OPERATOR_QUALIFICATION.md). It changes no
+runtime authority or schema. The existing bounded Windows collector scopes remain
+frozen and separate. F1 portable evidence cannot fill F2 automated Windows,
+F3 operator or F4 actual Sleep/resume gates; preparation without execution is pending.
+Stage 4 stays IN PROGRESS and Stage 5 NOT STARTED until separate adjudication.
 
 | Owner | Read for |
 | --- | --- |
