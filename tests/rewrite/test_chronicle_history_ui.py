@@ -20,7 +20,7 @@ from test_manual_work import H, M
 
 def selected_task(app):
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     pump(app.root, lambda: not app.buttons['Work History'].instate(['disabled']))
     return task
 
@@ -85,7 +85,7 @@ def test_real_tk_history_constructed_access_defaults_single_owner_purity_and_ses
     pump(root, lambda: history.details_token is None)
     assert a in history.details_view.get('1.0','end')
     assert history.close(); assert app.history is None and root.grab_current() is None
-    other = create(app,'Another task'); app.tree.selection_set(other)
+    other = create(app,'Another task'); app.tree.selection_set(app.task_row(other))
     pump(root, lambda: app._selected()['task_id']==other)
     later = open_history(app)
     assert not later.newest_first and later.task['task_id']==other
@@ -547,10 +547,10 @@ def test_real_tk_history_calendar_boundaries_and_no_extra_observation(connected,
 
 def test_real_tk_history_midnight_exclusive_delete_warning_cancel_and_task_binding(connected,root,monkeypatch):
     app,worker,clock=connected;task=selected_task(app);second=create(app,'Other')
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     e=uid();mutation(app,'add_timed_work',task_id=task,entry_id=e,start_date='2026-10-18',start_time='23:00',
                     end_date='2026-10-19',end_time='00:00',start_occurrence=None,end_occurrence=None,comment='midnight')
-    history=open_history(app);app.tree.selection_set(second)
+    history=open_history(app);app.tree.selection_set(app.task_row(second))
     select(history,e);before=evidence(worker);calls=[]
     def decline(*args,**kwargs):
         calls.append(args[1]);assert kwargs['default']=='no' and kwargs['parent'] is history.window

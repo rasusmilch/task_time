@@ -441,10 +441,15 @@ exports and confirmations neither erase nor increase calendar Actual.
 
 ## SELECTED — Calendar Actual displays
 
-The current flat runtime shows **Today** and **This week** for each task's own
-work. The approved hierarchy target replaces those main columns with shared-period
-Individual/Cumulative as specified above. Mini-mode retains Individual **Today**
-for its displayed task and Start/Stop.
+Package A implements Project → Task grouping on current flat schema 1, not nested
+task relationships. Main Individual/Cumulative share Today/This Week: a task's
+Cumulative equals its direct Individual; group Cumulative sums member report facts,
+including applicable retained hidden task work. Groups have no Individual work;
+empty groups show zero only with a valid report. Both application totals remain
+visible and never add rollups twice. Mini retains Individual Today and Start/Stop.
+Existing-service New Task uses the selected project, selected task's current
+project, or Unassigned for no/virtual selection, with a visible fixed destination.
+This flat rule does not replace future selected-task child creation.
 Application totals retain archived-task work when navigation hides it. Current
 schema-1 readers also preserve their existing retained-deleted task identities;
 that representation is not a new-target soft-delete tier. One coordinated refresh
@@ -814,6 +819,15 @@ gates; no automatic external allocation verification is established.
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
+
+Package A presentation is implemented for independent review: empty project groups,
+typed task/group rows, session-local A-Z/period choice, green/red text states,
+in-place row/label updates preserving selection/expansion/scroll, project-scoped
+New Task and selected-project rename. Mini adds Show Main, Off-by-default session-
+local Keep Mini Open and guarded topmost. Exact worker observations continue each
+second; only changed visible values repaint. No nested tasks, Archive/Delete,
+Archived Items or templates are implemented. Native Windows interface follow-up
+remains required.
 
 The sole shipped source route uses `src/chronicle`: explicit fresh SQLite
 paths, independent task/project controls, Start/Stop/atomic Switch, immutable timed

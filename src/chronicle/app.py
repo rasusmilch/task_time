@@ -11,7 +11,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from uuid import uuid4
 
-from .mini_mode import MiniModeWindow
+from .mini_mode import MiniModeWindow, configure_changed
 from .records import ClockWarning, Outcome, Request, StaleState
 from .timekeeping import format_duration, from_us, local_date, local_minute_candidates, parse_date, to_us, utc_now
 from .worker import Message
@@ -115,6 +115,7 @@ class ChronicleApp:
         self._backup_opening = False
         self._backup_return = None
         self._backup_operation = None
+        self._active_group = None
         self._build()
         root.protocol("WM_DELETE_WINDOW", self.request_close)
         root.bind("<Destroy>", self._destroyed, add="+")
@@ -131,7 +132,7 @@ class ChronicleApp:
         bar.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
         self.buttons = {}
         for column, (label, callback) in enumerate((
-            ("Create task", self.create_task), ("Rename task", self.rename_task),
+            ("New Task", self.create_task), ("Rename task", self.rename_task),
             ("Create project", self.create_project), ("Rename project", self.rename_project),
             ("Assign project", self.assign_project), ("Mini mode", self.open_mini))):
             button = ttk.Button(bar, text=label, command=callback)
@@ -142,18 +143,32 @@ class ChronicleApp:
         self.week_selector.current(6)
         self.week_selector.grid(row=1, column=1, sticky="w", pady=(6,0))
         self.week_selector.bind("<<ComboboxSelected>>", self._week_changed)
+        self.period = tk.StringVar(self.root, "Today")
+        self.period_selector = ttk.Combobox(bar, values=("Today", "This Week"),
+                                          textvariable=self.period, state="readonly", width=12)
+        self.period_selector.grid(row=1, column=2, padx=4)
+        self.period_selector.bind("<<ComboboxSelected>>", self._presentation_changed)
+        self.sort_alpha = tk.BooleanVar(self.root, False)
+        self.sort_control = ttk.Checkbutton(bar, text="Sort A-Z", variable=self.sort_alpha,
+                                            command=self._presentation_changed)
+        self.sort_control.grid(row=1, column=3)
+        self.keep_mini_open = tk.BooleanVar(self.root, False)
+        self.keep_mini_control = ttk.Checkbutton(bar, text="Keep Mini Open", variable=self.keep_mini_open)
+        self.keep_mini_control.grid(row=1, column=4, columnspan=2)
         self.headline = ttk.Label(self.root, text="Today: —    This week: —")
         self.headline.grid(row=1, column=0, sticky="w", padx=10)
         holder = ttk.Frame(self.root)
         holder.grid(row=2, column=0, sticky="nsew", padx=8, pady=8)
         holder.columnconfigure(0, weight=1)
         holder.rowconfigure(0, weight=1)
-        self.tree = ttk.Treeview(holder, columns=("project", "today", "week"), selectmode="browse")
+        self.tree = ttk.Treeview(holder, columns=("state", "individual", "cumulative"), selectmode="browse")
         self.tree.heading("#0", text="Task")
         self.tree.column("#0", width=230, minwidth=100)
-        for name, label, width in (("project", "Project", 180), ("today", "Today", 100), ("week", "This week", 100)):
+        for name, label, width in (("state", "Status", 170), ("individual", "Individual", 110), ("cumulative", "Cumulative", 110)):
             self.tree.heading(name, text=label)
             self.tree.column(name, width=width, minwidth=80)
+        self.tree.tag_configure("running", foreground="#08752c")
+        self.tree.tag_configure("stopped", foreground="#ad2525")
         self.tree.grid(row=0, column=0, sticky="nsew")
         scroll = ttk.Scrollbar(holder, orient="vertical", command=self.tree.yview)
         scroll.grid(row=0, column=1, sticky="ns")
@@ -338,11 +353,36 @@ class ChronicleApp:
         if error:
             self._diagnose(error)
 
+    @staticmethod
+    def task_row(task_id):
+        return "task:" + task_id
+
+    @staticmethod
+    def project_row(project_id):
+        return "project:" + project_id if project_id is not None else "group:unassigned"
+
     def selected_task_id(self):
         if not self.alive:
             return None
         selected = self.tree.selection()
-        return selected[0] if selected and any(t["task_id"] == selected[0] for t in self.state["tasks"]) else None
+        if not selected or not selected[0].startswith("task:"):
+            return None
+        key = selected[0][5:]
+        return key if any(t["task_id"] == key and not t["is_deleted"] for t in self.state["tasks"]) else None
+
+    def _selected_project(self):
+        if not self.alive:
+            return None
+        selected = self.tree.selection()
+        return next((p for p in self.state["projects"]
+                     if selected and self.project_row(p["project_id"]) == selected[0]), None)
+
+    def _presentation_changed(self, event=None):
+        if self.alive and self.ready:
+            try:
+                self._render(self.state)
+            except Exception as exc:
+                self._unavailable(exc)
 
     def _selected(self):
         key = self.selected_task_id()
@@ -368,8 +408,13 @@ class ChronicleApp:
                 allowed &= active is not None
             if name == "Switch":
                 allowed &= task is not None and active is not None and task["task_id"] != active["task_id"]
-            button.configure(state="normal" if allowed else "disabled")
-        self.week_selector.configure(state="readonly" if enabled else "disabled")
+            if name == "Rename project":
+                allowed &= bool(self.state["projects"])
+            configure_changed(button, state="normal" if allowed else "disabled")
+        configure_changed(self.week_selector, state="readonly" if enabled else "disabled")
+        configure_changed(self.period_selector, state="readonly" if enabled else "disabled")
+        for control in (self.sort_control, self.keep_mini_control):
+            configure_changed(control, state="normal" if enabled else "disabled")
         if (self.pending is not None or self._cleanup_failed) and not self.executing:
             self.retry_button.configure(state="disabled" if self._worker_stopped else "normal")
             self.retry_button.pack(side="left", padx=3)
@@ -451,22 +496,29 @@ class ChronicleApp:
                             expected_active_version=active["version"], next_task_id=task["task_id"],
                             next_entry_id=str(uuid4()), expected_task_version=task["version"])
 
-    def _ask_name(self, title, initial=""):
+    def _ask_name(self, title, initial="", *, prompt="Name"):
         if not self.can_mutate():
             return None
         # Native/toolkit dialog waits are guarded; no application-authored nested loop.
         self.executing = True
         self._controls()
         try:
-            return simpledialog.askstring(title, "Name", initialvalue=initial, parent=self.root)
+            return simpledialog.askstring(title, prompt, initialvalue=initial, parent=self.root)
         finally:
             self.executing = False
             self._controls()
 
     def create_task(self):
-        name = self._ask_name("Create task")
+        if not self.can_mutate():
+            return False
+        project = self._selected_project()
+        task = self._selected()
+        project_id = project["project_id"] if project else task["project_id"] if task else None
+        project = next((p for p in self.state["projects"] if p["project_id"] == project_id), None)
+        destination = f"{project['name']} ({project_id})" if project else "Unassigned"
+        name = self._ask_name("New Task", prompt=f"Destination: {destination}\nName (flat task, not a subtask)")
         if name is not None:
-            self._submit("create_task", task_id=str(uuid4()), name=name, project_id=None)
+            self._submit("create_task", task_id=str(uuid4()), name=name, project_id=project_id)
 
     def rename_task(self):
         task = self._selected()
@@ -498,13 +550,19 @@ class ChronicleApp:
         self._present_editor(top)
 
     def rename_project(self):
+        if not self.can_mutate():
+            return False
         projects = list(self.state["projects"])
-        def chosen(index):
-            project = projects[index]
+        def rename(project):
             name = self._ask_name("Rename project", project["name"])
             if name is not None:
                 self._submit("rename_project", project_id=project["project_id"], name=name, expected_version=project["version"])
-        self._choice("Rename project", [f"{p['name']} ({p['project_id']})" for p in projects], chosen)
+        selected = self._selected_project()
+        if selected:
+            rename(selected)
+        else:
+            self._choice("Rename project", [f"{p['name']} ({p['project_id']})" for p in projects],
+                         lambda index: rename(projects[index]))
 
     def assign_project(self):
         task = self._selected()
@@ -756,19 +814,21 @@ class ChronicleApp:
         if not self.alive:return
         value=self.reminder
         if self._reminder_dismissed_date is not None and self._reminder_dismissed_date==self._reminder_date:
-            self.reminder_banner.grid_remove();return
+            if self.reminder_banner.winfo_manager(): self.reminder_banner.grid_remove()
+            return
         if self._reminder_error is not None:
             text='POL-R reminder evaluation unavailable. Recheck POL-R to retry.'
             if value and value['reminder_due']:text+=f" Previous trusted warning remains (as of {from_us(value['cutoff_utc_us']).isoformat()} UTC): "+self._reminder_context(value)
         elif value and value['reminder_due']:
             text='POL-R reconciliation needs review. '+self._reminder_context(value)
         else:
-            self.reminder_banner.grid_remove();return
-        self.reminder_label.configure(text=text)
-        self.reminder_banner.grid()
+            if self.reminder_banner.winfo_manager(): self.reminder_banner.grid_remove()
+            return
+        configure_changed(self.reminder_label, text=text)
+        if not self.reminder_banner.winfo_manager(): self.reminder_banner.grid()
         enabled=self.can_mutate()
-        self.reminder_open.configure(state='normal' if enabled else 'disabled')
-        self.reminder_dismiss.configure(state='normal' if enabled else 'disabled')
+        configure_changed(self.reminder_open, state='normal' if enabled else 'disabled')
+        configure_changed(self.reminder_dismiss, state='normal' if enabled else 'disabled')
 
     @staticmethod
     def _reminder_context(value):
@@ -1342,15 +1402,28 @@ class ChronicleApp:
             self._diagnose(primary)
             return False
 
+    def can_present_mini(self):
+        return self.can_mutate() and self.root.grab_current() is None
+
     def open_mini(self):
-        if not self.alive or self.closing or self.editor is not None or self.history is not None or self._history_opening:
-            return
+        if not self.can_present_mini():
+            return False
         if self.mini is None:
             self.mini = MiniModeWindow(self)
         else:
             self.mini.window.deiconify()
         self.mini.render()
         self.refresh()
+        return True
+
+    def show_main(self):
+        if not self.can_present_mini():
+            return False
+        self.root.deiconify()
+        self.root.lift()
+        if self.mini is not None and not self.keep_mini_open.get():
+            self.mini.window.destroy()
+        return True
 
     def mini_toggle(self):
         return self.stop() if self.state.get("active") else self.start()
@@ -1373,54 +1446,108 @@ class ChronicleApp:
 
     def _unavailable(self, exc):
         self.state["report"] = None
-        for key in self.tree.get_children():
-            values = list(self.tree.item(key, "values"))
-            self.tree.item(key, values=(values[0], "—", "—"))
-        self.headline.configure(text="Today: —    This week: —")
-        self.error.configure(text="Time totals unavailable. " + str(exc))
-        self._diagnose(exc)
+        self.state["calculation_error"] = str(exc)
+        # Do not repeat a failing numeric formatter/row preparation to clear output.
+        active = self.state.get("active")
+        active_id = active["task_id"] if active else None
+        task = next((t for t in self.state["tasks"] if t["task_id"] == active_id), None)
+        for group in self.tree.get_children():
+            for key in (group, *self.tree.get_children(group)):
+                values = tuple(self.tree.item(key, "values"))
+                tags = ()
+                if key.startswith("task:"):
+                    running = key == self.task_row(active_id) if active else False
+                    status, tags = ("▶ Running", ("running",)) if running else ("■ Stopped", ("stopped",))
+                else:
+                    running = task is not None and group == self.project_row(task["project_id"])
+                    status = "Group — ▶ Running task" if running else "Group"
+                updates = {}
+                if values != (status, "—", "—"):
+                    updates["values"] = (status, "—", "—")
+                if tuple(self.tree.item(key, "tags")) != tags:
+                    updates["tags"] = tags
+                if updates:
+                    self.tree.item(key, **updates)
+        configure_changed(self.active_label, text=f"▶ Running: {task['name']}" if task else "■ Stopped — no active timer")
+        configure_changed(self.headline, text="Today: —    This week: —")
+        configure_changed(self.error, text="Time totals unavailable. " + str(exc))
         self._controls()
+        self._diagnose(exc)
 
     def _render(self, candidate):
         report = candidate["report"]
+        field = "today_us" if self.period.get() == "Today" else "week_us"
         projects = {p["project_id"]: p["name"] for p in candidate["projects"]}
-        prepared = []
-        for task in candidate["tasks"]:
-            if not task["is_deleted"]:
-                amounts = report["tasks"][task["task_id"]] if report else None
-                prepared.append((task["task_id"], task["name"], (projects.get(task["project_id"], "Unassigned"),
-                                  format_duration(amounts["today_us"]) if amounts else "—",
-                                  format_duration(amounts["week_us"]) if amounts else "—")))
-        headline = "Today: —    This week: —" if not report else (
-            f"Today: {format_duration(report['application']['today_us'])}    This week: {format_duration(report['application']['week_us'])}")
+        groups = list(projects) + [None]
+        if self.sort_alpha.get():
+            groups.sort(key=lambda key: (projects.get(key, "Unassigned").casefold(), key or ""))
         active = candidate["active"]
-        active_text = "No active timer"
-        if active:
-            name = next(t["name"] for t in candidate["tasks"] if t["task_id"] == active["task_id"])
-            started = from_us(active["start_utc_us"]).astimezone(self.zone)
-            active_text = f"Running: {name} — since {started.isoformat()}"
-        selected = self.selected_task_id()
+        active_id = active["task_id"] if active else None
+        active_group = next((t["project_id"] for t in candidate["tasks"] if t["task_id"] == active_id), None)
+        rows, children = {}, {}
+        for group in groups:
+            key = self.project_row(group)
+            members = [t for t in candidate["tasks"] if t["project_id"] == group]
+            total = sum(report["tasks"][t["task_id"]][field] for t in members) if report else None
+            running = active is not None and active_group == group
+            rows[key] = ("", projects.get(group, "Unassigned"),
+                         ("Group — ▶ Running task" if running else "Group", "—",
+                          format_duration(total) if total is not None else "—"), ())
+            children[key] = []
+            visible = [t for t in members if not t["is_deleted"]]
+            if self.sort_alpha.get():
+                visible.sort(key=lambda t: (t["name"].casefold(), t["task_id"]))
+            for task in visible:
+                row = self.task_row(task["task_id"])
+                amount = report["tasks"][task["task_id"]][field] if report else None
+                value = format_duration(amount) if amount is not None else "—"
+                running = task["task_id"] == active_id
+                rows[row] = (key, task["name"], ("▶ Running" if running else "■ Stopped", value, value),
+                             ("running" if running else "stopped",))
+                children[key].append(row)
+        selected, scroll = self.tree.selection(), self.tree.yview()
         previous_week = self.state.get("week_start")
         self.state = deepcopy(candidate)
         if candidate["week_start"] != previous_week:
             self.week_selector.current(candidate["week_start"])
-        valid = {row[0] for row in prepared}
-        for old in self.tree.get_children():
-            if old not in valid:
-                self.tree.delete(old)
-        for key, name, values in prepared:
-            if self.tree.exists(key):
-                self.tree.item(key, text=name, values=values)
+        # Reparent surviving tasks before removing obsolete groups.
+        for key, (parent, name, values, tags) in rows.items():
+            if not self.tree.exists(key):
+                self.tree.insert(parent, "end", iid=key, text=name, values=values, tags=tags, open=not parent)
             else:
-                self.tree.insert("", "end", iid=key, text=name, values=values)
-        if selected in valid:
-            self.tree.selection_set(selected)
-        self.headline.configure(text=headline)
-        self.active_label.configure(text=active_text)
-        self.error.configure(text="" if report else "Time totals unavailable. " + (candidate["calculation_error"] or ""))
-        if report:
-            stamp = from_us(report["cutoff_utc_us"]).astimezone(self.zone)
-            self.headline.configure(text=headline + f"    as of {stamp:%H:%M:%S}")
+                if self.tree.parent(key) != parent:
+                    self.tree.move(key, parent, "end")
+                old = self.tree.item(key)
+                updates = {k: v for k, v in (("text", name), ("values", values), ("tags", tags))
+                           if (tuple(old[k]) if k in ("values", "tags") else old[k]) != v}
+                if updates:
+                    self.tree.item(key, **updates)
+        for group in self.tree.get_children():
+            for child in self.tree.get_children(group):
+                if child not in rows:
+                    self.tree.delete(child)
+            if group not in rows:
+                self.tree.delete(group)
+        for parent, ordered in [("", [self.project_row(g) for g in groups]), *children.items()]:
+            if tuple(self.tree.get_children(parent)) != tuple(ordered):
+                for index, key in enumerate(ordered):
+                    self.tree.move(key, parent, index)
+        # Expand only on active identity/group transitions, allowing ordinary collapse.
+        marker = (active_id, active_group) if active else None
+        if marker != self._active_group and active and self.tree.exists(self.project_row(active_group)):
+            self.tree.item(self.project_row(active_group), open=True)
+        self._active_group = marker
+        surviving = tuple(key for key in selected if key in rows)
+        if self.tree.selection() != surviving:
+            self.tree.selection_set(surviving)
+        if scroll and self.tree.yview() != scroll:
+            self.tree.yview_moveto(scroll[0])
+        headline = "Today: —    This week: —" if not report else (
+            f"Today: {format_duration(report['application']['today_us'])}    This week: {format_duration(report['application']['week_us'])}")
+        task = next((t for t in candidate["tasks"] if t["task_id"] == active_id), None)
+        configure_changed(self.headline, text=headline)
+        configure_changed(self.active_label, text=f"▶ Running: {task['name']}" if task else "■ Stopped — no active timer")
+        configure_changed(self.error, text="" if report else "Time totals unavailable. " + (candidate.get("calculation_error") or ""))
         self._controls()
 
     def _handle(self, message):
@@ -1609,8 +1736,6 @@ class ChronicleApp:
                     elapsed = cutoff - active["start_utc_us"]
                     if elapsed < 0:
                         raise ClockWarning("Observation precedes active start. Correct active start or check the clock.")
-                    name = next(t["name"] for t in self.state["tasks"] if t["task_id"] == active["task_id"])
-                    self.active_label.configure(text=f"Running: {name} — elapsed {format_duration(elapsed)}")
                 self.refresh(cutoff_utc_us=cutoff)
             except Exception as exc:
                 self._unavailable(exc)

@@ -47,7 +47,19 @@ The main banner checks previous week every used local day and current week Monda
 Friday. Open Timesheet navigates to reconciliation; explicit Dismiss for today
 survives same-day restart and changes no work or confirmation. Recheck POL-R is
 available after read failures. No external POL-R verification is claimed.
-Main shows own-task Today/This week; mini shows active or selected task Today.
+Package A groups the current flat schema into Project → Task plus virtual Unassigned,
+including empty projects. Typed rows keep task UUID authority distinct from groups.
+Main Individual/Cumulative share Today/This Week; task values match in this flat
+model and groups sum member direct Actual once. Application totals remain separate.
+New Task shows its fixed project destination; selecting a task uses its current
+project, not a subtask. Selected empty projects can be renamed. Session-local A-Z
+preserves membership, selection and expansion. Mini adds green/red text state,
+Individual Today, Start/Stop and Show Main. Keep Mini Open defaults Off/session-local;
+On retains mini when showing main. Modal ownership blocks competing actions and
+drops mini topmost without taking focus. Unchanged rows/labels/scroll are retained;
+per-second safety observations continue without a changing main timestamp.
+Package A is delivered for independent review; native Windows visual/topmost/focus
+qualification remains pending.
 One database worker supplies coordinated integer-microsecond accounting while Tk
 continues events. Exact committed request retries precede stale checks; uncertain
 acknowledgements retain the same request for reconciliation. Active-start correction
@@ -81,8 +93,9 @@ The approved target restores tree-oriented main/mini and Project → Task → Su
 There are exactly two primary lifecycle actions: reversible **Archive** (Unarchive
 reverses it) and irreversible **Delete** of unused complete selected branches.
 No recoverable deletion tier, Deleted Items or separate Permanent Delete is selected.
-Current source remains flat schema 1; these hierarchy/lifecycle controls are not
-implemented, and neither rollups nor projects add work or change frozen evidence.
+Current source remains flat schema 1 with Package A project/task grouping only.
+Nested tasks and lifecycle controls remain unimplemented; neither rollups nor
+projects add work or change frozen evidence.
 
 Archived Items shows the full expandable tree, independently archived branches
 with ancestor context, direct History and eligible Unarchive/Delete. Current archive

@@ -27,7 +27,7 @@ def test_real_tk_server_actual_export_confirm_correct_reconcile_reminder(connect
     mutation(app,'add_timed_work',task_id=task,entry_id=entry,start_date='2026-10-12',start_time='9am',end_date='2026-10-12',end_time='10am',start_occurrence=None,end_occurrence=None,comment='genuine')
     for t,day,duration in ((task,'2026-10-13','0:03'),(task,'2026-10-14','0:03'),(other,'2026-10-14','1:08')):
         mutation(app,'add_date_only_work',task_id=t,entry_id=uid(),work_date=day,duration_text=duration,comment='declared date')
-    app.tree.selection_set(other);click(app.buttons['Start']);pump(root,lambda:app.pending is None and app.state['active'] is not None)
+    app.tree.selection_set(app.task_row(other));click(app.buttons['Start']);pump(root,lambda:app.pending is None and app.state['active'] is not None)
     active=deepcopy(app.state['active']);click(app.buttons['Mini mode']);app.mini.window.geometry('340x180+0+600')
     ready(app);assert app.reminder['reminder_due'];before=evidence(worker)
     click(app.reminder_open);sheet=app.timesheet
@@ -81,7 +81,7 @@ def test_real_tk_server_actual_export_confirm_correct_reconcile_reminder(connect
                     ('polr_confirmation_batches','polr_confirmation_cells','polr_confirmed_current')}
     confirmations_before=confirmation_evidence()
     click(sheet.close_button);pump(root,lambda:app.timesheet is None)
-    app.tree.selection_set(task);click(app.buttons['Work History']);history=app.history
+    app.tree.selection_set(app.task_row(task));click(app.buttons['Work History']);history=app.history
     pump(root,lambda:history.current);choose_combo(root,history.period_control,2,click,keyboard)
     click(history.apply_button);pump(root,lambda:history.snapshot_token is None and history.current)
     handle=next(h for h,v in history.mapping.items() if v['entry_id']==entry)

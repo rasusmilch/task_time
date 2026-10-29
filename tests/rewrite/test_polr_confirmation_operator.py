@@ -28,7 +28,7 @@ def type_hours(root,entry,text,click,keyboard):
 def test_real_tk_server_frozen_source_checked_zero_manual_stale_ack_history_modal(connected,root,click,keyboard,tmp_path,monkeypatch):
     app,worker,clock=connected;task=selected_task(app);other=create(app,'Other')
     mutation(app,'add_timed_work',task_id=other,entry_id=uid(),start_date=DAY,start_time='9am',end_date=DAY,end_time='9:15am',start_occurrence=None,end_occurrence=None,comment='genuine interval')
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     click(app.buttons['Add date-only work']);form=app._work_editor
     pump(root,lambda:root.grab_current() is form.window)
     keyboard[1](form.fields[1],'3:00');click(form.save);pump(root,lambda:app.pending is None and app.editor is None)

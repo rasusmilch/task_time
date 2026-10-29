@@ -82,7 +82,9 @@ implemented. Do not claim target functionality is active or treat superseded
 legacy behavior as permanent replacement-product policy.
 
 The later hierarchy-design approval selects tree main/mini, leaf-only new time,
-branch lifecycle and nested templates as an unimplemented target. Read the
+branch lifecycle and nested templates as a target. Package A grouped main/mini
+presentation on flat schema 1 is delivered for independent review; deeper task
+hierarchy, lifecycle and templates remain unimplemented. Read the
 [approved behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [proposed fresh foundation](docs/ARCHITECTURE.md#proposed-fresh-hierarchy-foundation)
 and [packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).
@@ -100,9 +102,9 @@ recovery is deliberately no longer promised, with no persistent deletion registr
 Independently adjudicate the [bounded deletion/receipt design](docs/ARCHITECTURE.md#proposed-unused-entity-deletion-and-receipt-boundary)
 and exact fresh DDL before B/C; applied/referenced-template actual Delete eligibility
 is Open before E. No historical work/evidence deletion or automatic cleanup is
-authorized. Package A is first only after independent documentation acceptance.
-This documentation task executes no implementation package and authorizes no
-Stage 4 completion, Stage 5, merge or release.
+authorized. Packages B–F require separately approved implementation tasks after
+their dependencies are adjudicated. Package A authorizes no Stage 4 completion,
+Stage 5, merge or release.
 
 ## Reading map
 

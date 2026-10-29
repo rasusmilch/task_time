@@ -43,8 +43,8 @@ def manual_review(app,sheet,task,day=DAY):
 def test_real_tk_source_subset_manual_history_exact_frozen_work_and_restart(connected,root,tmp_path,monkeypatch):
     app,worker,clock=connected;task=selected_task(app);other=create(app,'Other')
     mutation(app,'add_timed_work',task_id=other,entry_id=uid(),start_date=DAY,start_time='9am',end_date=DAY,end_time='9:15am',start_occurrence=None,end_occurrence=None,comment='genuine timed')
-    app.tree.selection_set(other);assert app.start();pump(root,lambda:app.pending is None and app.state['active'] is not None)
-    active=deepcopy(app.state['active']);app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(other));assert app.start();pump(root,lambda:app.pending is None and app.state['active'] is not None)
+    active=deepcopy(app.state['active']);app.tree.selection_set(app.task_row(task))
     task,sheet,c,dest=saved(app,tmp_path,monkeypatch)
     sheet.close();mutation(app,'add_date_only_work',task_id=task,entry_id=uid(),work_date=DAY,duration_text='2:00',comment='later')
     sheet=open_sheet(app);saved_reports(app,sheet,c.export_id);before=evidence(worker)

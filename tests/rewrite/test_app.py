@@ -133,13 +133,13 @@ def test_real_tk_production_controls_main_mini_switch_and_shared_cutoff(connecte
     import chronicle.app as module
     names = iter(["Same", "Same"])
     monkeypatch.setattr(module.simpledialog, "askstring", lambda *args, **kwargs: next(names))
-    click(app.buttons["Create task"])
+    click(app.buttons["New Task"])
     pump(root, lambda: len(app.state["tasks"]) == 1 and app.pending is None)
-    click(app.buttons["Create task"])
+    click(app.buttons["New Task"])
     pump(root, lambda: len(app.state["tasks"]) == 2 and app.pending is None)
     first, second = [t["task_id"] for t in app.state["tasks"]]
     assert first != second
-    box = app.tree.bbox(first)
+    box = app.tree.bbox(app.task_row(first))
     click(app.tree, (box[0] + 35, box[1] + box[3] // 2))
     assert app.selected_task_id() == first
     before = clock.calls
@@ -148,7 +148,7 @@ def test_real_tk_production_controls_main_mini_switch_and_shared_cutoff(connecte
     accepted = app.state["active"]["start_utc_us"]
     assert accepted == NOW and clock.calls >= before + 1
     clock.value += timedelta(minutes=2, microseconds=123)
-    box = app.tree.bbox(second)
+    box = app.tree.bbox(app.task_row(second))
     click(app.tree, (box[0] + 35, box[1] + box[3] // 2))
     click(app.buttons["Switch"])
     pump(root, lambda: app.state["active"]["task_id"] == second and app.pending is None)
@@ -168,7 +168,7 @@ def test_real_tk_production_controls_main_mini_switch_and_shared_cutoff(connecte
 def test_real_tk_slow_worker_accepted_instant_reentry_and_queued_shutdown(connected, root, monkeypatch):
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     gate, entered = threading.Event(), threading.Event()
     original = TimerService.execute
     def slow(self, request):
@@ -206,7 +206,7 @@ def test_real_tk_slow_worker_accepted_instant_reentry_and_queued_shutdown(connec
 def test_real_tk_clock_warning_recovery_preserves_original_start(connected, root, click):
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     assert app.start()
     pump(root, lambda: app.state["active"] is not None)
     entry = app.state["active"]["entry_id"]
@@ -235,7 +235,7 @@ def test_real_tk_clock_warning_recovery_preserves_original_start(connected, root
 def test_real_tk_unverified_exit_cancel_reconcile_same_identity(connected, root, monkeypatch):
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     original = TimerService.execute
     committed = []
     def lost(self, request):
@@ -270,7 +270,7 @@ def test_real_tk_unverified_exit_cancel_reconcile_same_identity(connected, root,
 def test_real_tk_unverified_confirmed_exit_does_not_stop_timer(connected, root, monkeypatch):
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     original = TimerService.execute
     def lost(self, request):
         result = original(self, request)
@@ -344,7 +344,7 @@ def test_destroyed_owner_direct_callbacks_do_not_touch_tk():
 def test_real_tk_numeric_failure_after_commit_recovery_and_reader_purity(connected, root, monkeypatch):
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     import chronicle.app as module
     original = module.format_duration
     def fail(value):
@@ -355,7 +355,7 @@ def test_real_tk_numeric_failure_after_commit_recovery_and_reader_purity(connect
     assert app.state["active"] is not None
     assert "Saved" in app.status.cget("text")
     assert str(app.buttons["Stop"].cget("state")) == "normal"
-    assert app.tree.item(task, "values")[-2:] == ("—", "—")
+    assert app.tree.item(app.task_row(task), "values")[-2:] == ("—", "—")
     monkeypatch.setattr(module, "format_duration", original)
     clock.value += timedelta(seconds=10)
     app.refresh()
@@ -382,10 +382,10 @@ def test_real_tk_ui_calls_are_on_creator_thread_and_empty_mini(connected, root, 
         monkeypatch.setattr(widget, method, observed)
     app.open_mini()
     pump(root, lambda: app._read_inflight is None)
-    assert app.mini.today.cget("text") == "Today: 00:00"
+    assert app.mini.today.cget("text") == "Today: —"
     assert app.mini.name.cget("text") == "No task selected"
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     app._selection_changed()
     assert app.mini.name.cget("text") == "Same"
     assert app.start()
@@ -438,7 +438,7 @@ def test_real_tk_root_launcher_source_smoke(root, tmp_path, monkeypatch):
                     self.create_task()
                 elif self.state["tasks"] and "start" not in submitted and self.can_mutate():
                     submitted.add("start")
-                    self.tree.selection_set(self.state["tasks"][0]["task_id"])
+                    self.tree.selection_set(self.task_row(self.state["tasks"][0]["task_id"]))
                     self.start()
                 elif self.state["active"] is not None and self.pending is None:
                     finished.append(True)
@@ -476,15 +476,15 @@ def test_real_tk_one_observation_handoff_and_minimum_size(connected, root):
     for button in app.buttons.values():
         assert button.winfo_x() >= 0
         assert button.winfo_x() + button.winfo_width() <= button.master.winfo_width()
-    assert app.tree.column("today")["minwidth"] >= 80
-    assert app.tree.column("week")["minwidth"] >= 80
+    assert app.tree.column("individual")["minwidth"] >= 80
+    assert app.tree.column("cumulative")["minwidth"] >= 80
 
 
 def test_real_tk_correction_drafts_clear_occurrence_without_loading(connected, root):
     from tkinter import ttk
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     app.start()
     pump(root, lambda: app.pending is None and app.state["active"] is not None)
     app.correct_active_start()
@@ -509,7 +509,7 @@ def test_real_tk_correction_queue_acceptance_is_not_completion(connected, root, 
     from tkinter import ttk
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     assert app.start()
     pump(root, lambda: app.pending is None and app.state['active'] is not None)
     app.correct_active_start()
@@ -538,7 +538,7 @@ def test_real_tk_correction_queue_acceptance_is_not_completion(connected, root, 
 def open_active_editor(connected, root):
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     assert app.start()
     pump(root, lambda: app.pending is None and app.state['active'] is not None and app._read_inflight is None)
     app.correct_active_start()
@@ -904,7 +904,7 @@ def keyboard(root, click):
 def test_real_tk_server_input_rejection_recovery_and_modal_blocking(connected, root, click, keyboard):
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     click(app.buttons['Start'])
     pump(root, lambda: app.state['active'] is not None and app.pending is None)
     click(app.buttons['Mini mode'])
@@ -1183,7 +1183,7 @@ def test_real_tk_cleanup_failure_cannot_cancel_back_into_closed_worker(connected
     from test_bootstrap import child
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     app.start()
     pump(root, lambda: app.pending is None and app.state['active'] is not None)
     entry = app.state['active']['entry_id']
@@ -1245,7 +1245,7 @@ def test_real_tk_failed_startup_cleanup_retry_is_accessible(root, tmp_path, monk
 def test_real_tk_forced_root_destruction_still_drains_accepted_io(connected, root, monkeypatch):
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     gate, entered = threading.Event(), threading.Event()
     original = TimerService.execute
     def slow(service, request):
@@ -1273,7 +1273,7 @@ def test_real_tk_forced_root_destruction_still_drains_accepted_io(connected, roo
 def test_real_tk_result_callback_failure_keeps_commit_and_drain_alive(connected, root, monkeypatch):
     app, worker, clock = connected
     task = create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     original, failed = app._controls, []
     def fail_once():
         if app.pending is None and app.status.cget('text') == 'Saved.' and not failed:

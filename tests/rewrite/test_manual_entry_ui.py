@@ -17,7 +17,7 @@ from test_app import root, connected, click, keyboard, pump, create, evidence, C
 
 def select_task(app):
     task=create(app)
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     pump(app.root,lambda: not app.buttons["Add timed work"].instate(["disabled"]))
     return task
 
@@ -48,21 +48,24 @@ def test_real_tk_manual_controls_mixed_totals_modal_blocking_and_week_selection(
     click(app.buttons['Start']);click(app.mini.toggle)
     assert evidence(worker)==before and app.state['active'] is None
     click(session.save);settled(app,root)
-    assert app.tree.item(task,'values')[1:]==('01:30','01:30')
+    assert app.tree.item(app.task_row(task),'values')[1:]==('01:30','01:30')
     assert app.mini.today.cget('text')=='Today: 01:30'
     click(app.buttons['Add timed work']);session=app._work_editor
     pump(root,lambda:root.grab_current() is session.window)
     assert [e.get() for e in session.fields]==['2026-10-19','','2026-10-19','','']
     type_text(session.fields[1],'08:00');type_text(session.fields[3],'09:00')
     click(session.save);settled(app,root)
-    assert app.tree.item(task,'values')[1:]==('02:30','02:30')
+    assert app.tree.item(app.task_row(task),'values')[1:]==('02:30','02:30')
     assert app.mini.today.cget('text')=='Today: 02:30'
     click(app.buttons['Add date-only work']);session=app._work_editor
     pump(root,lambda:root.grab_current() is session.window)
     type_text(session.fields[0],'2026-10-24');type_text(session.fields[1],'14:00')
     click(session.save);settled(app,root)
     assert app.state['report']['tasks'][task]['daily_us']['2026-10-24']==14*H
-    assert app.tree.item(task,'values')[1:]==('02:30','16:30')
+    assert app.tree.item(app.task_row(task),'values')[1:]==('02:30','02:30')
+    app.period.set('This Week');app._presentation_changed()
+    assert app.tree.item(app.task_row(task),'values')[1:]==('16:30','16:30')
+    app.period.set('Today');app._presentation_changed()
     # Real combobox keyboard selection, not a direct settings callback.
     click(app.week_selector,(app.week_selector.winfo_width()-8,app.week_selector.winfo_height()//2))
     popdown=root.tk.call('ttk::combobox::PopdownWindow',str(app.week_selector))
@@ -79,12 +82,12 @@ def test_real_tk_cancel_fixed_identity_clock_and_reader_purity(connected,root,cl
     app,worker,clock=connected
     task=select_task(app)
     second=create(app,'Other')
-    app.tree.selection_set(task)
+    app.tree.selection_set(app.task_row(task))
     root.after_cancel(app._tick_id);app._tick_id=None
     before=evidence(worker)
     click(app.buttons['Add date-only work']);session=app._work_editor
     pump(root,lambda:root.grab_current() is session.window)
-    app.tree.selection_set(second)  # Programmatic selection cannot retarget the owned form.
+    app.tree.selection_set(app.task_row(second))  # Programmatic selection cannot retarget the owned form.
     values=fill(session,['2026-10-19','1:00','draft'])
     assert session.task_id==task and evidence(worker)==before
     click(session.cancel)
@@ -194,7 +197,7 @@ def test_real_tk_running_timer_week_change_midnight_and_restart(connected,root):
         pump(reopened_root,lambda:reopened_app.ready and reopened_app.state['report'] is not None)
         assert reopened_app.state['week_start']==0 and reopened_app.state['active']==active
         assert reopened_app.week_selector.get()=='Monday'
-        assert reopened_app.tree.item(task,'values')[1:]==('01:10','01:10')
+        assert reopened_app.tree.item(reopened_app.task_row(task),'values')[1:]==('01:10','01:10')
         reopened_app.open_mini();pump(reopened_root,lambda:reopened_app._read_inflight is None)
         assert reopened_app.mini.today.cget('text')=='Today: 01:10'
         assert evidence(reopened_worker)==before and not errors

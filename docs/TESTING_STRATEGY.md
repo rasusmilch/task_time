@@ -353,6 +353,21 @@ import or backward-compatibility fixture obligation is selected.
 Linux fault injection does not prove arbitrary concurrent-writer, power-loss or
 native Windows/NTFS safety.
 
+## Package A explorer evidence
+
+[test_main_explorer.py](../tests/rewrite/test_main_explorer.py) uses actual Tk,
+DatabaseWorker and SQLite for typed group/task identity collisions, empty/duplicate
+projects/tasks, all creation selection contexts, empty-project rename, assignment
+preserving work, shared period/group/application conservation, retained hidden
+facts and unavailable recovery. Actual widget-write spies establish unchanged
+refresh purity; nonzero scroll/selection/open state survives reads and period
+changes. Explicit ticks cover fresh UTC observations without repaint, minute/date
+transitions and backward-clock recovery without writes. XTest exercises timer and
+mini Show Main/Keep Mini Open/live modal protection. Existing app/History/Timesheet/
+backup/startup cases now address typed rows without weakening service assertions;
+manual-work tests explicitly exercise the shared period. Linux evidence does not
+qualify native Windows theme/topmost/focus behavior.
+
 ## Hierarchy target evidence — planned, not implemented
 
 This section maps the later user-approved

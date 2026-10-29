@@ -149,7 +149,7 @@ def test_real_tk_server_accepted_timer_then_close_drains_exact_mutation(connecte
         assert app.start();pump(root,lambda:app.pending is None and app.state['active'] is not None)
         clock.value+=timedelta(minutes=1)
     if kind=='switch':
-        other=create(app,'Switch to');app.tree.selection_set(other)
+        other=create(app,'Switch to');app.tree.selection_set(app.task_row(other))
     enter,release=threading.Event(),threading.Event();execute=TimerService.execute
     def delayed(self,r):
         enter.set();assert release.wait(5);return execute(self,r)
@@ -237,7 +237,7 @@ def test_connected_uncertainty_backup_shutdown_cold_restore_fresh_session(store,
                 finally:self.store._probe=probe
             return execute(self,request)
         monkeypatch.setattr(TimerService,'execute',uncertain)
-        app.tree.selection_set(task);app.add_date_only_work();session=app._work_editor
+        app.tree.selection_set(app.task_row(task));app.add_date_only_work();session=app._work_editor
         fill(session,('2026-10-19','0:07','uncertain then reconciled'));session.save.invoke()
         request=app.pending;pump(root,lambda:not app.executing and app.pending is request)
         assert app._mutation_outcome.status=='unverified' and session.request is request

@@ -66,7 +66,7 @@ def test_guarded_open_during_editor_history_timesheet_pending_shutdown_and_compe
 
 def test_slow_backup_busy_responsive_destroyed_dialog_owner_result_and_following_mutation(connected,root,tmp_path,monkeypatch):
     app,worker,clock=connected;task=selected_task(app)
-    app.tree.selection_set(task);assert app.start()
+    app.tree.selection_set(app.task_row(task));assert app.start()
     pump(root,lambda:app.pending is None and app.state['active'] is not None)
     active=dict(app.state['active']);before=logical(worker.directory/'chronicle.sqlite3')
     entered,release=threading.Event(),threading.Event();copy=br._copy;threads=[]
@@ -86,7 +86,8 @@ def test_slow_backup_busy_responsive_destroyed_dialog_owner_result_and_following
         calls_before=clock.calls
         heartbeat=[];root.after(1200,lambda:heartbeat.append(True));pump(root,lambda:heartbeat)
         assert app.state['active']==active and '00:00:02' not in app.active_label.cget('text')
-        assert 'elapsed 00:00' in app.active_label.cget('text') and clock.calls>calls_before
+        assert app.active_label.cget('text') == '▶ Running: ' + next(t['name'] for t in app.state['tasks'] if t['task_id']==task)
+        assert clock.calls>calls_before
         dialog.window.destroy()
         assert app.backup_dialog is None and app._backup_operation is operation and operation.busy
         assert not app.open_backup() and not app.stop()
@@ -117,7 +118,7 @@ def test_backup_failure_retains_path_primary_diagnostic_stale_completion_and_exp
 
 
 def test_real_tk_server_input_backup_modal_main_mini_blocking_success_and_shutdown(connected,root,click,tmp_path,monkeypatch):
-    app,worker,clock=connected;task=selected_task(app);app.tree.selection_set(task)
+    app,worker,clock=connected;task=selected_task(app);app.tree.selection_set(app.task_row(task))
     click(app.buttons['Start']);pump(root,lambda:app.pending is None and app.state['active'] is not None)
     active=dict(app.state['active']);clock.value+=__import__('datetime').timedelta(minutes=1)
     app.open_mini();mini=app.mini
@@ -162,7 +163,7 @@ def test_connected_saved_confirmed_dismissed_backup_and_cold_recovery(connected,
     entry=uid()
     mutation(app,'add_date_only_work',task_id=first,entry_id=entry,work_date='2026-10-19',duration_text='0:20',comment='dated')
     mutation(app,'edit_date_only_work',task_id=first,entry_id=entry,expected_revision=1,work_date='2026-10-19',duration_text='0:21',comment='corrected')
-    app.tree.selection_set(second);assert app.start();settled(app);active=dict(app.state['active'])
+    app.tree.selection_set(app.task_row(second));assert app.start();settled(app);active=dict(app.state['active'])
     sheet=open_sheet(app);candidate=refresh(app,sheet)
     choose(monkeypatch,sheet,str(tmp_path/'report.txt'));assert sheet.save();settled(app)
     saved=app._timesheet_attempt.candidate

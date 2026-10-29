@@ -322,6 +322,40 @@ implemented or authorized. No UPGRADE_AVAILABLE result exists. Normal locked nat
 rollback recovery of a supported image is not schema conversion. Native
 qualification and the complete Stage 4 gate remain separate.
 
+## Implemented Package A presentation on flat schema 1
+
+`task_row`/`project_row` distinguish task:UUID, project:UUID and group:unassigned;
+only a validated task row authorizes a task UUID. Selected project rows cannot
+reuse a prior task. Empty groups remain visible; Rename project uses selected
+identity/version, with the existing chooser otherwise. New Task freezes selected
+project, selected task's current project or Unassigned before its owned prompt,
+then calls existing create_task(project_id). No new SQL or service operation.
+
+Main Individual/Cumulative use session Today/This Week; flat tasks match, group
+Individual is a placeholder and group Cumulative sums existing member report
+amounts, including retained hidden facts. Headline totals come from the report's
+application values, never widget rollups. Failure clears all amounts without
+repeating a failing formatter; later valid reads recover.
+
+`_render` reconciles typed rows/values in place and reparents surviving tasks after
+assignment. A-Z orders groups/siblings with UUID ties. Selection, group open state
+and scroll persist. Active identity/group transitions expand the active group;
+ordinary reads respect later user collapse. Green/red task tags plus text show
+Running/Stopped; organizational rows indicate an active member, not their own timer.
+Main has no changing started-at/elapsed/as-of label. `_tick` retains one-second
+exact UTC/safety/date/reminder/coalesced reads; row comparisons and
+`configure_changed` write only changed presentation values. Visible minute amounts
+therefore change at relevant boundaries; Stop/Switch capture action time immediately.
+
+Mini delegates to the same owner/report and adds state bar/Show Main. Keep Mini
+Open defaults Off/session-local; Show Main raises main and closes mini only when
+Off. Presentation/Show Main require a ready idle owner without competing modal,
+grab, pending mutation, backup or shutdown. Mini drops topmost while blocked and
+never takes focus/grabs. Existing root destruction owns child/worker cleanup; no
+new timer, root, connection or worker. Package A awaits independent review and
+native Windows theme/topmost/focus qualification. Deeper hierarchy below remains
+unimplemented.
+
 ## Proposed fresh hierarchy foundation
 
 **Status: PROPOSED technical model for the approved target behavior, not active
@@ -338,9 +372,10 @@ Source grounding: [sqlite_store.py](../src/chronicle/sqlite_store.py) currently
 defines flat `projects`/`tasks`, schema 1, retained identity and immutable evidence
 guards; [services.py](../src/chronicle/services.py) provides `create_task`,
 `assign_task_to_project`, `read_current_state` and explicit Request operations.
-[app.py](../src/chronicle/app.py) has a flat Treeview in `_build`/`_render`;
-[mini_mode.py](../src/chronicle/mini_mode.py) delegates to that owner but currently
-lacks Show Main/Keep Mini Open/state bar. [accounting.py](../src/chronicle/accounting.py)
+[app.py](../src/chronicle/app.py) groups flat data into Project → Task/Unassigned
+in `_build`/`_render` (Package A);
+[mini_mode.py](../src/chronicle/mini_mode.py) delegates to that owner and currently
+implements guarded Show Main/Keep Mini Open/state bar in Package A. [accounting.py](../src/chronicle/accounting.py)
 calculates direct task/day values; [timesheet.py](../src/chronicle/timesheet.py)
 freezes task identities/current-at-export grouping. The legacy
 [tree UI](../src/task_timer/app.py), [mini](../src/task_timer/mini_mode.py) and

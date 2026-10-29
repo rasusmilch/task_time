@@ -100,7 +100,7 @@ def native_confirmation(root,history,click,keyboard,button,yes):
 def test_real_tk_server_history_to_inline_edit_delete_details_modal_return_and_restart(connected,root,click,keyboard):
     app,worker,clock=connected
     first=selected_task(app); second=create(app,'Second task')
-    app.tree.selection_set(first)
+    app.tree.selection_set(app.task_row(first))
     pump(root,lambda:app._selected()['task_id']==first)
     # Genuine recording captures precise endpoints on either side of local midnight.
     clock.value=from_us(NOW-11*H+123456)
@@ -210,7 +210,7 @@ def test_real_tk_server_history_to_inline_edit_delete_details_modal_return_and_r
     try:
         pump(new_root,lambda:new_app.ready and new_app.state['report'] is not None)
         assert new_app.state['active']==active and new_app.state['week_start']==6
-        new_app.tree.selection_set(first); assert new_app.open_history()
+        new_app.tree.selection_set(new_app.task_row(first)); assert new_app.open_history()
         fresh=new_app.history; pump(new_root,lambda:fresh.snapshot_token is None and fresh.current)
         assert fresh.newest_first and fresh.period.get()=='Current week' and fresh.start.get()==''
         assert timed_id in fresh.deleted_choices.values()

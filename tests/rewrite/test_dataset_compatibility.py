@@ -442,7 +442,7 @@ def test_real_tk_normal_startup_after_inspection_and_rejection_without_upgrade_u
             return
         pump(root,lambda:app.ready and app.state.get('report') is not None)
         assert not any('upgrade' in label.lower() or 'inspect' in label.lower() for label in app.buttons)
-        app.tree.selection_set(rich['task']);app._selection_changed()
+        app.tree.selection_set(app.task_row(rich['task']));app._selection_changed()
         click(app.buttons['Stop']);pump(root,lambda:app.pending is None and app.state['active'] is None)
         click(app.buttons['Start']);pump(root,lambda:app.pending is None and app.state['active'] is not None)
         active=dict(app.state['active']);app.request_close();exit_settled(app)

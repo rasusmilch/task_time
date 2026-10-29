@@ -8,6 +8,15 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Deliver Package A main/mini presentation on unchanged flat schema 1: Project →
+  Task/empty groups/virtual Unassigned, typed row IDs, current-project New Task,
+  selected empty-project rename and existing assignment. Add shared Today/This Week
+  Individual/Cumulative, session A-Z, green/red text state, active-group indication
+  and in-place updates preserving selection/expansion/scroll. Keep exact safety/
+  UTC/reminder observations without a changing main timestamp. Mini adds state bar,
+  Show Main, Off-by-default session Keep Mini Open and modal-safe topmost. No schema,
+  accounting, receipt, lifecycle or template changes. Delivered for independent
+  review; native Windows visual/topmost/focus qualification remains pending.
 - Document the approved, unimplemented hierarchy target: three task levels under
   projects/virtual Unassigned, stable UUIDs, leaf-only new time and retained parent
   direct History with derived Individual/Cumulative, not extra Actual/POL-R. Keep
