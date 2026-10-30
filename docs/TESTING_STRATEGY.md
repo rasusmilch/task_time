@@ -789,28 +789,74 @@ input and F4 actual Sleep/resume remain distinct pending gates. The separate
 fresh basetemps, guarded callbacks, raw logs/events and structurally verified
 pytest JUnit. Every selected node must complete once; ambiguous/missing mapping,
 unclean source, cleanup/capture uncertainty or incomplete delivery prevents PASS.
-Skipped/xfail/xpass cases conservatively leave full-source evidence incomplete
-pending independent applicability adjudication. Raw pytest/process codes and
-archive delivery remain separate. Exclusive archive-manifest reservation,
-explicit link exclusions, fatal traversal errors, reopen/CRC/member checks and
-absent-target ZIP publication preserve source/data safety. Failed ZIP retains the
-directory. Existing frozen MetadataProbe/Critical/Storage/Extended sets do not
-silently become Package F and remain unchanged.
+F2 preserves the full original inventory, then executes disjoint source-grounded
+SUPPORTED_RUNTIME (`tests/rewrite/` and `tests/test_root_launcher.py`) and finite
+RETAINED_LEGACY top-level Task Time partitions in separate owned sessions. Other
+sources remain UNCLASSIFIED and block supported qualification. Original node IDs,
+actual source paths, fixture closures and exact pytest JUnit serialization remain
+separate identities; an empty classname is valid only when the exact serializer
+produces it. No basename/fuzzy matching is accepted. Tests audit the reviewed legacy
+module list and runtime import separation; new/shared tests require classification.
 
-Use [WINDOWS_OPERATOR_QUALIFICATION.md](WINDOWS_OPERATOR_QUALIFICATION.md) for
-per-scenario actions/expected outcomes, isolated first-run settings, NTFS/runtime
-inspection, native files/hot recovery and genuine Sleep evidence. A prior revision,
-callback double, Linux XTest or simulated interval cannot fill a native gate.
-Record exact commands/counts/skips/elapsed/runtime in receipts; no proposed command
-is a claim that it ran. Current native F2/F3/F4 execution is NOT RUN on Linux.
+Raw skipped/xfail/xpass evidence is never changed to passed. F2 records applicability
+separately: APPLICABLE, INAPPLICABLE, BLOCKED_REQUIRED or UNRESOLVED. The finite rules
+in `stage4_qualification.py` review exact POSIX test identities and the explicit
+`test_app.click` Linux XTest platform metadata and fixture source. A missing root/desktop before
+that fixture is not waived. Unknown skips, expected failures, missing required
+capabilities and collection skips prevent qualification. Symlink privilege failures
+have no blanket exemption. Replacement NTFS/Job/ACL/operator evidence gates remain
+explicit; F3/F4 do not follow from automation. The old bounded collector skip policy
+is unchanged.
+
+The F2-only event writer is preowned before pytest: no event-path reopening, one
+serialized UTF-8 record per line, captured low-level write/sync/close, sticky failure,
+short/interrupted-write handling, sequence/digest health and nonzero exit on
+finalization failure. Parent reconciliation requires actual session/JUnit completion
+and exact process agreement; a verified ZIP cannot rescue incomplete execution.
+Regression tests include real filesystem-monkeypatch pytest sessions, empty external
+path JUnit identities, faulted writes/sync/close, corruption and separate partition
+sessions. Controlled POSIX deaths remain portable containment evidence only.
+
+History/Timesheet focus diagnostics distinguish initial desktop/foreground focus
+from legitimate modal return. They record mapping, focus/grab owner/status, live
+Python/Tcl widget identities, Win32 foreground PID/HWND where available and bounded
+event ordering. They never force focus. Recovery tests wait for actual widget mapping
+and viewability after authoritative callback delivery, retaining partial-output
+hiding and correct restored-content assertions. Native focus/render defects remain
+unresolved until reproduced; no production Tk correction is inferred from Linux.
+
+Raw execution and archive delivery are separate. Supported execution may be PASS
+while retained legacy is FAIL; full-source status stays FAIL. Supported automated
+qualification is published only with verified delivery. Missing source classification,
+manifest/JUnit/capture/cleanup/finalization or delivery prevents PASS. Exclusive
+archive-manifest reservation, explicit link exclusions, fatal traversal errors,
+reopen/CRC/member checks and absent-target publication preserve evidence. Failed ZIP
+retains the directory. Frozen MetadataProbe/Critical/Storage/Extended sets remain
+separate and unchanged.
+
+The October 30 Windows attempt at `56b4e4451d8c738f70d23938c2f60be009d61a84`
+is EVIDENCE_INCOMPLETE: supplied independently inspected evidence reports 3,783
+collected, 2,208 completed (2,073 passed/30 failed/12 errored/93 skipped), 1,575 not
+completed, missing final session and JUnit, with verified ZIP/cleanup. Its logger
+collided with a legacy read-purity filesystem patch. The original external ZIP is
+not rewritten and was not available on this repair's development host. The 42
+failure/error nodes and native focus/layout hypotheses require fresh native evidence;
+legacy file-status expectations remain visible without production backporting.
+
+Use [WINDOWS_OPERATOR_QUALIFICATION.md](WINDOWS_OPERATOR_QUALIFICATION.md) for the
+original-attempt inventory, focused rerun, per-scenario actions, isolated settings,
+native files/hot recovery and actual Sleep. A prior revision, callback double,
+Linux XTest or simulated interval cannot fill a native gate. F2 corrective source
+requires independent review before repeat native execution. F3/F4 remain NOT RUN;
+Stage 4 IN PROGRESS and Stage 5 NOT STARTED.
 
 The opt-in [Windows collector](../scripts/qualify_windows.ps1) and its private
 [pytest helper](../scripts/qualification_pytest.py) implement bounded automated
 scopes documented in [RUNNING](../RUNNING.md#bounded-windows-qualification-collector).
 Unit B and its bounded evidence-safety repair are independently accepted for
-limited native MetadataProbe use only. MetadataProbe remains the next native action;
-this review does not authorize broader scope execution or establish Windows
-qualification. MetadataProbe is the default; Critical/Storage/Extended are frozen
+initially limited native MetadataProbe use. That historical authority does not
+qualify changed source. The current F2 corrective repeat requires independent
+review; no broader/operator/Sleep gate follows automatically. MetadataProbe is the default; Critical/Storage/Extended are frozen
 function
 manifests with collected fixture-closure checks, not an unattended full regression.
 Unknown static fixtures are NOT RUN; unknown dynamic fixtures obstruct before

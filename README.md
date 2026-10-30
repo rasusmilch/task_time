@@ -155,8 +155,13 @@ D nested active UI and E templates are accepted for functional development under
 subsequent GO instructions. Package F adds connected portable qualification tests,
 a separate opt-in full-source Windows wrapper and the
 [Windows operator/Sleep runbook](docs/WINDOWS_OPERATOR_QUALIFICATION.md).
-Native F2–F4 execution remains NOT RUN on the Linux development host; independent
-qualification review is required. The frozen bounded collector is separate. See
+The October 30 native F2 attempt at `56b4e4451d8c738f70d23938c2f60be009d61a84`
+remains EVIDENCE_INCOMPLETE: partial tests, missing final session/JUnit, with recorded
+verified ZIP/cleanup. Corrective tooling isolates its event writer and separates
+supported schema-3 and retained legacy sessions without concealing failures;
+exact evidence and reviewed skip applicability gate qualification. Native repeat
+requires independent review; F3/F4 remain NOT RUN. The frozen bounded collector
+is separate. See
 [selected behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation) and
 [bounded packages A–F](docs/ROADMAP.md#hierarchy-target--bounded-packages-a-f).

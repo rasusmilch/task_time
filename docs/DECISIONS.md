@@ -1440,6 +1440,40 @@ Linux and simulated-time evidence cannot establish those gates. Preparation with
 execution stays pending. Only a separately reviewed native evidence decision can
 close Stage 4; Stage 5, external policy and installation/cutover stay unauthorized.
 
+### F2 corrective evidence and supported/legacy qualification boundary
+
+**Status:** owner-approved bounded corrective implementation, pending independent
+review before native repetition. **Provenance:** explicit execution approval following
+the source-grounded read-only F2 corrective plan at
+`56b4e4451d8c738f70d23938c2f60be009d61a84`.
+
+The October 30 Windows attempt is EVIDENCE_INCOMPLETE, not PASS: supplied independent
+archive inspection reports 3,783 collected, 2,208 completed (2,073 passed, 30 failed,
+12 errored, 93 skipped), 1,575 uncompleted, final session/JUnit absent, with verified
+ZIP delivery and recorded cleanup. The original ZIP is external immutable evidence;
+it was not supplied to this development host. A legacy read-purity filesystem patch
+intercepted the F2 event-path reopen. No schema-3 production defect follows from
+that collector crash.
+
+Select a dedicated preowned F2 event/health/diagnostic sink, sticky failures and
+complete parent reconciliation; exact JUnit identities may legitimately have an
+empty classname. Bounded membership uses actual collected source and the unchanged
+frozen allowlists/fixture guards. Complete original collection partitions into
+supported rewrite/root-launcher tests, finite retained legacy modules, or unclassified
+sources. Execute the two reviewed partitions separately; unclassified sources block
+supported qualification, and legacy failures stay visible in full-source results.
+Raw outcomes and skip reasons remain unchanged. Finite exact-source applicability
+rules do not waive missing required native capability or F3/F4.
+
+Parser-path binding, None-safe diagnostics, the active-lock fixture and clearly
+incomplete legacy mini doubles are test/tooling corrections. Native focus and
+visibility failures remain hypotheses with bounded diagnostics and actual-condition
+waits; no speculative production Tk fix is authorized. Legacy filesystem expectations
+are not rewritten to UNVERIFIABLE or backported into supported Chronicle behavior.
+Stage 4 remains IN PROGRESS, Stage 5 NOT STARTED. No product/schema/accounting/receipt,
+Delete, recovery, external-policy, installation or release decision changes.
+
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT

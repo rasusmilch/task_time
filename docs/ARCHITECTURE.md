@@ -41,15 +41,38 @@ controls without another application coordinator. Production DDL, transactions,
 uncertainty and accounting remain unchanged.
 
 `scripts/qualify_stage4_windows.ps1` invokes `stage4_qualification.py` for opt-in
-full-source evidence, separate from the unchanged frozen collector scopes. It
-reuses reviewed Job Object containment, watchdog, dialog guard, event/JUnit matching
-and exclusive evidence writes. Full callback tests may create Tk; unknown dialogs
-receive no answer. Original collection and execution inventories remain distinct;
-collection-only has no JUnit requirement. Raw execution, completeness and delivery
-are separate. Only a verified archive candidate is exclusively published beside
-its owned directory; failed delivery retains original evidence. See the
-[native runbook](WINDOWS_OPERATOR_QUALIFICATION.md) for F2/F3/F4 boundaries. Tooling
-or Linux execution cannot establish Windows operator/Sleep acceptance.
+full-inventory evidence, separate from the frozen bounded collector scopes. It
+reuses Job Object containment, watchdogs and dialog guards. Full callback tests may
+create Tk; unknown dialogs receive no answer. The F2-only event sink exclusively
+reserves an append descriptor and a separate health descriptor before pytest starts.
+Hooks never reopen the event pathname. Captured low-level functions, locked complete
+UTF-8 JSON-lines writes, explicit short/interrupted-write handling and sticky errors
+isolate instrumentation from test filesystem monkeypatches. Final sync/close failures
+produce a nonzero child result. The parent checks final health, sequence, digest,
+complete events, actual JUnit, process/session agreement and cleanup; readable health
+alone cannot establish successful finalization. No session/JUnit is synthesized.
+
+Full collection retains original node IDs, collected source paths, fixture closures
+and exact pytest-derived JUnit identities (including a legitimate empty classname).
+Bounded membership uses the collected source relative to the reviewed repository,
+not a node-ID basename. Frozen allowlists and fixture/dialog rules remain unchanged.
+F2 partitions every node disjointly into supported `tests/rewrite/` plus the root
+launcher bridge, a finite reviewed top-level legacy inventory, or UNCLASSIFIED.
+Unknown sources block supported qualification. Supported and legacy partitions run
+in separate owned sessions with separate manifests, arguments, logs, events, JUnit,
+exit codes and cleanup. Their union must reproduce the original inventory exactly.
+Legacy failure remains failure in the full-source result.
+
+Raw pytest outcomes and skip reasons remain immutable. Finite exact source/fixture
+rules classify native applicability independently; unknown skips and missing required
+capabilities prevent PASS. Linux XTest/POSIX omissions do not fill mandatory native
+F3/F4 gates. Raw supported execution and delivery-aware supported qualification are
+separate: only verified archive delivery can publish the latter as PASS. A legacy
+FAIL can coexist with supported automated PASS but never with full-source PASS.
+Exclusive manifest reservation, explicit link omissions, fatal traversal errors and
+verified absent-target ZIP publication retain evidence on failure. See the
+[native runbook](WINDOWS_OPERATOR_QUALIFICATION.md). None of this changes application
+runtime, schema, receipts, frozen reporting or recovery authority.
 
 ## Small application and responsibility boundaries
 

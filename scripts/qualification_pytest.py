@@ -304,9 +304,19 @@ class Events:
             stream.flush()
 
 
-def selection(scope, nodeid, fixtures, params=()):
-    module, function = nodeid.split('::', 1)
-    module = Path(module).name
+def selection(scope, nodeid, fixtures, params=(), *, source_path=None, source_root=None):
+    original_module, function = nodeid.split('::', 1)
+    # nodeid is pytest/JUnit identity, not necessarily a source pathname (notably
+    # for initial paths on a different Windows drive). Never authorize a basename.
+    source_root = Path(source_root or Path(__file__).resolve().parents[1]).resolve()
+    source = Path(source_path) if source_path is not None else source_root/original_module
+    try:
+        relative = source.resolve().relative_to(source_root).as_posix()
+    except ValueError:
+        return False, 'Source outside reviewed test root', 'deferred'
+    if not relative.startswith('tests/rewrite/') or '/' in relative[len('tests/rewrite/'):]:
+        return False, 'Source outside reviewed rewrite modules', 'deferred'
+    module = relative.split('/')[-1]
     function = function.split('[', 1)[0]
     key = module+'::'+function
     callback = key in CALLBACKS and scope == 'Extended'
@@ -383,9 +393,10 @@ class DialogGuard:
 
 
 class QualificationPlugin:
-    def __init__(self, events, root, scope, *, enforce_manifest=True):
+    def __init__(self, events, root, scope, *, enforce_manifest=True, source_root=None):
         self.events, self.root, self.scope = events, Path(root), scope
         self.enforce_manifest = enforce_manifest
+        self.source_root = Path(source_root or Path(__file__).resolve().parents[1]).resolve()
         self.categories, self.reports, self.outcomes = {}, {}, Counter()
         self.manifest = []
         self.manifest_record = None
@@ -401,14 +412,17 @@ class QualificationPlugin:
             params = tuple(name for name in getattr(getattr(item,'callspec',None),'params',{})
                            if definitions.get(name) and definitions[name][-1].func.__name__=='get_direct_param_fixture_func'
                            and definitions[name][-1].func.__module__=='_pytest.python')
-            accepted, reason, category = selection(self.scope,item.nodeid,item.fixturenames,params) if self.enforce_manifest else (True,'controlled helper fixture','backend')
+            accepted, reason, category = selection(self.scope,item.nodeid,item.fixturenames,params,
+                source_path=item.path,source_root=self.source_root) if self.enforce_manifest else (True,'controlled helper fixture','backend')
             row = dict(nodeid=item.nodeid, fixtures=list(item.fixturenames), parameters=list(params),
+                       source_path=str(item.path.resolve()),
                        selected=accepted, status='SELECTED' if accepted else 'NOT RUN', category=category, reason=reason)
             # Use the installed pytest serializer's addressing, including params
             # and configured prefix. Never infer edit/test identity from XML text.
             address = mangle_test_address(item.nodeid)
             classes = address[:-1]
             if config.getoption('junitprefix'): classes.insert(0, config.getoption('junitprefix'))
+            row['junit_prefix'] = config.getoption('junitprefix')
             row['junit'] = dict(classname='.'.join(classes), name=bin_xml_escape(address[-1]))
             row['fixture_definitions'] = {name: [dict(module=d.func.__module__, function=d.func.__qualname__)
                                                  for d in values] for name,values in definitions.items() if values}
@@ -452,6 +466,8 @@ class QualificationPlugin:
         self.reports.setdefault(report.nodeid,[]).append(dict(phase=report.when,outcome=report.outcome,
                                                             wasxfail=getattr(report,'wasxfail',None)))
         self.events.emit('report',nodeid=report.nodeid,phase=report.when,outcome=report.outcome,
+                         applicability_metadata=[list(p) for p in getattr(report,'user_properties',[])
+                             if p[0]=='chronicle_skip_rule'],
                          wasxfail=getattr(report,'wasxfail',None),duration=report.duration,
                          diagnostic=str(report.longrepr) if report.failed or report.skipped else None)
     def pytest_runtest_logfinish(self, nodeid, location):
@@ -568,8 +584,15 @@ def validate_test_evidence(root, process_code, pytest_code):
                     and isinstance(row.get('fixtures'), list), 'Incomplete selection manifest row')
             if not row['selected']: continue
             identity = row.get('junit', {})
-            require(isinstance(identity, dict) and all(isinstance(identity.get(k), str) and identity[k]
-                    for k in ('classname','name')), 'Missing JUnit identity: '+node)
+            require(isinstance(identity, dict) and isinstance(identity.get('classname'), str)
+                    and isinstance(identity.get('name'), str) and bool(identity['name']), 'Missing JUnit identity: '+node)
+            from _pytest.junitxml import mangle_test_address, bin_xml_escape
+            address = mangle_test_address(node)
+            prefix = row.get('junit_prefix')
+            classes = address[:-1]
+            if prefix: classes.insert(0, prefix)
+            require(identity == dict(classname='.'.join(classes),name=bin_xml_escape(address[-1])),
+                    'JUnit identity differs from exact pytest serialization: '+node)
             key = (identity['classname'], identity['name'])
             require(key not in identities, 'Ambiguous JUnit identity: '+repr(key))
             identities[key] = node; selected[node] = row
@@ -1133,10 +1156,10 @@ def prepare(repo,root,scope,expected):
     return source
 
 
-def run_pytest(root,scope,arguments=None,*,enforce_manifest=True):
+def run_pytest(root,scope,arguments=None,*,enforce_manifest=True,source_root=None):
     import pytest
     root=Path(root)
-    plugin=QualificationPlugin(Events(root/'events.jsonl'),root,scope,enforce_manifest=enforce_manifest)
+    plugin=QualificationPlugin(Events(root/'events.jsonl'),root,scope,enforce_manifest=enforce_manifest,source_root=source_root)
     # Mark before pytest registers hooks, without requiring pytest for probe/setup.
     for name in ('pytest_runtest_setup','pytest_runtest_call','pytest_runtest_teardown'):
         pytest.hookimpl(tryfirst=True)(getattr(type(plugin),name))

@@ -1,4 +1,5 @@
 """Connected Chronicle app/worker/SQLite; callbacks isolate faults, operator case uses XTest."""
+from tk_observation import wait_observed
 from copy import deepcopy
 from datetime import timedelta
 import threading
@@ -98,7 +99,10 @@ def test_real_tk_reconciliation_read_render_failure_recovery_and_obsolete_delive
     assert not sheet.reconciliation_tree.master.winfo_ismapped() and not sheet.reconciliation_current
     assert root.test_errors[-1][1] is render_fault
     assert sheet.refresh_reconciliation();reconciled(app,sheet)
+    wait_observed(root,lambda:sheet.reconciliation_tree.master.winfo_ismapped() and sheet.window.winfo_viewable(),
+        phase='Reconciliation successful render geometry',widgets=(sheet.window,sheet.reconciliation_tree.master))
     assert sheet.reconciliation_tree.master.winfo_ismapped()
+    assert sheet.reconciliation_result==old
     sheet.reconciliation_token=991;sheet.reconciliation_period.set('Last week')
     sheet.receive_reconciliation(991,old);assert not sheet.reconciliation_current
     sheet.close();sheet.receive_reconciliation(991,old)
@@ -280,6 +284,8 @@ def test_real_tk_explicit_dismiss_suppresses_even_when_calculation_unavailable(c
     with monkeypatch.context() as m:
         m.setattr('chronicle.timesheet.calculate_daily',lambda *a,**k:(_ for _ in ()).throw(fault))
         app.recheck_polr();ready(app)
+        wait_observed(root,lambda:app.reminder_banner.winfo_ismapped(),
+            phase='Reminder error banner geometry',widgets=(app.reminder_banner,))
         assert app.reminder_banner.winfo_ismapped() and app.reminder_dismiss.instate(['!disabled'])
         before=evidence(worker);app.reminder_dismiss.invoke();ready(app)
         assert app._reminder_dismissed_date==DAY and not app.reminder_banner.winfo_ismapped()

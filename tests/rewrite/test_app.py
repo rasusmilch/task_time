@@ -86,13 +86,22 @@ def connected(root, tmp_path):
     assert not worker.is_alive()
 
 
+def skip_non_linux_server_input(request, platform_name):
+    if platform_name != 'linux':
+        # Stable metadata is emitted only after root setup succeeded. Pytest may
+        # relocate a fixture skip's displayed traceback to the requesting test.
+        request.node.user_properties.append(('chronicle_skip_rule','linux_xtest_only'))
+        pytest.skip("Server-input fixture requires Linux X11/XTest; Windows evidence is separate")
+
+
 @pytest.fixture
-def click(root):
+def click(root, request):
     """Actual X11 server input; no direct Button.invoke substitute."""
     import ctypes as c
     from ctypes.util import find_library
     import sys
-    if sys.platform != "linux" or not find_library("X11") or not find_library("Xtst"):
+    skip_non_linux_server_input(request, sys.platform)
+    if not find_library("X11") or not find_library("Xtst"):
         pytest.skip("Server-input fixture requires Linux X11/XTest; Windows evidence is separate")
     x, xt = c.CDLL(find_library("X11")), c.CDLL(find_library("Xtst"))
     x.XOpenDisplay.argtypes, x.XOpenDisplay.restype = [c.c_char_p], c.c_void_p
@@ -364,13 +373,33 @@ def test_real_tk_numeric_failure_after_commit_recovery_and_reader_purity(connect
     clock.value += timedelta(seconds=10)
     app.refresh()
     pump(root, lambda: app.state["report"] is not None)
-    before = {p.name: p.read_bytes() for p in worker.directory.iterdir() if p.is_file()}
+    from chronicle.dataset_lock import DatasetLock
+    from chronicle.timesheet_files import metadata
+    lock_path = worker.directory / '.chronicle.lock'
+    assert lock_path.is_file()
+    lock_before = metadata(lock_path.lstat())
+    contender = DatasetLock(worker.directory)
+    with pytest.raises(OSError): contender.acquire()
+    assert contender.file is None
+    def readable_files():
+        # All non-lock membership/bytes, including database and every sidecar.
+        return {p.name: p.read_bytes() for p in worker.directory.iterdir() if p != lock_path}
+    before, logical = readable_files(), evidence(worker)
     for _ in range(3):
         app.refresh()
         pump(root, lambda: app._read_inflight is None)
-    after = {p.name: p.read_bytes() for p in worker.directory.iterdir() if p.is_file()}
-    assert before == after
+    assert readable_files() == before and evidence(worker) == logical
+    assert lock_path.is_file() and metadata(lock_path.lstat()) == lock_before
+    with pytest.raises(OSError): contender.acquire()
+    assert contender.file is None
     assert app.error.cget("text") == ""
+    root.destroy(); worker.join(8)
+    assert not worker.is_alive()
+    contents = lock_path.read_bytes()  # Safe only after owning worker releases.
+    contender.acquire()
+    assert contender.file is not None and not contender.file.closed
+    contender.close()
+    assert lock_path.read_bytes() == contents
 
 
 def test_real_tk_ui_calls_are_on_creator_thread_and_empty_mini(connected, root, monkeypatch):

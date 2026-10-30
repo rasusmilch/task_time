@@ -1,4 +1,5 @@
 """History lifecycle/return failures using actual Tk and represented callbacks."""
+from tk_observation import wait_observed
 from copy import deepcopy
 import tkinter as tk
 from tkinter import ttk
@@ -17,7 +18,8 @@ def test_real_tk_history_parent_grab_focus_return_identity_and_guard(connected,r
     app,worker,clock=connected; selected_task(app)
     saved=ttk.Entry(root,name='saved_focus'); saved.grid(row=9,column=0)
     pump(root,lambda:saved.winfo_ismapped())
-    saved.focus_set(); pump(root,lambda:root.focus_get() is saved)
+    saved.focus_set(); wait_observed(root,lambda:root.focus_get() is saved,
+        phase='PRECONDITION History origin focus',widgets=(saved,),foreground=True)
     if mode=='local': root.grab_set()
     before=evidence(worker); history=open_history(app)
     if mode in ('missing','reused'):
@@ -35,6 +37,7 @@ def test_real_tk_history_parent_grab_focus_return_identity_and_guard(connected,r
     monkeypatch.setattr(expected,'focus_set',restore)
     history.close()
     assert app.history is None and not app._history_opening and targets==[expected]
+    wait_observed(root,lambda:root.focus_get() is expected,phase='History actual return focus',widgets=(expected,))
     assert root.grab_current() is (root if mode=='local' else None)
     if mode=='local': root.grab_release()
     assert evidence(worker)==before and root.test_errors==[]

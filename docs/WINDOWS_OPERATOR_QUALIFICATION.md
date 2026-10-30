@@ -11,7 +11,7 @@ separate. Never enter data into an employer/customer POL-R system during this ru
 | Gate | Required evidence | Development-host status |
 | --- | --- | --- |
 | F1 | Connected schema-3 worker/SQLite and real Tk workflows, focused and full regression | Portable execution recorded in the Package F receipt; independent review required |
-| F2 | Current-revision native Windows automated collection/events/JUnit/logs, inventory, cleanup and verified delivery | NOT RUN; native Windows unavailable to the development host |
+| F2 | Current-revision native Windows automated collection/events/JUnit/logs, inventory, cleanup and verified delivery | October 30 attempt EVIDENCE_INCOMPLETE; corrective source requires review before native repeat |
 | F3 | Actual supervised Windows controls, focus, dialogs, files and restored fresh session | NOT RUN |
 | F4 | Actual Windows Sleep/resume with preserved timer and validated recovery | NOT RUN |
 
@@ -77,6 +77,24 @@ versions and missing capabilities. No provision/upgrade is authorized here. An
 unavailable prerequisite is BLOCKED, not failed production behavior. Retain console
 output with a task-owned transcript if local policy permits; no secrets/user data.
 
+## Original October 30 attempt — retained incomplete evidence
+
+At `56b4e4451d8c738f70d23938c2f60be009d61a84`, supplied independently inspected
+Windows 11 Enterprise build 26200 / Python 3.15.2 / SQLite 3.53.4 / Tcl/Tk 9.0.4 /
+PowerShell 5.1 / NTFS / tzdata 2026.5 evidence reports 3,783 collected and 2,208
+completed: 2,073 passed, 30 failed, 12 errored, 93 skipped; 1,575 not completed.
+Final session and regression JUnit are missing; ZIP delivery and cleanup were
+recorded verified. Outcome is EVIDENCE_INCOMPLETE, never PASS. The external original
+ZIP is immutable and was unavailable on this repair's Linux host.
+
+Reported failure/error inventory: collector 24; History modal 4; Timesheet UI 3;
+Stage4 helper 3; reconciliation UI 2; app 1; legacy app UI 2; legacy file status 3.
+The logger reopened events under a legacy filesystem monkeypatch, causing
+INTERNALERROR. Repairs isolate F2 logging, exact JUnit/source identities, parser
+binding, diagnostics and active-lock fixtures. Native focus/visibility hypotheses
+remain unresolved; no production Tk correction is claimed. Legacy file-status
+failures remain historical regression failures, not schema-3 production defects.
+
 ## F2 — separate automated runs
 
 Only after independent approval of the wrapper, run the full source regression:
@@ -87,31 +105,62 @@ $FullExit = $LASTEXITCODE
 Write-Host "Full wrapper exit: $FullExit"
 ```
 
-The wrapper immediately prints its NEW absolute evidence directory. Collection and
-regression have separate subdirectories and fresh basetemp paths. It collects the
-entire source inventory, then runs the full suite, including controlled Tk callback
-tests. Linux XTest cases can skip on Windows; they provide no Windows input proof.
-Unknown native dialog attempts obstruct; no automatic Yes/No/file answer is supplied.
-Observe Write-Progress and textual heartbeats. Default limits: collection 180s,
-each node 240s (including setup/teardown), each phase 7200s, cleanup 5s; PowerShell
-has an outer bound of twice the phase limit plus 120s. Changes require a reviewed
-reason and are recorded arguments, not an automatic extension. Ctrl+C cancels only
-the owned controller/test Job; inspect cleanup evidence after interruption.
+The wrapper immediately prints its NEW absolute evidence directory. `collection/`
+retains the complete original inventory. `partitions.json` assigns every node
+exactly once: SUPPORTED_RUNTIME is `tests/rewrite/` plus the supported root-launcher
+bridge `tests/test_root_launcher.py`; RETAINED_LEGACY is the finite reviewed list of
+other top-level Task Time modules in `stage4_qualification.py`. Unknown/new/shared
+sources remain UNCLASSIFIED and block supported qualification. No test disappears.
 
-The helper reuses the existing creation-time Windows Job containment, exact event/
-JUnit matching and dialog interception without changing the bounded collector.
-Original collection inventory, selected nodes, completed-once nodes, phase reports,
-pass/fail/error/skip/xfail/xpass and NOT RUN remain distinct. The collection-only raw
-monitor record is not a test-run verdict: collection-result.json records its actual
-termination/inventory, and JUnit is NOT APPLICABLE there. Regression JUnit is required.
-Any skip/xfail/xpass conservatively makes the full-source aggregate
-EVIDENCE_INCOMPLETE pending independent applicability review; its passing tests
-remain recorded. FAIL means actual failed/error assertions; BLOCKED means unmet
-prerequisites; incomplete manifests/JUnit/capture/cleanup prevent PASS.
+`supported-runtime/` and `retained-legacy/` are separate owned sessions, each with
+its own selected inventory, command/pytest arguments, fresh basetemp, manifest,
+stdout/stderr, events, event-health finalization, actual JUnit, process/pytest codes,
+completion counts and cleanup. The same clean SHA is checked before and after.
+Full source FAIL remains visible when legacy fails, even if supported execution
+passes. Only verified delivery publishes `supported_runtime_automated`; raw
+`supported_runtime_execution` is not evidence delivery or F3/F4 acceptance.
+
+Unknown native dialogs obstruct and receive no automatic answer. Default limits:
+collection 180s, node 240s including setup/teardown, each phase 7200s, cleanup 5s;
+the PowerShell outer bound is three phase limits plus 120s for collection and the
+two separate executions. Changes need a reviewed reason. Ctrl+C targets only the
+owned phases/controller/Job. Inspect cleanup evidence after interruption.
+Progress identifies the active partition; percentages count actual completed nodes.
+
+The F2 writer exclusively reserves its event and health descriptors before pytest.
+Hooks do not reopen paths. Short/interrupted writes are handled; write/sync/close
+failure latches and prevents successful evidence finalization. The parent verifies
+sequences, digest, complete events, exact pytest/JUnit identities and process/session
+agreement. No session or XML is manufactured. Collection-only has JUnit NOT APPLICABLE.
+Execution that began but cannot finish reconciliation remains EVIDENCE_INCOMPLETE,
+not NOT RUN. A successful ZIP does not repair an incomplete test run.
+
+Every raw skip/xfail/xpass remains recorded. Applicability is independently
+APPLICABLE/INAPPLICABLE/BLOCKED_REQUIRED/UNRESOLVED, using finite reviewed exact
+source/fixture metadata rules, never reason-text substring waivers. Recognized POSIX/XTest
+mechanisms on Windows are inapplicable with native replacement gates still required.
+Unknown skips, module collection skips, xfail/xpass or unavailable required desktop/
+filesystem capability prevent supported PASS. No blanket symlink/privilege waiver.
+
+For the focused native reproductions, use a NEW task-owned temporary path and retain
+raw output/JUnit before the full wrapper. Do not run focus cases on a locked or
+noninteractive desktop; supervise initial ordinary activation without force-focus.
+```powershell
+$FocusedTemp = Join-Path $Q ('focused-' + [guid]::NewGuid().ToString('N'))
+$FocusedXml = Join-Path $Q ('focused-' + [guid]::NewGuid().ToString('N') + '.xml')
+& $Py -B -m pytest -q -p no:cacheprovider -o 'addopts=' -ra tests/rewrite/test_stage4_qualification.py tests/rewrite/test_qualification_collector.py tests/rewrite/test_app.py tests/rewrite/test_chronicle_history_modal.py tests/rewrite/test_chronicle_timesheet_ui.py tests/rewrite/test_reconciliation_ui.py --basetemp $FocusedTemp --junitxml $FocusedXml
+$FocusedExit = $LASTEXITCODE
+```
+Focus failures emit `CHRONICLE_TK_OBSERVATION` with root mapping, foreground PID/HWND,
+focus, local/global grab, widget identity and bounded event order. Distinguish a
+failed PRECONDITION from a return-focus defect. Geometry waits require visible
+restored content, not merely a cleared read token. Preserve diagnostics and return
+reproducible production failures for independent adjudication; do not patch Tk on
+site, force foreground activation, accept hidden output or waive failed assertions.
 
 Read execution-result.json (raw automated evidence), summary.json (delivery-aware
-result), collection/manifest.json, regression/manifest.json, regression/events.jsonl,
-regression/junit.xml and both stdout/stderr logs. Tool/source digests, environment,
+result), collection/manifest.json, partitions.json, and each partition's manifest.json,
+events.jsonl, event-health.json, junit.xml and stdout/stderr logs. Tool/source digests, environment,
 arguments, UTC start/end, deferred F3/F4 and cleanup are retained. Only an archive
 that passes reopen, CRC and member checks is exclusively published BESIDE the
 directory as .zip. A .partial.zip is not successful delivery. Archive errors retain
@@ -432,7 +481,7 @@ only synthetic names. A checked box or a ZIP filename alone proves no integrity.
 
 | Section | Scenario inventory | Result before execution |
 | --- | --- | --- |
-| F2 | Runtime/source, full inventory/regression, MetadataProbe and authorized bounded scopes, hot journal, NTFS/locks/files, v1/v2 refusal | NOT RUN |
+| F2 | Runtime/source, full inventory/partitioned regression, MetadataProbe and authorized bounded scopes, hot journal, NTFS/locks/files, v1/v2 refusal | Original attempt EVIDENCE_INCOMPLETE; native repeat pending review |
 | F3 | First-run 1–4; main/templates/recording 1–9; History/report/POL-R 1–7; each modal; backup/fresh session 1–3 | NOT RUN |
 | F4 | Real Sleep/resume 1–5, exact stopped work and reopen | NOT RUN |
 

@@ -277,11 +277,11 @@ PowerShell 5.1/7 quoting, visible progress, NTFS observations, native dialog gua
 and Windows Job Object containment remain UNVERIFIED until actual native execution.
 Portable helper tests and static inspection do not establish Windows qualification.
 The prior standalone metadata probe remains a fallback until this scope is natively
-verified. The collector and bounded evidence-safety repair are independently
-accepted for limited native MetadataProbe use only; Critical/Storage/Extended are
-implemented scopes, not authorization to execute them. Monday's MetadataProbe
-remains the next native qualification action. Do not proceed automatically to
-broader scopes, operator qualification, suspend/resume or pilot. See
+verified. The collector and bounded evidence-safety repair were independently
+accepted initially for limited native MetadataProbe use. Historical scope results
+do not qualify changed schema-3 source. Repeat native F2 only after independent
+review of its corrective source, using a new evidence directory; do not proceed
+automatically to broader scopes, operator qualification, suspend/resume or pilot. See
 [acceptance provenance](docs/DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
 
 ## Backup and cold recovery
@@ -297,13 +297,26 @@ Use an existing approved local NTFS parent outside source/data/cloud sync. The
 wrapper reserves a new directory, prints it immediately, captures collection,
 events, actual JUnit and raw logs, and publishes a ZIP beside it only after
 verification. It requires clean expected source and installed prerequisites;
-installs/pulls/policy changes are never automatic. Missing evidence/cleanup or
-skipped cases cannot silently yield full qualification PASS. ZIP failure retains
+installs/pulls/policy changes are never automatic. F2 preserves full collection
+and runs separate supported-runtime and retained-legacy sessions; `partitions.json` accounts for every original node, including UNCLASSIFIED
+sources that block supported qualification. Supported is `tests/rewrite/` plus the
+root launcher bridge; legacy is a finite reviewed top-level module list. Raw
+pytest outcomes/skips remain visible. Exact reviewed applicability rules distinguish
+inapplicable POSIX/XTest mechanisms from blocked required or unresolved cases;
+unknown omissions never qualify. A supported automated PASS does not turn a legacy
+FAIL into full-source PASS. Missing evidence/cleanup cannot yield qualification
+PASS. ZIP failure retains
 the evidence directory and raw pytest status separately from final delivery.
 This is not operator or Sleep qualification. Follow the complete
 [supervised runbook](docs/WINDOWS_OPERATOR_QUALIFICATION.md) for safe launcher-profile
 isolation, commands, exact controls, expected results and per-scenario evidence.
-F2–F4 native execution is pending; Stage 4 remains IN PROGRESS.
+The October 30 F2 attempt at `56b4e4451d8c738f70d23938c2f60be009d61a84` is
+EVIDENCE_INCOMPLETE (2,208/3,783 nodes completed, final session/JUnit missing), despite
+recorded verified ZIP delivery/cleanup. The corrective F2 sink uses preowned event,
+health and diagnostic descriptors; hooks never reopen the event log. Exact JUnit
+serialization includes valid empty classnames; bounded selection checks actual
+collected source paths. Repeated native execution is pending independent review.
+F3/F4 remain NOT RUN; Stage 4 remains IN PROGRESS.
 
 Close other modal views, then choose **Backup Chronicle**. Choose a new file outside
 the dataset and click Create Backup. Opening/canceling writes nothing. Timers

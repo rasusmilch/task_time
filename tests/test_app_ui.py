@@ -417,6 +417,13 @@ def test_mini_mode_close_routes_to_restore_main() -> None:
         def resizable(self, *_args) -> None:
             return None
 
+        def bind(self, *_args, **_kwargs):
+            return None  # Native zoom guard installs a callback, not an event loop.
+
+        def wm_attributes(self, *_args):
+            return None
+
+
     mini = MiniModeWindow.__new__(MiniModeWindow)
     mini.window = _Window()
     mini.restore_main = lambda: calls.append("restore")
@@ -628,6 +635,13 @@ def test_mini_mode_configure_window_chrome_applies_snap_guard(monkeypatch) -> No
 
         def protocol(self, _name: str, callback) -> None:
             self.callback = callback
+
+        def bind(self, *_args, **_kwargs):
+            return None  # Native zoom guard installs a callback, not an event loop.
+
+        def wm_attributes(self, *_args):
+            return None
+
 
     mini = MiniModeWindow.__new__(MiniModeWindow)
     mini.window = _Window()

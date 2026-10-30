@@ -15,8 +15,15 @@ receipts or commits. No release or production qualification is implied below.
   restart evidence. Add separate opt-in full-source Windows automation with actual
   inventory/events/JUnit, guarded dialogs, owned watchdog/cleanup, exclusive verified
   ZIP publication and retained partial evidence. Add supervised operator/actual Sleep
-  runbook. Production source/schema and frozen bounded collectors are unchanged.
-  Native F2/F3/F4 execution remains pending, Stage 4 IN PROGRESS, Stage 5 NOT STARTED;
+  runbook. Production source/schema and frozen bounded scope inventories are unchanged.
+  Correct F2 event logging with preowned event/health/diagnostic descriptors and sticky
+  finalization failures; retain exact pytest node/source/JUnit identity including valid
+  empty classnames. Separate supported schema-3 and finite legacy sessions with full
+  inventory reconciliation, explicit skip applicability and delivery-aware results.
+  Repair parser binding, diagnostic masking, live-lock purity and legacy mini doubles;
+  add bounded focus/layout observations without a production Tk change. The October 30
+  native attempt remains EVIDENCE_INCOMPLETE, never repaired retroactively; native repeat
+  and F3/F4 remain pending, Stage 4 IN PROGRESS, Stage 5 NOT STARTED;
   no installation/cutover, external-policy, release or acceptance claim.
 
 - Deliver Package E reusable nested templates on fresh schema 3: STRICT definition/

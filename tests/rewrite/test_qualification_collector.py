@@ -24,13 +24,20 @@ def events(path):
     return [json.loads(line) for line in path.read_text().splitlines()]
 
 
+def process_diagnostic(result):
+    # Keep absence explicit rather than masking the real exit with TypeError.
+    return dict(command=result.args,exit_code=result.returncode,
+                stdout=result.stdout,stderr=result.stderr)
+
+
 def run_fixture(tmp_path,source,extra=(),scope='Critical',enforce=False,name='fixture tests ü.py'):
-    suite=tmp_path/name;suite.write_text(source)
+    suite=tmp_path/'tests'/'rewrite'/name
+    suite.parent.mkdir(parents=True);suite.write_text(source)
     root=tmp_path/'evidence with spaces ü';root.mkdir()
     args=['-q','-p','no:cacheprovider','-o','addopts=','--basetemp',str(root/'temporary files'),
           '--junitxml',str(root/'junit.xml'),str(suite),*extra]
-    code='import sys;sys.path.insert(0,sys.argv[1]);import qualification_pytest as q;raise SystemExit(q.run_pytest(sys.argv[2],sys.argv[3],__import__("json").loads(sys.argv[4]),enforce_manifest='+repr(enforce)+'))'
-    command=[sys.executable,'-u','-B','-c',code,str(HELPER.parent),str(root),scope,json.dumps(args)]
+    code='import sys;sys.path.insert(0,sys.argv[1]);import qualification_pytest as q;raise SystemExit(q.run_pytest(sys.argv[2],sys.argv[3],__import__("json").loads(sys.argv[4]),enforce_manifest='+repr(enforce)+',source_root=sys.argv[5]))'
+    command=[sys.executable,'-u','-B','-c',code,str(HELPER.parent),str(root),scope,json.dumps(args),str(tmp_path)]
     child=subprocess.run(command,capture_output=True,text=True,encoding='utf-8',timeout=30,
                          env={**os.environ,'PYTEST_DISABLE_PLUGIN_AUTOLOAD':'1','PYTEST_ADDOPTS':'','PYTHONIOENCODING':'utf-8'})
     return child,root
@@ -456,7 +463,7 @@ def test_actual_rewrite_collection_audits_selected_and_deferred_fixture_graphs(t
     result=subprocess.run([sys.executable,'-B','-c',code,str(HELPER.parent),str(tmp_path),scope],cwd=repo,
                           capture_output=True,text=True,encoding='utf-8',timeout=30,
                           env={**os.environ,'PYTEST_DISABLE_PLUGIN_AUTOLOAD':'1','PYTEST_ADDOPTS':'','PYTHONIOENCODING':'utf-8'})
-    assert result.returncode==0,result.stdout+result.stderr
+    assert result.returncode==0,process_diagnostic(result)
     manifest=json.loads((tmp_path/'manifest.json').read_text())
     selected=[row for row in manifest if row['selected']]
     assert len(selected)>40
@@ -499,7 +506,7 @@ def test_real_tk_audited_callback_plugin_runs_only_controlled_dialog_paths(tmp_p
     result=subprocess.run([sys.executable,'-u','-B','-c',code,str(HELPER.parent),str(tmp_path),json.dumps(args)],cwd=repo,
                           capture_output=True,text=True,encoding='utf-8',timeout=30,
                           env={**os.environ,'PYTEST_DISABLE_PLUGIN_AUTOLOAD':'1','PYTEST_ADDOPTS':'','PYTHONIOENCODING':'utf-8','HOME':str(home),'USERPROFILE':str(home)})
-    assert result.returncode==0,result.stdout+result.stderr
+    assert result.returncode==0,process_diagnostic(result)
     log=events(tmp_path/'events.jsonl')
     assert sum(e['event']=='node_finish' for e in log)==2
     assert log[-1]['counts']=={'passed':2}
@@ -735,7 +742,7 @@ def test_actual_powershell_fallback_reserved_manifest(tmp_path):
     reserved=root/'archive-members.json';reserved.write_bytes(b'keep')
     body='$Root = '+"'"+str(root).replace("'","''")+"'\ntry { New-EvidenceZip $Root; exit 0 } catch { exit 4 }"
     result=run_powershell_functions(tmp_path,body)
-    assert result.returncode==4,result.stdout+result.stderr
+    assert result.returncode==4,process_diagnostic(result)
     assert reserved.read_bytes()==b'keep' and not Path(str(root)+'.zip').exists()
 
 
@@ -753,7 +760,7 @@ def test_actual_powershell_final_status_after_archive_outcome(tmp_path,fault):
     failure="'operator cancellation'" if fault=='cancel' else "''"
     body+=f"$Code = Complete-QualificationEvidence $Root @{{status='PASS';pytest_exit_code=0}} 0 {failure} $false\nexit $Code"
     result=run_powershell_functions(tmp_path,body)
-    assert result.returncode==(0 if fault=='none' else 4),result.stdout+result.stderr
+    assert result.returncode==(0 if fault=='none' else 4),process_diagnostic(result)
     if fault!='status':
         summary=json.loads((root/'summary.json').read_text())
         final=json.loads((root/'launcher-result.json').read_text())
@@ -804,7 +811,7 @@ def test_actual_powershell_fallback_manifest_link_preserves_sentinel(tmp_path):
     before=protected_snapshot(outside)
     body="$Root = '"+str(root).replace("'","''")+"'\ntry { New-EvidenceZip $Root; exit 0 } catch { exit 4 }"
     result=run_powershell_functions(tmp_path,body)
-    assert result.returncode==4,result.stdout+result.stderr
+    assert result.returncode==4,process_diagnostic(result)
     assert protected_snapshot(outside)==before and not Path(str(root)+'.zip').exists()
 
 
@@ -824,7 +831,7 @@ Save-Json (Join-Path $Root 'archive-members.json') @{existing='preserve'}
 try { New-EvidenceZip $Root; exit 0 } catch { exit $Code }
 '''
     result=run_powershell_functions(tmp_path,body)
-    assert result.returncode==4,result.stdout+result.stderr
+    assert result.returncode==4,process_diagnostic(result)
     assert json.loads((root/'collector-result.json').read_text())==raw
     assert json.loads((root/'launcher-result.json').read_text())['success'] is False
     assert 'primary Python archive failure' in (root/'archive-error.json').read_text()
@@ -892,3 +899,54 @@ def test_probe_preparation_reserves_each_record_once(source_repo,tmp_path,monkey
     assert source['revision']==q.checked_source(source_repo)['revision']
     assert json.loads((root/'manifest.json').read_text())==[]
     assert set(json.loads((root/'deferred.json').read_text()))=={'legacy','rewrite'}
+
+
+def test_external_nodeid_selection_uses_collected_path_not_basename(tmp_path):
+    reviewed=tmp_path/'reviewed ü root';reviewed.mkdir()
+    source=reviewed/'tests/rewrite/test_schema.py';source.parent.mkdir(parents=True);source.write_text('')
+    unusual='::test_fresh_profile_and_reopen'
+    assert q.selection('Storage',unusual,[],source_path=source,source_root=reviewed)[0]
+    external=tmp_path/'test_schema.py';external.write_text('')
+    assert not q.selection('Storage','tests/rewrite/test_schema.py::test_fresh_profile_and_reopen',[],source_path=external,source_root=reviewed)[0]
+    assert not q.selection('Storage',unusual,['stealth_dialog'],source_path=source,source_root=reviewed)[0]
+    assert not q.selection('Storage','::test_unknown',[],source_path=source,source_root=reviewed)[0]
+
+
+@pytest.mark.parametrize('stdout,stderr',[(None,None),('out',None),(None,'error')])
+def test_none_safe_subprocess_diagnostics_preserve_primary_failure(stdout,stderr):
+    result=subprocess.CompletedProcess(['exact','command ü'],19,stdout,stderr)
+    diagnostic=process_diagnostic(result)
+    assert diagnostic==dict(command=result.args,exit_code=19,stdout=stdout,stderr=stderr)
+    with pytest.raises(AssertionError) as failure:
+        assert result.returncode==0,diagnostic
+    assert '19' in str(failure.value) and 'exact' in str(failure.value)
+
+
+@pytest.mark.parametrize('prefix',[None,'qualification ü'])
+def test_real_empty_junit_classname_and_exact_serialization(tmp_path,prefix):
+    # An external explicit initial file with an unrelated rootdir has an empty
+    # filesystem node component on POSIX too: exercise actual pytest serialization.
+    unrelated=tmp_path/'unrelated root';unrelated.mkdir()
+    extra=['--rootdir',str(unrelated)]
+    if prefix:extra+=['--junitprefix',prefix]
+    child,root=run_fixture(tmp_path,'import pytest\n@pytest.mark.parametrize("x",[1,2])\ndef test_fresh_profile_and_reopen(x):pass\n',extra=extra)
+    assert child.returncode==0,process_diagnostic(child)
+    manifest=json.loads((root/'manifest.json').read_text())
+    assert all(row['nodeid'].startswith('::') for row in manifest)
+    assert all(row['junit']['classname']==(prefix+'.' if prefix else '') for row in manifest)
+    assert q.validate_test_evidence(root,0,0)['status']=='COMPLETE'
+    manifest[0]['junit']['classname']='fabricated'
+    (root/'manifest.json').write_text(json.dumps(manifest))
+    assert q.validate_test_evidence(root,0,0)['status']=='EVIDENCE_INCOMPLETE'
+
+
+def test_real_unknown_external_module_is_not_allowed_by_audited_filename(tmp_path):
+    suite=tmp_path/'test_schema.py';suite.write_text('def test_fresh_profile_and_reopen():raise AssertionError("must not execute")\n')
+    root=tmp_path/'evidence';root.mkdir()
+    code='import sys;sys.path.insert(0,sys.argv[1]);import qualification_pytest as q;raise SystemExit(q.run_pytest(sys.argv[2],"Storage",[sys.argv[3],"-p","no:cacheprovider","-o","addopts="]))'
+    result=subprocess.run([sys.executable,'-B','-c',code,str(HELPER.parent),str(root),str(suite)],capture_output=True,text=True,timeout=30,
+        env=dict(os.environ,PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',PYTEST_ADDOPTS=''))
+    assert result.returncode==5,process_diagnostic(result)
+    manifest=json.loads((root/'manifest.json').read_text())
+    assert len(manifest)==1 and not manifest[0]['selected']
+    assert 'outside reviewed' in manifest[0]['reason'] and 'must not execute' not in result.stdout

@@ -1,4 +1,5 @@
 """Connected preview controls/worker/service, with separately named server input evidence."""
+from tk_observation import wait_observed
 from copy import deepcopy
 from datetime import timedelta
 import threading
@@ -106,7 +107,10 @@ def test_real_tk_render_failure_hides_partial_output_then_recovers(connected,roo
         assert sheet.refresh_preview();pump(root,lambda:sheet.preview_token is None)
     assert not sheet.current and not sheet.report.winfo_ismapped() and sheet.candidate==first
     assert root.test_errors[-1][1] is fault
-    fresh=refresh(app,sheet);assert sheet.report.winfo_ismapped()
+    fresh=refresh(app,sheet)
+    wait_observed(root,lambda:sheet.report.winfo_ismapped() and sheet.window.winfo_viewable(),
+        phase='Timesheet successful render geometry',widgets=(sheet.window,sheet.report))
+    assert sheet.report.winfo_ismapped()
     assert sheet.report.get('1.0','end-1c')==fresh.report_text
 
 
@@ -141,12 +145,14 @@ def test_real_tk_candidate_identity_must_match_request(connected,root,damage):
 
 def test_real_tk_timesheet_origin_return_competing_grab_destroy_and_reentry(connected,root,monkeypatch):
     app,worker,clock=connected
-    root.grab_set();app.tree.focus_set();pump(root,lambda:root.focus_get() is app.tree)
+    root.grab_set();app.tree.focus_set()
+    wait_observed(root,lambda:root.focus_get() is app.tree,phase='PRECONDITION Timesheet origin focus',
+        widgets=(app.tree,),foreground=True)
     sheet=open_sheet(app)
     assert app._timesheet_return==(root,root,app.tree)
     assert not app.open_timesheet()
     sheet.close();assert root.grab_current() is root
-    pump(root,lambda:root.focus_get() is app.tree)
+    wait_observed(root,lambda:root.focus_get() is app.tree,phase='Timesheet actual return focus',widgets=(app.tree,))
     sheet=open_sheet(app)
     other=tk.Toplevel(root);other.grab_set();other.focus_set()
     sheet.close();assert root.grab_current() is other
@@ -315,9 +321,9 @@ def test_real_tk_global_grab_and_deleted_focus_origin_are_not_replaced(connected
     assert not app.open_timesheet() and root.grab_current() is other and other.grab_status()=='global'
     other.destroy()
     field=tk.ttk.Entry(root);field.grid(row=8,column=0);field.focus_set()
-    pump(root,lambda:root.focus_get() is field)
+    wait_observed(root,lambda:root.focus_get() is field,phase='PRECONDITION Timesheet destroyed origin',widgets=(field,),foreground=True)
     sheet=open_sheet(app);field.destroy();sheet.close()
-    pump(root,lambda:root.focus_get() is root)
+    wait_observed(root,lambda:root.focus_get() is root,phase='Timesheet root fallback focus',widgets=(root,))
     assert root.grab_current() is None
 
 

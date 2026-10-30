@@ -102,13 +102,13 @@ try {
             $Percent = -1
             if ($null -ne $Progress) {
                 $EventAge = [Math]::Round(([double]$Progress.since_event + $Elapsed - $LastProgressAt),1)
-                $Status = '{0}: {1}/{2}; counts {3}; elapsed {4}s; last event {5}s; {6}' -f $Progress.phase,$Progress.completed,$Progress.selected,($Progress.counts | ConvertTo-Json -Compress),[int]$Elapsed,$EventAge,$Progress.node
+                $Status = '{0}/{1}: {2}/{3}; counts {4}; elapsed {5}s; last event {6}s; {7}' -f $Progress.qualification_phase,$Progress.phase,$Progress.completed,$Progress.selected,($Progress.counts | ConvertTo-Json -Compress),[int]$Elapsed,$EventAge,$Progress.node
                 if ($null -ne $Progress.percent) { $Percent = [int]$Progress.percent }
             }
             Write-Progress -Activity 'Chronicle Stage 4 full regression' -Status $Status -PercentComplete $Percent
             if ($Elapsed - $LastText -ge 10) { Write-Host "Heartbeat: $Status"; $LastText = $Elapsed }
         }
-        if ($Elapsed -gt (2*$PhaseSeconds + 120)) { throw 'EVIDENCE_INCOMPLETE: controller/archiving outer deadline exceeded' }
+        if ($Elapsed -gt (3*$PhaseSeconds + 120)) { throw 'EVIDENCE_INCOMPLETE: controller/archiving outer deadline exceeded' }
         if ($null -eq $Progress -and $Elapsed -gt $CollectionSeconds) { throw 'BLOCKED: prerequisite deadline exceeded' }
         if ($null -ne $Progress -and $Elapsed - $LastProgressAt -gt 120) { throw 'EVIDENCE_INCOMPLETE: controller/evidence progress deadline exceeded' }
         Start-Sleep -Milliseconds 100
@@ -125,7 +125,7 @@ try {
             # Signal only our exact evidence phase. Then stop only the owned
             # controller if necessary; its noninherited Job handle kills its tests.
             if ($Evidence) {
-                foreach ($Phase in @('collection','regression')) {
+                foreach ($Phase in @('collection','supported-runtime','retained-legacy')) {
                     $Cancel = Join-Path (Join-Path $Evidence $Phase) 'cancel.request'
                     if (Test-Path -LiteralPath (Split-Path -Parent $Cancel)) {
                         try { $Stream = [IO.File]::Open($Cancel,[IO.FileMode]::CreateNew); $Stream.Dispose() }
