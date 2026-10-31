@@ -308,7 +308,7 @@ FAIL into full-source PASS. Missing evidence/cleanup cannot yield qualification
 PASS. ZIP failure retains
 the evidence directory and raw pytest status separately from final delivery.
 This is not operator or Sleep qualification. Follow the complete
-[supervised runbook](docs/WINDOWS_OPERATOR_QUALIFICATION.md) for safe launcher-profile
+[qualification runbook](docs/WINDOWS_OPERATOR_QUALIFICATION.md) for safe launcher-profile
 isolation, commands, exact controls, expected results and per-scenario evidence.
 The October 30 F2 attempt at `56b4e4451d8c738f70d23938c2f60be009d61a84` is
 EVIDENCE_INCOMPLETE (2,208/3,783 nodes completed, final session/JUnit missing), despite
@@ -319,7 +319,20 @@ collected source paths. The later October 30 19:10:50 UTC run completed 1,922 su
 nodes (1,816 pass/15 fail/91 skip); 1,905 legacy were NOT RUN after strict inventory
 refusal. F2 FAIL and all 29 unresolved skips remain open. Four fixed legacy UUID
 parameters and stronger mismatch, PowerShell and History/focus test diagnostics
-require independent review before repeat; native root causes are not declared fixed.
+require independent review before repeat. The confirmed PowerShell 5.1 fixture
+default-binding defect is corrected only by explicit test-local -Repo invocation;
+all eight original exits and wrapper/archive semantics remain unchanged. Six exact
+History/Timesheet preconditions have one-shot unattended Win32 mouse activation,
+then ordinary Tk focus_set, on an already active/unlocked normal input desktop.
+Prefer a dedicated Windows 11 VM; an ordinary workstation must be reserved from
+all concurrent local/remote input. There is no login/unlock/desktop switching,
+forced foreground, automatic dialog consent or manual per-case focus setup.
+Native identity/session/caption/input-state refusal blocks qualification. Preparation
+shares the existing eight-second deadline; input is terminally disarmed before
+modal-return assertions. Threaded native hit testing avoids same-input-queue timeout
+semantics. No production, Job/watchdog/inventory/event/archive boundary changes.
+Portable faults cannot establish native acceptance; new Windows controls and all
+six unchanged modal-return cases still require actual native execution.
 Original archives/29-node ledger were unavailable on this corrective host; see the
 [runbook evidence](docs/WINDOWS_OPERATOR_QUALIFICATION.md#later-october-30-supported-execution-and-outstanding-evidence).
 F3/F4 remain NOT RUN; Stage 4 remains IN PROGRESS.

@@ -796,8 +796,24 @@ def capture_process(command, directory, *, script=None, cwd=None, timeout=20):
 def run_powershell_functions(tmp_path,body):
     prefix=(HELPER.parent/'qualify_windows.ps1').read_text().split('\ntry {\n    $Repo =',1)[0]
     script=tmp_path/'collector functions ü.ps1';script.write_text(prefix+'\n'+body,encoding='utf-8-sig')
-    return capture_process([POWERSHELL,'-NoProfile','-NonInteractive','-File',str(script)],
+    return capture_process([POWERSHELL,'-NoProfile','-NonInteractive','-File',str(script),
+                            '-Repo',str(HELPER.parent.parent.resolve())],
                            tmp_path,script=script,timeout=20)
+
+
+@pytest.mark.skipif(not POWERSHELL,reason='PowerShell unavailable: explicit Repo binding NOT RUN')
+def test_actual_powershell_explicit_repo_parameter_binding(tmp_path):
+    # Separate binding control: never instrument the eight original fixtures.
+    result=run_powershell_functions(tmp_path,
+        "[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)\n"
+        "[Console]::Out.WriteLine(($PSBoundParameters.ContainsKey('Repo')))\n"
+        "[Console]::Out.WriteLine($Repo)\nexit 0")
+    assert result.returncode==0,process_diagnostic(result)
+    lines=result.stdout.splitlines()
+    assert lines==['True',str(HELPER.parent.parent.resolve())]
+    record=json.loads((tmp_path/'subprocess.json').read_text())
+    assert record['command'][-2:]==['-Repo',str(HELPER.parent.parent.resolve())]
+    assert record['script']['bom'] and record['timeout_seconds']==20
 
 
 @pytest.mark.skipif(not POWERSHELL,reason='PowerShell unavailable: fallback runtime remains UNVERIFIED')

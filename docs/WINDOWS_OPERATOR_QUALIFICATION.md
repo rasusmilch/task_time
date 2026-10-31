@@ -1,7 +1,8 @@
 # Stage 4 Windows qualification — schema 3
 
-This is a supervised procedure for the checked-out source, not a record that it
-ran. Package F delivers portable connected tests and this native preparation.
+This covers unattended F2 automation and separate supervised F3/F4 procedures
+for the checked-out source, not a record that they ran. Package F delivers
+portable connected tests and this native preparation.
 Stage 4 remains **IN PROGRESS**, Stage 5 **NOT STARTED**. Hardware power loss,
 external POL-R redistribution/worked-zero policy and installation/cutover remain
 separate. Never enter data into an employer/customer POL-R system during this run.
@@ -167,8 +168,13 @@ Unknown skips, module collection skips, xfail/xpass or unavailable required desk
 filesystem capability prevent supported PASS. No blanket symlink/privilege waiver.
 
 For the focused native reproductions, use a NEW task-owned temporary path and retain
-raw output/JUnit before the full wrapper. Do not run focus cases on a locked or
-noninteractive desktop; supervise initial ordinary activation without force-focus.
+raw output/JUnit before the full wrapper. Use an already active, unlocked Windows 11
+interactive test session on its normal input desktop, preferably in a dedicated VM.
+F2 requires no operator clicks, Alt+Tab or per-case supervision. Do not use a locked,
+disconnected or noninteractive session. An ordinary unlocked workstation is a
+compromise: reserve the entire session, including mouse/keyboard and remote access,
+for the run. Concurrent use, notifications and policy locks can invalidate evidence.
+The driver never logs in, unlocks, switches desktops or answers security dialogs.
 ```powershell
 $FocusedTemp = Join-Path $Q ('focused-' + [guid]::NewGuid().ToString('N'))
 $FocusedXml = Join-Path $Q ('focused-' + [guid]::NewGuid().ToString('N') + '.xml')
@@ -181,35 +187,59 @@ ordering. PRECONDITION versus RESULT remains explicit. History details require
 matching entry/task/token delivery and rendered immutable content, not a null token.
 No production selection/rendering or focus behavior is changed.
 
-### Focused supervised native characterization
+### Unattended native focus characterization
 
 Only after review, use the approved interpreter/source and the existing disposable
 `$Q`; this does not execute or qualify complete F2/F3. Record `$Expected`, runtime,
-console command, UTC action times and the resulting console transcript/JUnit. Run individual
-cases so the operator can activate the existing test root through an ordinary click
-or Alt+Tab as soon as it appears, within the unchanged eight-second precondition.
-Do not move focus again during the modal-return check. Do not use forced activation
-APIs or longer deadlines. If activation was not observed in time, retain the failed
-precondition and stop rather than reporting a return-focus defect.
+console command, UTC action times and the resulting console transcript/JUnit. Run
+the six cases serially together with the focused controls, without manual activation.
+The test-only `win32_focus.py` driver is registered by the existing root fixture
+only for these six exact node/source identities. Collection performs no activation.
 
 ```powershell
-$Node = 'tests/rewrite/test_chronicle_history_modal.py::test_real_tk_history_parent_grab_focus_return_identity_and_guard[none]'
+$History = 'tests/rewrite/test_chronicle_history_modal.py::test_real_tk_history_parent_grab_focus_return_identity_and_guard'
+$Sheet = 'tests/rewrite/test_chronicle_timesheet_ui.py::'
+$FocusNodes = @(($History + '[local]'), ($History + '[none]'), ($History + '[missing]'), ($History + '[reused]'),
+    ($Sheet + 'test_real_tk_timesheet_origin_return_competing_grab_destroy_and_reentry'),
+    ($Sheet + 'test_real_tk_global_grab_and_deleted_focus_origin_are_not_replaced'))
 $CaseTemp = Join-Path $Q ('focus-' + [guid]::NewGuid().ToString('N'))
 $CaseXml = Join-Path $Q ('focus-' + [guid]::NewGuid().ToString('N') + '.xml')
 $CaseLog = Join-Path $Q ('focus-' + [guid]::NewGuid().ToString('N') + '.log')
-& $Py -B -m pytest -q -p no:cacheprovider -o 'addopts=' -ra --capture=tee-sys $Node --basetemp $CaseTemp --junitxml $CaseXml 2>&1 | Tee-Object -FilePath $CaseLog
+& $Py -B -m pytest -q -p no:cacheprovider -o 'addopts=' -ra --capture=tee-sys tests/rewrite/test_win32_focus.py @FocusNodes --basetemp $CaseTemp --junitxml $CaseXml 2>&1 | Tee-Object -FilePath $CaseLog
 $CaseExit = $LASTEXITCODE
 ```
 
-Repeat separately for History `[local]`, `[missing]`, `[reused]`, Timesheet
-`test_real_tk_timesheet_origin_return_competing_grab_destroy_and_reentry` and
-`test_real_tk_global_grab_and_deleted_focus_origin_are_not_replaced` in
-`tests/rewrite/test_chronicle_timesheet_ui.py`. Confirm these exact node IDs against
-focused `--collect-only` output before execution; stop on source mismatch. Record
-ordinary activation, observed native root/foreground agreement and intended widget
-focus as a distinct precondition result. Only a valid precondition allows interpreting
-the separate modal-return result. A same-process different top-level is not the
-intended foreground root. A foreign foreground window remains a truthful failure.
+Confirm exact nodes against focused `--collect-only` output. The driver verifies live
+Tk/native identities, owned window markers against HWND reuse, PID/GUI thread,
+active/unlocked session and normal input desktop, visibility/enabled/cloaking,
+mouse/modifier/capture/menu state and an unobstructed non-client caption point.
+Caption hit testing runs on a separate GUI-free observation thread: same-input-queue
+`SendMessageTimeout` does not enforce its timeout. Tk keeps pumping within the
+original shared eight-second deadline. Late/unbounded inspection cannot send input.
+
+At most one verified SendInput move/down/up activates the root when necessary.
+Then ordinary Tk focus_set selects the exact live origin widget; exact foreground
+and native input ownership must agree. A different same-PID top-level is insufficient.
+The driver ends terminally DISARMED before returning to the unchanged modal test.
+RESULT observations are read-only: no further input, focus repair or retries.
+No focus_force, SetForegroundWindow, AttachThreadInput or native focus forcing is used.
+
+Structured observations distinguish BLOCKED environmental/target prerequisites from
+FAIL activation/return results. Existing pytest/F2 error aggregation is unchanged;
+neither status can qualify. Refused/partial input retains counts and native errors,
+without assuming UIPI. Uncertain synthetic button state stops the pytest session;
+the driver never releases a button/key it did not press or blindly repairs input.
+Outstanding state must be safely resolved outside qualification before another run.
+Desktop observations and input insertion are not atomic; this is no concurrent-user
+or hostile-desktop guarantee. Existing Job containment/watchdogs/cleanup remain intact.
+
+Portable injected faults are not native acceptance. The native controls run an
+original authorized node with a normally presented, disposable foreign control
+window and require real caption activation. A second control deliberately directs
+ordinary return focus to the wrong widget after valid setup and requires a RESULT
+failure, with zero subsequent driver input. Inability to establish the real control
+is a failure, never a mocked PASS. Preserve all six original grab/identity/purity
+assertions. F3 operator and F4 actual Sleep remain NOT RUN through this automation.
 
 For the eight PowerShell fixture failures, first run the independent known-output
 control and then the unchanged fixtures in ordinary PowerShell 5.1:
@@ -220,7 +250,7 @@ $PsXml = Join-Path $Q ('powershell-' + [guid]::NewGuid().ToString('N') + '.xml')
 $PsLog = Join-Path $Q ('powershell-' + [guid]::NewGuid().ToString('N') + '.log')
 $PSVersionTable
 Get-Command powershell -CommandType Application | Select-Object Source,Version
-& $Py -B -m pytest -q -p no:cacheprovider -o 'addopts=' -ra tests/rewrite/test_qualification_collector.py -k 'actual_powershell_capture_identity_control or powershell_fallback_reserved_manifest or powershell_final_status_after_archive_outcome or failed_python_then_failed_fallback' --basetemp $PsTemp --junitxml $PsXml 2>&1 | Tee-Object -FilePath $PsLog
+& $Py -B -m pytest -q -p no:cacheprovider -o 'addopts=' -ra tests/rewrite/test_qualification_collector.py -k 'actual_powershell_capture_identity_control or explicit_repo_parameter_binding or powershell_fallback_reserved_manifest or powershell_final_status_after_archive_outcome or failed_python_then_failed_fallback' --basetemp $PsTemp --junitxml $PsXml 2>&1 | Tee-Object -FilePath $PsLog
 $PsExit = $LASTEXITCODE
 ```
 
@@ -231,7 +261,12 @@ or mark the 5.1 comparison NOT RUN without changing machine policy. Retain faile
 `collector functions ü.ps1`, its SHA-256/BOM, `subprocess.json`, stdout.bin and
 stderr.bin from each owned test directory. Compare exact invocation/cwd, actual
 exit and independently captured streams with the control; empty is not unavailable.
-Expected fixture exits remain 0/4; native exit-1 cause remains UNVERIFIED. Do not
+Supplied focused evidence confirms the eight cases failed before their functions:
+PowerShell 5.1 evaluated an empty $PSScriptRoot in the copied default -Repo expression.
+Only the test helper's invocation now supplies explicit -Repo from the reviewed
+checkout; generated scripts/BOM and wrapper defaults are unchanged. The separate
+binding control verifies PSBoundParameters and the exact repository path. All eight
+original expected exits remain 0/4; new native execution is still required. Do not
 instrument the script under test, bypass execution policy, alter archive expectations
 or extend timeouts. Preserve diagnostics for independent adjudication.
 

@@ -43,24 +43,54 @@ def pump(root, predicate, timeout=8000):
 
 
 @pytest.fixture
-def root():
+def root(request):
     import gc
+    from win32_focus import FocusPreconditionDriver, FocusBlocked
+    driver = FocusPreconditionDriver.for_node(request.node)
     # Dispose prior test interpreters on their creating thread before starting another worker.
     gc.collect()
     try:
         value = tk.Tk()
     except tk.TclError as exc:
+        if driver is not None:
+            import json
+            driver.disarm()
+            failure = FocusBlocked(f'Required Windows Tk root unavailable: {exc}')
+            try:
+                print('CHRONICLE_TK_OBSERVATION '+json.dumps(dict(phase='PRECONDITION root setup',
+                    observation_kind='PRECONDITION',driver=driver.evidence(),timeline=[],
+                    observation_error=repr(exc))),flush=True)
+            except Exception as secondary:
+                failure.add_note('Root setup diagnostic also failed: '+repr(secondary))
+            raise failure from exc
         pytest.skip(f"Real Tk display unavailable: {exc}")
     value.geometry("950x600+20+20")
     errors = []
     value.report_callback_exception = lambda *args: errors.append(args)
     value.test_errors = errors
-    yield value
+    if driver is not None:
+        driver.attach(value)
+        value._f2_focus_driver = driver
+    primary = None
     try:
-        value.destroy()
-    except tk.TclError:
-        pass
-    gc.collect()
+        yield value
+    except BaseException as exc:
+        primary = exc
+        raise
+    finally:
+        try:
+            if driver is not None:
+                driver.close()
+        except BaseException as exc:
+            if primary is None:
+                raise
+            primary.add_note('Focus driver cleanup also failed: '+repr(exc))
+        finally:
+            try:
+                value.destroy()
+            except tk.TclError:
+                pass
+            gc.collect()
 
 
 class Clock:

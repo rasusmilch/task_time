@@ -27,8 +27,18 @@ receipts or commits. No release or production qualification is implied below.
   capture and matching real-worker History detail/render completion, plus native
   top-level/client foreground distinction. Original October 30 evidence remains
   EVIDENCE_INCOMPLETE; later supported execution is FAIL (1,816 pass/15 fail/91 skip),
-  1,905 legacy NOT RUN and all 29 unresolved skips retained. Native causes remain
-  unverified; new F2 requires independent review, F3/F4 remain NOT RUN,
+  1,905 legacy NOT RUN and all 29 unresolved skips retained. Correct the confirmed
+  PowerShell 5.1 fixture initialization failure with explicit test-local -Repo
+  binding, retaining original scripts/BOM, eight expected exits and wrapper/archive
+  semantics. Add exact-six-node unattended Windows focus preparation on an existing
+  unlocked interactive desktop: verified native/Tk identity, session/caption/input
+  state, one ordinary mouse activation and ordinary Tk focus_set within the original
+  deadline, then terminal disarming before independent modal-return assertions.
+  Threaded hit testing avoids same-input-queue timeout waits; secondary diagnostics
+  preserve primary errors even after root destruction. Add portable refusal and
+  separate real native activation/return-fault controls. Production behavior and
+  F2 Job/watchdog/inventory/event/publication contracts are unchanged. New native
+  execution remains required; new F2 requires independent review, F3/F4 remain NOT RUN,
   Stage 4 IN PROGRESS, Stage 5 NOT STARTED;
   no installation/cutover, external-policy, release or acceptance claim.
 

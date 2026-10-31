@@ -830,6 +830,28 @@ Python/Tcl widget identities, Win32 foreground PID/HWND where available and boun
 event ordering. The native top-level HWND is distinguished from Tk's client HWND
 and other windows of the same PID. PRECONDITION and RESULT observations remain
 separate with unchanged deadlines/assertions; no focus is forced or failure waived.
+Exactly six Windows History/Timesheet preconditions use the test-only
+`win32_focus.py` driver through `test_app.root` and `tk_observation.wait_observed`.
+Their exact node/source authorization creates no additional application root/worker.
+Use an already unlocked/connected Windows 11 test session on its normal input
+desktop, preferably a dedicated VM. Shared-workstation concurrent input is unsupported.
+No desktop lifecycle, process-orchestration or production focus change is involved.
+Native identities/owned markers, session/input desktop, visibility, caption hit,
+z-order obstruction and capture/menu/held mouse/modifier state must validate before
+one ordinary SendInput sequence. GUI-free threaded hit testing avoids an unbounded
+same-input-queue SendMessageTimeout on Tk. Preparation, inspection, activation and
+ordinary Tk focus_set share the original eight-second deadline. Every outcome
+terminally disarms before the modal opens; return observations remain read-only.
+Blocked/failed setup is distinct from a genuine return failure and cannot pass.
+Partial input with uncertain button state stops qualification. No blind release,
+automatic retry, forced foreground or security-dialog consent is permitted.
+`test_win32_focus.py` covers deterministic API faults, disarming and primary-error
+preservation; separate native controls require actual ordinary activation and a
+deliberately failed return after valid setup. Mocks/Linux do not fill native gates.
+The observer never queries a destroyed root's native HWND during finalization;
+secondary observation failures attach to the primary error, and otherwise fail
+diagnostic completeness. Existing F2 events/inventory/Job/watchdog/archive logic
+and all 29 unresolved filesystem skips remain unchanged.
 History revision-details tests settle queued snapshot/selection events, retain the
 entry/task identity and observe the actual action's one dispatched request and
 matching worker delivery plus expected immutable rendered content. They do not
@@ -841,8 +863,12 @@ Recovery tests retain actual widget mapping/viewability and partial-output hidin
 Native focus/render defects remain unresolved until reproduced; no production Tk
 correction is inferred from Linux.
 
-PowerShell fixture subprocesses retain their original generated script, invocation,
-20-second timeout and expected exits. The test-local capture helper reserves a
+PowerShell fixture subprocesses retain their original generated script/BOM,
+20-second timeout and expected exits. Their invocation explicitly binds -Repo to
+the reviewed checkout, avoiding the confirmed empty-$PSScriptRoot default-evaluation
+failure in Windows PowerShell 5.1 before collector execution. A separate binding
+control checks PSBoundParameters and exact path; no original fixture is instrumented.
+The test-local capture helper reserves a
 `subprocess.json` record and retains script path/SHA-256/UTF-8 BOM, exact executable/
 arguments/cwd, Python identity, start/end/timeout/exit and independent raw stdout.bin/
 stderr.bin. Empty streams differ from absent capture. Partial timeout output and
