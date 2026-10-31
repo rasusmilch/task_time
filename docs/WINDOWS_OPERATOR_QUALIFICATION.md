@@ -11,7 +11,7 @@ separate. Never enter data into an employer/customer POL-R system during this ru
 | Gate | Required evidence | Development-host status |
 | --- | --- | --- |
 | F1 | Connected schema-3 worker/SQLite and real Tk workflows, focused and full regression | Portable execution recorded in the Package F receipt; independent review required |
-| F2 | Current-revision native Windows automated collection/events/JUnit/logs, inventory, cleanup and verified delivery | October 30 attempt EVIDENCE_INCOMPLETE; corrective source requires review before native repeat |
+| F2 | Current-revision native Windows automated collection/events/JUnit/logs, inventory, cleanup and verified delivery | Original attempt EVIDENCE_INCOMPLETE; later supported run FAIL with legacy NOT RUN; corrections require review before repeat |
 | F3 | Actual supervised Windows controls, focus, dialogs, files and restored fresh session | NOT RUN |
 | F4 | Actual Windows Sleep/resume with preserved timer and validated recovery | NOT RUN |
 
@@ -95,6 +95,30 @@ binding, diagnostics and active-lock fixtures. Native focus/visibility hypothese
 remain unresolved; no production Tk correction is claimed. Legacy file-status
 failures remain historical regression failures, not schema-3 production defects.
 
+## Later October 30 supported execution and outstanding evidence
+
+The later 19:10:50 UTC run is supplied independently inspected evidence, not execution
+on this development host. Archive:
+`Chronicle Stage4 20261030T191050Z 1b5b039d77884f81a687d9f9b9646ba2.zip`.
+SHA-256: `b809ec22841d2cf4dbbbd7777005a759f7e2d2353f164ab6b5d678b398127419`.
+It reports 3,827 collected, 1,922 supported completed: 1,816 passed, 15 failed,
+91 skipped. Retained legacy: 1,905 selected, zero executed after inventory mismatch.
+The archive comparison identified two eager UUID parameters changing node identities;
+two more eager nested parameter values are also fixed without altering runtime UUIDs.
+The 15 supported failures are eight PowerShell fixture cases, six History/Timesheet
+foreground preconditions and one History details completion failure. F2 FAIL;
+F3/F4 NOT RUN. Verified delivery does not convert failed execution to success.
+
+The original ZIPs, detailed archive-analysis report and separately generated 29-node
+ledger were not accessible on this corrective development host. Source changes do
+not claim fresh inspection of those artifacts or establish native root causes.
+The supplied 62 INAPPLICABLE and **29 UNRESOLVED** skip classifications are preserved.
+Do not invent missing node IDs/reasons. Obtain the original ledger for separate
+coverage adjudication; keep raw machine paths outside source. Symlink-creation
+privileges remain distinct from the unreadable-source permission case. A sharing
+violation is not ACL-denial evidence; hard-link evidence does not establish reparse
+safety. No security changes, replacement filesystem tests or waivers are authorized.
+
 ## F2 — separate automated runs
 
 Only after independent approval of the wrapper, run the full source regression:
@@ -151,12 +175,65 @@ $FocusedXml = Join-Path $Q ('focused-' + [guid]::NewGuid().ToString('N') + '.xml
 & $Py -B -m pytest -q -p no:cacheprovider -o 'addopts=' -ra tests/rewrite/test_stage4_qualification.py tests/rewrite/test_qualification_collector.py tests/rewrite/test_app.py tests/rewrite/test_chronicle_history_modal.py tests/rewrite/test_chronicle_timesheet_ui.py tests/rewrite/test_reconciliation_ui.py --basetemp $FocusedTemp --junitxml $FocusedXml
 $FocusedExit = $LASTEXITCODE
 ```
-Focus failures emit `CHRONICLE_TK_OBSERVATION` with root mapping, foreground PID/HWND,
-focus, local/global grab, widget identity and bounded event order. Distinguish a
-failed PRECONDITION from a return-focus defect. Geometry waits require visible
-restored content, not merely a cleared read token. Preserve diagnostics and return
-reproducible production failures for independent adjudication; do not patch Tk on
-site, force foreground activation, accept hidden output or waive failed assertions.
+Focus failures emit `CHRONICLE_TK_OBSERVATION` with root mapping, native top-level
+and Tk client HWND, foreground HWND/PID, focus/grab, widget identity and bounded
+ordering. PRECONDITION versus RESULT remains explicit. History details require
+matching entry/task/token delivery and rendered immutable content, not a null token.
+No production selection/rendering or focus behavior is changed.
+
+### Focused supervised native characterization
+
+Only after review, use the approved interpreter/source and the existing disposable
+`$Q`; this does not execute or qualify complete F2/F3. Record `$Expected`, runtime,
+console command, UTC action times and the resulting console transcript/JUnit. Run individual
+cases so the operator can activate the existing test root through an ordinary click
+or Alt+Tab as soon as it appears, within the unchanged eight-second precondition.
+Do not move focus again during the modal-return check. Do not use forced activation
+APIs or longer deadlines. If activation was not observed in time, retain the failed
+precondition and stop rather than reporting a return-focus defect.
+
+```powershell
+$Node = 'tests/rewrite/test_chronicle_history_modal.py::test_real_tk_history_parent_grab_focus_return_identity_and_guard[none]'
+$CaseTemp = Join-Path $Q ('focus-' + [guid]::NewGuid().ToString('N'))
+$CaseXml = Join-Path $Q ('focus-' + [guid]::NewGuid().ToString('N') + '.xml')
+$CaseLog = Join-Path $Q ('focus-' + [guid]::NewGuid().ToString('N') + '.log')
+& $Py -B -m pytest -q -p no:cacheprovider -o 'addopts=' -ra --capture=tee-sys $Node --basetemp $CaseTemp --junitxml $CaseXml 2>&1 | Tee-Object -FilePath $CaseLog
+$CaseExit = $LASTEXITCODE
+```
+
+Repeat separately for History `[local]`, `[missing]`, `[reused]`, Timesheet
+`test_real_tk_timesheet_origin_return_competing_grab_destroy_and_reentry` and
+`test_real_tk_global_grab_and_deleted_focus_origin_are_not_replaced` in
+`tests/rewrite/test_chronicle_timesheet_ui.py`. Confirm these exact node IDs against
+focused `--collect-only` output before execution; stop on source mismatch. Record
+ordinary activation, observed native root/foreground agreement and intended widget
+focus as a distinct precondition result. Only a valid precondition allows interpreting
+the separate modal-return result. A same-process different top-level is not the
+intended foreground root. A foreign foreground window remains a truthful failure.
+
+For the eight PowerShell fixture failures, first run the independent known-output
+control and then the unchanged fixtures in ordinary PowerShell 5.1:
+
+```powershell
+$PsTemp = Join-Path $Q ('powershell-' + [guid]::NewGuid().ToString('N'))
+$PsXml = Join-Path $Q ('powershell-' + [guid]::NewGuid().ToString('N') + '.xml')
+$PsLog = Join-Path $Q ('powershell-' + [guid]::NewGuid().ToString('N') + '.log')
+$PSVersionTable
+Get-Command powershell -CommandType Application | Select-Object Source,Version
+& $Py -B -m pytest -q -p no:cacheprovider -o 'addopts=' -ra tests/rewrite/test_qualification_collector.py -k 'actual_powershell_capture_identity_control or powershell_fallback_reserved_manifest or powershell_final_status_after_archive_outcome or failed_python_then_failed_fallback' --basetemp $PsTemp --junitxml $PsXml 2>&1 | Tee-Object -FilePath $PsLog
+$PsExit = $LASTEXITCODE
+```
+
+The helper records its actual executable; if PowerShell 7 is also installed, the
+current helper prefers `pwsh`. Do not label that comparison PowerShell 5.1. Use an
+already approved environment where the selected executable is the intended 5.1 host,
+or mark the 5.1 comparison NOT RUN without changing machine policy. Retain failed
+`collector functions ü.ps1`, its SHA-256/BOM, `subprocess.json`, stdout.bin and
+stderr.bin from each owned test directory. Compare exact invocation/cwd, actual
+exit and independently captured streams with the control; empty is not unavailable.
+Expected fixture exits remain 0/4; native exit-1 cause remains UNVERIFIED. Do not
+instrument the script under test, bypass execution policy, alter archive expectations
+or extend timeouts. Preserve diagnostics for independent adjudication.
 
 Read execution-result.json (raw automated evidence), summary.json (delivery-aware
 result), collection/manifest.json, partitions.json, and each partition's manifest.json,
@@ -481,7 +558,7 @@ only synthetic names. A checked box or a ZIP filename alone proves no integrity.
 
 | Section | Scenario inventory | Result before execution |
 | --- | --- | --- |
-| F2 | Runtime/source, full inventory/partitioned regression, MetadataProbe and authorized bounded scopes, hot journal, NTFS/locks/files, v1/v2 refusal | Original attempt EVIDENCE_INCOMPLETE; native repeat pending review |
+| F2 | Runtime/source, full inventory/partitioned regression, MetadataProbe and authorized bounded scopes, hot journal, NTFS/locks/files, v1/v2 refusal | Original attempt EVIDENCE_INCOMPLETE; later F2 FAIL / legacy NOT RUN; corrective repeat pending review |
 | F3 | First-run 1–4; main/templates/recording 1–9; History/report/POL-R 1–7; each modal; backup/fresh session 1–3 | NOT RUN |
 | F4 | Real Sleep/resume 1–5, exact stopped work and reopen | NOT RUN |
 

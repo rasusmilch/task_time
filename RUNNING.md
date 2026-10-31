@@ -315,7 +315,13 @@ EVIDENCE_INCOMPLETE (2,208/3,783 nodes completed, final session/JUnit missing), 
 recorded verified ZIP delivery/cleanup. The corrective F2 sink uses preowned event,
 health and diagnostic descriptors; hooks never reopen the event log. Exact JUnit
 serialization includes valid empty classnames; bounded selection checks actual
-collected source paths. Repeated native execution is pending independent review.
+collected source paths. The later October 30 19:10:50 UTC run completed 1,922 supported
+nodes (1,816 pass/15 fail/91 skip); 1,905 legacy were NOT RUN after strict inventory
+refusal. F2 FAIL and all 29 unresolved skips remain open. Four fixed legacy UUID
+parameters and stronger mismatch, PowerShell and History/focus test diagnostics
+require independent review before repeat; native root causes are not declared fixed.
+Original archives/29-node ledger were unavailable on this corrective host; see the
+[runbook evidence](docs/WINDOWS_OPERATOR_QUALIFICATION.md#later-october-30-supported-execution-and-outstanding-evidence).
 F3/F4 remain NOT RUN; Stage 4 remains IN PROGRESS.
 
 Close other modal views, then choose **Backup Chronicle**. Choose a new file outside

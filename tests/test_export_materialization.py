@@ -3,7 +3,7 @@ from copy import deepcopy
 from datetime import datetime, time, timedelta
 from hashlib import sha256
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 import errno
 import os
 from types import SimpleNamespace
@@ -13,7 +13,7 @@ import pytest
 from task_timer import app as app_module
 from task_timer.app import TaskTimerService
 from task_timer.storage import EventStorage
-from test_export_snapshot_registration import prepare, files
+from test_export_snapshot_registration import prepare, files, committed
 from test_timesheet_renderer import setup, dated, MON, TUE, CUTOFF, table_rows
 
 
@@ -67,9 +67,12 @@ def test_default_preference_and_alternative_paths_do_not_change_snapshot(registe
     assert capture(s) == before
 
 
-@pytest.mark.parametrize('identity', ['invalid', True, None, 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA', str(uuid4())])
+@pytest.mark.parametrize('identity', ['invalid', True, None, 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA', '8f628bd2-e8d1-4c73-ae21-300000000002'])
 def test_invalid_unknown_ids_cannot_create_files(registered, identity):
     s, _, target = registered
+    if identity == '8f628bd2-e8d1-4c73-ae21-300000000002':
+        assert str(UUID(identity)) == identity
+        assert identity not in {e['event_id'] for e in committed(s)}
     before = capture(s)
     with pytest.raises(ValueError):
         s.materialize_timesheet_export(identity, target)

@@ -18,6 +18,100 @@ from test_app import root, connected, click, keyboard, pump, create, evidence
 from test_manual_work import H, M
 
 
+def settle_history_events(history):
+    """Deliver already queued selection events before reviewing an identity."""
+    root=history.owner.root
+    pump(root,lambda:history.snapshot_token is None and history.owner.pending is None
+         and history.owner._read_inflight is None and history.phase=='browsing')
+    idle=[]
+    token=root.after_idle(lambda:idle.append(True))
+    try:pump(root,lambda:bool(idle))
+    finally:
+        try:root.after_cancel(token)
+        except tk.TclError:pass
+
+
+class DetailsCompletion:
+    """Observe real worker dispatch/delivery; never issue a corrective retry."""
+    def __init__(self,history,entry_id,expected):
+        self.history,self.entry_id,self.expected=history,entry_id,tuple(expected)
+        self.task_id=history.task['task_id']
+        self.requests=[];self.deliveries=[];self.token=None
+        self.error_count=len(history.owner.root.test_errors)
+
+    def __enter__(self):
+        h=self.history;self.read=h.owner._history_read;self.receive=h.receive_details
+        def read(history,kind,value):
+            token=self.read(history,kind,value)
+            if history is h and kind=='revisions':
+                self.requests.append(dict(token=token,entry_id=value,task_id=history.task['task_id']))
+                self.token=token
+            return token
+        def receive(token,result):
+            entry=result.get('entry',{}) if isinstance(result,dict) else {}
+            current=not h.disposed and token==h.details_token
+            identity=entry.get('entry_id')==self.entry_id and entry.get('task_id')==self.task_id and h.details_identity==self.entry_id
+            self.receive(token,result)
+            self.deliveries.append(dict(token=token,current=current,identity=identity,
+                outcome='STALE' if not current else 'READ_ERROR' if isinstance(result,Outcome)
+                else 'WRONG_IDENTITY' if not identity else 'DELIVERED',result=deepcopy(result)))
+        h.owner._history_read=read;h.receive_details=receive
+        return self
+
+    def dispatch(self,action):
+        action()  # Some UI actions already dispatch; call the actual action once.
+        assert self.requests==[dict(token=self.token,entry_id=self.entry_id,task_id=self.task_id)],self.diagnostic()
+        assert self.token is not None and self.history.details_token==self.token,self.diagnostic()
+
+    def diagnostic(self):
+        h=self.history
+        return dict(requests=self.requests,deliveries=self.deliveries,token=h.details_token,
+            identity=h.details_identity,expected_entry=self.entry_id,expected_task=self.task_id,
+            selected=h.tree.selection() if not h.disposed else 'DISPOSED',
+            status=h.status.cget('text') if not h.disposed else 'DISPOSED')
+
+    def wait(self):
+        h=self.history
+        def complete():
+            assert not h.disposed,('DISPOSED',self.diagnostic())
+            matching=[d for d in self.deliveries if d['token']==self.token and d['current']]
+            assert h.details_identity==self.entry_id,('CANCELLED',self.diagnostic())
+            if not matching:
+                assert h.details_token==self.token,('CANCELLED_OR_NO_COMPLETION',self.diagnostic())
+                return False
+            delivery=matching[-1]
+            assert delivery['outcome']=='DELIVERED',(delivery['outcome'],self.diagnostic())
+            assert len(h.owner.root.test_errors)==self.error_count,('RENDER_ERROR',self.diagnostic())
+            text=h.details_view.get('1.0','end')
+            assert all(part in text for part in self.expected),('CONTENT_MISMATCH',self.diagnostic())
+            assert h.details_token is None,self.diagnostic()
+            return bool(h.details_view.winfo_ismapped())
+        pump(h.owner.root,complete)
+        return next(d['result'] for d in reversed(self.deliveries) if d['token']==self.token and d['current'])
+
+    def __exit__(self,*args):
+        self.history.owner._history_read=self.read
+        self.history.receive_details=self.receive
+
+
+def complete_details(history,entry_id,expected,*,deleted=False):
+    settle_history_events(history)
+    if deleted:
+        history.tree.selection_remove(*history.tree.selection());history._selected()
+        settle_history_events(history)
+        history.show_details()  # No live row is selected: this does not dispatch.
+        label=next(k for k,v in history.deleted_choices.items() if v==entry_id)
+        history.deleted_control.set(label)
+        action=history._deleted_selected
+    else:
+        select(history,entry_id)
+        settle_history_events(history)
+        action=history.show_details
+    with DetailsCompletion(history,entry_id,expected) as observation:
+        observation.dispatch(action)
+        return observation.wait()
+
+
 def selected_task(app):
     task = create(app)
     app.tree.selection_set(app.task_row(task))
@@ -81,8 +175,7 @@ def test_real_tk_history_constructed_access_defaults_single_owner_purity_and_ses
     assert app.history is history and clock.calls==count and app._token==token
     assert history.sort_dates() and not history.newest_first and not app._history_newest_first
     assert clock.calls==count and app._token==token and evidence(worker)==before
-    history.show_details(); select(history, a); history.show_details()
-    pump(root, lambda: history.details_token is None)
+    complete_details(history,a,(a,'Creation — revision 1'))
     assert a in history.details_view.get('1.0','end')
     assert history.close(); assert app.history is None and root.grab_current() is None
     other = create(app,'Another task'); app.tree.selection_set(app.task_row(other))
@@ -142,7 +235,7 @@ def test_real_tk_history_whole_entry_inline_edit_details_delete_and_unchanged_ti
     assert history.start.get()=='unapplied draft' and not history.newest_first
     assert app.state['active']==active
     assert app.state['report']['tasks'][task]['daily_us']['2026-10-18']==2*H
-    select(history,a); history.show_details(); pump(root,lambda: history.details_token is None)
+    complete_details(history,a,('Creation — revision 1','Correction — revision 2'))
     text=history.details_view.get('1.0','end')
     assert 'Creation — revision 1' in text and 'Correction — revision 2' in text
     calls=[]
@@ -155,10 +248,7 @@ def test_real_tk_history_whole_entry_inline_edit_details_delete_and_unchanged_ti
     assert history.delete(); settled(app,history)
     assert 'other dates' in calls[0][0][1] and '2026-10-18' in calls[0][0][1]
     assert not any(r['entry_id']==a for r in history.rows)
-    history.show_details()
-    label=next(k for k,v in history.deleted_choices.items() if v==a)
-    history.deleted_control.set(label); history._deleted_selected()
-    pump(root,lambda: history.details_token is None)
+    complete_details(history,a,('Deletion — revision 3',),deleted=True)
     assert 'Deletion — revision 3' in history.details_view.get('1.0','end')
     assert app.state['active']==active
     assert app.state['report']['tasks'][task]['week_us']==90*M
@@ -645,3 +735,64 @@ def test_real_tk_history_redated_entry_leaves_applied_custom_without_following_d
     assert history.outcome.status=='committed' and history.applied==applied
     assert history.start.get()=='unapplied draft' and not any(r['entry_id']==b for r in history.rows)
     assert app.state['report']['tasks'][task]['daily_us']['2026-10-20']==90*M
+
+
+@pytest.mark.parametrize('delivery',['normal','same_entry','obsolete'])
+def test_real_tk_details_completion_observes_one_real_request_and_exact_identity(connected,root,delivery):
+    app,worker,clock=connected;task=selected_task(app);a,b=seed(app,task)
+    history=open_history(app);select(history,a);settle_history_events(history)
+    before=evidence(worker)
+    with DetailsCompletion(history,a,('Creation — revision 1',a)) as observation:
+        observation.dispatch(history.show_details)
+        token=observation.token
+        if delivery=='same_entry':history._selected();assert history.details_token==token
+        if delivery=='obsolete':
+            history.receive_details(token-1,{'entry':dict(entry_id=b,task_id=task)})
+            assert history.details_token==token and observation.deliveries[-1]['outcome']=='STALE'
+        value=observation.wait()
+        assert value['entry']['entry_id']==a and value['entry']['task_id']==task
+        assert [r['revision'] for r in value['revisions']]==[1] and len(observation.requests)==1
+    assert evidence(worker)==before and not root.test_errors
+
+
+@pytest.mark.parametrize('change',['other','none','disposed'])
+def test_real_tk_details_cancellation_or_disposal_cannot_be_success(connected,root,change):
+    app,worker,clock=connected;task=selected_task(app);a,b=seed(app,task)
+    history=open_history(app);select(history,a);settle_history_events(history)
+    before=evidence(worker)
+    with DetailsCompletion(history,a,('Creation — revision 1',)) as observation:
+        observation.dispatch(history.show_details);token=observation.token
+        if change=='other':select(history,b)
+        elif change=='none':history.tree.selection_remove(*history.tree.selection());history._selected()
+        else:assert history.close()
+        with pytest.raises(AssertionError,match='DISPOSED|CANCELLED'):observation.wait()
+        history.receive_details(token,{'entry':dict(entry_id=a,task_id=task)})
+        assert observation.deliveries[-1]['outcome']=='STALE'
+    assert evidence(worker)==before
+
+
+@pytest.mark.parametrize('fault',['read','identity','render'])
+def test_real_tk_details_completion_distinguishes_read_identity_and_render_failures(connected,root,monkeypatch,fault):
+    app,worker,clock=connected;task=selected_task(app);a,b=seed(app,task)
+    history=open_history(app);select(history,a);settle_history_events(history)
+    before=evidence(worker)
+    if fault=='read':
+        def read(*args):raise OSError('controlled details read failure')
+        monkeypatch.setattr(TimerService,'read_work_entry_revisions',read)
+    elif fault=='identity':
+        original=TimerService.read_work_entry_revisions
+        def read(service,entry):
+            value=original(service,entry);value['entry']['entry_id']=b;return value
+        monkeypatch.setattr(TimerService,'read_work_entry_revisions',read)
+    else:
+        original=history._details_text
+        def render(text):
+            if text=='Loading immutable details…':return original(text)
+            raise RuntimeError('controlled detail rendering failure')
+        monkeypatch.setattr(history,'_details_text',render)
+    with DetailsCompletion(history,a,('Creation — revision 1',)) as observation:
+        observation.dispatch(history.show_details)
+        expected={'read':'READ_ERROR','identity':'WRONG_IDENTITY','render':'RENDER_ERROR'}[fault]
+        with pytest.raises(AssertionError,match=expected):observation.wait()
+        assert len(observation.requests)==1
+    assert evidence(worker)==before and root.test_errors

@@ -1,6 +1,8 @@
 """Portable collector contracts; no native Windows/PowerShell claims."""
 import importlib.util
 import errno
+import hashlib
+from datetime import datetime, timezone
 import io
 import json
 import os
@@ -27,7 +29,7 @@ def events(path):
 def process_diagnostic(result):
     # Keep absence explicit rather than masking the real exit with TypeError.
     return dict(command=result.args,exit_code=result.returncode,
-                stdout=result.stdout,stderr=result.stderr)
+                stdout=result.stdout,stderr=result.stderr,diagnostic_path=getattr(result,'diagnostic_path',None))
 
 
 def run_fixture(tmp_path,source,extra=(),scope='Critical',enforce=False,name='fixture tests ü.py'):
@@ -729,11 +731,73 @@ def test_powershell_exclusive_creation_and_finalization_static_contract():
 POWERSHELL=shutil.which('pwsh') or shutil.which('powershell')
 
 
+def capture_process(command, directory, *, script=None, cwd=None, timeout=20):
+    """Test-only observation. Never instrument the script or reinterpret exits."""
+    directory=Path(directory)
+    diagnostic=directory/'subprocess.json'
+    value=dict(command=list(command),executable=command[0],cwd=str(Path(cwd or Path.cwd()).resolve()),
+        python=dict(executable=sys.executable,version=sys.version),
+        powershell=dict(executable=command[0],runtime_identity='UNVERIFIED; separate native probe required') if script else None,
+        started_utc=datetime.now(timezone.utc).isoformat(),timeout_seconds=timeout,timed_out=False,
+        script=None,exit_code=None,capture_failures=[])
+    if script is not None:
+        data=Path(script).read_bytes()
+        value['script']=dict(path=str(Path(script).resolve()),sha256=hashlib.sha256(data).hexdigest(),
+            encoding='utf-8-sig',bom=data.startswith(b'\xef\xbb\xbf'),bytes=len(data))
+    primary=result=None
+    stdout=stderr=None
+    # Reserve diagnostics before launch; no unknown existing object is replaced.
+    try:
+        with q.JsonRecord(diagnostic) as record:
+            record.write(dict(value,status='STARTING'))
+            try:
+                result=subprocess.run(command,capture_output=True,cwd=cwd,timeout=timeout)
+                stdout,stderr=result.stdout,result.stderr
+                value['exit_code']=result.returncode
+            except subprocess.TimeoutExpired as exc:
+                primary=exc;value['timed_out']=True
+                stdout,stderr=exc.stdout,exc.stderr
+            except BaseException as exc: primary=exc
+            value.update(ended_utc=datetime.now(timezone.utc).isoformat(),
+                         process_error=repr(primary) if primary else None)
+            def retain(name,data):
+                if data is None:
+                    value['capture_failures'].append(name+' unavailable despite requested PIPE')
+                    return dict(status='ABSENT',bytes=None,raw_file=None,text=None)
+                if not isinstance(data,bytes):raise TypeError(name+' capture is not bytes: '+repr(type(data)))
+                path=directory/(name+'.bin')
+                with path.open('xb') as stream:stream.write(data)
+                return dict(status='CAPTURED' if data else 'EMPTY',bytes=len(data),raw_file=str(path),
+                            text=data.decode('utf-8',errors='backslashreplace'))
+            secondary=[]
+            for name,data in (('stdout',stdout),('stderr',stderr)):
+                try:value[name]=retain(name,data)
+                except BaseException as exc:secondary.append(exc);value['capture_failures'].append(name+': '+repr(exc))
+            value['status']='CAPTURE_INCOMPLETE' if value['capture_failures'] else 'CAPTURED'
+            try:record.write(value)
+            except BaseException as exc:secondary.append(exc)
+            if secondary:
+                if primary is None:primary=secondary.pop(0)
+                for exc in secondary:primary.add_note('Subprocess diagnostic also failed: '+repr(exc))
+            if primary is not None:
+                primary.add_note('Original subprocess observation: '+repr(value))
+                raise primary
+    except BaseException as exc:
+        exc.add_note('Capture command/result: '+repr(dict(command=command,exit_code=value['exit_code'],
+            timed_out=value['timed_out'],diagnostic_path=str(diagnostic))))
+        raise
+    # Keep the helper's existing text result interface and exact process exit.
+    result.stdout=None if stdout is None else stdout.decode('utf-8',errors='backslashreplace')
+    result.stderr=None if stderr is None else stderr.decode('utf-8',errors='backslashreplace')
+    result.diagnostic_path=str(diagnostic)
+    return result
+
+
 def run_powershell_functions(tmp_path,body):
     prefix=(HELPER.parent/'qualify_windows.ps1').read_text().split('\ntry {\n    $Repo =',1)[0]
     script=tmp_path/'collector functions ü.ps1';script.write_text(prefix+'\n'+body,encoding='utf-8-sig')
-    return subprocess.run([POWERSHELL,'-NoProfile','-NonInteractive','-File',str(script)],
-                          capture_output=True,text=True,encoding='utf-8',timeout=20)
+    return capture_process([POWERSHELL,'-NoProfile','-NonInteractive','-File',str(script)],
+                           tmp_path,script=script,timeout=20)
 
 
 @pytest.mark.skipif(not POWERSHELL,reason='PowerShell unavailable: fallback runtime remains UNVERIFIED')
@@ -916,7 +980,7 @@ def test_external_nodeid_selection_uses_collected_path_not_basename(tmp_path):
 def test_none_safe_subprocess_diagnostics_preserve_primary_failure(stdout,stderr):
     result=subprocess.CompletedProcess(['exact','command ü'],19,stdout,stderr)
     diagnostic=process_diagnostic(result)
-    assert diagnostic==dict(command=result.args,exit_code=19,stdout=stdout,stderr=stderr)
+    assert diagnostic==dict(command=result.args,exit_code=19,stdout=stdout,stderr=stderr,diagnostic_path=None)
     with pytest.raises(AssertionError) as failure:
         assert result.returncode==0,diagnostic
     assert '19' in str(failure.value) and 'exact' in str(failure.value)
@@ -950,3 +1014,94 @@ def test_real_unknown_external_module_is_not_allowed_by_audited_filename(tmp_pat
     manifest=json.loads((root/'manifest.json').read_text())
     assert len(manifest)==1 and not manifest[0]['selected']
     assert 'outside reviewed' in manifest[0]['reason'] and 'must not execute' not in result.stdout
+
+
+def test_capture_control_keeps_distinct_bytes_and_nonzero_exit(tmp_path):
+    command=[sys.executable,'-B','-c','import os;os.write(1,b"out\\x00\\xff");os.write(2,b"err\\n");raise SystemExit(7)']
+    result=capture_process(command,tmp_path)
+    assert result.returncode==7 and result.stderr=='err\n'
+    assert (tmp_path/'stdout.bin').read_bytes()==b'out\x00\xff'
+    assert (tmp_path/'stderr.bin').read_bytes()==b'err\n'
+    record=json.loads((tmp_path/'subprocess.json').read_text())
+    assert record['command']==command and record['exit_code']==7 and not record['timed_out']
+    assert record['stdout']['bytes']==5 and record['stderr']['bytes']==4 and not record['capture_failures']
+
+
+def test_capture_timeout_retains_partial_streams_and_original_exception(tmp_path):
+    command=[sys.executable,'-u','-B','-c','import os,time;os.write(1,b"partial out");os.write(2,b"partial err");time.sleep(5)']
+    with pytest.raises(subprocess.TimeoutExpired) as failure:capture_process(command,tmp_path,timeout=.3)
+    record=json.loads((tmp_path/'subprocess.json').read_text())
+    assert record['timed_out'] and record['exit_code'] is None
+    assert (tmp_path/'stdout.bin').read_bytes()==b'partial out' and (tmp_path/'stderr.bin').read_bytes()==b'partial err'
+    assert failure.value.cmd==command
+
+
+@pytest.mark.parametrize('missing',[False,True])
+def test_capture_distinguishes_empty_from_unavailable_streams(tmp_path,monkeypatch,missing):
+    monkeypatch.setattr(subprocess,'run',lambda *a,**kw:subprocess.CompletedProcess(a[0],1,b'',None if missing else b''))
+    result=capture_process(['fixture'],tmp_path)
+    record=json.loads((tmp_path/'subprocess.json').read_text())
+    assert result.returncode==1 and record['stdout']['status']=='EMPTY'
+    assert record['stderr']['status']==('ABSENT' if missing else 'EMPTY')
+    assert record['stderr']['bytes']==(None if missing else 0)
+    assert bool(record['capture_failures']) is missing
+
+
+def test_capture_diagnostic_failure_keeps_process_exit_and_timeout_context(tmp_path,monkeypatch):
+    original=q.JsonRecord.write
+    def broken(record,value):
+        if value.get('status')!='STARTING':raise OSError('diagnostic failure')
+        return original(record,value)
+    monkeypatch.setattr(q.JsonRecord,'write',broken)
+    with pytest.raises(OSError,match='diagnostic failure') as failure:
+        capture_process([sys.executable,'-B','-c','raise SystemExit(9)'],tmp_path)
+    assert any("'exit_code': 9" in note for note in failure.value.__notes__)
+
+
+@pytest.mark.skipif(not POWERSHELL,reason='PowerShell unavailable: independent native capture/identity probe NOT RUN')
+def test_actual_powershell_capture_identity_control(tmp_path):
+    script=tmp_path/"capture probe ü's.ps1"
+    script.write_text('''[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
+[Console]::Out.WriteLine(($PSVersionTable | ConvertTo-Json -Compress))
+[Console]::Error.WriteLine('capture error control')
+exit 7
+''',encoding='utf-8-sig')
+    result=capture_process([POWERSHELL,'-NoProfile','-NonInteractive','-File',str(script)],tmp_path,script=script)
+    assert result.returncode==7,process_diagnostic(result)
+    assert 'PSVersion' in result.stdout and 'capture error control' in result.stderr
+    record=json.loads((tmp_path/'subprocess.json').read_text())
+    assert record['script']['bom'] and record['script']['sha256']==hashlib.sha256(script.read_bytes()).hexdigest()
+
+
+def test_capture_close_failure_retains_original_process_observation(tmp_path,monkeypatch):
+    original=q.JsonRecord.__exit__
+    def close(record,*args):original(record,*args);raise OSError('controlled close failure')
+    monkeypatch.setattr(q.JsonRecord,'__exit__',close)
+    with pytest.raises(OSError,match='controlled close failure') as failure:
+        capture_process([sys.executable,'-B','-c','raise SystemExit(9)'],tmp_path)
+    assert any("'exit_code': 9" in note for note in failure.value.__notes__)
+    assert json.loads((tmp_path/'subprocess.json').read_text())['exit_code']==9
+
+
+def test_capture_partial_timeout_with_diagnostic_failure_preserves_primary(tmp_path,monkeypatch):
+    original=q.JsonRecord.write
+    def broken(record,value):
+        if value.get('status')!='STARTING':raise OSError('secondary diagnostic failure')
+        return original(record,value)
+    monkeypatch.setattr(q.JsonRecord,'write',broken)
+    command=[sys.executable,'-u','-B','-c','import os,time;os.write(1,b"partial");time.sleep(5)']
+    with pytest.raises(subprocess.TimeoutExpired) as failure:capture_process(command,tmp_path,timeout=.3)
+    assert (tmp_path/'stdout.bin').read_bytes()==b'partial'
+    assert any('secondary diagnostic failure' in note for note in failure.value.__notes__)
+    assert any("'timed_out': True" in note for note in failure.value.__notes__)
+
+
+def test_capture_stream_failure_retains_other_stream_and_process_result(tmp_path):
+    (tmp_path/'stdout.bin').write_bytes(b'preserve existing diagnostics')
+    command=[sys.executable,'-B','-c','import os;os.write(1,b"out");os.write(2,b"err");raise SystemExit(9)']
+    with pytest.raises(FileExistsError) as failure:capture_process(command,tmp_path)
+    assert (tmp_path/'stdout.bin').read_bytes()==b'preserve existing diagnostics'
+    assert (tmp_path/'stderr.bin').read_bytes()==b'err'
+    record=json.loads((tmp_path/'subprocess.json').read_text())
+    assert record['exit_code']==9 and record['status']=='CAPTURE_INCOMPLETE'
+    assert any("'exit_code': 9" in note for note in failure.value.__notes__)

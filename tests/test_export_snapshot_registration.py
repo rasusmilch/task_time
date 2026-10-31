@@ -5,7 +5,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -606,11 +606,16 @@ def test_unhealthy_journal_blocks_retry_without_repair(setup, corruption):
 @pytest.mark.parametrize('kwargs', [
     {'export_id': 'bad'}, {'export_id': True}, {'preferred_destination': ''},
     {'preferred_destination': 'bad\x00path'}, {'preferred_destination': 3},
-    {'task_ids': 'bad'}, {'task_ids': None}, {'task_ids': (str(uuid4()),)},
-    {'project_ids': (str(uuid4()),)}, {'all_tasks': 1}, {'include_deleted': 'yes'},
+    {'task_ids': 'bad'}, {'task_ids': None}, {'task_ids': ('8f628bd2-e8d1-4c73-ae21-300000000003',)},
+    {'project_ids': ('8f628bd2-e8d1-4c73-ae21-300000000004',)}, {'all_tasks': 1}, {'include_deleted': 'yes'},
 ])
 def test_invalid_preparation_has_no_effect(setup, kwargs):
     s, *_ = setup
+    for key, authority in (('task_ids', s.state.tasks), ('project_ids', s.state.projects)):
+        values = kwargs.get(key)
+        if isinstance(values, tuple):
+            assert len(values) == 1 and str(UUID(values[0])) == values[0]
+            assert values[0] not in authority
     before = capture(s)
     with pytest.raises(ValueError):
         prepare(s, **kwargs)

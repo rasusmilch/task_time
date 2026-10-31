@@ -375,7 +375,7 @@ def test_skip_applicability_is_exact_not_reason_text(tmp_path):
     assert f.skip_applicability(row,reports,'win32')['classification']=='BLOCKED_REQUIRED'
 
 
-def test_tk_observer_distinguishes_focus_precondition_and_geometry(root):
+def test_tk_observer_distinguishes_focus_precondition_and_geometry(root,capsys):
     from tkinter import ttk
     from tk_observation import wait_observed,snapshot
     widget=ttk.Entry(root);widget.grid()
@@ -385,6 +385,13 @@ def test_tk_observer_distinguishes_focus_precondition_and_geometry(root):
     with pytest.raises(AssertionError) as failure:
         wait_observed(root,lambda:False,phase='PRECONDITION controlled focus absence',widgets=(widget,),timeout=25)
     assert any('PRECONDITION' in note for note in failure.value.__notes__)
+    with pytest.raises(AssertionError) as failure:
+        wait_observed(root,lambda:False,phase='History actual return focus',widgets=(widget,),timeout=25)
+    assert any('RESULT' in note for note in failure.value.__notes__)
+    observations=[json.loads(line.removeprefix('CHRONICLE_TK_OBSERVATION '))
+        for line in capsys.readouterr().out.splitlines() if line.startswith('CHRONICLE_TK_OBSERVATION ')]
+    assert [row['observation_kind'] for row in observations]==['RESULT','PRECONDITION','RESULT']
+    assert all(row['timeline'][0]['event']=='begin' and row['timeline'][-1]['event']=='end' for row in observations)
     widget_name=widget.winfo_name()
     widget.destroy()
     assert snapshot(root,(widget,))['widgets'][0]['live']==0
@@ -574,3 +581,135 @@ def test_mirrored_nested_progress_cannot_impersonate_controller_events(tmp_path,
     assert json.loads(progress[0][len('CHRONICLE_PROGRESS '):])==dict(completed=2,selected=3,qualification_phase='SUPPORTED_RUNTIME')
     assert all(line.startswith('PYTEST_OUTPUT ') for line in lines[:-1])
     assert 'not json' in lines[0]  # Diagnostic text is visible, never parsed.
+
+
+@pytest.mark.parametrize('damage',['missing','additional','duplicate_actual','duplicate_expected','source'])
+def test_inventory_mismatch_refuses_before_execution_and_keeps_exact_evidence(tmp_path,damage):
+    from types import SimpleNamespace
+    actual=[dict(nodeid='::test_one',source_path=str((tmp_path/'case ü.py').resolve()))]
+    expected=[dict(actual[0])]
+    if damage=='missing':expected.append(dict(nodeid='::missing',source_path=actual[0]['source_path']))
+    elif damage=='additional':expected=[]
+    elif damage=='duplicate_actual':actual.append(dict(actual[0]))
+    elif damage=='duplicate_expected':expected.append(dict(expected[0]))
+    else:expected[0]['source_path']=str(tmp_path/'other.py')
+    items=[SimpleNamespace(nodeid=row['nodeid'],path=Path(row['source_path'])) for row in actual]
+    writer=f.OwnedEvents(tmp_path);plugin=f.FullPlugin(tmp_path,writer,expected)
+    try:
+        with pytest.raises(ValueError,match='Partition collection differs'):
+            plugin.pytest_collection_modifyitems(None,None,items)
+    finally:writer.finish()
+    evidence=json.loads((tmp_path/'inventory-mismatch.json').read_text())
+    assert evidence['expected']==expected and evidence['actual']==actual
+    assert evidence['expected_count']==len(expected) and evidence['actual_count']==len(actual)
+    assert evidence['mismatch'] and not (tmp_path/'manifest.json').exists()
+    events,_=f.q.read_events(tmp_path/'events.jsonl',0)
+    assert not any(e['event']=='node_start' for e in events)
+    assert events[-1]['event']=='inventory_mismatch'
+
+
+def test_inventory_diagnostic_failure_preserves_primary_and_reserved_object(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    reserved=tmp_path/'inventory-mismatch.json';reserved.write_bytes(b'preserve')
+    writer=f.OwnedEvents(tmp_path);plugin=f.FullPlugin(tmp_path,writer,[])
+    item=SimpleNamespace(nodeid='::new',path=tmp_path/'new.py')
+    try:
+        with pytest.raises(ValueError,match='Partition collection differs') as failure:
+            plugin.pytest_collection_modifyitems(None,None,[item])
+        assert any('diagnostic write also failed' in note for note in failure.value.__notes__)
+        assert reserved.read_bytes()==b'preserve'
+        assert not (tmp_path/'manifest.json').exists()
+    finally:writer.finish()
+
+
+def test_inventory_order_alone_does_not_refuse_and_summary_is_bounded(tmp_path,capsys):
+    from types import SimpleNamespace
+    rows=[dict(nodeid='::test_'+str(i),source_path=str(tmp_path/'case.py')) for i in range(60)]
+    difference=f.inventory_difference(rows,list(reversed(rows)))
+    assert difference['order_changed'] and len(difference['order_differences'])==60 and not difference['mismatch']
+    writer=f.OwnedEvents(tmp_path);plugin=f.FullPlugin(tmp_path,writer,rows)
+    try:
+        with pytest.raises(ValueError):plugin.pytest_collection_modifyitems(None,None,[])
+    finally:writer.finish()
+    complete=json.loads((tmp_path/'inventory-mismatch.json').read_text())
+    assert complete['missing']==sorted(r['nodeid'] for r in rows)
+    output=capsys.readouterr().out
+    summary=json.loads(next(line.split(' ',1)[1] for line in output.splitlines() if line.startswith('INVENTORY_MISMATCH ')))
+    assert summary['missing']['count']==60 and summary['missing']['truncated'] and len(summary['missing']['entries'])==50
+
+
+@pytest.mark.parametrize('foreground,pid,expected',[(22,'own',True),(11,'own',False),(33,'own',False),(22,'foreign',True),(0,'own',False)])
+def test_windows_foreground_observation_distinguishes_client_top_and_other_owned_windows(foreground,pid,expected):
+    from types import SimpleNamespace
+    from tk_observation import windows_foreground
+    def ancestor(client,kind):assert (client,kind)==(11,2);return 22
+    def window():return foreground
+    def process(hwnd,value):value._obj.value=os.getpid() if pid=='own' else os.getpid()+100;return 1
+    result=windows_foreground(SimpleNamespace(winfo_id=lambda:11),SimpleNamespace(
+        GetAncestor=ancestor,GetForegroundWindow=window,GetWindowThreadProcessId=process))
+    assert result['client_hwnd']==11 and result['root_hwnd']==22
+    assert result['root_is_foreground'] is expected and result['owned']==(pid=='own')
+
+
+@pytest.mark.parametrize('damage',['missing','additional','duplicate','source','write'])
+def test_real_pytest_inventory_refusal_never_runs_nodes(tmp_path,damage):
+    sentinel=tmp_path/'body must not run'
+    source=f'from pathlib import Path\ndef test_one():Path({str(sentinel)!r}).write_text("unsafe")\ndef test_two():pass\n'
+    collection,raw,_=child_run(tmp_path,source,True)
+    inventory=f.collection_result(collection,raw)
+    if damage=='missing':inventory.append(dict(inventory[0],nodeid='::missing'))
+    elif damage=='additional':inventory.pop()
+    elif damage=='duplicate':inventory.append(dict(inventory[0]))
+    elif damage=='source':inventory[0]['source_path']=str(tmp_path/'foreign.py')
+    else:inventory.pop()
+    root=tmp_path/'refused';root.mkdir()
+    if damage=='write':(root/'inventory-mismatch.json').write_bytes(b'preserve reserved')
+    code='import sys,json;sys.path.insert(0,sys.argv[1]);import stage4_qualification as f;raise SystemExit(f.pytest_child(sys.argv[2],False,[sys.argv[3]],json.loads(sys.argv[4])))'
+    result=subprocess.run([sys.executable,'-B','-c',code,str(SCRIPTS),str(root),str(tmp_path/'case ü spaces.py'),json.dumps(inventory)],capture_output=True,timeout=30,
+        env=dict(os.environ,PYTHONDONTWRITEBYTECODE='1',PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',PYTEST_ADDOPTS=''))
+    assert result.returncode!=0,repr((result.stdout,result.stderr))
+    assert not sentinel.exists() and not (root/'manifest.json').exists()
+    events,_=f.q.read_events(root/'events.jsonl',0)
+    assert not any(e['event']=='node_start' for e in events)
+    final=next((e for e in events if e['event']=='session_finish'),{})
+    assert f.q.validate_test_evidence(root,result.returncode,final.get('pytest_exit_code'))['status']=='EVIDENCE_INCOMPLETE'
+    diagnostic=root/'inventory-mismatch.json'
+    if damage=='write':
+        assert diagnostic.read_bytes()==b'preserve reserved'
+        assert b'diagnostic write also failed' in result.stdout+result.stderr
+    else:
+        value=json.loads(diagnostic.read_text())
+        assert value['mismatch'] and len(value['expected'])==len(inventory) and len(value['actual'])==2
+
+
+def test_real_legacy_collection_repeats_exact_identities_and_sources_across_hash_seeds(tmp_path):
+    inventories=[]
+    modules=['tests/'+name for name in sorted(f.LEGACY_MODULES)]
+    for seed in ('11','37'):
+        root=tmp_path/seed;root.mkdir()
+        code='import sys,json;sys.path.insert(0,sys.argv[1]);import stage4_qualification as f;raise SystemExit(f.pytest_child(sys.argv[2],True,json.loads(sys.argv[3])))'
+        process=subprocess.run([sys.executable,'-B','-c',code,str(SCRIPTS),str(root),json.dumps(modules)],cwd=SCRIPTS.parent,
+            capture_output=True,timeout=30,env=dict(os.environ,PYTHONDONTWRITEBYTECODE='1',PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',PYTEST_ADDOPTS='',PYTHONHASHSEED=seed))
+        assert process.returncode==0,repr((process.stdout,process.stderr))
+        manifest=json.loads((root/'manifest.json').read_text())
+        observations=[dict(nodeid=r['nodeid'],source_path=r['source_path'],junit=r['junit']) for r in manifest]
+        assert observations and len({r['nodeid'] for r in observations})==len(observations)
+        assert f.event_health(root)['status']=='COMPLETE'
+        partitions=f.partition_inventory(manifest,SCRIPTS.parent)
+        assert partitions['RETAINED_LEGACY']==[dict(r,partition='RETAINED_LEGACY') for r in manifest]
+        assert not partitions['SUPPORTED_RUNTIME'] and not partitions['UNCLASSIFIED']
+        inventories.append(observations)
+    assert inventories[0]==inventories[1]
+
+
+def test_real_inventory_order_only_difference_does_not_refuse_execution(tmp_path):
+    collection,raw,_=child_run(tmp_path,'def test_one():pass\ndef test_two():pass\n',True)
+    inventory=f.collection_result(collection,raw)
+    root=tmp_path/'reordered';root.mkdir()
+    code='import sys,json;sys.path.insert(0,sys.argv[1]);import stage4_qualification as f;raise SystemExit(f.pytest_child(sys.argv[2],False,[sys.argv[3]],json.loads(sys.argv[4])))'
+    result=subprocess.run([sys.executable,'-B','-c',code,str(SCRIPTS),str(root),str(tmp_path/'case ü spaces.py'),json.dumps(list(reversed(inventory)))],
+        capture_output=True,timeout=30,env=dict(os.environ,PYTHONDONTWRITEBYTECODE='1',PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',PYTEST_ADDOPTS=''))
+    assert result.returncode==0,repr((result.stdout,result.stderr))
+    evidence=f.q.validate_test_evidence(root,0,0)
+    assert evidence['status']=='COMPLETE' and evidence['counts']==dict(passed=2)
+    assert not (root/'inventory-mismatch.json').exists()

@@ -4,7 +4,7 @@ import errno
 import os
 from pathlib import Path
 from types import SimpleNamespace
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -12,7 +12,7 @@ from task_timer import app as app_module
 from task_timer.app import TaskTimerService
 from task_timer.storage import EventStorage
 from test_export_materialization import registered, capture
-from test_export_snapshot_registration import prepare
+from test_export_snapshot_registration import prepare, committed
 from test_timesheet_renderer import setup
 
 
@@ -232,9 +232,12 @@ def test_invalid_destination_arguments_raise_before_inspection(registered, monke
     assert capture(s) == before
 
 
-@pytest.mark.parametrize('identity', ['invalid', None, True, 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA', str(uuid4())])
+@pytest.mark.parametrize('identity', ['invalid', None, True, 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA', '8f628bd2-e8d1-4c73-ae21-300000000001'])
 def test_invalid_and_unknown_ids_fail_without_file_status(registered, identity):
     s, _, _ = registered
+    if identity == '8f628bd2-e8d1-4c73-ae21-300000000001':
+        assert str(UUID(identity)) == identity
+        assert identity not in {e['event_id'] for e in committed(s)}
     before = capture(s)
     with pytest.raises(ValueError):
         s.evaluate_timesheet_export_file_status(identity)

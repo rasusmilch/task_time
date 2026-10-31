@@ -63,6 +63,23 @@ in separate owned sessions with separate manifests, arguments, logs, events, JUn
 exit codes and cleanup. Their union must reproduce the original inventory exactly.
 Legacy failure remains failure in the full-source result.
 
+Recollection rejects missing/additional or duplicate node identities and any changed
+resolved source path before execution. `inventory-mismatch.json` retains complete
+expected/recollected identities, counts, duplicates, source changes and order
+observations; event/console summaries show at most 50 entries per category with
+explicit truncation. Order alone does not reject. Diagnostic write failure remains
+secondary to the original mismatch and cannot manufacture a valid manifest or PASS.
+The four formerly eager legacy UUID parameters are fixed canonical unknown values;
+fixture authority checks retain their negative and read-purity semantics.
+
+History details completion and Win32 focus observation are test-only diagnostics.
+A details test settles queued selection events, observes the one actual action's
+request and matching entry/task/token delivery, and requires rendered immutable
+content. Cancellation, stale/wrong delivery and read/render failure are distinct
+from success; a null token alone proves none of these. Focus observation distinguishes
+Tk client HWND, its native top-level and foreign/same-process foreground windows.
+No forced foreground activation, production History change or wrapper option follows.
+
 Raw pytest outcomes and skip reasons remain immutable. Finite exact source/fixture
 rules classify native applicability independently; unknown skips and missing required
 capabilities prevent PASS. Linux XTest/POSIX omissions do not fill mandatory native

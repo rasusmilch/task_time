@@ -797,6 +797,13 @@ actual source paths, fixture closures and exact pytest JUnit serialization remai
 separate identities; an empty classname is valid only when the exact serializer
 produces it. No basename/fuzzy matching is accepted. Tests audit the reviewed legacy
 module list and runtime import separation; new/shared tests require classification.
+Two fresh-process legacy collections with distinct PYTHONHASHSEED values compare
+exact ordered node/source/JUnit identities and partition conservation. Four fixed
+canonical unknown UUIDs retain fixture-authority absence checks and original purity
+assertions. Inventory fault tests exercise missing/additional/duplicate/changed-source
+refusal before any node executes, exclusive full `inventory-mismatch.json` diagnostics,
+bounded/truncated event/console summaries and secondary diagnostic-write failures.
+Collection order is recorded for diagnosis, never an order-only refusal.
 
 Raw skipped/xfail/xpass evidence is never changed to passed. F2 records applicability
 separately: APPLICABLE, INAPPLICABLE, BLOCKED_REQUIRED or UNRESOLVED. The finite rules
@@ -820,10 +827,30 @@ sessions. Controlled POSIX deaths remain portable containment evidence only.
 History/Timesheet focus diagnostics distinguish initial desktop/foreground focus
 from legitimate modal return. They record mapping, focus/grab owner/status, live
 Python/Tcl widget identities, Win32 foreground PID/HWND where available and bounded
-event ordering. They never force focus. Recovery tests wait for actual widget mapping
-and viewability after authoritative callback delivery, retaining partial-output
-hiding and correct restored-content assertions. Native focus/render defects remain
-unresolved until reproduced; no production Tk correction is inferred from Linux.
+event ordering. The native top-level HWND is distinguished from Tk's client HWND
+and other windows of the same PID. PRECONDITION and RESULT observations remain
+separate with unchanged deadlines/assertions; no focus is forced or failure waived.
+History revision-details tests settle queued snapshot/selection events, retain the
+entry/task identity and observe the actual action's one dispatched request and
+matching worker delivery plus expected immutable rendered content. They do not
+issue a second request to repair a cancelled read or accept token disappearance as
+success. Real-worker tests exercise live/deleted entries, same-entry selection,
+different-entry cancellation, stale/wrong delivery, disposal and read/render errors,
+retaining accounting, active timer, revision and logical-fact assertions.
+Recovery tests retain actual widget mapping/viewability and partial-output hiding.
+Native focus/render defects remain unresolved until reproduced; no production Tk
+correction is inferred from Linux.
+
+PowerShell fixture subprocesses retain their original generated script, invocation,
+20-second timeout and expected exits. The test-local capture helper reserves a
+`subprocess.json` record and retains script path/SHA-256/UTF-8 BOM, exact executable/
+arguments/cwd, Python identity, start/end/timeout/exit and independent raw stdout.bin/
+stderr.bin. Empty streams differ from absent capture. Partial timeout output and
+primary process/timeout evidence survive secondary diagnostic errors. Portable known-
+output/nonzero/timeout/error controls test capture; a separate PowerShell identity/
+stdout/stderr/exit control runs only when PowerShell exists. No trap or phase marker
+is inserted into the tested fixture and no unverified exit-1 cause is represented
+as repaired. Native PowerShell 5.1 execution remains a required focused comparison.
 
 Raw execution and archive delivery are separate. Supported execution may be PASS
 while retained legacy is FAIL; full-source status stays FAIL. Supported automated
@@ -840,8 +867,23 @@ collected, 2,208 completed (2,073 passed/30 failed/12 errored/93 skipped), 1,575
 completed, missing final session and JUnit, with verified ZIP/cleanup. Its logger
 collided with a legacy read-purity filesystem patch. The original external ZIP is
 not rewritten and was not available on this repair's development host. The 42
-failure/error nodes and native focus/layout hypotheses require fresh native evidence;
+failure/error nodes and native focus/layout hypotheses remain historical evidence;
 legacy file-status expectations remain visible without production backporting.
+
+The later October 30 19:10:50 UTC archive is supplied independently inspected
+context, not a run reproduced here: 3,827 collected; 1,922 supported completed
+(1,816 passed/15 failed/91 skipped); 1,905 retained legacy selected but zero executed
+following inventory refusal. The 15 failures comprise eight PowerShell fixture
+cases, six History/Timesheet foreground preconditions and one History details
+completion failure. F2 is FAIL with incomplete legacy coverage; F3/F4 NOT RUN.
+The archive identity/hash and evidence availability are recorded in the
+[native runbook](WINDOWS_OPERATOR_QUALIFICATION.md#later-october-30-supported-execution-and-outstanding-evidence).
+All 29 original UNRESOLVED skips remain unresolved, separate from 62 INAPPLICABLE
+skips. The authoritative 29-node ledger and ZIP were unavailable on this corrective
+host; exact identities/reasons are not reconstructed from presumed test cases.
+Unavailable symlink privileges and the unreadable-source permission case remain
+distinct; sharing violations do not establish ACL denial, and hard links do not
+establish reparse safety. No replacement tests or skip reclassification are included.
 
 Use [WINDOWS_OPERATOR_QUALIFICATION.md](WINDOWS_OPERATOR_QUALIFICATION.md) for the
 original-attempt inventory, focused rerun, per-scenario actions, isolated settings,

@@ -155,12 +155,13 @@ D nested active UI and E templates are accepted for functional development under
 subsequent GO instructions. Package F adds connected portable qualification tests,
 a separate opt-in full-source Windows wrapper and the
 [Windows operator/Sleep runbook](docs/WINDOWS_OPERATOR_QUALIFICATION.md).
-The October 30 native F2 attempt at `56b4e4451d8c738f70d23938c2f60be009d61a84`
-remains EVIDENCE_INCOMPLETE: partial tests, missing final session/JUnit, with recorded
-verified ZIP/cleanup. Corrective tooling isolates its event writer and separates
-supported schema-3 and retained legacy sessions without concealing failures;
-exact evidence and reviewed skip applicability gate qualification. Native repeat
-requires independent review; F3/F4 remain NOT RUN. The frozen bounded collector
+The original October 30 native F2 attempt remains EVIDENCE_INCOMPLETE. Later supplied
+19:10:50 UTC evidence reports F2 FAIL: 1,922 supported completed (1,816 pass/15 fail/
+91 skip), 1,905 legacy NOT RUN after inventory refusal. Corrections stabilize legacy
+collection and improve exact mismatch, PowerShell and History/focus diagnostics,
+without production changes. All 29 unresolved skips and native root-cause limitations
+remain open; see the [evidence/runbook](docs/WINDOWS_OPERATOR_QUALIFICATION.md#later-october-30-supported-execution-and-outstanding-evidence).
+Native repeat requires independent review; F3/F4 remain NOT RUN. The frozen bounded collector
 is separate. See
 [selected behavior](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary),
 [fresh foundation](docs/ARCHITECTURE.md#fresh-hierarchy-foundation) and

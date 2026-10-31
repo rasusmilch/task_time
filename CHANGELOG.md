@@ -21,9 +21,15 @@ receipts or commits. No release or production qualification is implied below.
   empty classnames. Separate supported schema-3 and finite legacy sessions with full
   inventory reconciliation, explicit skip applicability and delivery-aware results.
   Repair parser binding, diagnostic masking, live-lock purity and legacy mini doubles;
-  add bounded focus/layout observations without a production Tk change. The October 30
-  native attempt remains EVIDENCE_INCOMPLETE, never repaired retroactively; native repeat
-  and F3/F4 remain pending, Stage 4 IN PROGRESS, Stage 5 NOT STARTED;
+  add bounded focus/layout observations without a production Tk change. Stabilize four
+  legacy collection UUID parameters; retain full exact inventory-mismatch diagnostics
+  with bounded summaries and order-only observations. Add byte-level PowerShell test
+  capture and matching real-worker History detail/render completion, plus native
+  top-level/client foreground distinction. Original October 30 evidence remains
+  EVIDENCE_INCOMPLETE; later supported execution is FAIL (1,816 pass/15 fail/91 skip),
+  1,905 legacy NOT RUN and all 29 unresolved skips retained. Native causes remain
+  unverified; new F2 requires independent review, F3/F4 remain NOT RUN,
+  Stage 4 IN PROGRESS, Stage 5 NOT STARTED;
   no installation/cutover, external-policy, release or acceptance claim.
 
 - Deliver Package E reusable nested templates on fresh schema 3: STRICT definition/

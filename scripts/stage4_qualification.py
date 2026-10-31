@@ -142,6 +142,32 @@ def event_health(root):
         return dict(status='EVIDENCE_INCOMPLETE',diagnostic=repr(exc))
 
 
+def inventory_difference(expected, actual):
+    """Exact observations; order is diagnostic, never an order-only refusal."""
+    expected_nodes=[row['nodeid'] for row in expected]
+    actual_nodes=[row['nodeid'] for row in actual]
+    before,after=Counter(expected_nodes),Counter(actual_nodes)
+    expected_sources,actual_sources={},{}
+    for rows,sources in ((expected,expected_sources),(actual,actual_sources)):
+        for row in rows:sources.setdefault(row['nodeid'],set()).add(row['source_path'])
+    changes=[]
+    for node in sorted(before.keys() & after.keys()):
+        old,new=sorted(expected_sources[node]),sorted(actual_sources[node])
+        if old!=new: changes.append(dict(nodeid=node,expected_sources=old,actual_sources=new))
+    duplicates=lambda counts:[dict(nodeid=node,count=count) for node,count in sorted(counts.items()) if count>1]
+    result=dict(expected_count=len(expected),actual_count=len(actual),expected=expected,actual=actual,
+        missing=sorted(before.keys()-after.keys()),additional=sorted(after.keys()-before.keys()),
+        duplicate_expected=duplicates(before),duplicate_actual=duplicates(after),changed_sources=changes,
+        order_changed=expected_nodes!=actual_nodes,
+        order_differences=[dict(index=i,expected=expected_nodes[i] if i<len(expected_nodes) else None,
+            actual=actual_nodes[i] if i<len(actual_nodes) else None)
+            for i in range(max(len(expected_nodes),len(actual_nodes)))
+            if (expected_nodes[i] if i<len(expected_nodes) else None)!=(actual_nodes[i] if i<len(actual_nodes) else None)])
+    result['mismatch']=bool(result['missing'] or result['additional'] or changes or
+                            result['duplicate_expected'] or result['duplicate_actual'])
+    return result
+
+
 class FullPlugin(q.QualificationPlugin):
     """Keep full original identity, source and fixture evidence in each session."""
     def __init__(self, root, events, inventory=None):
@@ -158,18 +184,23 @@ class FullPlugin(q.QualificationPlugin):
         # Partition by actual source before hooks run. There is no basename or
         # name-based authorization. Compare the resulting exact nodes afterward.
         if self.inventory is not None:
-            expected = {row['nodeid']:row for row in self.inventory}
-            if len(expected) != len(self.inventory): raise ValueError('Duplicate partition nodes')
-            kept = []
-            for item in items:
-                if item.nodeid in expected:
-                    if str(item.path.resolve()) != expected[item.nodeid]['source_path']:
-                        raise ValueError('Partition source identity changed')
-                    kept.append(item)
-            if {item.nodeid for item in kept} != set(expected) or len(kept)!=len(items):
-                raise ValueError('Partition collection differs from original inventory')
-            config.hook.pytest_deselected(items=[item for item in items if item not in kept])
-            items[:] = kept
+            expected=[dict(nodeid=row['nodeid'],source_path=row['source_path']) for row in self.inventory]
+            actual=[dict(nodeid=item.nodeid,source_path=str(item.path.resolve())) for item in items]
+            difference=inventory_difference(expected,actual)
+            if difference['mismatch']:
+                primary=ValueError('Partition collection differs from original inventory')
+                try: q.write_json(self.root/'inventory-mismatch.json',difference)
+                except BaseException as secondary:
+                    primary.add_note('Inventory diagnostic write also failed: '+repr(secondary))
+                try:
+                    summary={key:dict(count=len(difference[key]),entries=difference[key][:50],
+                        truncated=len(difference[key])>50) for key in
+                        ('missing','additional','duplicate_expected','duplicate_actual','changed_sources','order_differences')}
+                    self.events.emit('inventory_mismatch',expected_count=len(expected),actual_count=len(actual),summary=summary)
+                    print('INVENTORY_MISMATCH '+json.dumps(summary,ensure_ascii=False),flush=True)
+                except BaseException as secondary:
+                    primary.add_note('Inventory event/console diagnostic also failed: '+repr(secondary))
+                raise primary
         super().pytest_collection_modifyitems(session, config, items)
         for row,item in zip(self.manifest,items):
             import inspect

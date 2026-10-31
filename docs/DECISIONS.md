@@ -1447,7 +1447,7 @@ review before native repetition. **Provenance:** explicit execution approval fol
 the source-grounded read-only F2 corrective plan at
 `56b4e4451d8c738f70d23938c2f60be009d61a84`.
 
-The October 30 Windows attempt is EVIDENCE_INCOMPLETE, not PASS: supplied independent
+The original October 30 Windows attempt is EVIDENCE_INCOMPLETE, not PASS: supplied independent
 archive inspection reports 3,783 collected, 2,208 completed (2,073 passed, 30 failed,
 12 errored, 93 skipped), 1,575 uncompleted, final session/JUnit absent, with verified
 ZIP delivery and recorded cleanup. The original ZIP is external immutable evidence;
@@ -1473,6 +1473,33 @@ are not rewritten to UNVERIFIABLE or backported into supported Chronicle behavio
 Stage 4 remains IN PROGRESS, Stage 5 NOT STARTED. No product/schema/accounting/receipt,
 Delete, recovery, external-policy, installation or release decision changes.
 
+
+### October 30 follow-up — bounded test/tooling execution approval
+
+**Status:** owner-approved corrective execution, for independent review before a
+new complete Windows F2 run. **Provenance:** explicit GO from the read-only plan at
+`1d33792678c3cd55ad605f6708665853b30a2995`, with mandatory execution refinements.
+The supplied later 19:10:50 UTC evidence reports 3,827 collected, 1,922 supported
+completed (1,816 pass/15 fail/91 skip) and 1,905 legacy selected/zero executed. F2
+FAIL; F3/F4 NOT RUN. The original archives remain immutable; this host lacks them
+and the authoritative 29-node ledger. Their identities/limitations belong in the
+[native evidence section](WINDOWS_OPERATOR_QUALIFICATION.md#later-october-30-supported-execution-and-outstanding-evidence).
+
+Select only four fixed canonical unknown legacy UUID parameters with authority/purity
+checks; strict inventory refusal with complete exact diagnostic records and bounded
+console summaries; test-local byte capture without changing generated PowerShell
+fixture semantics; one-action, exact-identity/rendered History details observation;
+and read-only native top-level/client/foreground distinction. Order-only collection
+differences are diagnostic, not a new refusal policy. Diagnostic failures never
+conceal the primary mismatch/timeout. No production behavior, wrapper finalization,
+partition membership, expected exits, deadlines or security policy changes.
+
+The eight PowerShell exits and six native foreground preconditions remain unresolved
+until focused native comparison. Test synchronization is strengthened for the later
+History details failure; native cause is not inferred from portable success. Preserve
+all 29 original UNRESOLVED filesystem cases without reconstructing missing identities,
+reclassification or new replacement tests. No supervised wrapper option is selected.
+Stage 4 IN PROGRESS, Stage 5 NOT STARTED; no native acceptance or release follows.
 
 ## Open decisions
 
