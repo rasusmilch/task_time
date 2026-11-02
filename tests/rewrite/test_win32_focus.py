@@ -448,6 +448,144 @@ def test_native_inspection_requires_bounded_caption_hit_on_separate_queue(captio
 
 # The following helpers are private to this test fixture. They do not change
 # subject-driver authority, WindowsChild, or any qualification implementation.
+def _executable(path):
+    from pathlib import Path
+    import hashlib
+    f.require(isinstance(path, str) and os.path.isabs(path), 'Missing/relative Python executable')
+    value = Path(path).resolve(strict=True)
+    f.require(value.is_file() and os.access(value, os.X_OK), 'Python executable is not executable')
+    before = value.stat(); digest = hashlib.sha256(value.read_bytes()).hexdigest(); after = value.stat()
+    f.require((before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) ==
+              (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns), 'Python executable changed while inspected')
+    return dict(path=os.path.normcase(str(value)), sha256=digest, bytes=after.st_size)
+
+
+def _python_facts():
+    from pathlib import Path
+    import hashlib
+    cfg = Path(sys.prefix)/'pyvenv.cfg'
+    venv_cfg = None
+    if sys.prefix != sys.base_prefix:
+        venv_cfg = dict(path=str(cfg))
+        try:venv_cfg['sha256'] = hashlib.sha256(cfg.read_bytes()).hexdigest()
+        except OSError as exc:venv_cfg['error'] = repr(exc)
+    return dict(executable=sys.executable, base_executable=getattr(sys, '_base_executable', None),
+        prefix=sys.prefix, base_prefix=sys.base_prefix, implementation=sys.implementation.name,
+        version=sys.version, version_info=list(sys.version_info[:3]), frozen=bool(getattr(sys, 'frozen', False)),
+        venv_cfg=venv_cfg)
+
+
+def _control_python(env, *, facts=None, platform=None, image=None):
+    """CPython multiprocessing's Windows venv launch mechanism; no discovery."""
+    facts = _python_facts() if facts is None else facts
+    platform = sys.platform if platform is None else platform
+    executable = _executable(facts['executable'])
+    selected, child_env = facts['executable'], dict(env)
+    if platform == 'win32':
+        f.require(facts['implementation'] == 'cpython' and not facts['frozen'] and
+                  facts['version_info'] >= [3, 11, 0], 'Unsupported native-control Python runtime')
+        base = _executable(facts['base_executable'])
+        different = os.path.normcase(facts['executable']) != os.path.normcase(facts['base_executable'])
+        venv = facts['prefix'] != facts['base_prefix']
+        f.require(not different or venv, 'Unexpected base executable outside a CPython venv')
+        if different:
+            f.require(facts['venv_cfg'] is not None and 'sha256' in facts['venv_cfg'], 'Missing CPython virtual-environment identity')
+            selected = facts['base_executable']
+            child_env['__PYVENV_LAUNCHER__'] = facts['executable']
+        else:
+            f.require(not venv, 'Unsupported venv without a distinct environment executable')
+            f.require('__PYVENV_LAUNCHER__' not in child_env, 'Unexpected inherited Python launcher binding')
+        if image is None:image = _process_stamp(f.Win32API(), os.getpid())['image']
+        f.require(_executable(image) == base, 'Base executable differs from the actual native Python image')
+    return selected, child_env, dict(python=facts, image=_executable(selected), environment_executable=executable)
+
+
+def _runtime_dependencies():
+    import importlib
+    import importlib.metadata as metadata
+    result = {}
+    for name in ('pytest', 'tzdata', 'tkcalendar', 'tzlocal'):
+        try:
+            module = importlib.import_module(name)
+            result[name] = dict(version=metadata.version(name), module_version=getattr(module, '__version__', None),
+                                origin=os.path.normcase(os.path.realpath(module.__file__)))
+        except Exception as exc:result[name] = dict(error=repr(exc))
+    return result
+
+
+def _runtime_observation(api, deadline, node):
+    from pathlib import Path
+    import hashlib
+    import subprocess
+    observed = dict(pid=os.getpid(), node=node, argv=sys.argv, errors={})
+    for key, read in (
+        ('python', _python_facts), ('process', lambda:_process_stamp(api, os.getpid())),
+        ('dependencies', _runtime_dependencies),
+        ('chronicle', lambda:os.path.normcase(os.path.realpath(__import__('chronicle').__file__))),
+        ('revision', lambda:subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=f.REPO, text=True,
+            timeout=max(.001, deadline-time.monotonic())).strip()),
+        ('files', lambda:{str(p.relative_to(f.REPO)):hashlib.sha256(p.read_bytes()).hexdigest()
+                         for p in (Path(__file__).resolve(), Path(f.__file__).resolve())})):
+        try:
+            f.require(time.monotonic() < deadline, 'Runtime probe deadline exhausted')
+            observed[key] = read()
+        except Exception as exc:observed['errors'][key] = repr(exc)
+    return observed
+
+
+def _verify_runtime(observed, expected, *, node, pid=None, creation=None, membership=None):
+    f.require(not observed.get('errors'), 'Runtime observations incomplete: '+repr(observed.get('errors')))
+    f.require(observed['python'] == expected['python'], 'Python/virtual-environment identity differs')
+    f.require(_executable(observed['process']['image']) == expected['image'], 'Unexpected native executable identity')
+    f.require(observed['process']['live'] is True and observed['pid'] == observed['process']['pid'], 'Runtime process is not live/exact')
+    if pid is not None:f.require(observed['pid'] == pid, 'Launched PID differs from actual runtime PID')
+    if creation is not None:f.require(observed['process']['creation'] == creation, 'Runtime process creation identity differs')
+    if membership is not None:
+        f.require(membership['pid'] == observed['pid'] and membership['creation'] == observed['process']['creation']
+                  and membership['live'] is True and membership['member'] is True, 'Runtime outside exact owned Job')
+        f.require(_executable(membership['image']) == expected['image'], 'Independent native image differs')
+    deps = observed['dependencies']
+    f.require(deps == expected['dependencies'] and set(deps) == {'pytest','tzdata','tkcalendar','tzlocal'}
+              and all('error' not in value for value in deps.values())
+              and deps['tzdata']['version'] == deps['tzdata']['module_version'] == '2026.5'
+              and deps['pytest']['version'] == deps['pytest']['module_version']
+              and int(deps['pytest']['version'].split('.')[0]) >= 8, 'Required pytest/tzdata environment unavailable or different')
+    f.require(observed['node'] == node, 'Wrong runtime test identity')
+    f.require(observed['revision'] == expected['source']['revision'] and observed['files'] == expected['source']['files'],
+              'Runtime source identity differs')
+    f.require(observed['chronicle'] == os.path.normcase(str((f.REPO/'src/chronicle/__init__.py').resolve())),
+              'Runtime imported another Chronicle source')
+    f.require(_executable(observed['python']['executable']) == expected['environment_executable'],
+              'Environment executable identity changed')
+    return True
+
+
+def _runtime_probe(directory, role, api, config, deadline, node):
+    record = dict(nonce=config['nonce'], role=role, verified=False, observed=None, utc=_utc())
+    primary = None
+    try:
+        record['observed'] = _runtime_observation(api, deadline, node)
+        _verify_runtime(record['observed'], config['runtime'], node=node)
+        f.require(time.monotonic() < deadline, 'Runtime probe exceeded original deadline')
+        record['verified'] = True
+    except BaseException as exc:
+        primary = exc; record['error'] = repr(exc); raise
+    finally:
+        try:_control_write(directory, role+'-runtime', record)
+        except BaseException as exc:
+            if primary is None:raise
+            primary.add_note('Runtime diagnostic also failed: '+repr(exc))
+    return record
+
+
+def _accept_runtime(record, expected, nonce, role, node, launch, membership, target):
+    f.require(record is not None and record.get('verified') is True and record.get('nonce') == nonce
+              and record.get('role') == role, 'Missing/exact runtime probe: '+role)
+    _verify_runtime(record['observed'], expected, node=node, pid=launch['pid'],
+                    creation=launch['creation'], membership=membership)
+    f.require(record['observed']['pid'] == target['pid'], 'Runtime/Tk HWND owner differs')
+
+
 def _control_write(directory, name, value):
     from pathlib import Path
     directory = Path(directory)
@@ -487,15 +625,16 @@ def _control_wait(directory, name, nonce, deadline, child, *, clock=time.monoton
     raise f.FocusBlocked('Control setup deadline exhausted waiting for '+name)
 
 
-def _launch_control(directory, nonce, command, context, started, cwd, stamp):
+def _launch_control(directory, nonce, command, context, started, cwd, stamp, *, env=None):
     from pathlib import Path
     import subprocess
     directory = Path(directory)
-    launch = dict(nonce=nonce, command=command, cwd=str(cwd), utc=_utc(), started=started, pid=None)
+    launch = dict(nonce=nonce, command=command, cwd=str(cwd), utc=_utc(), started=started, pid=None,
+                  launcher_binding=env.get('__PYVENV_LAUNCHER__') if env is not None else None)
     try:
         out = (directory/'inert-stdout.bin').open('xb'); context['streams'].append(out)
         err = (directory/'inert-stderr.bin').open('xb'); context['streams'].append(err)
-        child = subprocess.Popen(command, cwd=cwd, stdin=subprocess.DEVNULL, stdout=out, stderr=err)
+        child = subprocess.Popen(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=out, stderr=err)
         context['children'].append(child)
         launch['pid'] = child.pid
         launch.update({k:v for k,v in stamp(child.pid).items() if k != 'pid'})
@@ -563,6 +702,8 @@ def _process_stamp(api, pid, job=None):
     k.GetProcessTimes.restype = w.BOOL
     k.IsProcessInJob.argtypes = [w.HANDLE, w.HANDLE, c.POINTER(w.BOOL)]
     k.IsProcessInJob.restype = w.BOOL
+    k.QueryFullProcessImageNameW.argtypes = [w.HANDLE, w.DWORD, w.LPWSTR, c.POINTER(w.DWORD)]
+    k.QueryFullProcessImageNameW.restype = w.BOOL
     handle = api.checked(k.OpenProcess(0x1000 | 0x100000, False, pid))
     primary = None
     try:
@@ -570,6 +711,9 @@ def _process_stamp(api, pid, job=None):
         api.checked(k.GetProcessTimes(handle, *[c.byref(t) for t in times]))
         value = dict(pid=pid, creation=(times[0].dwHighDateTime << 32) | times[0].dwLowDateTime,
                      live=k.WaitForSingleObject(handle, 0) == 258)
+        image = c.create_unicode_buffer(32768); size = w.DWORD(len(image))
+        api.checked(k.QueryFullProcessImageNameW(handle, 0, image, c.byref(size)))
+        value['image'] = image.value
         if job is not None:
             member = w.BOOL(); api.checked(k.IsProcessInJob(handle, job, c.byref(member)))
             value['member'] = bool(member.value)
@@ -720,7 +864,10 @@ def _inert_main(directory):
     code, reason, failure = 0, 'parent cleanup', None
     try:
         f.require(config['node'] in f.NODES and subject['nonce'] == nonce, 'Wrong inert control context')
-        api = f.Win32API(); root = tk.Tk(); root.title('F2 owned inert control')
+        api = f.Win32API()
+        f.require(sys.argv[1:] == ['--inert-control', str(directory)], 'Wrong inert runtime entry point')
+        _runtime_probe(directory, 'inert', api, config, deadline, config['node'])
+        root = tk.Tk(); root.title('F2 owned inert control')
         root.geometry('360x140')
         creation = _process_stamp(api, os.getpid())['creation']
         def tick():
@@ -821,6 +968,7 @@ def _controlled_origin(root, monkeypatch, request):
     context = dict(directory=directory, nonce=nonce, driver=driver, root=root, primary=None,
                    children=[], streams=[], diagnostic_errors=[])
     request.node._f2_control_context = context
+    _runtime_probe(directory, 'subject', driver.api, config, config['control_deadline'], request.node.nodeid)
     original_inspect, original_prepare = driver.api.inspect, driver.prepare
     versions = dict(tcl=root.tk.call('info', 'patchlevel'), tk=root.tk.call('package', 'require', 'Tk'))
     def inspect(target, deadline):
@@ -830,9 +978,11 @@ def _controlled_origin(root, monkeypatch, request):
         _control_write(directory, 'subject', dict(nonce=nonce, target=target, rectangle=rectangle,
             environment={**driver.api.session(), **driver.api.desktop(target['thread'])},
             started=started, setup_deadline=until, versions=versions))
-        command = [sys.executable, '-u', '-B', str(Path(__file__).resolve()), '--inert-control', str(directory)]
+        executable, child_env, selected = _control_python(os.environ, image=_process_stamp(driver.api, os.getpid())['image'])
+        f.require(all(selected[k] == config['runtime'][k] for k in selected), 'Inert runtime selection differs from subject')
+        command = [executable, '-u', '-B', str(Path(__file__).resolve()), '--inert-control', str(directory)]
         child = _launch_control(directory, nonce, command, context, started, f.REPO,
-                                lambda pid:_process_stamp(driver.api, pid))
+                                lambda pid:_process_stamp(driver.api, pid), env=child_env)
         foreign = _control_wait(directory, 'foreign-ready', nonce, until, child)
         window = _control_read(directory, 'window-ready'); job = _control_read(directory, 'job-verified')
         f.require(window is not None and job is not None and
@@ -978,19 +1128,30 @@ def controlled_origin(root, monkeypatch, request):
             files={str(p.relative_to(f.REPO)):hashlib.sha256(p.read_bytes()).hexdigest()
                    for p in (Path(__file__).resolve(), Path(f.__file__).resolve())})
     original_source = source()
-    _control_write(directory, 'config', dict(nonce=nonce,node=node,failed_return=failed_return,source=original_source,
-        python=sys.version,executable=sys.executable,windows=platform.platform(),
-        plugin_sha256=hashlib.sha256(plugin.read_bytes()).hexdigest(),utc=_utc()))
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',
         PYTHONPATH=os.pathsep.join([str(tmp_path),str(f.REPO/'src'),str(f.REPO/'tests/rewrite')]), F2_CONTROL_DIR=str(directory))
     env.pop('PYTEST_ADDOPTS',None);env.pop('PYTEST_PLUGINS',None)
     profile=tmp_path/'profile';profile.mkdir()
     env.update(HOME=str(profile),USERPROFILE=str(profile),LOCALAPPDATA=str(profile))
-    command=[sys.executable,'-B','-m','pytest','-q','-p','no:cacheprovider','-p','native_focus_control',
+    api=f.Win32API(); control_deadline=time.monotonic()+45
+    try:
+        executable, env, runtime = _control_python(env)
+    except BaseException as exc:
+        try:_control_write(directory,'python-selection-error',dict(error=repr(exc),python=_python_facts(),utc=_utc()))
+        except BaseException as secondary:exc.add_note('Selection diagnostic also failed: '+repr(secondary))
+        raise
+    runtime.update(source=original_source,dependencies=_runtime_dependencies())
+    config=dict(nonce=nonce,node=node,failed_return=failed_return,source=original_source,runtime=runtime,
+        control_deadline=control_deadline,python=sys.version,executable=sys.executable,windows=platform.platform(),
+        launcher_binding=env.get('__PYVENV_LAUNCHER__'),
+        plugin_sha256=hashlib.sha256(plugin.read_bytes()).hexdigest(),utc=_utc())
+    _control_write(directory, 'config', config)
+    _runtime_probe(directory, 'controller', api, config, control_deadline, request.node.nodeid)
+    command=[executable,'-B','-m','pytest','-q','-p','no:cacheprovider','-p','native_focus_control',
         '-o','addopts=','--capture=tee-sys',node,'--basetemp',str(tmp_path/'child-temp'),
         '--junitxml',str(directory/'native.xml')]
     _control_write(directory,'command',dict(command=command,cwd=str(f.REPO),utc=_utc()))
-    api=f.Win32API(); child=None; primary=None; code=None; threads=[]; errors=[]; cleanup=None
+    child=None; primary=None; code=None; threads=[]; errors=[]; cleanup=None
     try:
         child=q.WindowsChild(command,f.REPO,env)
         def drain(name,stream):
@@ -1003,7 +1164,9 @@ def controlled_origin(root, monkeypatch, request):
             except BaseException as exc:errors.append(name+' capture: '+repr(exc))
         threads=[threading.Thread(target=drain,args=(n,s),daemon=True) for n,s in (('stdout',child.stdout),('stderr',child.stderr))]
         for thread in threads:thread.start()
-        until=time.monotonic()+45
+        subject_launch=_process_stamp(api,child.pid,child.job)
+        _control_write(directory,'subject-launch',dict(nonce=nonce,process=subject_launch,utc=_utc()))
+        until=control_deadline
         while child.poll() is None:
             f.require(time.monotonic()<until,'Outer native-control deadline exhausted')
             start=_control_read(directory,'cleanup-start')
@@ -1015,6 +1178,10 @@ def controlled_origin(root, monkeypatch, request):
                 parent=_process_stamp(api,child.pid,child.job)
                 f.require(parent.get('member') is True and parent['live'],'Subject not in exact owned Job')
                 f.require(subject['target']['pid'] == child.pid, 'Wrong subject process identity')
+                for role, started_process, membership, target in (
+                    ('subject',subject_launch,parent,subject['target']), ('inert',launch,member,ready['target'])):
+                    _accept_runtime(_control_read(directory,role+'-runtime'),runtime,nonce,role,node,
+                                    started_process,membership,target)
                 with api.dpi():
                     api.marker(subject['target']);areas=_work_areas(api);subject_now=api.geometry(subject['target'])
                 acknowledgement=_accept_ready(ready,launch,nonce,_window_probe(api,ready['target']),member,areas,subject_now,subject['environment'])
@@ -1294,6 +1461,135 @@ def test_defect_control_requires_valid_setup_and_actual_result_failure(tmp_path)
 def test_result_protocol_accepts_complete_records_without_claiming_native_execution(tmp_path,failed_return):
     _synthetic_result_records(tmp_path,failed_return=failed_return)
     _validate_control_result(tmp_path,'n',int(failed_return),failed_return)
+
+
+def _runtime_case(tmp_path):
+    import copy
+    launcher=tmp_path/'env-python.exe';base=tmp_path/'base-python.exe'
+    for path in (launcher,base):path.write_bytes(path.name.encode());path.chmod(0o700)
+    facts=dict(executable=str(launcher),base_executable=str(base),prefix=str(tmp_path/'venv'),base_prefix=str(tmp_path/'base'),
+        implementation='cpython',version='controlled CPython',version_info=[3,12,0],frozen=False,
+        venv_cfg=dict(path=str(tmp_path/'venv/pyvenv.cfg'),sha256='controlled'))
+    executable,env,expected=_control_python({'PYTHONPATH':'reviewed-source'},facts=facts,platform='win32',image=str(base))
+    expected.update(source=dict(revision='reviewed',files={'reviewed.py':'digest'}),
+        dependencies={name:dict(version=version,module_version=version,origin=str(tmp_path/name))
+                      for name,version in (('pytest','9.1.1'),('tzdata','2026.5'),('tkcalendar','1.6.1'),('tzlocal','5.4.4'))})
+    observed=dict(pid=42,process=dict(pid=42,creation=100,live=True,image=str(base)),python=copy.deepcopy(facts),
+        dependencies=copy.deepcopy(expected['dependencies']),node='exact-node',revision='reviewed',files={'reviewed.py':'digest'},
+        chronicle=os.path.normcase(str((f.REPO/'src/chronicle/__init__.py').resolve())))
+    return executable,env,expected,observed
+
+
+def test_control_python_venv_uses_base_with_explicit_launcher_and_preserves_environment(tmp_path):
+    executable,env,expected,observed=_runtime_case(tmp_path)
+    assert executable==expected['python']['base_executable']
+    assert env=={'PYTHONPATH':'reviewed-source','__PYVENV_LAUNCHER__':expected['python']['executable']}
+    assert _verify_runtime(observed,expected,node='exact-node',pid=42,creation=100)
+
+
+@pytest.mark.parametrize('platform',['linux','win32'])
+def test_control_python_nonvenv_keeps_direct_executable_and_environment(tmp_path,platform):
+    _,_,expected,_=_runtime_case(tmp_path);facts=dict(expected['python'])
+    facts.update(executable=facts['base_executable'],prefix=facts['base_prefix'],venv_cfg=None)
+    original={'PYTHONPATH':'source','PYTEST_DISABLE_PLUGIN_AUTOLOAD':'1'}
+    executable,env,_=_control_python(original,facts=facts,platform=platform,image=facts['base_executable'])
+    assert executable==facts['executable'] and env==original and env is not original
+    assert '__PYVENV_LAUNCHER__' not in env
+
+
+@pytest.mark.parametrize('damage',['missing','directory','not executable','different image','missing cfg','unsupported'])
+def test_control_python_refuses_invalid_base_without_fallback(tmp_path,monkeypatch,damage):
+    _,_,expected,_=_runtime_case(tmp_path);facts=dict(expected['python']);image=facts['base_executable']
+    if damage=='missing':facts['base_executable']=str(tmp_path/'missing.exe')
+    if damage=='directory':facts['base_executable']=str(tmp_path)
+    if damage=='not executable':monkeypatch.setattr(os,'access',lambda *a:False)
+    if damage=='different image':image=facts['executable']
+    if damage=='missing cfg':facts['venv_cfg']=dict(error='missing')
+    if damage=='unsupported':facts['implementation']='unapproved'
+    with pytest.raises((f.FocusBlocked,OSError)):
+        _control_python({},facts=facts,platform='win32',image=image)
+
+
+@pytest.mark.parametrize('damage',['prefix','base prefix','executable','image','pytest','tzdata','missing dependency',
+                                  'source','node','nonce','pid','HWND owner','creation','Job','exit'])
+def test_runtime_probe_gate_refuses_inexact_environment_and_ownership(tmp_path,damage):
+    _,_,expected,observed=_runtime_case(tmp_path)
+    launch=dict(pid=42,creation=100);target=dict(pid=42)
+    membership=dict(observed['process'],member=True)
+    record=dict(nonce='n',role='subject',verified=True,observed=observed)
+    if damage=='prefix':observed['python']['prefix']='another-env'
+    if damage=='base prefix':observed['python']['base_prefix']='another-base'
+    if damage=='executable':observed['python']['executable']=observed['python']['base_executable']
+    if damage=='image':observed['process']['image']=observed['python']['executable']
+    if damage=='pytest':observed['dependencies']['pytest']['origin']='another-pytest'
+    if damage=='tzdata':observed['dependencies']['tzdata']['version']='2026.4'
+    if damage=='missing dependency':
+        observed['dependencies']['tzdata']={'error':'missing'}
+        expected['dependencies']['tzdata']={'error':'missing'}
+    if damage=='source':observed['revision']='unreviewed'
+    if damage=='node':observed['node']='other-node'
+    if damage=='nonce':record['nonce']='other'
+    if damage=='pid':launch['pid']=43
+    if damage=='HWND owner':target['pid']=43
+    if damage=='creation':launch['creation']=101
+    if damage=='Job':membership['member']=False
+    if damage=='exit':membership['live']=False
+    with pytest.raises(f.FocusBlocked):
+        _accept_runtime(record,expected,'n','subject','exact-node',launch,membership,target)
+
+
+def test_runtime_probe_records_failed_identity_and_preserves_primary_on_write_fault(tmp_path,monkeypatch):
+    _,_,expected,observed=_runtime_case(tmp_path)
+    observed['python']['prefix']='wrong-env'
+    config=dict(nonce='n',runtime=expected)
+    monkeypatch.setattr(sys.modules[__name__],'_runtime_observation',lambda *a:observed)
+    with pytest.raises(f.FocusBlocked,match='environment'):
+        _runtime_probe(tmp_path,'subject',None,config,time.monotonic()+2,'exact-node')
+    record=_control_read(tmp_path,'subject-runtime')
+    assert not record['verified'] and record['observed']['python']['prefix']=='wrong-env'
+    def broken(*args):raise OSError('diagnostic write fault')
+    monkeypatch.setattr(sys.modules[__name__],'_control_write',broken)
+    with pytest.raises(f.FocusBlocked) as failed:
+        _runtime_probe(tmp_path,'inert',None,config,time.monotonic()+2,'exact-node')
+    assert any('diagnostic write fault' in note for note in failed.value.__notes__)
+
+
+def test_runtime_probe_cannot_extend_setup_deadline(tmp_path,monkeypatch):
+    _,_,expected,observed=_runtime_case(tmp_path)
+    deadline=time.monotonic()
+    monkeypatch.setattr(sys.modules[__name__],'_runtime_observation',lambda *a:observed)
+    with pytest.raises(f.FocusBlocked,match='deadline'):
+        _runtime_probe(tmp_path,'inert',None,dict(nonce='n',runtime=expected),deadline,'exact-node')
+    assert not _control_read(tmp_path,'inert-runtime')['verified']
+
+
+def test_runtime_observation_preserves_partial_facts_when_native_query_is_denied(monkeypatch):
+    def denied(*args):raise f.FocusBlocked('native image denied')
+    monkeypatch.setattr(sys.modules[__name__],'_process_stamp',denied)
+    actual=_runtime_observation(None,time.monotonic()+2,'exact-node')
+    assert actual['pid']==os.getpid() and actual['python']==_python_facts()
+    assert 'native image denied' in actual['errors']['process'] and 'dependencies' in actual
+    with pytest.raises(f.FocusBlocked,match='incomplete'):
+        _verify_runtime(actual,{},node='exact-node')
+
+
+def test_portable_control_launch_reports_real_pid_environment_and_source(tmp_path):
+    # Real subprocess evidence is separate from native GUI/Job acceptance.
+    executable,env,expected=_control_python(dict(os.environ,PYTHONDONTWRITEBYTECODE='1',
+        PYTHONPATH=str(f.REPO/'src')))
+    context=dict(children=[],streams=[])
+    command=[executable,'-B','-c',
+        'import os,sys,json,pytest,chronicle;print(json.dumps(dict(pid=os.getpid(),prefix=sys.prefix,executable=sys.executable,source=chronicle.__file__,pytest=pytest.__version__)))']
+    child=_launch_control(tmp_path,'n',command,context,time.monotonic(),f.REPO,lambda pid:{},env=env)
+    try:assert child.wait(timeout=2)==0
+    finally:
+        _finish_control(None,[('stop',lambda:child.terminate() if child.poll() is None else None),
+            ('reap',lambda:child.wait(timeout=5)),*[(str(i),s.close) for i,s in enumerate(context['streams'])]],lambda errors:None)
+    actual=json.loads((tmp_path/'inert-stdout.bin').read_bytes())
+    assert actual['pid']==child.pid and actual['prefix']==expected['python']['prefix']
+    assert actual['executable']==expected['python']['executable'] and actual['pytest']==pytest.__version__
+    assert os.path.realpath(actual['source'])==str((f.REPO/'src/chronicle/__init__.py').resolve())
+    assert (tmp_path/'inert-stderr.bin').read_bytes()==b'' and all(s.closed for s in context['streams'])
 
 
 if __name__ == '__main__' and len(sys.argv) == 3 and sys.argv[1] == '--inert-control':
