@@ -150,15 +150,19 @@ class FocusPreconditionDriver:
                                           unsafe_input=count > 1)
             if self.clock() >= deadline:raise FocusFailed('Focus activation deadline exhausted')
             native = self.api.focus_state(self.target)
-            if native['foreground'] != self.target['top'] or not native['focus_inside']:
+            if native['foreground'] != self.target['top']:
                 return False
             self.live(widget)
             if self.clock() >= deadline:raise FocusFailed('Focus verification deadline exhausted')
-            if not self.focus_called and (self.sent or self.root.focus_get() is not widget):
+            # Exact foreground ownership permits the ordinary Tk request;
+            # native keyboard focus may enter the client only because of it.
+            if not self.focus_called and (self.sent or not native['focus_inside'] or self.root.focus_get() is not widget):
                 self.focus_called = True
                 self.record('ordinary_Tk_focus_set', widget=str(widget))
                 widget.focus_set()
-            if self.root.focus_get() is not widget:
+            native = self.api.focus_state(self.target)
+            if (native['foreground'] != self.target['top'] or not native['focus_inside']
+                    or self.root.focus_get() is not widget):
                 return False
             if self.clock() >= deadline:raise FocusFailed('Focus verification deadline exhausted')
             self.verified = True

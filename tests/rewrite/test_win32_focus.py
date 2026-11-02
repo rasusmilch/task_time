@@ -103,6 +103,87 @@ def test_single_click_then_ordinary_focus_and_terminal_disarming():
     value.close()
 
 
+@pytest.mark.parametrize('initial_foreground,logical_cached', [(99, False), (20, True)])
+def test_native_focus_can_enter_client_only_after_ordinary_tk_request(monkeypatch, initial_foreground, logical_cached):
+    api = API(foreground=initial_foreground, return_foreground=initial_foreground)
+    api.focus_inside = False
+    value, root, widget = driver(api)
+    if logical_cached:root.focus = widget
+    events = []
+    click = api.click
+    sample = api.focus_state
+    def activate(point, deadline):
+        result = click(point, deadline)
+        api.return_foreground = 20
+        events.append('activated')
+        return result
+    def native(target):
+        state = sample(target)
+        events.append(('native', state['foreground'], state['focus_inside']))
+        return state
+    def focus():
+        assert api.return_foreground == 20 and not api.focus_inside
+        events.append('tk_request')
+        Widget.focus_set(widget)
+        api.focus_inside = True
+    monkeypatch.setattr(api, 'click', activate)
+    monkeypatch.setattr(api, 'focus_state', native)
+    monkeypatch.setattr(widget, 'focus_set', focus)
+    deadline = time.monotonic()+2
+    assert not value.prepare(widget, deadline)
+    value.worker.join(timeout=1)
+    assert not value.worker.is_alive()
+    assert value.prepare(widget, deadline)
+    request = events.index('tk_request')
+    assert ('native', 20, False) in events[:request]
+    assert ('native', 20, True) in events[request+1:]
+    assert len(api.input) == (1 if initial_foreground != 20 else 0)
+    assert widget.focus_calls == 1 and root.focus_get() is widget
+    assert value.verified and value.state == 'DISARMED'
+    assert value.observe(widget)
+    before = (len(api.input), widget.focus_calls)
+    with pytest.raises(f.FocusBlocked, match='disarmed'):
+        value.prepare(widget, time.monotonic()+2)
+    assert (len(api.input), widget.focus_calls) == before
+    value.close()
+
+
+@pytest.mark.parametrize('missing', ['native', 'logical', 'foreground'])
+def test_focus_request_does_not_pass_until_both_postconditions_hold(monkeypatch, missing):
+    api = API(foreground=99, return_foreground=99)
+    api.focus_inside = False
+    value, root, widget = driver(api)
+    click = api.click
+    def activate(point, deadline):
+        result = click(point, deadline)
+        api.return_foreground = 20
+        return result
+    def focus():
+        assert api.return_foreground == 20
+        widget.focus_calls += 1
+        if missing != 'logical':root.focus = widget
+        api.focus_inside = missing != 'native'
+        if missing == 'foreground':api.return_foreground = 21
+    monkeypatch.setattr(api, 'click', activate)
+    monkeypatch.setattr(widget, 'focus_set', focus)
+    deadline = time.monotonic()+2
+    assert not value.prepare(widget, deadline)
+    value.worker.join(timeout=1)
+    assert not value.worker.is_alive()
+    assert not value.prepare(widget, deadline)
+    assert value.focus_called and widget.focus_calls == 1 and len(api.input) == 1
+    assert not value.verified and value.state == 'PREPARING'
+    assert not value.prepare(widget, deadline)  # Another pump cannot retry either operation.
+    with pytest.raises(f.FocusFailed, match='deadline'):
+        value.prepare(widget, time.monotonic()-1)
+    assert value.state == 'DISARMED' and not value.verified
+    api.return_foreground = 20; api.focus_inside = True; root.focus = widget
+    with pytest.raises(f.FocusBlocked, match='disarmed'):
+        value.prepare(widget, time.monotonic()+2)
+    assert widget.focus_calls == 1 and len(api.input) == 1
+    value.close()
+
+
 def test_already_ready_injects_nothing_and_does_not_set_focus():
     api = API(); value, root, widget = driver(api); root.focus = widget
     run(value, widget)
