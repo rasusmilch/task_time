@@ -951,6 +951,8 @@ def _native_report(item, call):
         native = driver.api.focus_state(driver.target) if driver.target is not None else None
         state = observation.snapshot(root, (driver.widget,) if driver.widget is not None else ())
         f.require(not state.get('observation_errors'), 'Uncertain RESULT observation')
+        # Match tk_observation's logger: grid_info() can contain real Tk objects.
+        state = json.loads(json.dumps(state, default=str))
         _control_write(context['directory'], 'result', dict(nonce=context['nonce'], failed=primary is not None,
             primary=repr(primary), notes=getattr(primary, '__notes__', []), unsafe_input=getattr(primary, 'unsafe_input', False),
             native=native, logical_origin=root.focus_get() is driver.widget,
@@ -1012,19 +1014,37 @@ def _controlled_origin(root, monkeypatch, request):
     monkeypatch.setattr(driver.api, 'inspect', inspect)
     monkeypatch.setattr(driver, 'prepare', prepare)
     if config['failed_return']:
+        from tkinter import ttk
+        from test_app import pump
         from chronicle.history_window import HistoryWindow
+        wrong = ttk.Entry(root, name='f2_wrong_return', takefocus=True)
+        wrong.grid(row=10, column=0)
         close = HistoryWindow.close
         def wrong_return(view):
             ready = _control_read(directory, 'subject-ready'); foreign = _control_read(directory, 'foreign-ready')
             f.require(ready is not None and driver.verified and driver.state == 'DISARMED' and
                       foreign['bootstrap']['state'] == 'DISARMED', 'Cannot inject return fault before valid setup')
             close(view)
-            root.focus_set()  # Deliberate real fault, never a driver repair.
+            until = time.monotonic()+1  # Fault setup only; RESULT keeps its original eight seconds.
+            def available():
+                return (wrong.winfo_exists() and root.nametowidget(str(wrong)) is wrong and
+                        wrong.winfo_viewable() and not wrong.instate(['disabled']) and
+                        driver.api.focus_state(driver.target)['foreground'] == driver.target['top'])
+            pump(root, available, timeout=max(1, int((until-time.monotonic())*1000)))
+            f.require(wrong is not driver.widget and available() and time.monotonic() < until,
+                      'Return-fault target is not live/mapped/distinct within its budget')
+            wrong.focus_set()  # One deliberate test fault, never a driver repair.
+            def established():
+                native = driver.api.focus_state(driver.target)
+                return (root.focus_get() is wrong and native['foreground'] == driver.target['top'] and native['focus_inside'])
+            pump(root, established, timeout=max(1, int((until-time.monotonic())*1000)))
             native = driver.api.focus_state(driver.target)
-            f.require(native['foreground'] == driver.target['top'] and root.focus_get() is root,
+            f.require(time.monotonic() < until and native['foreground'] == driver.target['top']
+                      and native['focus_inside'] and root.focus_get() is wrong,
                       'Return fault did not establish the intended real wrong focus')
             _control_write(directory, 'return-fault', dict(nonce=nonce, applied=True, native=native,
-                wrong_focus=str(root.focus_get()), monotonic=time.monotonic()))
+                wrong_focus=str(root.focus_get()), origin=str(driver.widget), focus_requests=1,
+                mapped=bool(wrong.winfo_ismapped()), monotonic=time.monotonic()))
         monkeypatch.setattr(HistoryWindow, 'close', wrong_return)
     try:yield
     finally:
@@ -1094,6 +1114,9 @@ def _validate_control_result(directory, nonce, code, failed_return):
         f.require(any('observation failed during RESULT' in n for n in result['notes']), 'Failure was not during RESULT')
         f.require(fault['monotonic'] > subject['monotonic'] and not result['logical_origin']
                   and result['native']['foreground'] == before['target']['top'], 'Wrong/obstructed return-fault observation')
+        f.require(fault['wrong_focus'] != fault['origin'] and fault['mapped'] and fault['focus_requests'] == 1
+                  and fault['native']['foreground'] == before['target']['top'] and fault['native']['focus_inside'],
+                  'Unverified deliberate wrong-focus injection')
     else:
         f.require(code == 0 and not result['failed'] and not list(xml.iter('failure'))
                   and result['logical_origin'] and result['native']['foreground'] == before['target']['top']
@@ -1429,7 +1452,8 @@ def _synthetic_result_records(tmp_path,damage=None,failed_return=False):
         'result':dict(nonce='n',driver=copy.deepcopy(evidence),failed=failed_return,logical_origin=not failed_return,
                       native=dict(foreground=20,focus_inside=True),notes=['observation failed during RESULT'] if failed_return else []),
         'inner-final':dict(nonce='n',errors=[],final_exits=[1],driver=copy.deepcopy(evidence)),
-        'return-fault':dict(nonce='n',applied=True,monotonic=2),
+        'return-fault':dict(nonce='n',applied=True,monotonic=2,wrong_focus='.wrong',origin='.origin',
+                            mapped=True,focus_requests=1,native=dict(foreground=20,focus_inside=True)),
     }
     if damage=='subject input':records['subject-ready']['driver']['events'][0]['inserted']=2
     if damage=='stale foreground':records['subject-ready']['native']['foreground']=99
@@ -1439,11 +1463,17 @@ def _synthetic_result_records(tmp_path,damage=None,failed_return=False):
     if damage=='Job':records['job-verified']['exact_job']=False
     if damage=='wrong phase':records['result']['notes']=['observation failed during PRECONDITION']
     if damage=='native focus':records['result']['native']['focus_inside']=False
+    if damage=='fault not applied':records['return-fault']['applied']=False
+    if damage=='fault same origin':records['return-fault']['wrong_focus']='.origin'
+    if damage=='fault wrong foreground':records['return-fault']['native']['foreground']=99
+    if damage=='fault repeated':records['return-fault']['focus_requests']=2
     suite=E.Element('testsuite');case=E.SubElement(suite,'testcase',classname=f.HISTORY[:-3].replace('/','.'),name=node.split('::')[1])
     if damage=='setup':E.SubElement(case,'error',message='setup failure')
     elif failed_return:E.SubElement(case,'failure',message='controlled return failure')
     E.ElementTree(suite).write(tmp_path/'native.xml',encoding='utf-8')
-    for name,value in records.items():_control_write(tmp_path,name,value)
+    for name,value in records.items():
+        if damage=='missing result' and name=='result':continue
+        _control_write(tmp_path,name,value)
 
 
 @pytest.mark.parametrize('damage', ['subject input','stale foreground','after disarming','cleanup input','cleanup','Job','setup','native focus'])
@@ -1590,6 +1620,68 @@ def test_portable_control_launch_reports_real_pid_environment_and_source(tmp_pat
     assert actual['executable']==expected['python']['executable'] and actual['pytest']==pytest.__version__
     assert os.path.realpath(actual['source'])==str((f.REPO/'src/chronicle/__init__.py').resolve())
     assert (tmp_path/'inert-stderr.bin').read_bytes()==b'' and all(s.closed for s in context['streams'])
+
+
+@pytest.mark.parametrize('failed',[False,True])
+def test_native_report_serializes_real_tk_references_without_losing_observations(tmp_path,monkeypatch,failed):
+    import tkinter as tk
+    import tk_observation as observation
+    # Tcl() is windowless, but returns a real Tk object such as grid_info()['in'].
+    interpreter=tk.Tcl()
+    value,root,widget=driver();run(value,widget)
+    state=dict(root=dict(path='.',grid={'in':interpreter}),widgets=[dict(object=widget)],
+               observation_errors=[],retained_error=repr(tk.TclError('retained diagnostic')),native=dict(hwnd=20))
+    with pytest.raises(TypeError):json.dumps(state)
+    monkeypatch.setattr(observation,'snapshot',lambda *args:state)
+    primary=AssertionError('actual return failure') if failed else None
+    if primary:primary.add_note('observation failed during RESULT')
+    context=dict(directory=tmp_path,nonce='n',driver=value,root=root,diagnostic_errors=[])
+    _native_report(SimpleNamespace(_f2_control_context=context),SimpleNamespace(when='call',
+        excinfo=SimpleNamespace(value=primary) if primary is not None else None))
+    result=_control_read(tmp_path,'result')
+    assert result['snapshot']==json.loads(json.dumps(state,default=str))
+    assert result['snapshot']['root']['grid']['in']==str(interpreter)
+    assert result['snapshot']['retained_error']==repr(tk.TclError('retained diagnostic'))
+    assert result['failed']==failed and result['logical_origin'] and not context['diagnostic_errors']
+    assert context['primary'] is primary and result['native']==value.api.focus_state(value.target)
+    # Conversion is local to RESULT; the shared evidence writer stays strict.
+    with pytest.raises(TypeError):_control_write(tmp_path,'strict',dict(object=interpreter))
+
+
+@pytest.mark.parametrize('damage',['observation error','conversion error','write error'])
+def test_native_report_diagnostic_failure_stays_visible_and_never_writes_success(tmp_path,monkeypatch,damage):
+    import tk_observation as observation
+    class Unprintable:
+        def __str__(self):raise RuntimeError('actual conversion failure')
+    value,root,widget=driver();run(value,widget)
+    state=dict(observation_errors=['actual observation failure'] if damage=='observation error' else [])
+    if damage=='conversion error':state['object']=Unprintable()
+    if damage=='write error':
+        def denied(*args):raise OSError('actual evidence write failure')
+        monkeypatch.setattr(sys.modules[__name__],'_control_write',denied)
+    monkeypatch.setattr(observation,'snapshot',lambda *args:state)
+    primary=AssertionError('original RESULT failure')
+    context=dict(directory=tmp_path,nonce='n',driver=value,root=root,diagnostic_errors=[])
+    item=SimpleNamespace(_f2_control_context=context)
+    _native_report(item,SimpleNamespace(when='call',excinfo=SimpleNamespace(value=primary)))
+    assert _control_read(tmp_path,'result') is None and context['primary'] is primary
+    assert len(context['diagnostic_errors'])==1 and len(primary.__notes__)==1
+    # A teardown report cannot replace the missing call evidence.
+    _native_report(item,SimpleNamespace(when='teardown',excinfo=None))
+    assert _control_read(tmp_path,'result') is None and len(context['diagnostic_errors'])==1
+
+
+@pytest.mark.parametrize('failed_return',[False,True])
+def test_missing_result_record_cannot_qualify(tmp_path,failed_return):
+    _synthetic_result_records(tmp_path,'missing result',failed_return=failed_return)
+    with pytest.raises(f.FocusBlocked,match='evidence'):
+        _validate_control_result(tmp_path,'n',int(failed_return),failed_return)
+
+
+@pytest.mark.parametrize('damage',['fault not applied','fault same origin','fault wrong foreground','fault repeated'])
+def test_negative_control_requires_verified_distinct_one_shot_fault(tmp_path,damage):
+    _synthetic_result_records(tmp_path,damage,failed_return=True)
+    with pytest.raises(f.FocusBlocked):_validate_control_result(tmp_path,'n',1,True)
 
 
 if __name__ == '__main__' and len(sys.argv) == 3 and sys.argv[1] == '--inert-control':
