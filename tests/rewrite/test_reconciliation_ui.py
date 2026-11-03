@@ -119,7 +119,9 @@ def test_real_tk_reminder_schedule_coalesces_ticks_mutations_failures_and_rollov
         ready(app);assert counts==[] # Numeric refresh ticks do not evaluate reconciliation again.
         mutation(app,'add_date_only_work',task_id=task,entry_id=uid(),work_date='2026-10-12',duration_text='1:00',comment='previous')
         ready(app);assert len(counts)==1 and app.reminder['reminder_due']
-        assert app.reminder_banner.winfo_ismapped() and 'Previous week: 1' in app.reminder_label.cget('text')
+        wait_observed(root,lambda:app.reminder is not None and app.reminder['reminder_due'] is True
+            and app.reminder_banner.winfo_ismapped() and 'Previous week: 1' in app.reminder_label.cget('text'),
+            phase='POL-R reminder due banner geometry',widgets=(app.reminder_banner,app.reminder_label))
         assert app.recheck_polr();assert app.recheck_polr();assert app.recheck_polr();ready(app)
         assert len(counts)==3 # At most one in flight and one latest follow-up.
         trusted=deepcopy(app.reminder);fault=ValueError('read unavailable')
@@ -131,6 +133,21 @@ def test_real_tk_reminder_schedule_coalesces_ticks_mutations_failures_and_rollov
         clock.value+=timedelta(days=1);app._tick();root.after_cancel(app._tick_id);ready(app)
         assert app.reminder['local_today']=='2026-10-20' and not app.reminder['current_week_checked'] and app._reminder_error is None
         assert not app.executing and app.pending is None
+
+
+@pytest.mark.parametrize('mapped,text',[(False,'Previous week: 1'),(True,'Previous week: 0'),(True,'')])
+def test_real_tk_reminder_observation_rejects_unmapped_or_incorrect_text(root,mapped,text):
+    # Widget-only control: no application, worker, requests or dataset exists.
+    banner=tk.Frame(root);label=tk.Label(banner,text=text);label.pack()
+    if mapped:banner.pack()
+    pump(root,lambda:root.winfo_ismapped() and (not mapped or banner.winfo_ismapped()))
+    reminder={'reminder_due':True}
+    with pytest.raises(AssertionError,match='Timed out'):
+        wait_observed(root,lambda:reminder is not None and reminder['reminder_due'] is True
+            and banner.winfo_ismapped() and 'Previous week: 1' in label.cget('text'),
+            phase='POL-R reminder invalid banner negative control',widgets=(banner,label),timeout=50)
+    assert bool(banner.winfo_ismapped())==mapped and label.cget('text')==text
+    assert not root.test_errors
 
 
 def test_real_tk_dismiss_commit_not_queue_exact_retry_uncertain_and_restart(connected,root,monkeypatch):
