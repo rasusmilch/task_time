@@ -372,9 +372,12 @@ version-specific contract (historical Stage 4C safety requirements):
    before and after publication, and refusal by older application versions.
 
 That contract's cold-new-directory default protects originals if a future
-transformation is separately authorized. It does not apply as a migration obligation
-to the later hierarchy approval: **fresh data, no transformation or compatibility
-layer** is the selected hierarchy policy. No in-place replacement, automatic source
+transformation is separately authorized. The earlier A–F task-hierarchy approval
+selected fresh data without transformation/compatibility; it did not settle a
+transition from existing schema-3 data to nested projects. That preservation and
+transition decision is required separately before a new schema is implemented;
+neither a migration engine nor disposal/conversion of schema-3 data is selected.
+No in-place replacement, automatic source
 retirement/deletion, target version 2, transformation callback or runtime upgrade is
 implemented or authorized. No UPGRADE_AVAILABLE result exists. Normal locked native
 rollback recovery of a supported image is not schema conversion. Native
@@ -384,7 +387,7 @@ qualification and the complete Stage 4 gate remain separate.
 
 `task_row`/`project_row` distinguish task:UUID, project:UUID and group:unassigned.
 D projects the complete effectively active forest from the existing detached worker
-snapshot: empty projects remain, task parentage is exact, archived descendants stay
+snapshot under flat project groups: empty projects remain, task parentage is exact, archived descendants stay
 in report accounting. No persistent tree or second calculation/connection exists.
 New Task freezes selected project/group/parent UUIDs and reviewed versions before
 name entry. Task selection means immediate child, not sibling/root; no selection
@@ -425,10 +428,95 @@ retain minute-oriented visible updates and immediate Stop/Switch capture.
 Mini uses the same active eligible leaf, otherwise selected eligible leaf, and the
 same Individual Today report. Keep Mini Open defaults Off/session-local; Show Main
 closes mini only when Off. Topmost drops while blocked without focus/grab theft.
+Current `mini_mode.py` fixes geometry at 340x205 and presents a prominent state bar
+and ordinary status area. `app.py` binds tree selection, not task double-click
+Start/Stop. These are inspected implementation facts, superseded as future UX
+targets by the selected requirements below, not changed by documentation.
 No additional root, timer, worker, schema or persisted UI settings are introduced.
 Native Windows theme/topmost/focus/operator qualification remains outstanding.
 
+## Selected project nesting and pilot usability
+
+This future architecture follows the [selected organizational model and UX](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks).
+The delivered A–F task hierarchy and current exact schema 3 remain as described
+below; `projects` has no `parent_project_id`. Persisted project parentage requires
+a new schema revision, but its exact version and DDL are not chosen here. Before
+implementing it, separately approve the treatment/preservation of existing
+schema-3 datasets. No automatic upgrade, migration engine, replacement, recreation
+or disposal follows from this selection. Current incompatible images still refuse.
+
+Prefer one self-referencing Project adjacency relation: stable project UUID plus
+optional parent-project identity. Root parent is absent; duplicate display names
+are valid. No separate Customer relation is needed. Keep existing task project
+membership and task ancestry distinct: a project can hold both child projects and
+direct task branches. Project nesting has no fixed product depth limit; the
+three-task-level limit remains independent. Resource/SQLite safeguards must bound
+work with explicit refusal, not silently impose a small business depth or truncate
+paths/descendants. Use cycle-safe traversal appropriate to deep project forests.
+
+Future implementation boundaries:
+
+- Schema/FKs and independent cold admission validate project parent existence,
+  canonical identity, same-dataset references and the full acyclic forest. A local
+  FK/self-parent guard alone is insufficient for cycle or archive validation.
+- Services review Create root/child, Rename and complete-subtree Move / Reparent
+  with full ancestry/UUIDs and stale source/destination checks. One worker-owned
+  transaction validates and commits all or none. Moving a project changes project
+  ancestry, not task UUIDs, direct work or immediate task project IDs. Task-branch
+  movement retains its existing reviewed semantics. No structural operation
+  implicitly stops/switches the sole timer or makes an active task ineligible.
+- Administrative receipt/replay and complete survivor validation must cover new
+  creation/movement/version effects and parent associations. Specify the exact
+  retained administrative dependencies during schema design; do not bypass replay,
+  protected receipts or uncertainty rules to admit a graph.
+- Effective archive state follows project ancestry and then task ancestry.
+  Archive/Unarchive changes selected explicit state only; independent child flags
+  survive. Active descendants block unsafe Archive/Delete. Unused-only Delete
+  reviews the entire project-and-task dependency closure, typed confirmation and
+  protected references before atomic removal; C2's no-retry uncertainty and strict
+  survivor proof remain mandatory, not an automatic broadened retirement allowlist.
+- Worker snapshots derive Main and Archived Items trees with project/task UUID
+  rows, mixed direct tasks/child projects, sibling sorting, full destination paths,
+  preserved valid expansion/selection and active-path expansion. Do not store a
+  second tree, authoritative path cache or duplicated project-owned work.
+- Shared reporting derives Direct project grouping from task Individual facts
+  with that immediate project ID, and Cumulative grouping from the union across
+  descendant projects. Each task contributes once, including retained parent or
+  archived work when in scope; never aggregate task/project rollups again. Empty
+  valid groups may be zero; unavailable reports remain unavailable. Timesheet and
+  reconciliation grouping remain presentation over independent task/day units,
+  not new external POL-R submission groups or scope expansion.
+- Immutable exports keep their recorded project/task context and exact bytes,
+  allocation, confirmations and receipts after any move. Future live ancestry is
+  not permission to rewrite frozen context or invent ancestor evidence for old
+  reports. Any new frozen representation needs its own reviewed format contract;
+  the [existing mathematics](EXPORT_EVIDENCE_CONTRACT.md) remains unchanged.
+- Backup, restore, ordinary open and cold validation must independently admit the
+  exact approved future schema/forest/evidence while retaining original/destination
+  protections. Template definitions remain task structures; destination eligibility
+  must honor project ancestors' effective archive state at any project depth and
+  the independent task-depth/running-parent rules.
+
+The separate [pilot usability workstream](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams)
+routes task double-click through the existing authoritative Start/Stop paths,
+eligibility, modal/pending/uncertainty and repeated-input guards. A different active
+task remains an explicit atomic-Switch-versus-no-action decision; no Stop-then-Start
+sequence is selected. Project row expand/collapse performs no timer operation.
+
+Compact Mini remains a projection of the same active/eligible selected task and
+Individual Today report. Validate a substantially smaller layout than 340x205,
+without selecting exact pixels now. Use one Start/Stop, Show Main and a minimal
+state cue instead of the prominent routine running/status presentation. Keep
+actionable errors/unavailable/uncertain outcomes visibly discoverable in a compact
+diagnostic, with full existing resolution via Main/owned modal when allowed.
+Keep Mini Open stays Off-by-default/session-local; preserve modal-safe topmost,
+focus, one timer and current worker ownership. No additional root, timer or
+persistence mechanism is selected. Neither this UX nor project nesting is implemented.
+
 ## Fresh hierarchy foundation
+
+This section records the delivered task-hierarchy foundation under flat projects;
+the new project-nesting architecture above is a separate unimplemented workstream.
 
 **A/B1/B2/C1/C2/D/E ACCEPTED FOR FUNCTIONAL DEVELOPMENT; F DEVELOPMENT REVIEW PENDING.**
 Package E implements templates. Schema version 3 and application
@@ -559,7 +647,7 @@ cache, new worker or Python hierarchy projection becomes authoritative.
 
 | Relation / implementation status | Fields/relationships and purpose |
 | --- | --- |
-| projects | B1: stable UUID, name, reviewed version, explicit archive flag, nullable current UTC archive timestamp and owning created_request_id deferred FK. No target soft-delete flag. Eligible unused Delete removes the row, not protected evidence. Duplicate names are valid; projects own no work/timer. |
+| projects | Implemented B1/current schema 3: stable UUID, name, reviewed version, explicit archive flag, nullable current UTC archive timestamp and owning created_request_id deferred FK; no project-parent column. No target soft-delete flag. Eligible unused Delete removes the row, not protected evidence. Duplicate names are valid; projects own no work/timer. |
 | tasks | B1: stable UUID, optional project FK, optional self-parent FK, name, reviewed version, explicit archive flag/current UTC timestamp and owning created_request_id deferred FK. No target soft-delete flag; parent cannot be self. Duplicate names are valid. Eligible unused Delete removes the row under the dependency boundary below. |
 | task structure | Parent adjacency is the authority. A subtree shares current project membership; root project may be NULL. B1 stores matching project_id on every descendant; root membership may be NULL. Parent adjacency is the only hierarchy authority, with tasks_project/tasks_parent indexes. B2 implements atomic subtree movement with the unchanged guards; do not add a second mutable membership authority. |
 | template_definitions | Implemented E: template_id/name/name_key/version/is_archived/archived_at_utc_us/unique creation receipt/created and updated UTC timestamps. STRICT range/archive guards, partial unique name_key index for active rows; Python canonical casefold verified independently. |

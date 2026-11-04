@@ -196,7 +196,9 @@ review at their original delivery; E templates are independently reviewed on fre
 Remaining stabilization and the complete gate include actual native Windows source/
 NTFS, operator GUI/modal/focus, backup/restore, hot-journal recovery, actual
 suspend/resume and deployment qualification. Any hypothetical future data-preserving
-transition would require separate approval; hierarchy instead starts fresh. Exercise timer → frozen export → absolute
+transition would require separate approval. A–F used fresh task-hierarchy data;
+the new project-nesting target requires a separate schema-3 preservation/transition
+decision before its future schema is implemented. Exercise timer → frozen export → absolute
 confirmation → correction → reconciliation → backup → cold restore/new session.
 
 The bounded source-startup usability slice adds first-run local folder/readable
@@ -216,7 +218,8 @@ broader than isolated unit success.
 **A/B1/B2/C1/C2/D/E ACCEPTED FOR FUNCTIONAL DEVELOPMENT; F DEVELOPMENT DELIVERABLE FOR REVIEW; NATIVE GATES PENDING.** The later explicit hierarchy-design
 instruction selects tree-oriented main/mini, three task levels, branch management
 and nested templates. It supersedes their earlier Open/Stage 6 template placement.
-This is a proposed execution sequence for separately reviewed tasks, not permission
+This is the historical A–F task-hierarchy sequence under flat projects, not the
+new unlimited-project target below. It remains a sequence of separately reviewed tasks, not permission
 to begin them or a declaration of complete Stage 4/5. Requirements own the behavior;
 [architecture](ARCHITECTURE.md#fresh-hierarchy-foundation) owns B1's implemented
 fresh model and the separately proposed later operations. Current runtime supports
@@ -257,10 +260,34 @@ Stage 4 remains IN PROGRESS; Stage 5 NOT STARTED. Native qualification, external
 reporting policy, installation/cutover and optional allocation decisions remain
 separate. No backup/copy rewrite or secure-byte-erasure guarantee is selected.
 
+## Selected project nesting and pilot usability workstreams
+
+The latest [requirements](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks)
+and [future architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability)
+supersede flat projects as the organizational target without rewriting A–F delivery
+or acceptance history. Current source is still exact schema 3, flat projects and
+three task levels. The following are separate, unimplemented efforts requiring
+independently reviewed implementation plans:
+
+| Workstream | Bounded scope and dependencies |
+| --- | --- |
+| A — Immediate pilot usability | Task double-click Start/Stop through existing request paths and a substantially smaller Mini with minimal routine state plus visible actionable diagnostics. Resolve different-active-task Switch versus no action before that interaction; validate layout before choosing pixels. Preserve modal, uncertainty and duplicate-input protection. No project schema change is implied. |
+| B — Unlimited organizational projects | Separately approve existing schema-3 preservation/transition and future schema design first. Then persistence/FKs/forest and receipt validation, services/worker transactions, cycle-safe project movement, inherited archive/Delete closure, hierarchical reports, Main/Archived Items/template destinations, backup/restore and behavior/native validation. Project depths do not consume the existing three task levels. No Customer entity, project-owned time or new external POL-R grouping is selected. |
+
+Complete structural project nesting before a longer pilot that depends on
+organizing real customer work. Do not discard, overwrite, convert or recreate
+existing schema-3/pilot data to meet that dependency; no migration engine or exact
+future schema number is selected. Current incompatible-schema refusal remains.
+Outstanding native qualification remains a separate gate; this documentation does
+not reclassify F2 evidence, legacy outcomes, 29 unresolved skips or F3/F4 status.
+Stage 4 remains IN PROGRESS; Stage 5 is NOT STARTED.
+
 ## Stage 5 — Complete core pilot
 
 **Selected / not started.** Use a deliberately fresh dataset for daily main/mini
-timing, manual work/corrections, frozen exports, whole/partial/zero/manual POL-R
+work in an explicitly new/empty location, never by replacing existing schema-3
+data; the new project-schema preservation/transition remains separately unresolved.
+Exercise timing, manual work/corrections, frozen exports, whole/partial/zero/manual POL-R
 quarter-hour confirmation, Unknown, daily/weekly reconciliation, reminders and
 restore. Exercise full/partial-week reporting, provisional suggestions and their
 changes after correction, explained upward adjustment, daily allocation agreement
@@ -295,6 +322,8 @@ or allocation may prevent recording Actual.
 | --- | --- |
 | Dataset timezone changes | Stage 1 configuration / Stage 2 accounting before affected code. |
 | Exact fresh release path, installation/cutover, retired-data cleanup | Before affected deployment and Stage 5 setup; no startup deletion or legacy import. |
+| Schema-3 preservation/transition and future persisted project parentage design | Before implementing the new project schema; no data-disposal policy or migration engine is implied. |
+| Different-active-task double-click: atomic Switch or no action | Before implementing that interaction; no Stop-then-Start is authorized. |
 | External redistribution authorization and worked-day zero/omitted-entry treatment | Before affected Stage 3 connected official reporting and Stage 5 pilot; mathematical policy is selected, not reopened. |
 | Unused-only Delete engineering and exact fresh schema/DDL | Before B/C: finite administrative allowlist, closure/cross-entity/survivor proof, transaction order, stale/uncertain handling and independent validation, without tombstones/ledger. Selected lifetime limit for erased requests is not reopened. |
 | Referenced-template actual Delete dependencies | Before E; no hidden recoverable deletion or silent removal of retained references. |

@@ -58,6 +58,35 @@ a full regression. Levels D–F require evidence of interactions/platforms actua
 exercised, with material omissions explicit. Implementation tests and integrated
 qualification remain distinct.
 
+## Future project hierarchy and pilot usability acceptance
+
+These are future behavior expectations for the newly selected
+[requirements](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks),
+[architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability) and
+[workstreams](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
+They do not identify existing tests, report passing results or transfer A–F evidence
+to an unimplemented schema/UI. Existing schema 3, F2 evidence/skip classifications,
+retained-legacy outcomes and F3/F4 status remain unchanged.
+
+| Future guarantee | Required behavior coverage |
+| --- | --- |
+| Project organization | Multiple project depths, including beyond three, child creation beneath arbitrary valid projects, roots and containers with both direct tasks and child projects; duplicate names remain distinct UUIDs. Engineering resource refusal is explicit, never truncation or a small product depth rule. |
+| Task boundary | Three task levels independently of project depth; leaf-only new work, retained former-leaf Individual work, unchanged immediate project membership under project movement and exactly one timer. |
+| Creation/movement integrity | Self-parent, cycles, missing/cross-dataset parents, stale reviews and unrelated identities refuse; interrupted subtree movement is all-or-none, with exact committed-request reconciliation and independently verified receipt effects. |
+| Archive/active safety | Project/task ancestor inheritance, selected-only Unarchive and retained independent descendant flags; active-containing Archive/Delete or ineligible movement refuses without implicit Stop/Switch. |
+| Unused-only Delete | Complete project-and-task closure, typed confirmation, protected work/revisions/frozen reports/confirmed-zero references, administrative dependencies and survivor proof; stale/uncertain deletion never becomes automatic retry or partial removal. |
+| Derived accounting | Direct task Actual, Task Individual/Cumulative and Direct/Cumulative project groups agree with independent expected facts. Each task contributes once; empty containers can have descendant totals, unavailable is not zero, hidden/retained work stays in scope and ancestor rollups are never extra hours. |
+| Evidence and recovery | Project movement leaves existing frozen bytes/context, work/revisions and confirmations unchanged. Backup/restore, ordinary/cold admission and failure handling verify the exact approved schema/forest/evidence under the separately approved schema-3 preservation/transition design. |
+| Main/Archived Items | UUID selection and valid expansion survive refresh, deep ancestor changes and sibling sorting; active paths expand, full ancestry disambiguates destinations and mixed direct tasks/child projects display without flattening or duplicates. Template eligibility respects project archive ancestry and task limits. |
+| Double-click | Eligible stopped leaf/no active timer starts; running task stops; repeated input, pending/uncertain requests and modals cannot duplicate/bypass mutations. Project rows only expand/collapse. Test the other-active-task case only after its Switch/no-action decision is approved; no Stop-then-Start assumption. |
+| Compact Mini | Validate a layout substantially smaller than current 340x205 without fixing pixels here: name, Individual Today, one Start/Stop, Show Main and minimal routine cue. Genuine errors/unavailable/uncertain work remain visible/actionable through the existing owner; Keep Mini Open, one timer and modal-safe topmost/focus remain correct. |
+
+Exercise observable outcomes through authoritative services/worker and real UI/input
+where applicable, rather than merely asserting internal adjacency containers. Use
+independent totals and retained evidence comparisons. Focused/affected regression,
+exact schema admission and native Windows validation remain necessary for future
+implementation; mocks or this documentation do not qualify a pilot or complete a gate.
+
 ## Connected SQLite timer evidence
 
 The Stage 1A/1B/1C, Stage 2A/2B, Stage 3A/3B/3C/3D and Stage 4A/4B/4C suites below exercise the shipped `chronicle` source with disposable
@@ -347,9 +376,12 @@ rollback effects on journaled candidates are not Chronicle evidence mutations.
 Never infer genuine hot-journal recovery solely from a journal filename.
 A hypothetical separately approved data-preserving transition would need the
 [version-specific safety contract](ARCHITECTURE.md#cold-compatibility-inspection-and-future-transition-boundary).
-The hierarchy target instead requires fresh data, a distinct approved schema and
-strict old-dataset refusal, not v1 conversion tests. No migration engine, legacy
-import or backward-compatibility fixture obligation is selected.
+The earlier A–F task-hierarchy target used fresh data, a distinct approved schema
+and strict old-dataset refusal, not v1 conversion tests. No migration engine,
+legacy import or backward-compatibility fixture obligation was selected. The new
+project-nesting target separately requires approved existing schema-3 preservation/
+transition and future schema design before implementation; its tests cannot assume
+that current data may be discarded or that a migration engine must exist.
 Linux fault injection does not prove arbitrary concurrent-writer, power-loss or
 native Windows/NTFS safety.
 

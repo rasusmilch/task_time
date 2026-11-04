@@ -90,8 +90,22 @@ Stage 0 was independently accepted at `a24aca706740b7e02cc1f856baa194042785bbcb`
 
 ## Hierarchy foundation and remaining target
 
-The approved target restores tree-oriented main/mini and Project → Task → Subtask
-→ Sub-subtask, leaf-only new time and independent Individual/Cumulative values.
+The delivered A–F foundation provides flat Project → Task → Subtask → Sub-subtask,
+leaf-only new time and independent Individual/Cumulative values. The newly selected
+future target permits unlimited organizational project nesting, with direct tasks
+and child projects in the same container; Customer is a use of Project, not another
+entity. Projects own no time, each task contributes once, and the three-task-level
+limit is separate from project depth. This target is not implemented in schema 3.
+See the [requirements](docs/TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks)
+and [separate workstreams](docs/ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
+
+Task double-click Start/Stop and substantially smaller Mini with a minimal routine
+state cue and visible actionable errors are also selected, not delivered. The
+current main tree has no double-click Start/Stop binding; Mini remains 340x205 with
+a prominent state bar/status area. Other-active-task double-click behavior and
+schema-3 preservation/transition require separate decisions. Normal zero-argument
+`python run_chronicle.py` startup remains unchanged and does not provide these features.
+
 There are exactly two primary lifecycle actions: reversible **Archive** (Unarchive
 reverses it) and irreversible **Delete** of unused complete selected branches.
 No recoverable deletion tier, Deleted Items or separate Permanent Delete is selected.
@@ -222,7 +236,7 @@ transactional: **DELETE / synchronous=EXTRA (3) / foreign_keys=ON (1)**, with ST
 tables requiring SQLite 3.37.0+. Startup verifies effective settings and records
 Python/SQLite versions, source ID and compile options. The obsolete WAL-reset
 version restriction is removed. Old development profiles refuse without automatic
-conversion or deletion; no production SQLite migration is needed. Offline IANA
+conversion or deletion; no migration engine is implemented. Offline IANA
 rules come from `tzdata==2026.5`; the dataset zone cannot be changed by this UI.
 
 Backup Chronicle creates a consistent worker-owned SQLite image at an explicit
@@ -243,8 +257,10 @@ validation; all other cases refuse ordinary startup. E supports only schema 3,
 with no automatic upgrade, downgrade or repair. Stage 4C inspection, protected
 refusal and bounded owned SQLite-native rollback recovery are independently
 accepted for functional development.
-Any hypothetical future data-preserving transformation needs separate approval;
-the hierarchy target instead starts fresh, with no migration. Unknown schemas
+The earlier A–F foundation used fresh data. Unlimited project nesting requires a
+future schema revision and a separately approved preservation/transition decision
+for existing schema-3 datasets before implementation; neither migration nor
+discard/recreation is selected. Unknown schemas
 refuse rather than being reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
 source launch, troubleshooting and native Windows source validation. Initial pip
 installation needs internet or an approved local wheel source and available IT

@@ -106,9 +106,19 @@ Edit/Duplicate/Apply and self-contained Apply creation receipts. Template Delete
 retire only owned management history; retained Apply/Duplicate snapshots remain
 immutable. Historical uniqueness covers retained reconstructible states only; erased
 intervals remain unverifiable. No tombstone or replacement proof is stored.
-Hierarchy starts fresh without v1/v2 migration,
+The delivered A–F task hierarchy started fresh without v1/v2 migration,
 compatibility mode or legacy import. Protect retained old files rather than
 converting/deleting/reusing them.
+The latest documentation-only direction separately selects unlimited nested
+organizational Projects (no Customer entity), with three task levels independent
+of project depth, plus task double-click and compact Mini usability. These are
+unimplemented targets; current projects remain flat on exact schema 3. Existing
+schema-3 preservation/transition and other-active-task double-click behavior need
+separate approval before affected implementation. See the current
+[requirements](docs/TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks),
+[future architecture](docs/ARCHITECTURE.md#selected-project-nesting-and-pilot-usability)
+and [separate workstreams](docs/ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
+
 The final owner lifecycle decision supersedes soft-delete/Deleted Items/separate
 Permanent Delete and tombstone/anti-replay-ledger proposals. Select Archive with
 Unarchive reversal, current accepted UTC archive timestamps and the hierarchical

@@ -45,8 +45,9 @@ Temporary old source during development creates no compatibility obligation.
 Existing files must remain protected during development. Absence of a release
 preservation obligation for the retired dataset does not authorize arbitrary
 startup deletion. Exact release paths, installation/cutover and cleanup remain
-Open. Protect new-runtime audit history; the approved hierarchy target starts
-fresh rather than transforming existing datasets.
+Open. Protect new-runtime audit history. The delivered A–F task hierarchy started
+fresh; that historical boundary does not decide the preservation/transition of
+existing schema-3 datasets for the newly selected project nesting below.
 
 ## SELECTED — Source-mode first-run and remembered startup
 
@@ -74,16 +75,32 @@ incomplete content requires explicit action. No legacy search/import occurs.
 
 One root/mainloop hands off to the ordinary app only after existing worker
 readiness; startup failure/cleanup cannot install a second authority. Cold
-inspection is not a prerequisite to ordinary recovery. Schema 1, evidence,
+inspection is not a prerequisite to ordinary recovery. Current schema 3, evidence,
 transactions and all recovery contracts stay unchanged. Native first-run evidence
 and independent acceptance remain outstanding; Stage 4 remains IN PROGRESS.
 
 ## SELECTED — Independent projects and tasks
 
 Tasks have stable UUIDs and own independent work. Duplicate names are valid;
-POL-R uses names rather than invented external task numbers. A task may belong
-to one optional organizational project or be Unassigned. Projects have stable
-UUIDs, names and optional descriptions but own no time or timer.
+POL-R uses names rather than invented external task numbers. A task has one
+immediate optional project membership or is Unassigned. Projects have stable
+independent UUIDs, names and optional descriptions but own no time or timer.
+
+The selected future organizational model permits each project to have zero or
+one parent project, zero or more child projects, and zero or more directly
+assigned tasks. Direct tasks and child projects may coexist in one container.
+Root projects have no parent. A project can represent a customer, program, major
+project, subproject, department or other container; no separate Customer entity
+or table is required. For example, Customer → Major customer project → Subproject
+→ Further subproject → Tasks uses projects for every organizational level.
+Independent projects may share display names; identity is UUID, never name/path.
+
+Project nesting has no fixed product-level depth limit. Practical traversal,
+resource and SQLite limits are engineering safeguards requiring explicit truthful
+refusal, never silent truncation or a small fixed business depth. This target is
+not implemented: schema 3 has flat projects and no project parentage. See the
+[future architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability)
+and [separate workstreams](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
 
 Moving or renaming a task preserves its identity/work. Reports group all its
 historical work by **current** project membership. Derived project subtotals are
@@ -101,12 +118,14 @@ context-sensitive child creation and reviewed Move / Reparent for independent re
 E implements templates on fresh schema 3 for independent review. B1 supersedes the former proposed foundation/identity gate,
 not the remaining package approvals or the no-migration boundary.
 
-Maximum structure is Project → Task → Subtask → Sub-subtask: three task levels
-below a project. Each task has an independent UUID, optional project membership
-and optional parent task. Projects have independent identities but never own work
-or timers. Task names need not be globally unique. Cycles, duplicate identities,
-cross-dataset relationships and depth overflow reject. Branch moves preserve all
-task UUIDs and work; project membership determines current reporting grouping.
+The delivered structure is flat Project → Task → Subtask → Sub-subtask. In the
+selected project-nesting target, the task forest still has at most three task
+levels within its immediate project or Unassigned; project ancestry consumes none
+of those levels. Each task has an independent UUID and optional parent task;
+task branches retain one consistent immediate project membership. Task names need
+not be globally unique. Cycles, duplicate identities, cross-dataset relationships
+and task-depth overflow reject. Branch moves preserve all task UUIDs and work;
+current project membership and project ancestry determine live organizational grouping.
 Unassigned is a virtual project group, not an additional persisted project or work
 owner. It has the same three-task-level limit as real projects: root Task,
 Subtask, Sub-subtask. Duplicate task names remain valid at every level.
@@ -133,12 +152,26 @@ cannot be mistaken for supported new data. Incompatible datasets may refuse.
 Creation still requires exclusive ownership and a new/empty destination; never
 delete, truncate, replace or reuse an old database automatically. Retention of old
 filesystem objects is protection, not a requirement to make them compatible.
+Persisted project parentage requires a future schema revision, whose version/DDL
+is not selected here. Before implementing it, separately approve preservation and
+transition treatment of existing schema-3 datasets, including any pilot work.
+Neither discarding/recreating/converting those datasets nor a migration engine
+is authorized by this target. See [schema safety](#selected--schema-compatibility-and-future-upgrade-safety).
 
 ### Project/task management and branch lifecycle
 
 Provide discoverable project and task management entry points in the main UI,
 including a visible project-management route rather than only an unrelated
-dropdown. Create project with its own identity. With no selection, New Task creates
+dropdown. Future project operations include Create root, Create child beneath a
+selected project, Rename and Move / Reparent a complete project subtree. Review
+full source/destination ancestry and UUIDs. Project moves preserve identities,
+immediate task memberships and all direct work; they change organizational ancestry.
+Self-parenting, movement beneath any descendant, cycles, missing parents,
+cross-dataset references, stale reviews and partial movement refuse. The worker
+transaction commits the entire reviewed move or none of it. These project
+parentage operations are not delivered by the current task-branch Move service.
+
+With no selection, New Task creates
 an Unassigned root. Otherwise it inserts immediately beneath the selected real or
 virtual project group or eligible task, with destination shown before submission.
 Refuse a child beyond the depth bound. Rename preserves UUID/work. Move/reparent
@@ -165,9 +198,14 @@ An archived ancestor still hides an unarchived descendant. Unarchive does not
 move, rename, restore, recreate or change work. Archiving again later establishes
 a new current timestamp; no historical archive-date journal is required merely
 to view/sort abandoned unused items.
+For nested projects this inheritance spans both project ancestors and task
+ancestors: archiving a container effectively archives its whole organizational
+subtree without clearing or rewriting independent child flags. Active-task
+protection applies anywhere in that subtree. Project Delete likewise reviews the
+complete project-and-task closure under the unchanged unused-only protections below.
 
 Project/task management offers Create, Rename, Move, Archive/Unarchive, Delete and
-direct Work History using reviewed UUIDs/versions, cancellation without writes,
+task-only direct Work History using reviewed UUIDs/versions, cancellation without writes,
 stale diagnostics and authoritative completion. B1 implements creation/rename,
 explicit child creation and existing standalone-root project assignment. B2 adds explicit service-level subtree movement; C1 adds Archive/Unarchive and
 Archived Items. C2 implements reviewed unused-only project/task Delete; D connects
@@ -244,7 +282,7 @@ it does not physically delete the task/work identity.
 
 Provide a discoverable Archived Items window/view with archived projects,
 independently archived task branches and descendants hidden by archived ancestors.
-Preserve Project → Task → Subtask → Sub-subtask relationships and support full
+Preserve project ancestry and the separate three-level task relationships, and support full
 expand/collapse at every available level, historical Individual/Cumulative values,
 direct-task Work History, selected explicit-node Unarchive and eligible-branch
 Delete through C2's separate owned full-preview/typed-confirmation workflow. C1
@@ -294,7 +332,8 @@ rename, subtree removal, reparent and sibling reorder. Retained node UUIDs stay 
 new nodes get fresh IDs; removed IDs cannot be reused within retained definition
 history. Save atomically replaces the complete graph after version/depth validation;
 Cancel writes nothing. Nodes follow canonical contiguous preorder with at least one
-root and at most three levels. Duplicate freezes the source/version and UUID-sorted
+root and at most three task levels. Project nesting consumes none of these task
+levels. Duplicate freezes the source/version and UUID-sorted
 fresh node mapping, creating a separately named independent active definition.
 
 Names use Python strip/casefold. Every actual Create/Edit/Duplicate/Unarchive
@@ -341,8 +380,12 @@ introduce no recurrence, synchronization or external task creation.
 ### Target main and mini presentation
 
 Restore a practical tree layout with distinct project and task rows, expandable
-branches, preserved task selection by UUID and running/stopped indicators. Use
-green Running and red Stopped with text/symbols so color is not the sole cue.
+branches, preserved project/task selection and expansion by UUID, and clear
+running/stopped indicators. Main retains green Running and red Stopped with
+text/symbols so color is not the sole cue. A project expands to
+show both child projects and directly assigned task branches at arbitrary project
+depths. Do not flatten hierarchy, merge duplicate names or imply a timer action
+when navigating or expanding a project folder.
 Ancestors indicate a running descendant without claiming their own timer; expand
 the active task's ancestors automatically. Collapse never excludes descendant
 work from totals. Sort A-Z must preserve parentage and identity, not flatten or
@@ -351,22 +394,53 @@ context-sensitive New Task, task History and metadata editing, visible
 project/task management and Archived Items. Starting a project or nonleaf is
 unavailable; Stop still targets the sole actual timer, and Switch requires an
 eligible distinct leaf. Existing modal and uncertain-request blocking applies to
-main and mini actions alike.
+main and mini actions alike. Create, Rename, Move, Archive/Unarchive and Delete
+remain discoverable for the applicable project/task selection; destination reviews
+show full project ancestry, not an ambiguous leaf name.
+
+Selected, not implemented: double-click an eligible stopped leaf when no timer is
+active to Start it; double-click the running task to Stop it. Use the existing
+authoritative Start/Stop request paths, exactly one active timer, pending-request
+exclusion, repeated-input duplicate protection and archived/nonleaf/modal/uncertain
+guards. Project rows perform only normal expand/collapse; they never Start/Stop.
+When a different task is active, atomic Switch versus no action remains an
+[explicit decision](#open--reserved-userchatgpt-decisions); Stop-then-Start is not
+authorized. Legacy double-click/Enter/Space evidence remains in
+[Design Notes](../DESIGN_NOTES.md); it is not a claim that the rewrite binds those keys.
 
 Main task columns are **Individual** and **Cumulative**, controlled together by
 **Today / This Week**. Individual is exact-task work for that period; Cumulative
-is that Individual plus every descendant's Individual exactly once. Project rows
-show only derived cumulative totals. A parent with older direct work displays it
+is that Individual plus every task descendant's Individual exactly once. A parent
+with older direct work displays it
 in Individual and includes it once in Cumulative; its History opens only that
 direct work. Application totals sum underlying task Actual once, never both
 columns or project subtotals. Archived history and retained effective work continue
 to contribute where applicable even when navigation hides its rows. Main/mini/report daily
 facts share the existing exact accounting and one coordinated cutoff.
 
-Mini restores a clear green/red state bar, task name, **Today**, Start/Stop,
-Show Main and Keep Mini Open, with appropriate always-on-top behavior. It keeps
-the existing active-task/otherwise-selected-task rule and displays that task's
-Individual Today; it is never a second timer or a cumulative POL-R source.
+Project rows show derived Cumulative, not project-owned time. Direct task Actual
+is the underlying effective work owned by one task UUID; Task Individual is its
+period Actual, and Task Cumulative includes its task descendants' Individual once.
+Direct project grouping sums Individual for every task whose immediate project is
+that project, including all task levels. Cumulative project grouping sums those
+same direct task facts over the project and every descendant project, each task
+UUID once. Never sum ancestor project rollups or task Cumulative as additional
+contributions. Retained parent/archived work contributes where report scope allows;
+recording eligibility is not permission to omit retained Actual. A container can
+have no direct tasks yet a nonzero cumulative total. Zero requires available valid
+underlying reports; unavailable calculation is not zero. Unassigned remains a
+virtual grouping, with no persisted project/customer identity or project parentage.
+
+Selected, not implemented: Mini must be substantially smaller than the current
+340x205 window. Prioritize active task, otherwise eligible selected task, Individual
+Today, one Start/Stop control, Show Main and a minimal running/stopped cue. Running
+is normal state: remove the redundant routine running notification/prominent bar
+and full-size ordinary status presentation. Choose dimensions only after layout
+validation, not as a new fixed pixel requirement. It is never a second timer or
+cumulative POL-R source. Genuine errors, unavailable time and unresolved mutations
+must stay visible through a concise actionable Mini diagnostic/indicator; Show Main
+must expose the full existing diagnostic and retry/resolution path when modal
+ownership permits. Do not silently hide errors or change safety-disabled controls.
 Keep Mini Open defaults Off and is session-local. Show Main leaves mini visible
 only when that option is On. Mini must not steal focus or grabs from owned modals;
 topmost behavior must respect that existing modal owner.
@@ -483,10 +557,11 @@ exports and confirmations neither erase nor increase calendar Actual.
 
 ## SELECTED — Calendar Actual displays
 
-Package D navigation is retained on E fresh schema 3.
+Package D task navigation under flat projects is retained on current E schema 3;
+unlimited project navigation is the separate selected future target.
 Native Windows qualification of the changed interface remains outstanding. Main Individual/Cumulative share Today/This Week: Individual is
 direct Actual and Cumulative includes each descendant once. Group Cumulative sums
-member direct report facts,
+member direct report facts over project descendants under the selected nesting model,
 including applicable retained hidden task work. Groups have no Individual work;
 empty groups show zero only with a valid report. Both application totals remain
 visible and never add rollups twice. Mini retains Individual Today and Start/Stop.
@@ -861,7 +936,9 @@ gates; no automatic external allocation verification is established.
 | Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
-| Hierarchy, branch lifecycle, tree main/mini and nested templates | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active UI delivered for review; E templates delivered for review; nothing inherited from JSONL. |
+| Delivered task hierarchy, branch lifecycle, tree main/mini and nested templates under flat projects | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active task UI delivered for review; E templates delivered for review; nothing inherited from JSONL. |
+| Unlimited organizational project nesting | Newly selected future target, before a longer real-customer pilot; separate schema-3 preservation/transition and future schema design required before implementation. |
+| Double-click task activation and compact Mini | Newly selected separate usability work; not implemented. Other-active-task double-click remains open. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
@@ -881,6 +958,11 @@ current timestamps, inherited visibility and complete chronological receipt chec
 C2 adds irreversible unused-only Delete and finite administrative retirement with
 strict survivor preservation and explicit no-retry uncertainty. D connects the full
 active hierarchy and reviewed movement UI. E adds templates on schema 3; no migration is delivered.
+Projects are flat in this implementation: no parent_project_id exists. The main
+tree does not bind task double-click to Start/Stop; Mini currently uses fixed
+340x205 geometry, a prominent running/stopped bar and an ordinary status area.
+Unlimited project nesting, double-click activation and compact Mini above are
+selected requirements, not capabilities of this source revision.
 
 Package A presentation remains implemented: empty project groups,
 typed task/group rows, session-local A-Z/period choice, green/red text states,
@@ -1000,7 +1082,7 @@ unavailable rather than authorizing recovery. Existing files are never removed o
 repaired to force acceptance. Backup/restore retain their complete current-schema
 validation and protected destination contracts.
 
-The later hierarchy approval selects fresh creation rather than a version-1
+The earlier A–F task-hierarchy approval selected fresh creation rather than a version-1
 transformation. No migration/backward compatibility obligation belongs to that
 plan; old files remain protected and incompatible data refuses. The current
 runtime supports only its exact version-3 schema; all version-1/2 datasets and
@@ -1015,12 +1097,21 @@ The [technical boundary](ARCHITECTURE.md#cold-compatibility-inspection-and-futur
 remains strict. Stage 4C is independently accepted for functional development;
 Stage 4 remains IN PROGRESS and no pilot is authorized.
 
+That A–F history does not decide the new project-nesting transition. A separate
+approved design must address preservation of existing schema-3 datasets before
+any new schema is implemented. No exact future version/DDL, automatic migration,
+discard/recreation or conversion policy is selected. A migration engine is not
+implicitly required either. Preserve original files, identities and immutable
+evidence against unapproved replacement or silent loss throughout the eventual design.
+
 ## OPEN — Reserved user/ChatGPT decisions
 
 | Decision | First affected gate |
 | --- | --- |
 | Dataset-timezone changes and historical date attribution under changes | Stage 1 dataset configuration / Stage 2 accounting, before implementation. Explicit fixed dataset zone is required; change policy is not guessed. |
 | Exact release paths, installation/cutover and retired-data cleanup | Before affected deployment/Stage 5 fresh pilot setup; startup deletion is unauthorized. |
+| Existing schema-3 preservation/transition for project nesting; future schema/version/DDL | Before implementing persisted project parentage; neither data disposal nor a migration engine is authorized. |
+| Task double-click while a different task is active: atomic Switch or no action | Before implementing that interaction; no Stop-then-Start sequence is authorized. |
 | Allocation controls/recurrence/overrides/week-change effects | Before optional Stage 6 allocation work. |
 
 These reservations do not reopen Tkinter/SQLite or defer core POL-R. Resolve only

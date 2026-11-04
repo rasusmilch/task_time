@@ -59,7 +59,8 @@ and its limited historical meaning are recorded below.
 
 ### Independent task ownership and organizational projects
 
-**Status:** current, extended by the later hierarchy approval below.
+**Status:** ownership/accounting remains current, extended by the later task
+hierarchy and unlimited organizational project decisions below.
 **Provenance:** explicit user confirmation of the reviewed
 project/task architecture; current owner:
 [independent projects/tasks](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks).
@@ -1127,6 +1128,10 @@ authorizes documentation only, not schema/service/UI execution. Current owners:
 [proposed model](ARCHITECTURE.md#fresh-hierarchy-foundation) and
 [packages A–F](ROADMAP.md#hierarchy-target--bounded-packages-a-f).
 
+Its flat-project organizational target is superseded by the later unlimited
+organizational project selection below; its delivered task-depth, ownership and
+evidence guarantees retain their historical scope.
+
 The user selects Project → Task → Subtask → Sub-subtask, stable independent task
 UUIDs, optional project/parent, no cycles and leaf-only **new** time. Previously
 recorded parent direct work stays attached, appears in Individual and direct
@@ -1501,6 +1506,32 @@ all 29 original UNRESOLVED filesystem cases without reconstructing missing ident
 reclassification or new replacement tests. No supervised wrapper option is selected.
 Stage 4 IN PROGRESS, Stage 5 NOT STARTED; no native acceptance or release follows.
 
+### Unlimited organizational projects and pilot usability selection
+
+**Status:** selected future behavior and architecture; not implemented.
+**Provenance:** latest explicit user direction accompanying this documentation-only
+task; [requirements](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks),
+[architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability) and
+[separate workstreams](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams)
+own the resulting baseline. These selections grant no implementation or migration
+approval.
+
+Select unlimited-depth organizational Projects with optional project parentage,
+mixed direct tasks/child projects and UUID identity despite duplicate names.
+Customer is a use of Project, not a dedicated entity. Projects remain derived
+organizational groupings; independent tasks own time and retain the three-task-level
+limit separately from project depth. Flat projects are superseded as the future
+organizational target, not retroactively changed in the accepted A–F/schema-3 source.
+Future persistence/version design and preservation/transition of existing schema-3
+datasets require separate approval; neither disposal nor a migration engine is selected.
+
+Also select task double-click Start/Stop and substantially smaller Mini with minimal
+routine state and discoverable genuine errors. The current rewrite does not deliver
+these UX changes. Double-click while another task runs remains open between atomic
+Switch and no action; no Stop-then-Start is approved. Legacy Enter/Space controls
+remain legacy evidence. Stage 4 stays IN PROGRESS, Stage 5 NOT STARTED; native and
+external gates are unchanged. Earlier decisions retain their provenance and delivery scope.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT
@@ -1512,6 +1543,8 @@ owner or candidate implementation design.
 - Allocation defaults/overrides and their interaction with week-start changes.
 - Exact installation replacement and old-data cutover.
 - Dataset-timezone changes before affected configuration/accounting.
+- Existing schema-3 preservation/transition and the future project-parent schema design.
+- Atomic Switch versus no action on double-click of a different task while one runs.
 
 The later rewrite approval places allocations in optional Stage 6; earlier
 first-release inclusion is superseded, not a remaining core pilot decision.

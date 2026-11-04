@@ -103,7 +103,7 @@ Reopen that same dataset without `--create`:
 python run_chronicle.py --data-dir PATH
 ```
 
-E creates fresh schema 3 only: task parentage has at most three levels under a project
+E creates fresh schema 3 only: projects are flat and task parentage has at most three levels under a project
 or Unassigned, new recording is leaf-only, and historical parent work remains
 retained. Package D now renders the full active hierarchy. New Task creates an Unassigned
 root with no selection/Unassigned selected, a root with a project selected, or an
@@ -421,9 +421,23 @@ for fresh v3 creation. Hierarchy, lifecycle and movement are connected by D;
 E templates are implemented for independent review. Do not delete journals or old databases
 to bypass refusal. Any hypothetical future data-preserving transformation would
 require separate source/target and safety approval; no such engine exists now.
+The newly selected unlimited project-nesting target does not authorize replacement
+of existing schema-3 datasets or require a migration engine. Preservation/transition
+and the future schema design need separate approval before implementation.
 See the [target boundary](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary).
 
 ## Main hierarchy and Move / Reparent
+
+This describes the current flat-project/task-hierarchy implementation. Unlimited
+organizational project nesting with mixed direct tasks/child projects is
+[selected future work](docs/TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks),
+not available from the current launcher. Project depth will be independent of the
+unchanged three task levels. The main tree currently has no task double-click
+Start/Stop binding; selected double-click behavior needs the explicit
+other-active-task decision. Current Mini remains 340x205 with its prominent
+state/status area; the selected compact replacement must retain visible genuine
+errors and current modal/timer protections. Neither UX change is implemented.
+Continue ordinary startup with `python run_chronicle.py`; no new arguments apply.
 
 Expand Project → Task → Subtask → Sub-subtask, or the identical virtual Unassigned
 levels. Empty active projects remain visible. Sort A-Z sorts siblings without
