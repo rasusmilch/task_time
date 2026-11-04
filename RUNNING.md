@@ -421,9 +421,13 @@ for fresh v3 creation. Hierarchy, lifecycle and movement are connected by D;
 E templates are implemented for independent review. Do not delete journals or old databases
 to bypass refusal. Any hypothetical future data-preserving transformation would
 require separate source/target and safety approval; no such engine exists now.
-The newly selected unlimited project-nesting target does not authorize replacement
-of existing schema-3 datasets or require a migration engine. Preservation/transition
-and the future schema design need separate approval before implementation.
+The selected unlimited project-nesting target uses a fresh schema-4 dataset,
+without schema-3 migration, import or copy transition. Package A supplies only an
+isolated candidate definition/forest/history verifier; there is no user-facing v4
+creation/open command, conversion reader, transition marker or activation control.
+Ordinary startup, creation and backup/restore remain v3 during A. Later package E
+must validate fresh v4 and refuse incompatible originals without altering them,
+including journal cases, while retaining genuine supported crash recovery.
 See the [target boundary](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary).
 
 ## Main hierarchy and Move / Reparent

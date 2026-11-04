@@ -360,28 +360,21 @@ fingerprints; backup image validation reuses the complete gate and cold restore
 still validates before directory reservation. No schema definitions or version
 markers are changed, and no fallback or migration registry exists.
 
-A hypothetical data-preserving transition requires a separately approved
-version-specific contract (historical Stage 4C safety requirements):
+The earlier Stage 4C hypothetical transition safety requirements remain historical
+context, not a migration obligation. The latest project-nesting decision selects
+fresh schema 4, application ID 0x4348524E. No schema-3 import/conversion reader,
+transformation staging, pending-conversion marker or converted-copy activation
+controller is selected. Original v3 files stay untouched. During Package A,
+ordinary creation/admission/backup/restore and supported native rollback remain
+exact schema 3; the isolated v4 candidate is never an ordinary opener/writer.
 
-1. Exact accepted source and target schemas/versions and transformation rules.
-2. Preservation or explicit adjudication of every persisted identity and immutable
-   work/export/confirmation/receipt association, with no lost/duplicated/reordered evidence.
-3. Independent complete source and target verification and applicable backup/restore.
-4. Protection of the original and explicit source/target ownership/startup rules.
-5. An atomic or recoverable installation boundary with truthful failure behavior
-   before and after publication, and refusal by older application versions.
-
-That contract's cold-new-directory default protects originals if a future
-transformation is separately authorized. The earlier A–F task-hierarchy approval
-selected fresh data without transformation/compatibility; it did not settle a
-transition from existing schema-3 data to nested projects. That preservation and
-transition decision is required separately before a new schema is implemented;
-neither a migration engine nor disposal/conversion of schema-3 data is selected.
-No in-place replacement, automatic source
-retirement/deletion, target version 2, transformation callback or runtime upgrade is
-implemented or authorized. No UPGRADE_AVAILABLE result exists. Normal locked native
-rollback recovery of a supported image is not schema conversion. Native
-qualification and the complete Stage 4 gate remain separate.
+Future package E activates only fresh v4 and complete v4 validation. It must refuse
+clean v3 before writable opening and preserve incompatible originals with journals,
+while genuine supported v4 hot journals retain SQLite-native recovery. Raw header
+markers cannot establish committed identity. Version-aware private recovery
+preflight remains the preferred future solution to that ambiguity; A does not
+implement it or alter current v3 hot-journal behavior. Cold inspection remains
+read-only/non-recovering. Native qualification is a separate gate.
 
 ## Implemented main and mini presentation
 
@@ -447,14 +440,13 @@ Native Windows theme/topmost/focus/operator qualification remains outstanding.
 
 The future project architecture and implemented usability slice follow the
 [selected organizational model and UX](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks).
-The delivered A–F task hierarchy and current exact schema 3 remain as described
-below; `projects` has no `parent_project_id`. Persisted project parentage requires
-a new schema revision, but its exact version and DDL are not chosen here. Before
-implementing it, separately approve the treatment/preservation of existing
-schema-3 datasets. No automatic upgrade, migration engine, replacement, recreation
-or disposal follows from this selection. Current incompatible images still refuse.
+The delivered A–F task hierarchy remains historical. Ordinary runtime is still
+exact schema 3 with flat projects during Package A. The future runtime uses a
+fresh schema-4 database, without migration/import/copy transition. Refuse old data
+rather than recreating, clearing or transforming it. The isolated candidate owns
+its explicit v4 definition and does not change ordinary SQLiteStore behavior.
 
-Prefer one self-referencing Project adjacency relation: stable project UUID plus
+Use one self-referencing Project adjacency relation: stable project UUID plus
 optional parent-project identity. Root parent is absent; duplicate display names
 are valid. No separate Customer relation is needed. Keep existing task project
 membership and task ancestry distinct: a project can hold both child projects and
@@ -462,6 +454,57 @@ direct task branches. Project nesting has no fixed product depth limit; the
 three-task-level limit remains independent. Resource/SQLite safeguards must bound
 work with explicit refusal, not silently impose a small business depth or truncate
 paths/descendants. Use cycle-safe traversal appropriate to deep project forests.
+
+### Package A isolated schema-4 candidate
+
+[schema_profiles.py](../src/chronicle/schema_profiles.py) owns target version 4,
+the unchanged application ID and explicit complete relational DDL. Project
+parentage is nullable/canonical, references projects, rejects self/cycles and has
+an index. Candidate-only recording, active ancestry and project Archive/reparent
+SQL guards traverse every project ancestor without a fixed depth cap. Other
+protected evidence definitions remain unchanged. Runtime v3 DDL and its
+administrative operation set remain unchanged; importing the candidate registers
+no worker operation or launcher path.
+
+`create_candidate` accepts only an empty caller-owned disposable file-backed
+SQLite connection, configured DELETE/EXTRA/FK. It is not an existing-dataset
+opener. `verify_schema` checks exact definitions/profile; `verify_structure` adds
+SQLite/FK integrity and complete project/task forest/active eligibility checks.
+`verify_candidate` verifies only A's supported administrative scope and always
+reports ordinary_startup_permitted=False. It refuses nonempty protected/template
+facts, changed configuration history and unsupported operations. It does not
+validate calendar rules, replay protected work, or promise complete runtime
+admission. Later packages must supply those integrations.
+
+`hierarchy.ProjectForest` uses iterative complete coverage, immutable detached
+parent/children/root/order/archive observations and on-demand complete paths and
+descendants. Task observations are a separate candidate helper; original v3 task
+functions and MAX_TASK_LEVELS=3 are unchanged. No eager all-path cache is stored.
+
+`administration.verify_schema4_history` independently reconstructs native-v4
+root/child creation, project movement and existing task creation/rename effects
+in commit_seq order, with exact canonical bytes, UUIDs, versions, creation owners,
+relationships and timestamps. It neither translates v3 history nor supplies B's
+transactional executor. A no-op move cannot have a committed receipt. The candidate
+administrative set adds only create_child_project and move_project_subtree;
+classification is not Delete-retirement permission.
+
+Request format 1 and canonical result encoding remain. Root creation uses
+project_id/name and returns project_id/version=1. Child creation adds
+parent_project_id, expected_parent_version and reviewed_parent_ancestry, ordered
+root-to-parent with project_id/expected_version/parent_project_id members. Project
+movement has exactly project_id, expected_version, source_parent_project_id,
+destination_parent_project_id, expected_destination_parent_version,
+reviewed_source_ancestry, reviewed_destination_ancestry, reviewed_projects and
+reviewed_tasks. Source ancestry ends at the source parent; destination ancestry
+ends at its parent; root paths are empty. Project members are complete and
+UUID-sorted with identity/version/parent. Task members are complete and UUID-sorted
+with task_id/expected_version/parent_task_id/project_id. A committed result is
+project_id/version/parent_project_id; only the moved project's version/time/parent
+changes. Child links and immediate task memberships remain unchanged.
+
+These are candidate contracts and tests, not delivery of project services, UI,
+reporting integration, v4 source startup or Windows acceptance.
 
 Future implementation boundaries:
 

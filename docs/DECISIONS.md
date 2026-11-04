@@ -1524,8 +1524,9 @@ Customer is a use of Project, not a dedicated entity. Projects remain derived
 organizational groupings; independent tasks own time and retain the three-task-level
 limit separately from project depth. Flat projects are superseded as the future
 organizational target, not retroactively changed in the accepted A–F/schema-3 source.
-Future persistence/version design and preservation/transition of existing schema-3
-datasets require separate approval; neither disposal nor a migration engine is selected.
+At that selection, persistence/version design and schema-3 treatment were reserved.
+The later [fresh-v4 approval](#fresh-schema-4-and-isolated-package-a) supersedes that
+reservation; the earlier selection is not a conversion approval.
 
 Also select task double-click Start/Stop and substantially smaller Mini with minimal
 routine state and discoverable genuine errors. At that selection the rewrite did
@@ -1559,6 +1560,27 @@ modals. Keep Mini Open remains Off/session-local; no new timer/worker/state stor
 Project nesting remains future work on unchanged schema 3. Stage 4 IN PROGRESS,
 Stage 5 NOT STARTED; no native acceptance or pilot authorization follows.
 
+### Fresh schema 4 and isolated Package A
+
+**Status:** target architecture selected; A candidate supplied for independent
+review. Ordinary runtime remains schema 3; v4 services/UI/activation are future.
+**Provenance:** explicit Package A execution approval records the user's fresh
+schema-4 decision. It supersedes the earlier read-only plan's offline copy
+transition and removes the schema-3 preservation/transition reservation.
+
+Use a new, initially empty schema-4 database with application ID 0x4348524E.
+Retain existing v3 files untouched; do not migrate, import, transform copies,
+translate old receipts, add conversion readers/markers or offer converted-copy
+activation. The existing Project entity gains parent_project_id; project depth
+has no business cap and tasks retain three independent levels. A isolates exact
+DDL, SQL guards, immutable detached forest observations and scoped native-v4
+history contracts for root/child creation and project movement. Unsupported
+integration refuses. It adds no ordinary writer/launcher registration or migration
+functionality. Future E covers fresh activation, compatibility/startup and backup/
+restore, including version-aware private recovery preflight for ambiguous journals;
+A preserves current v3 hot-journal behavior. Historical A–F delivery is unchanged.
+Stage 4 IN PROGRESS; Stage 5 NOT STARTED; no native qualification follows.
+
 ## Open decisions
 
 **Status:** open. **Provenance:** questions explicitly reserved for user/ChatGPT
@@ -1570,7 +1592,6 @@ owner or candidate implementation design.
 - Allocation defaults/overrides and their interaction with week-start changes.
 - Exact installation replacement and old-data cutover.
 - Dataset-timezone changes before affected configuration/accounting.
-- Existing schema-3 preservation/transition and the future project-parent schema design.
 
 The later rewrite approval places allocations in optional Stage 6; earlier
 first-release inclusion is superseded, not a remaining core pilot decision.

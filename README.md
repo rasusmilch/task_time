@@ -106,8 +106,11 @@ small green/red cue, Individual Today, Start/Stop and Show Main, with shortened 
 names and concise actionable diagnostics instead of a banner/routine status copy.
 It targets about 280x125 while accommodating fonts/DPI. Read-only Show Main remains
 available for unresolved actions when no modal blocks it; mutations stay disabled.
-Native Windows UI acceptance is pending. Project schema-3 preservation/transition
-remains a separate decision. Normal `python run_chronicle.py` startup is unchanged.
+Native Windows UI acceptance is pending. Project nesting selects a fresh schema-4
+dataset with no migration/import of schema 3. Package A supplies an isolated exact
+DDL/SQL-guard, iterative forest and scoped history candidate for review. It is not
+a project service/UI or supported runtime. Normal `python run_chronicle.py`,
+SQLiteStore creation/open and backup/restore remain schema 3 during A.
 
 There are exactly two primary lifecycle actions: reversible **Archive** (Unarchive
 reverses it) and irreversible **Delete** of unused complete selected branches.
@@ -261,10 +264,10 @@ with no automatic upgrade, downgrade or repair. Stage 4C inspection, protected
 refusal and bounded owned SQLite-native rollback recovery are independently
 accepted for functional development.
 The earlier A–F foundation used fresh data. Unlimited project nesting requires a
-future schema revision and a separately approved preservation/transition decision
-for existing schema-3 datasets before implementation; neither migration nor
-discard/recreation is selected. Unknown schemas
-refuse rather than being reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
+fresh schema 4, without migration/import or transformation of existing schema-3
+datasets. A adds only an isolated candidate; ordinary runtime activation belongs to
+later package E. Schema-3 and unknown schemas refuse in the eventual v4 runtime
+rather than being cleared, transformed or reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
 source launch, troubleshooting and native Windows source validation. Initial pip
 installation needs internet or an approved local wheel source and available IT
 permission; ordinary Chronicle operation is offline and never installs packages.

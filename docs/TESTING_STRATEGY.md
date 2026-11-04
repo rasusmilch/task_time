@@ -60,7 +60,7 @@ qualification remain distinct.
 
 ## Project hierarchy and pilot usability acceptance
 
-Project nesting remains future behavior under the selected
+Project nesting remains future ordinary behavior under the selected
 [requirements](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks),
 [architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability) and
 [workstreams](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
@@ -71,6 +71,17 @@ portable result establishes native Windows layout/focus acceptance. These criter
 do not transfer A–F evidence to future project nesting. Existing schema 3, F2
 classifications, all 29 unresolved filesystem skips and F3/F4 status remain unchanged.
 
+The latest fresh-data decision selects v4 without v3 migration/import/copy
+transition. Package A provides [schema/SQL safeguard tests](../tests/rewrite/test_schema4.py),
+[detached forest tests](../tests/rewrite/test_project_forest.py) and
+[native-v4 synthetic history tests](../tests/rewrite/test_schema4_history.py).
+They use real disposable SQLite images and independent expected relationships;
+in-flight SQL guard fixtures are not service execution. Candidate verification is
+scoped and always refuses ordinary readiness; unsupported recording/template/
+lifecycle/reporting integrations fail closed. These tests do not establish B/C
+services, UI, calendar rules, v4 startup or native Windows acceptance. Ordinary v3
+DDL/classification/dispatch isolation and existing hot-journal tests remain required.
+
 | Guarantee (project nesting future; usability implemented) | Required behavior coverage |
 | --- | --- |
 | Project organization | Multiple project depths, including beyond three, child creation beneath arbitrary valid projects, roots and containers with both direct tasks and child projects; duplicate names remain distinct UUIDs. Engineering resource refusal is explicit, never truncation or a small product depth rule. |
@@ -79,7 +90,7 @@ classifications, all 29 unresolved filesystem skips and F3/F4 status remain unch
 | Archive/active safety | Project/task ancestor inheritance, selected-only Unarchive and retained independent descendant flags; active-containing Archive/Delete or ineligible movement refuses without implicit Stop/Switch. |
 | Unused-only Delete | Complete project-and-task closure, typed confirmation, protected work/revisions/frozen reports/confirmed-zero references, administrative dependencies and survivor proof; stale/uncertain deletion never becomes automatic retry or partial removal. |
 | Derived accounting | Direct task Actual, Task Individual/Cumulative and Direct/Cumulative project groups agree with independent expected facts. Each task contributes once; empty containers can have descendant totals, unavailable is not zero, hidden/retained work stays in scope and ancestor rollups are never extra hours. |
-| Evidence and recovery | Project movement leaves existing frozen bytes/context, work/revisions and confirmations unchanged. Backup/restore, ordinary/cold admission and failure handling verify the exact approved schema/forest/evidence under the separately approved schema-3 preservation/transition design. |
+| Evidence and recovery | Project movement leaves existing frozen bytes/context, work/revisions and confirmations unchanged. Backup/restore, ordinary/cold admission and failure handling verify the exact approved schema/forest/evidence on the selected fresh schema 4; no schema-3 conversion is required. |
 | Main/Archived Items | UUID selection and valid expansion survive refresh, deep ancestor changes and sibling sorting; active paths expand, full ancestry disambiguates destinations and mixed direct tasks/child projects display without flattening or duplicates. Template eligibility respects project archive ancestry and task limits. |
 | Double-click | Eligible stopped leaf/no active timer starts; running task stops; repeated input, pending/uncertain requests and modals cannot duplicate/bypass mutations. Project rows only expand/collapse. Another active task requires one existing atomic Switch, preserving both entries; never Stop then Start. Ignored events allocate no UUID/time/request. Use actual clicked UUIDs despite duplicate names, with generated Tk and XTest evidence labeled separately. |
 | Compact Mini | Validate a layout substantially smaller than the former 340x205, targeting about 280x125 and approximately 300x150 or less at default fonts while accommodating DPI: name, Individual Today, one Start/Stop, Show Main and minimal routine cue. Genuine errors/unavailable/uncertain work remain visible/actionable through the existing owner; Keep Mini Open, one timer and modal-safe topmost/focus remain correct. |
@@ -382,9 +393,12 @@ A hypothetical separately approved data-preserving transition would need the
 The earlier A–F task-hierarchy target used fresh data, a distinct approved schema
 and strict old-dataset refusal, not v1 conversion tests. No migration engine,
 legacy import or backward-compatibility fixture obligation was selected. The new
-project-nesting target separately requires approved existing schema-3 preservation/
-transition and future schema design before implementation; its tests cannot assume
-that current data may be discarded or that a migration engine must exist.
+project-nesting target explicitly selects fresh v4, retaining old files without
+migration/import/copy transition. Test A's candidate in isolation; future E must
+preserve incompatible originals while retaining supported hot-journal recovery.
+Raw uncommitted header markers are not committed identity, and private version-aware
+recovery preflight remains the preferred future architecture. A does not implement
+that preflight or change current v3 recovery.
 Linux fault injection does not prove arbitrary concurrent-writer, power-loss or
 native Windows/NTFS safety.
 

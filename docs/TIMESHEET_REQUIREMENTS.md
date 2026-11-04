@@ -46,8 +46,9 @@ Existing files must remain protected during development. Absence of a release
 preservation obligation for the retired dataset does not authorize arbitrary
 startup deletion. Exact release paths, installation/cutover and cleanup remain
 Open. Protect new-runtime audit history. The delivered A–F task hierarchy started
-fresh; that historical boundary does not decide the preservation/transition of
-existing schema-3 datasets for the newly selected project nesting below.
+fresh. The latest project-nesting approval also selects fresh schema 4: existing
+schema-3 datasets are retained untouched, never migrated, imported, copied into a
+transformation, cleared or replaced to enter the new runtime.
 
 ## SELECTED — Source-mode first-run and remembered startup
 
@@ -98,7 +99,9 @@ Independent projects may share display names; identity is UUID, never name/path.
 Project nesting has no fixed product-level depth limit. Practical traversal,
 resource and SQLite limits are engineering safeguards requiring explicit truthful
 refusal, never silent truncation or a small fixed business depth. This target is
-not implemented: schema 3 has flat projects and no project parentage. See the
+not available in ordinary use: schema 3 still has flat projects. Package A adds
+an isolated schema-4 candidate foundation, not project-management services/UI or
+ordinary schema-4 admission. See the
 [future architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability)
 and [separate workstreams](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
 
@@ -152,11 +155,16 @@ cannot be mistaken for supported new data. Incompatible datasets may refuse.
 Creation still requires exclusive ownership and a new/empty destination; never
 delete, truncate, replace or reuse an old database automatically. Retention of old
 filesystem objects is protection, not a requirement to make them compatible.
-Persisted project parentage requires a future schema revision, whose version/DDL
-is not selected here. Before implementing it, separately approve preservation and
-transition treatment of existing schema-3 datasets, including any pilot work.
-Neither discarding/recreating/converting those datasets nor a migration engine
-is authorized by this target. See [schema safety](#selected--schema-compatibility-and-future-upgrade-safety).
+Persisted project parentage selects schema 4 with application ID 0x4348524E.
+Use a new or genuinely empty destination under exclusive creation; no schema-3
+migration, import, copy transition, conversion reader, pending-conversion marker
+or converted-copy activation flow is authorized. The eventual v4 runtime refuses
+v3 without altering it. During Package A the ordinary runtime remains schema 3;
+only isolated candidate construction and scoped verification exist. Future v4
+activation must preserve supported hot-journal recovery and refuse incompatible
+originals without modifying them; raw uncommitted headers are not committed
+identity. Version-aware private recovery preflight is the preferred future
+architecture, not implemented by A. See [schema safety](#selected--schema-compatibility-and-future-upgrade-safety).
 
 ### Project/task management and branch lifecycle
 
@@ -945,7 +953,7 @@ gates; no automatic external allocation verification is established.
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
 | Delivered task hierarchy, branch lifecycle, tree main/mini and nested templates under flat projects | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active task UI delivered for review; E templates delivered for review; nothing inherited from JSONL. |
-| Unlimited organizational project nesting | Newly selected future target, before a longer real-customer pilot; separate schema-3 preservation/transition and future schema design required before implementation. |
+| Unlimited organizational project nesting | Fresh schema 4 selected; A supplies an isolated schema/forest/history candidate for review. Ordinary runtime remains v3; services, lifecycle/report integration, UI and v4 activation remain future packages. No migration/import. |
 | Double-click task activation and compact Mini | Implemented for independent review through existing Start/Stop/atomic Switch and shared report paths; native Windows UI acceptance remains outstanding. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
@@ -966,8 +974,12 @@ current timestamps, inherited visibility and complete chronological receipt chec
 C2 adds irreversible unused-only Delete and finite administrative retirement with
 strict survivor preservation and explicit no-retry uncertainty. D connects the full
 active hierarchy and reviewed movement UI. E adds templates on schema 3; no migration is delivered.
-Projects remain flat: no parent_project_id exists; unlimited project nesting is
-still unimplemented. The main Treeview now dispatches eligible clicked leaf UUIDs
+Ordinary schema-3 projects remain flat: no parent_project_id exists there;
+unlimited project nesting is
+still unavailable in ordinary use. Package A adds isolated schema-4 SQL safeguards,
+iterative project-forest observations and native-v4 administrative reconstruction;
+unsupported integrations fail closed and cannot publish runtime readiness.
+The main Treeview now dispatches eligible clicked leaf UUIDs
 to existing Start/Stop/atomic Switch. Compact Mini projects the same Individual
 Today report and existing typed diagnostics, with read-only Show Main during
 unresolved work subject to modal ownership. These usability changes are implemented
@@ -1096,22 +1108,17 @@ transformation. No migration/backward compatibility obligation belongs to that
 plan; old files remain protected and incompatible data refuses. The current
 runtime supports only its exact version-3 schema; all version-1/2 datasets and
 backups refuse without conversion, replacement or clearing remembered selection.
-A hypothetical later
-data-preserving transition would require a separate explicit approval and complete
-source/target, evidence, ownership, installation/failure and recovery contract;
-Stage 4C's historical safety contract is not permission or an implementation
-requirement to build one for hierarchy. E creates schema 3 only on a new/empty
-protected destination; future revisions need separate approval.
-The [technical boundary](ARCHITECTURE.md#cold-compatibility-inspection-and-future-transition-boundary)
-remains strict. Stage 4C is independently accepted for functional development;
-Stage 4 remains IN PROGRESS and no pilot is authorized.
-
-That A–F history does not decide the new project-nesting transition. A separate
-approved design must address preservation of existing schema-3 datasets before
-any new schema is implemented. No exact future version/DDL, automatic migration,
-discard/recreation or conversion policy is selected. A migration engine is not
-implicitly required either. Preserve original files, identities and immutable
-evidence against unapproved replacement or silent loss throughout the eventual design.
+No data transition belongs to the new project-nesting implementation. The latest
+explicit user decision selects a fresh schema-4 database, retaining application
+ID 0x4348524E. No migration, import, schema-3 reader for conversion, transformed
+copy or activation marker is required or implemented. Current ordinary admission
+and native hot-journal recovery remain schema 3 during A. The candidate is not a
+second supported runtime. Future package E must admit clean v4, refuse clean v3
+before writable access, recover genuinely supported v4 hot journals, and preserve
+incompatible v3 originals even when journals exist. A raw uncommitted marker cannot
+prove committed identity. Version-aware private recovery preflight is preferred;
+A neither implements it nor weakens existing recovery tests. Stage 4 remains
+IN PROGRESS; no pilot is authorized.
 
 ## OPEN — Reserved user/ChatGPT decisions
 
@@ -1119,7 +1126,6 @@ evidence against unapproved replacement or silent loss throughout the eventual d
 | --- | --- |
 | Dataset-timezone changes and historical date attribution under changes | Stage 1 dataset configuration / Stage 2 accounting, before implementation. Explicit fixed dataset zone is required; change policy is not guessed. |
 | Exact release paths, installation/cutover and retired-data cleanup | Before affected deployment/Stage 5 fresh pilot setup; startup deletion is unauthorized. |
-| Existing schema-3 preservation/transition for project nesting; future schema/version/DDL | Before implementing persisted project parentage; neither data disposal nor a migration engine is authorized. |
 | Allocation controls/recurrence/overrides/week-change effects | Before optional Stage 6 allocation work. |
 
 These reservations do not reopen Tkinter/SQLite or defer core POL-R. Resolve only

@@ -197,8 +197,9 @@ Remaining stabilization and the complete gate include actual native Windows sour
 NTFS, operator GUI/modal/focus, backup/restore, hot-journal recovery, actual
 suspend/resume and deployment qualification. Any hypothetical future data-preserving
 transition would require separate approval. A–F used fresh task-hierarchy data;
-the new project-nesting target requires a separate schema-3 preservation/transition
-decision before its future schema is implemented. Exercise timer → frozen export → absolute
+the new project-nesting decision selects fresh schema 4 without a schema-3
+migration, import or copy transition. A's isolated candidate leaves ordinary v3
+startup and hot-journal behavior unchanged. Exercise timer → frozen export → absolute
 confirmation → correction → reconciliation → backup → cold restore/new session.
 
 The bounded source-startup usability slice adds first-run local folder/readable
@@ -272,12 +273,28 @@ usability implementation grants no project-schema or qualification approval:
 | Workstream | Bounded scope and dependencies |
 | --- | --- |
 | A — Immediate pilot usability | Implemented for independent review: clicked-leaf Start/Stop/one atomic Switch through existing request paths, and compact Mini with a small state indicator and typed actionable diagnostics. ChatGPT resolves the former different-active-task decision as atomic Switch. Normal layout targets about 280x125, accommodating fonts/DPI and diagnostic height. Modal, uncertainty and duplicate-input protection remain. Native Windows layout/input acceptance is outstanding; no project schema change is implied. |
-| B — Unlimited organizational projects | Separately approve existing schema-3 preservation/transition and future schema design first. Then persistence/FKs/forest and receipt validation, services/worker transactions, cycle-safe project movement, inherited archive/Delete closure, hierarchical reports, Main/Archived Items/template destinations, backup/restore and behavior/native validation. Project depths do not consume the existing three task levels. No Customer entity, project-owned time or new external POL-R grouping is selected. |
+| B — Unlimited organizational projects | Fresh schema 4 selected. A supplies an isolated SQL/forest/history candidate for review; the remaining packages below require separate execution approvals. Ordinary runtime remains v3 during A. No migration/import, Customer entity, project-owned work or task-depth change. |
 
 Complete structural project nesting before a longer pilot that depends on
 organizing real customer work. Do not discard, overwrite, convert or recreate
-existing schema-3/pilot data to meet that dependency; no migration engine or exact
-future schema number is selected. Current incompatible-schema refusal remains.
+existing schema-3/pilot data to meet that dependency. Use a fresh v4 dataset after
+activation approval; no migration/import engine or copy transition is selected.
+Current incompatible-schema refusal remains.
+
+The revised project-nesting packages are separate from historical A–F above:
+
+| Package | Scope and activation boundary |
+| --- | --- |
+| A | Isolated exact v4 schema/SQL guards, iterative forest and scoped independent history; supplied for review, ordinary runtime stays v3. |
+| B | Root/child project creation and project Move / Reparent services with exact reviewed requests. |
+| C | Lifecycle, full Delete closure/approved receipt dependencies, templates and derived hierarchical accounting. |
+| D | Main, Archived Items and owned project-management/reparent UI with complete ancestry. |
+| E | Fresh v4 activation, compatibility, source startup and backup/restore. Preserve incompatible originals, including journal cases; version-aware private recovery preflight is preferred. No conversion workflow. |
+| F | Integrated regression, source operation and focused native Windows acceptance on the existing workstation. |
+
+A does not activate a partial v4 application. B–D and complete E guards/validation
+must be reviewed before ordinary v4 creation/open is enabled. F supplies actual
+cross-boundary/native evidence; portable candidate tests cannot close that gate.
 Outstanding native qualification remains a separate gate; this documentation does
 not reclassify F2 evidence, legacy outcomes, 29 unresolved skips or F3/F4 status.
 Stage 4 remains IN PROGRESS; Stage 5 is NOT STARTED.
@@ -286,7 +303,8 @@ Stage 4 remains IN PROGRESS; Stage 5 is NOT STARTED.
 
 **Selected / not started.** Use a deliberately fresh dataset for daily main/mini
 work in an explicitly new/empty location, never by replacing existing schema-3
-data; the new project-schema preservation/transition remains separately unresolved.
+data. The new project target requires fresh v4 after E activation and F acceptance;
+no schema-3 migration or transformed-copy workflow is selected.
 Exercise timing, manual work/corrections, frozen exports, whole/partial/zero/manual POL-R
 quarter-hour confirmation, Unknown, daily/weekly reconciliation, reminders and
 restore. Exercise full/partial-week reporting, provisional suggestions and their
@@ -322,7 +340,6 @@ or allocation may prevent recording Actual.
 | --- | --- |
 | Dataset timezone changes | Stage 1 configuration / Stage 2 accounting before affected code. |
 | Exact fresh release path, installation/cutover, retired-data cleanup | Before affected deployment and Stage 5 setup; no startup deletion or legacy import. |
-| Schema-3 preservation/transition and future persisted project parentage design | Before implementing the new project schema; no data-disposal policy or migration engine is implied. |
 | External redistribution authorization and worked-day zero/omitted-entry treatment | Before affected Stage 3 connected official reporting and Stage 5 pilot; mathematical policy is selected, not reopened. |
 | Unused-only Delete engineering and exact fresh schema/DDL | Before B/C: finite administrative allowlist, closure/cross-entity/survivor proof, transaction order, stale/uncertain handling and independent validation, without tombstones/ledger. Selected lifetime limit for erased requests is not reopened. |
 | Referenced-template actual Delete dependencies | Before E; no hidden recoverable deletion or silent removal of retained references. |

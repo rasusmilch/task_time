@@ -11,9 +11,18 @@ receipts or commits. No release or production qualification is implied below.
 - Select documentation-only requirements/architecture for unlimited nested
   organizational Projects, mixed child projects/direct tasks and derived totals
   counting each task once; no separate Customer entity or task-depth change.
-  Current schema 3 remains flat-project; project nesting is not implemented.
-  Existing schema-3 preservation/transition and future schema design still need
-  separate adjudication. No migration, data disposal, qualification or pilot approval follows.
+  Select fresh schema 4 with the same application ID, retaining v3 files untouched
+  without migration/import/copy transition. Ordinary runtime remains flat schema 3
+  during A; project services/UI and v4 activation are not implemented.
+- Supply Package A's isolated exact schema-4 candidate, SQL project-cycle/archive/
+  recording/active safeguards, iterative immutable project forest and scoped
+  independent native-v4 administrative-history verification. Root/child/move
+  contracts preserve canonical request/result and entity identity; unsupported
+  integration fails closed. Keep ordinary v3 DDL, operation classification,
+  startup, hot-journal recovery, backup/restore and task-depth rules unchanged.
+  Add real disposable SQLite, deep-forest, tampering and isolation tests. Replace
+  the earlier plan's conversion dependency with fresh activation/compatibility
+  work in future E. No migration, v4 runtime, Windows acceptance or pilot approval.
 - Implement the separately approved pilot usability slice for independent review:
   coordinate/UUID-based eligible task double-click reuses Start/Stop/one atomic
   Switch; ChatGPT newly adjudicates the former other-active-task Open case.

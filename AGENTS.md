@@ -109,10 +109,14 @@ intervals remain unverifiable. No tombstone or replacement proof is stored.
 The delivered A–F task hierarchy started fresh without v1/v2 migration,
 compatibility mode or legacy import. Protect retained old files rather than
 converting/deleting/reusing them.
-The latest documentation-only direction separately selects unlimited nested
-organizational Projects (no Customer entity), with three task levels independent
-of project depth. Project nesting remains unimplemented; current projects are
-flat on exact schema 3 and schema-3 preservation/transition still needs approval.
+The latest project-nesting approval selects unlimited organizational Projects
+(no Customer entity), with three task levels independent of project depth, on a
+fresh schema-4 database. No schema-3 migration, import, copy transition, legacy
+reader for conversion or activation marker is selected. Existing files stay intact.
+Package A supplies only an isolated schema-4 DDL/SQL-guard candidate, detached
+project forest and scoped independent administrative-history verification for
+review. Ordinary SQLiteStore, creation, startup and backup/restore remain schema 3;
+new project services/UI and schema-4 runtime activation are not delivered.
 The separately approved pilot-usability execution implements clicked-leaf
 Start/Stop/one atomic Switch and compact Mini for independent review. ChatGPT's
 new adjudication resolves the former other-active-task double-click decision.
