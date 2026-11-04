@@ -111,10 +111,12 @@ compatibility mode or legacy import. Protect retained old files rather than
 converting/deleting/reusing them.
 The latest documentation-only direction separately selects unlimited nested
 organizational Projects (no Customer entity), with three task levels independent
-of project depth, plus task double-click and compact Mini usability. These are
-unimplemented targets; current projects remain flat on exact schema 3. Existing
-schema-3 preservation/transition and other-active-task double-click behavior need
-separate approval before affected implementation. See the current
+of project depth. Project nesting remains unimplemented; current projects are
+flat on exact schema 3 and schema-3 preservation/transition still needs approval.
+The separately approved pilot-usability execution implements clicked-leaf
+Start/Stop/one atomic Switch and compact Mini for independent review. ChatGPT's
+new adjudication resolves the former other-active-task double-click decision.
+Native Windows UI acceptance remains outstanding. See the current
 [requirements](docs/TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks),
 [future architecture](docs/ARCHITECTURE.md#selected-project-nesting-and-pilot-usability)
 and [separate workstreams](docs/ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).

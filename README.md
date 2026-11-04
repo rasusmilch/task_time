@@ -99,12 +99,15 @@ limit is separate from project depth. This target is not implemented in schema 3
 See the [requirements](docs/TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks)
 and [separate workstreams](docs/ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
 
-Task double-click Start/Stop and substantially smaller Mini with a minimal routine
-state cue and visible actionable errors are also selected, not delivered. The
-current main tree has no double-click Start/Stop binding; Mini remains 340x205 with
-a prominent state bar/status area. Other-active-task double-click behavior and
-schema-3 preservation/transition require separate decisions. Normal zero-argument
-`python run_chronicle.py` startup remains unchanged and does not provide these features.
+Pilot usability is implemented for independent review: double-click the actual
+eligible leaf to Start, Stop that running task, or atomically Switch from another
+task. Project/parent/indicator/header input never mutates time. Compact Mini uses a
+small green/red cue, Individual Today, Start/Stop and Show Main, with shortened long
+names and concise actionable diagnostics instead of a banner/routine status copy.
+It targets about 280x125 while accommodating fonts/DPI. Read-only Show Main remains
+available for unresolved actions when no modal blocks it; mutations stay disabled.
+Native Windows UI acceptance is pending. Project schema-3 preservation/transition
+remains a separate decision. Normal `python run_chronicle.py` startup is unchanged.
 
 There are exactly two primary lifecycle actions: reversible **Archive** (Unarchive
 reverses it) and irreversible **Delete** of unused complete selected branches.

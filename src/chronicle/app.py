@@ -203,6 +203,7 @@ class ChronicleApp:
         scroll.grid(row=0, column=1, sticky="ns")
         self.tree.configure(yscrollcommand=scroll.set)
         self.tree.bind("<<TreeviewSelect>>", lambda event: self._selection_changed())
+        self.tree.bind("<Double-Button-1>", self._task_double_click)
         actions = ttk.Frame(self.root)
         actions.grid(row=3, column=0, sticky="ew", padx=8)
         for column, (label, callback) in enumerate((("Start", self.start), ("Stop", self.stop),
@@ -415,6 +416,33 @@ class ChronicleApp:
         return next((p for p in self.state["projects"]
                      if selected and self.project_row(p["project_id"]) == selected[0]), None)
 
+    def _task_double_click(self, event):
+        """Hit-test UUID rows; existing actions alone construct timed requests."""
+        if not self.can_mutate() or self._timesheet_dialog_busy or self.root.grab_current() is not None:
+            return
+        if event.widget is not self.tree or self.tree.identify_region(event.x, event.y) not in ('tree','cell'):
+            return
+        if 'indicator' in self.tree.identify_element(event.x, event.y).lower():
+            return
+        row = self.tree.identify_row(event.y)
+        if not row.startswith('task:') or not self.tree.exists(row):
+            return
+        task = next((t for t in self.state['tasks'] if self.task_row(t['task_id']) == row), None)
+        if task is None or not task['is_leaf'] or task['effective_archived']:
+            return
+        self.tree.selection_set(row)
+        self.tree.focus(row)
+        self._selection_changed()
+        # Selection callbacks may have invalidated eligibility/ownership.
+        if (not self.can_mutate() or self._timesheet_dialog_busy or self.root.grab_current() is not None
+                or self.selected_task_id() != task['task_id'] or self._selected() is not task):
+            return
+        active = self.state.get('active')
+        if active is None:self.start()
+        elif active['task_id'] == task['task_id']:self.stop()
+        else:self.switch()
+        return 'break'
+
     def _presentation_changed(self, event=None):
         if self.alive and self.ready:
             try:
@@ -515,8 +543,10 @@ class ChronicleApp:
             if operation=='dismiss_polr_reminder_today':arguments=dict(local_date=local_date(accepted,self.zone).isoformat())
             request = Request.make(str(uuid4()), self.dataset_id, operation, accepted, **arguments)
         except Exception as exc:
+            self._mutation_outcome = Outcome('rejected', error=exc)
             self.status.configure(text=f"Action rejected: {exc}")
             self._diagnose(exc)
+            self._controls()
             return False
         self.pending, self.executing = request, True
         self._mutation_outcome = None
@@ -546,6 +576,7 @@ class ChronicleApp:
             self.worker.requests.put(Message("mutate", self._token, request))
         except Exception as exc:
             self.pending, self.executing, self._pending_token = None, False, None
+            self._mutation_outcome = Outcome('unavailable', error=exc)
             if _origin is not None and _origin is self.history:
                 _origin.request, _origin.token, _origin.phase = None, None, "editing" if _origin.edit_fields else "browsing"
             if _origin is not None and _origin is self.timesheet and operation == 'confirm_polr_absolute':
@@ -1170,12 +1201,14 @@ class ChronicleApp:
         self.reminder=deepcopy(value)
         self._reminder_error=None
         self._render_reminder()
+        if self.mini is not None:self.mini.render()
 
     def _reminder_failure(self, exc):
         self._reminder_error=exc
         try:
             self.status.configure(text=f'POL-R reminder evaluation unavailable: {exc}. Recheck POL-R to retry.')
             self._render_reminder()
+            if self.mini is not None:self.mini.render()
         except Exception as secondary:exc.add_note(f'Reminder diagnostic presentation failed: {secondary!r}')
         self._diagnose(exc)
         return False
@@ -1784,7 +1817,26 @@ class ChronicleApp:
             return False
 
     def can_present_mini(self):
-        return self.can_mutate() and self.root.grab_current() is None
+        return self.can_mutate() and not self._timesheet_dialog_busy and self.root.grab_current() is None
+
+    def can_show_main(self):
+        """Read-only navigation remains possible when mutation needs attention."""
+        return (self.alive and self.editor is None and self.history is None
+                and not self._history_opening and not self._backup_opening and self.backup_dialog is None
+                and not self._timesheet_opening and not self._timesheet_dialog_busy and self.timesheet is None
+                and self.root.grab_current() is None)
+
+    def mini_diagnostic(self):
+        """Projection of existing authority, never interpretation of status prose."""
+        if self._cleanup_failed or self._worker_stopped:return 'Connection problem — Show Main'
+        if self.pending is not None and not self.executing:return 'Action needs review — Show Main'
+        if self.state.get('report') is None or self.state.get('calculation_error'):
+            return 'Time unavailable — Show Main'
+        if self._reminder_error is not None:return 'POL-R needs review — Show Main'
+        if self._mutation_outcome is not None and (self._mutation_outcome.error is not None
+                or self._mutation_outcome.status in ('rejected','rolled_back','unavailable','unverified')):
+            return 'Action needs review — Show Main'
+        return ''
 
     def open_mini(self):
         if not self.can_present_mini():
@@ -1798,7 +1850,7 @@ class ChronicleApp:
         return True
 
     def show_main(self):
-        if not self.can_present_mini():
+        if not self.can_show_main():
             return False
         self.root.deiconify()
         self.root.lift()
@@ -1807,6 +1859,7 @@ class ChronicleApp:
         return True
 
     def mini_toggle(self):
+        if not self.can_present_mini():return False
         return self.stop() if self.state.get("active") else self.start()
 
     def refresh(self, *, cutoff_utc_us=None):

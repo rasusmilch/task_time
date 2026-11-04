@@ -432,12 +432,17 @@ This describes the current flat-project/task-hierarchy implementation. Unlimited
 organizational project nesting with mixed direct tasks/child projects is
 [selected future work](docs/TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks),
 not available from the current launcher. Project depth will be independent of the
-unchanged three task levels. The main tree currently has no task double-click
-Start/Stop binding; selected double-click behavior needs the explicit
-other-active-task decision. Current Mini remains 340x205 with its prominent
-state/status area; the selected compact replacement must retain visible genuine
-errors and current modal/timer protections. Neither UX change is implemented.
-Continue ordinary startup with `python run_chronicle.py`; no new arguments apply.
+unchanged three task levels. Double-click an eligible leaf to Start, Stop the
+same running task, or atomically Switch from a different task through the existing
+request path. The actual clicked UUID controls the action; group/parent/indicator,
+header/empty and stale/archived targets do not mutate time. Pending/unverified and
+modal protections remain. Compact Mini targets about 280x125 with font/DPI-aware
+layout, a shortened name, small green/red cue, Individual Today, Start/Stop and
+Show Main. It omits routine status/banner text; concise genuine diagnostics lead
+to Main. Show Main permits read-only navigation during unresolved requests when
+modal ownership allows; mutation controls remain disabled. Keep Mini Open stays
+Off/session-local. These changes await independent review and native Windows UI
+acceptance. Continue `python run_chronicle.py`; no new arguments apply.
 
 Expand Project → Task → Subtask → Sub-subtask, or the identical virtual Unassigned
 levels. Empty active projects remain visible. Sort A-Z sorts siblings without

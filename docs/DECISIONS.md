@@ -1508,7 +1508,9 @@ Stage 4 IN PROGRESS, Stage 5 NOT STARTED; no native acceptance or release follow
 
 ### Unlimited organizational projects and pilot usability selection
 
-**Status:** selected future behavior and architecture; not implemented.
+**Status:** historical selection; project nesting remains unimplemented. The later
+[usability adjudication](#pilot-usability-implementation-adjudication) implements
+the separate UX slice.
 **Provenance:** latest explicit user direction accompanying this documentation-only
 task; [requirements](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks),
 [architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability) and
@@ -1526,11 +1528,36 @@ Future persistence/version design and preservation/transition of existing schema
 datasets require separate approval; neither disposal nor a migration engine is selected.
 
 Also select task double-click Start/Stop and substantially smaller Mini with minimal
-routine state and discoverable genuine errors. The current rewrite does not deliver
-these UX changes. Double-click while another task runs remains open between atomic
-Switch and no action; no Stop-then-Start is approved. Legacy Enter/Space controls
+routine state and discoverable genuine errors. At that selection the rewrite did
+not deliver these UX changes, and double-click while another task ran was reserved
+between atomic Switch and no action; no Stop-then-Start was approved. Legacy Enter/Space controls
 remain legacy evidence. Stage 4 stays IN PROGRESS, Stage 5 NOT STARTED; native and
 external gates are unchanged. Earlier decisions retain their provenance and delivery scope.
+
+### Pilot usability implementation adjudication
+
+**Status:** implemented for independent review; native Windows UI acceptance pending.
+**Provenance:** the later approved execution task explicitly records ChatGPT's
+behavior/architecture adjudication. This is a new design decision, not evidence
+that the user specified legacy Switch behavior. Current owners are the
+[main/Mini requirements](TIMESHEET_REQUIREMENTS.md#target-main-and-mini-presentation)
+and [architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability).
+
+Resolve the former Open other-active-task double-click case as one existing atomic
+`switch_timer` request. No active timer starts the clicked eligible leaf; the same
+running task stops. Coordinate/UUID dispatch preserves normal navigation, modal,
+pending/unverified, eligibility and duplicate-input protections and one accepted
+instant. No Stop-then-Start sequence or extra confirmation is introduced.
+
+Replace the 340x205 Mini banner/status presentation with a compact name, small
+supplementary green/red cue, Individual Today, Start/Stop and Show Main. Target
+about 280x125 (approximately 300x150 or less at default fonts), allowing font/DPI
+and exceptional diagnostic growth. Existing authoritative state supplies short
+warnings and clears them on resolution; Main retains full diagnostics/recovery.
+Read-only Show Main during unresolved work does not enable mutation or bypass
+modals. Keep Mini Open remains Off/session-local; no new timer/worker/state store.
+Project nesting remains future work on unchanged schema 3. Stage 4 IN PROGRESS,
+Stage 5 NOT STARTED; no native acceptance or pilot authorization follows.
 
 ## Open decisions
 
@@ -1544,7 +1571,6 @@ owner or candidate implementation design.
 - Exact installation replacement and old-data cutover.
 - Dataset-timezone changes before affected configuration/accounting.
 - Existing schema-3 preservation/transition and the future project-parent schema design.
-- Atomic Switch versus no action on double-click of a different task while one runs.
 
 The later rewrite approval places allocations in optional Stage 6; earlier
 first-release inclusion is superseded, not a remaining core pilot decision.

@@ -11,11 +11,19 @@ receipts or commits. No release or production qualification is implied below.
 - Select documentation-only requirements/architecture for unlimited nested
   organizational Projects, mixed child projects/direct tasks and derived totals
   counting each task once; no separate Customer entity or task-depth change.
-  Select task double-click Start/Stop and compact Mini with visible actionable
-  errors as separate future usability work. Current schema 3 remains flat-project,
-  and these changes are not implemented. Existing schema-3 preservation/transition,
-  future schema design and other-active-task double-click behavior need separate
-  adjudication. No migration, data disposal, qualification or pilot approval follows.
+  Current schema 3 remains flat-project; project nesting is not implemented.
+  Existing schema-3 preservation/transition and future schema design still need
+  separate adjudication. No migration, data disposal, qualification or pilot approval follows.
+- Implement the separately approved pilot usability slice for independent review:
+  coordinate/UUID-based eligible task double-click reuses Start/Stop/one atomic
+  Switch; ChatGPT newly adjudicates the former other-active-task Open case.
+  Preserve modal, pending/unverified and duplicate-input protections. Replace Mini's
+  prominent banner/routine status area with a compact name, small green/red cue,
+  Individual Today and two actions, targeting about 280x125 with font/DPI-aware
+  layout. Existing typed state supplies actionable warnings and read-only Show Main
+  reaches unresolved-action diagnostics without enabling mutations or bypassing
+  modals. Add portable behavior and generated-Tk/XTest connected coverage; native
+  Windows UI acceptance remains outstanding. No schema, worker or accounting change.
 
 - Deliver Package F development qualification: connected schema-3 worker/SQLite
   and callback/XTest workflows through templates, hierarchy, work/revisions, frozen

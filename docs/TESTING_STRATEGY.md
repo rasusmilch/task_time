@@ -58,17 +58,20 @@ a full regression. Levels D–F require evidence of interactions/platforms actua
 exercised, with material omissions explicit. Implementation tests and integrated
 qualification remain distinct.
 
-## Future project hierarchy and pilot usability acceptance
+## Project hierarchy and pilot usability acceptance
 
-These are future behavior expectations for the newly selected
+Project nesting remains future behavior under the selected
 [requirements](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks),
 [architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability) and
 [workstreams](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
-They do not identify existing tests, report passing results or transfer A–F evidence
-to an unimplemented schema/UI. Existing schema 3, F2 evidence/skip classifications,
-retained-legacy outcomes and F3/F4 status remain unchanged.
+The separate usability slice is implemented for independent review; its focused
+[behavior tests](../tests/rewrite/test_pilot_usability.py) distinguish portable
+fault/state tests, generated Tk event dispatch and real XTest server input. No
+portable result establishes native Windows layout/focus acceptance. These criteria
+do not transfer A–F evidence to future project nesting. Existing schema 3, F2
+classifications, all 29 unresolved filesystem skips and F3/F4 status remain unchanged.
 
-| Future guarantee | Required behavior coverage |
+| Guarantee (project nesting future; usability implemented) | Required behavior coverage |
 | --- | --- |
 | Project organization | Multiple project depths, including beyond three, child creation beneath arbitrary valid projects, roots and containers with both direct tasks and child projects; duplicate names remain distinct UUIDs. Engineering resource refusal is explicit, never truncation or a small product depth rule. |
 | Task boundary | Three task levels independently of project depth; leaf-only new work, retained former-leaf Individual work, unchanged immediate project membership under project movement and exactly one timer. |
@@ -78,8 +81,8 @@ retained-legacy outcomes and F3/F4 status remain unchanged.
 | Derived accounting | Direct task Actual, Task Individual/Cumulative and Direct/Cumulative project groups agree with independent expected facts. Each task contributes once; empty containers can have descendant totals, unavailable is not zero, hidden/retained work stays in scope and ancestor rollups are never extra hours. |
 | Evidence and recovery | Project movement leaves existing frozen bytes/context, work/revisions and confirmations unchanged. Backup/restore, ordinary/cold admission and failure handling verify the exact approved schema/forest/evidence under the separately approved schema-3 preservation/transition design. |
 | Main/Archived Items | UUID selection and valid expansion survive refresh, deep ancestor changes and sibling sorting; active paths expand, full ancestry disambiguates destinations and mixed direct tasks/child projects display without flattening or duplicates. Template eligibility respects project archive ancestry and task limits. |
-| Double-click | Eligible stopped leaf/no active timer starts; running task stops; repeated input, pending/uncertain requests and modals cannot duplicate/bypass mutations. Project rows only expand/collapse. Test the other-active-task case only after its Switch/no-action decision is approved; no Stop-then-Start assumption. |
-| Compact Mini | Validate a layout substantially smaller than current 340x205 without fixing pixels here: name, Individual Today, one Start/Stop, Show Main and minimal routine cue. Genuine errors/unavailable/uncertain work remain visible/actionable through the existing owner; Keep Mini Open, one timer and modal-safe topmost/focus remain correct. |
+| Double-click | Eligible stopped leaf/no active timer starts; running task stops; repeated input, pending/uncertain requests and modals cannot duplicate/bypass mutations. Project rows only expand/collapse. Another active task requires one existing atomic Switch, preserving both entries; never Stop then Start. Ignored events allocate no UUID/time/request. Use actual clicked UUIDs despite duplicate names, with generated Tk and XTest evidence labeled separately. |
+| Compact Mini | Validate a layout substantially smaller than the former 340x205, targeting about 280x125 and approximately 300x150 or less at default fonts while accommodating DPI: name, Individual Today, one Start/Stop, Show Main and minimal routine cue. Genuine errors/unavailable/uncertain work remain visible/actionable through the existing owner; Keep Mini Open, one timer and modal-safe topmost/focus remain correct. |
 
 Exercise observable outcomes through authoritative services/worker and real UI/input
 where applicable, rather than merely asserting internal adjacency containers. Use

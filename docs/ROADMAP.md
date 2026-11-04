@@ -266,12 +266,12 @@ The latest [requirements](TIMESHEET_REQUIREMENTS.md#selected--independent-projec
 and [future architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability)
 supersede flat projects as the organizational target without rewriting A–F delivery
 or acceptance history. Current source is still exact schema 3, flat projects and
-three task levels. The following are separate, unimplemented efforts requiring
-independently reviewed implementation plans:
+three task levels. Usability and project nesting remain separate workstreams;
+usability implementation grants no project-schema or qualification approval:
 
 | Workstream | Bounded scope and dependencies |
 | --- | --- |
-| A — Immediate pilot usability | Task double-click Start/Stop through existing request paths and a substantially smaller Mini with minimal routine state plus visible actionable diagnostics. Resolve different-active-task Switch versus no action before that interaction; validate layout before choosing pixels. Preserve modal, uncertainty and duplicate-input protection. No project schema change is implied. |
+| A — Immediate pilot usability | Implemented for independent review: clicked-leaf Start/Stop/one atomic Switch through existing request paths, and compact Mini with a small state indicator and typed actionable diagnostics. ChatGPT resolves the former different-active-task decision as atomic Switch. Normal layout targets about 280x125, accommodating fonts/DPI and diagnostic height. Modal, uncertainty and duplicate-input protection remain. Native Windows layout/input acceptance is outstanding; no project schema change is implied. |
 | B — Unlimited organizational projects | Separately approve existing schema-3 preservation/transition and future schema design first. Then persistence/FKs/forest and receipt validation, services/worker transactions, cycle-safe project movement, inherited archive/Delete closure, hierarchical reports, Main/Archived Items/template destinations, backup/restore and behavior/native validation. Project depths do not consume the existing three task levels. No Customer entity, project-owned time or new external POL-R grouping is selected. |
 
 Complete structural project nesting before a longer pilot that depends on
@@ -323,7 +323,6 @@ or allocation may prevent recording Actual.
 | Dataset timezone changes | Stage 1 configuration / Stage 2 accounting before affected code. |
 | Exact fresh release path, installation/cutover, retired-data cleanup | Before affected deployment and Stage 5 setup; no startup deletion or legacy import. |
 | Schema-3 preservation/transition and future persisted project parentage design | Before implementing the new project schema; no data-disposal policy or migration engine is implied. |
-| Different-active-task double-click: atomic Switch or no action | Before implementing that interaction; no Stop-then-Start is authorized. |
 | External redistribution authorization and worked-day zero/omitted-entry treatment | Before affected Stage 3 connected official reporting and Stage 5 pilot; mathematical policy is selected, not reopened. |
 | Unused-only Delete engineering and exact fresh schema/DDL | Before B/C: finite administrative allowlist, closure/cross-entity/survivor proof, transaction order, stale/uncertain handling and independent validation, without tombstones/ledger. Selected lifetime limit for erased requests is not reopened. |
 | Referenced-template actual Delete dependencies | Before E; no hidden recoverable deletion or silent removal of retained references. |

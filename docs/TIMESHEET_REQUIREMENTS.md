@@ -398,15 +398,18 @@ main and mini actions alike. Create, Rename, Move, Archive/Unarchive and Delete
 remain discoverable for the applicable project/task selection; destination reviews
 show full project ancestry, not an ambiguous leaf name.
 
-Selected, not implemented: double-click an eligible stopped leaf when no timer is
-active to Start it; double-click the running task to Stop it. Use the existing
-authoritative Start/Stop request paths, exactly one active timer, pending-request
-exclusion, repeated-input duplicate protection and archived/nonleaf/modal/uncertain
-guards. Project rows perform only normal expand/collapse; they never Start/Stop.
-When a different task is active, atomic Switch versus no action remains an
-[explicit decision](#open--reserved-userchatgpt-decisions); Stop-then-Start is not
-authorized. Legacy double-click/Enter/Space evidence remains in
-[Design Notes](../DESIGN_NOTES.md); it is not a claim that the rewrite binds those keys.
+Double-click an eligible stopped leaf when no timer is active to Start it;
+double-click the running task to Stop it; double-click a different eligible leaf
+to atomically Switch through one existing `switch_timer` request, never Stop then
+Start. This resolves the former Open case by the new ChatGPT usability
+[adjudication](DECISIONS.md#pilot-usability-implementation-adjudication), not a claim
+about legacy Switch behavior. Use the actual clicked UUID and synchronize selection
+before dispatch through the existing Start/Stop/Switch methods. Preserve exactly one
+action-time observation, one active timer, pending/unverified exclusion and modal,
+archived/nonleaf and repeated-input guards. Project/group/parent rows, expansion
+indicators, headings, empty space and stale identities perform no timer mutation;
+normal Treeview navigation/expansion remains available. Legacy Enter/Space evidence
+remains in [Design Notes](../DESIGN_NOTES.md); those bindings are not added here.
 
 Main task columns are **Individual** and **Cumulative**, controlled together by
 **Today / This Week**. Individual is exact-task work for that period; Cumulative
@@ -431,16 +434,21 @@ have no direct tasks yet a nonzero cumulative total. Zero requires available val
 underlying reports; unavailable calculation is not zero. Unassigned remains a
 virtual grouping, with no persisted project/customer identity or project parentage.
 
-Selected, not implemented: Mini must be substantially smaller than the current
-340x205 window. Prioritize active task, otherwise eligible selected task, Individual
-Today, one Start/Stop control, Show Main and a minimal running/stopped cue. Running
-is normal state: remove the redundant routine running notification/prominent bar
-and full-size ordinary status presentation. Choose dimensions only after layout
-validation, not as a new fixed pixel requirement. It is never a second timer or
-cumulative POL-R source. Genuine errors, unavailable time and unresolved mutations
+Mini uses a compact name, small green/red indicator, Individual Today, one
+Start/Stop control and Show Main. Start/Stop text also distinguishes state without
+color. Prioritize active task, otherwise eligible selected task. Normal layout
+targets about 280x125 Tk pixels and approximately 300x150 or less at default fonts;
+allow extra space for OS fonts/DPI and exceptional diagnostics rather than clipping
+controls. Long names shorten deterministically for presentation only; full names
+remain accessible in Main. There is no prominent state bar, routine running warning
+or copied ordinary status line. It is never a second timer or cumulative POL-R
+source. Genuine errors, unavailable time and unresolved mutations
 must stay visible through a concise actionable Mini diagnostic/indicator; Show Main
 must expose the full existing diagnostic and retry/resolution path when modal
-ownership permits. Do not silently hide errors or change safety-disabled controls.
+ownership permits, including read-only navigation during an unresolved request.
+Mutation controls remain disabled and request/recovery identity remains unchanged.
+Derive warnings from authoritative state, never arbitrary status text; clear them
+when that state resolves. Do not silently hide errors or change safety-disabled controls.
 Keep Mini Open defaults Off and is session-local. Show Main leaves mini visible
 only when that option is On. Mini must not steal focus or grabs from owned modals;
 topmost behavior must respect that existing modal owner.
@@ -938,7 +946,7 @@ gates; no automatic external allocation verification is established.
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
 | Delivered task hierarchy, branch lifecycle, tree main/mini and nested templates under flat projects | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active task UI delivered for review; E templates delivered for review; nothing inherited from JSONL. |
 | Unlimited organizational project nesting | Newly selected future target, before a longer real-customer pilot; separate schema-3 preservation/transition and future schema design required before implementation. |
-| Double-click task activation and compact Mini | Newly selected separate usability work; not implemented. Other-active-task double-click remains open. |
+| Double-click task activation and compact Mini | Implemented for independent review through existing Start/Stop/atomic Switch and shared report paths; native Windows UI acceptance remains outstanding. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
 ## CURRENT IMPLEMENTATION — Inspected staged and production status
@@ -958,11 +966,12 @@ current timestamps, inherited visibility and complete chronological receipt chec
 C2 adds irreversible unused-only Delete and finite administrative retirement with
 strict survivor preservation and explicit no-retry uncertainty. D connects the full
 active hierarchy and reviewed movement UI. E adds templates on schema 3; no migration is delivered.
-Projects are flat in this implementation: no parent_project_id exists. The main
-tree does not bind task double-click to Start/Stop; Mini currently uses fixed
-340x205 geometry, a prominent running/stopped bar and an ordinary status area.
-Unlimited project nesting, double-click activation and compact Mini above are
-selected requirements, not capabilities of this source revision.
+Projects remain flat: no parent_project_id exists; unlimited project nesting is
+still unimplemented. The main Treeview now dispatches eligible clicked leaf UUIDs
+to existing Start/Stop/atomic Switch. Compact Mini projects the same Individual
+Today report and existing typed diagnostics, with read-only Show Main during
+unresolved work subject to modal ownership. These usability changes are implemented
+for independent review; native Windows layout/input acceptance is not established.
 
 Package A presentation remains implemented: empty project groups,
 typed task/group rows, session-local A-Z/period choice, green/red text states,
@@ -1111,7 +1120,6 @@ evidence against unapproved replacement or silent loss throughout the eventual d
 | Dataset-timezone changes and historical date attribution under changes | Stage 1 dataset configuration / Stage 2 accounting, before implementation. Explicit fixed dataset zone is required; change policy is not guessed. |
 | Exact release paths, installation/cutover and retired-data cleanup | Before affected deployment/Stage 5 fresh pilot setup; startup deletion is unauthorized. |
 | Existing schema-3 preservation/transition for project nesting; future schema/version/DDL | Before implementing persisted project parentage; neither data disposal nor a migration engine is authorized. |
-| Task double-click while a different task is active: atomic Switch or no action | Before implementing that interaction; no Stop-then-Start sequence is authorized. |
 | Allocation controls/recurrence/overrides/week-change effects | Before optional Stage 6 allocation work. |
 
 These reservations do not reopen Tkinter/SQLite or defer core POL-R. Resolve only

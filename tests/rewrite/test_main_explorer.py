@@ -160,7 +160,7 @@ def test_real_tk_server_running_groups_stop_switch_and_mini_workflow(connected, 
     assert app.active_label.cget('text')=='▶ Running: First' and not app.buttons['Stop'].instate(['disabled'])
     app._render(current)
     click(app.buttons['Mini mode']);mini=app.mini
-    assert mini.state_bar.cget('background')=='#08752c' and 'Running' in mini.state_bar.cget('text')
+    assert mini.indicator.cget('foreground')=='#08752c' and mini.toggle.cget('text')=='Stop'
     assert not app.keep_mini_open.get()
     select(app,app.project_row(None));clock.value+=timedelta(minutes=2)
     click(mini.toggle);settled(app)
@@ -262,7 +262,7 @@ def test_real_tk_period_failure_and_active_commit_keep_status_truthful(connected
     assert app.start();settled(app)
     assert app.state['active']['task_id']==a and 'Running' in app.active_label.cget('text')
     assert app.tree.item(app.task_row(a),'tags')==('running',)
-    assert 'Running' in app.mini.state_bar.cget('text') and app.mini.today.cget('text')=='Today: —'
+    assert app.mini.indicator.cget('foreground')=='#08752c' and app.mini.toggle.cget('text')=='Stop' and app.mini.today.cget('text')=='Today: —'
     monkeypatch.setattr(module,'format_duration',original)
     app.refresh();settled(app)
     assert app.state['report'] is not None

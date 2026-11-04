@@ -428,16 +428,25 @@ retain minute-oriented visible updates and immediate Stop/Switch capture.
 Mini uses the same active eligible leaf, otherwise selected eligible leaf, and the
 same Individual Today report. Keep Mini Open defaults Off/session-local; Show Main
 closes mini only when Off. Topmost drops while blocked without focus/grab theft.
-Current `mini_mode.py` fixes geometry at 340x205 and presents a prominent state bar
-and ordinary status area. `app.py` binds tree selection, not task double-click
-Start/Stop. These are inspected implementation facts, superseded as future UX
-targets by the selected requirements below, not changed by documentation.
+`app.py` binds one double-click handler only to the Treeview. Coordinate region,
+element and UUID-row checks exclude indicators, headings, groups, parents and
+stale/archived tasks. Selection and eligibility are revalidated before one existing
+Start/Stop/atomic Switch call; rejected events allocate no request/time observation.
+`mini_mode.py` uses a 280x125 minimum with natural font/DPI-aware layout, bounded
+presentation-only name shortening, a small green/red indicator, Individual Today
+and two actions. It removes the prominent banner and routine status copy. Existing
+report, pending/executing, worker/cleanup, reminder and typed mutation outcomes
+provide concise diagnostics; synchronous preparation/queue errors populate the same
+typed outcome field. No independent recovery state is added. Read-only Show Main
+has a separate modal/grab guard so unresolved writes still reach Main while all
+mutation restrictions and original request identities remain in force.
 No additional root, timer, worker, schema or persisted UI settings are introduced.
 Native Windows theme/topmost/focus/operator qualification remains outstanding.
 
 ## Selected project nesting and pilot usability
 
-This future architecture follows the [selected organizational model and UX](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks).
+The future project architecture and implemented usability slice follow the
+[selected organizational model and UX](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks).
 The delivered A–F task hierarchy and current exact schema 3 remain as described
 below; `projects` has no `parent_project_id`. Persisted project parentage requires
 a new schema revision, but its exact version and DDL are not chosen here. Before
@@ -498,20 +507,17 @@ Future implementation boundaries:
   the independent task-depth/running-parent rules.
 
 The separate [pilot usability workstream](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams)
-routes task double-click through the existing authoritative Start/Stop paths,
-eligibility, modal/pending/uncertainty and repeated-input guards. A different active
-task remains an explicit atomic-Switch-versus-no-action decision; no Stop-then-Start
-sequence is selected. Project row expand/collapse performs no timer operation.
-
-Compact Mini remains a projection of the same active/eligible selected task and
-Individual Today report. Validate a substantially smaller layout than 340x205,
-without selecting exact pixels now. Use one Start/Stop, Show Main and a minimal
-state cue instead of the prominent routine running/status presentation. Keep
-actionable errors/unavailable/uncertain outcomes visibly discoverable in a compact
-diagnostic, with full existing resolution via Main/owned modal when allowed.
-Keep Mini Open stays Off-by-default/session-local; preserve modal-safe topmost,
-focus, one timer and current worker ownership. No additional root, timer or
-persistence mechanism is selected. Neither this UX nor project nesting is implemented.
+is implemented for independent review. Eligible task double-click uses existing
+Start/Stop and one atomic Switch request when another task runs; ChatGPT adjudicated
+that previously Open case in the [usability decision](DECISIONS.md#pilot-usability-implementation-adjudication).
+Existing eligibility, modal/pending/uncertainty and repeated-input guards remain.
+Compact Mini targets about 280x125 (approximately 300x150 or less with default fonts),
+while natural layout can accommodate fonts/DPI and exceptional diagnostics. It uses
+the same active/eligible selected task and Individual Today report. Full resolution
+stays in Main/owned modals; read-only navigation cannot enable mutation or bypass
+modal ownership. Keep Mini Open remains Off/session-local and topmost remains
+guarded. No new root, timer, worker or persistence is introduced. Native Windows
+layout/input acceptance remains outstanding; project nesting is still unimplemented.
 
 ## Fresh hierarchy foundation
 

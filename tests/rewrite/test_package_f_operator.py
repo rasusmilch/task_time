@@ -64,7 +64,7 @@ def workflow(app, worker, clock, tmp_path, monkeypatch, activate):
     assert app.tree.parent(app.task_row(branch))==app.project_row(q)
     select(app,app.task_row(leaf));activate(app.buttons['Start']);settled(app)
     active=dict(app.state['active']);activate(app.buttons['Mini mode']);assert app.mini is not None
-    assert 'Running' in app.mini.state_bar.cget('text') and not app.keep_mini_open.get()
+    assert app.mini.indicator.cget('foreground')=='#08752c' and app.mini.toggle.cget('text')=='Stop' and not app.keep_mini_open.get()
     assert app.open_history();pump(app.root,lambda:app.history.presented)
     grab=app.root.grab_current();assert not app.mini_toggle() and not app.open_templates() and app.root.grab_current() is grab
     app.history.close();app.show_main();assert app.mini is None
