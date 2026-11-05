@@ -110,11 +110,15 @@ Native Windows UI acceptance is pending. Project nesting selects a fresh schema-
 dataset with no migration/import of schema 3. Package A supplies an isolated exact
 DDL/SQL-guard, iterative forest and scoped history foundation. Package B adds
 candidate root/child creation and complete project Move / Reparent service logic
-over caller-owned transactions, for independent review. Its transaction adapter
+over caller-owned transactions, accepted for continued development. Its adapter
 is test-only. No nested-project GUI or supported v4 runtime exists. Normal
 `python run_chronicle.py`, SQLiteStore creation/open and backup/restore remain
-schema 3. C lifecycle/Delete/templates/accounting, D UI, E fresh-v4 activation
-and F integrated/native acceptance remain outstanding.
+schema 3. C1 adds candidate hierarchical Archive/Unarchive, inherited eligibility
+and pure Direct/Cumulative project accounting for independent review. The existing
+task attribution engine and cutoff remain authoritative; no project owns work.
+C2 protected evidence/Delete/templates/task-movement integration, D UI, E fresh-v4
+activation and F integrated/native acceptance remain outstanding. Candidate
+verification still refuses nonempty protected recording/reporting/template facts.
 
 There are exactly two primary lifecycle actions: reversible **Archive** (Unarchive
 reverses it) and irreversible **Delete** of unused complete selected branches.
@@ -269,7 +273,8 @@ refusal and bounded owned SQLite-native rollback recovery are independently
 accepted for functional development.
 The earlier A–F foundation used fresh data. Unlimited project nesting requires a
 fresh schema 4, without migration/import or transformation of existing schema-3
-datasets. A/B remain isolated candidate foundation/services; ordinary runtime
+datasets. A/B/C1 remain isolated candidate foundation/services/accounting;
+ordinary runtime
 activation belongs to later package E. Schema-3 and unknown schemas refuse in the
 eventual v4 runtime
 rather than being cleared, transformed or reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,

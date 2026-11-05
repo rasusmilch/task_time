@@ -508,9 +508,9 @@ class CandidateVerification:
 
 
 def verify_candidate(c):
-    """Read-only A-scope verification, refusing every incomplete integration.
+    """Read-only supported administrative verification; no ordinary admission.
 
-    No timezone calculation, protected-work replay, template, lifecycle, Delete,
+    No timezone calculation, protected-work replay, template, Delete,
     reporting, backup or runtime eligibility is claimed by this candidate API.
     """
     if c.in_transaction:
@@ -533,7 +533,8 @@ def verify_candidate_transaction(c):
     """Read-only supported-scope gate inside a caller-owned transaction.
 
     Owns no BEGIN/COMMIT/ROLLBACK. The separate-snapshot API above retains its
-    original contract. This factors the same checks, without admitting new facts.
+    original contract. Supported administrative replay includes C1 lifecycle;
+    protected work, templates, configuration and reporting remain refused.
     """
     from .administration import verify_schema4_history, UnsupportedCandidateOperation
     if not c.in_transaction:

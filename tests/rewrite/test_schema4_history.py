@@ -166,7 +166,7 @@ def test_validated_noop_has_no_effect_and_cannot_have_a_receipt(candidate):
     with pytest.raises(ValueError,match='No-op'):verify_schema4_history(list(h.projects.values()),list(h.tasks.values()),h.receipts,h.dataset)
 
 
-@pytest.mark.parametrize('operation',['archive_project','move_task_branch','apply_template','start_timer','register_timesheet_export','confirm_polr_absolute'])
+@pytest.mark.parametrize('operation',['delete_project','move_task_branch','apply_template','start_timer','register_timesheet_export','confirm_polr_absolute'])
 def test_unimplemented_candidate_integrations_fail_closed(candidate,operation):
     h=History(candidate);h.receipt(operation,{},{});h.install()
     with pytest.raises(UnsupportedCandidateOperation):schema.verify_candidate(candidate)

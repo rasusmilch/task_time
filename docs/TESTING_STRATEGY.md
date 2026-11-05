@@ -78,7 +78,8 @@ transition. Package A provides [schema/SQL safeguard tests](../tests/rewrite/tes
 They use real disposable SQLite images and independent expected relationships;
 in-flight SQL guard fixtures are not service execution. Candidate verification is
 scoped and always refuses ordinary readiness; unsupported recording/template/
-lifecycle/reporting integrations fail closed. Package B adds
+reporting integrations fail closed. C1 adds supported administrative lifecycle
+replay. Package B adds
 [real service/transaction behavior tests](../tests/rewrite/test_project_movement.py)
 using the [test-only candidate adapter](../tests/rewrite/project_candidate.py).
 They exercise root/child creation, deep ancestry and complete-subtree moves,
@@ -88,7 +89,19 @@ and independently reconciled lost acknowledgement. Portable process interruption
 proves the exercised SQLite behavior, not arbitrary power loss. Full candidate
 admission still refuses nonempty protected work; separate SQL/structural fixtures
 verify active/work preservation without widening that scope. These tests do not
-establish C integration, UI, calendar rules, v4 startup or native Windows acceptance.
+establish complete C integration, UI, v4 startup or native Windows acceptance.
+C1 adds [lifecycle tests](../tests/rewrite/test_project_lifecycle.py) and
+[project accounting tests](../tests/rewrite/test_project_accounting.py). Real
+candidate transactions cover exact selected-row/receipt effects, deep inherited
+archive, independent flags, active containment, no-op, stale review, rollback,
+lost acknowledgement, process interruption and independent tamper refusal.
+SQL-scoped work/frozen/active fixtures still refuse full candidate admission.
+Accounting uses the actual existing engine with independently specified totals
+for mixed direct/descendant work, retained former-leaf/archived work, virtual
+Unassigned, midnight/DST/date-only/active-cutoff attribution, deep iterative
+rollups, reparent conservation, checked overflow and unavailable-report refusal.
+Schema-3 lifecycle/accounting/worker authority and both DDLs remain unchanged.
+C2 evidence/Delete/templates/task-movement integration and D–F remain outstanding.
 Ordinary v3
 DDL/classification/dispatch isolation and existing hot-journal tests remain required.
 

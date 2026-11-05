@@ -139,16 +139,76 @@ class ProjectForest:
 
 def candidate_task_observations(tasks, projects):
     """Schema-4-only observations; task depth still counts task edges alone."""
-    from .records import uuid_text
+    from .records import uuid_text, integer
     forest = ProjectForest(projects)
     for task in tasks:
         uuid_text(task['task_id'])
+        integer(task['is_archived'], 'Task archive flag', 0, 1)
         for field in ('parent_task_id', 'project_id'):
             if task[field] is not None:
                 uuid_text(task[field])
     values = task_observations(tasks, projects)
+    known = {t['task_id']: t for t in tasks}
+    paths = task_paths(tasks)
     for task in tasks:
-        group = task['project_id']
-        if group is not None:
-            values[task['task_id']]['effective_archived'] |= forest.effective_archived[group]
+        key, group = task['task_id'], task['project_id']
+        value = values[key]
+        project_archive = group is not None and forest.effective_archived[group]
+        value.update(explicit_archived=bool(task['is_archived']),
+                     ancestor_task_archived=any(known[k]['is_archived'] for k in paths[key][1:]),
+                     project_effective_archived=project_archive)
+        value['effective_archived'] |= project_archive
+        value['eligible_for_new_work'] = value['is_leaf'] and not value['effective_archived']
     return values
+
+
+def candidate_project_ancestry(projects, project_id):
+    """Detached complete root-to-selected identities; no retained mutable paths."""
+    return ProjectForest(projects).ancestry(project_id)
+
+
+def candidate_project_destination(projects, project_id):
+    """Eligibility of a project context; None has no project archive ancestry."""
+    from .records import uuid_text
+    forest = ProjectForest(projects)
+    if project_id is None:
+        return True
+    uuid_text(project_id)
+    if project_id not in forest.parents:
+        raise ValueError('Unknown project destination')
+    return not forest.effective_archived[project_id]
+
+
+def candidate_task_destination(tasks, projects, task_id, active=None):
+    """Eligible immediate task parent; branch-height checks remain caller-owned."""
+    from .records import uuid_text
+    values = candidate_task_observations(tasks, projects)
+    _candidate_active(values, active)
+    if task_id is None:
+        return True
+    uuid_text(task_id)
+    if task_id not in values:
+        raise ValueError('Unknown task destination')
+    value = values[task_id]
+    return (not value['effective_archived'] and value['depth'] < MAX_TASK_LEVELS
+            and not (active and active['task_id'] == task_id))
+
+
+def _candidate_active(observations, active):
+    if active is not None:
+        from .records import uuid_text
+        key = uuid_text(active['task_id'])
+        if key not in observations or not observations[key]['eligible_for_new_work']:
+            raise ValueError('Active task must be an eligible leaf')
+
+
+def candidate_active_in_project_subtree(tasks, projects, active, project_id):
+    """Containment includes direct tasks at every task/project level."""
+    forest = ProjectForest(projects)
+    scope = set(forest.descendants(project_id))
+    observations = candidate_task_observations(tasks, projects)
+    _candidate_active(observations, active)
+    if active is None:
+        return False
+    task = next(t for t in tasks if t['task_id'] == active['task_id'])
+    return task['project_id'] in scope

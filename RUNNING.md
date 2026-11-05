@@ -424,12 +424,16 @@ require separate source/target and safety approval; no such engine exists now.
 The selected unlimited project-nesting target uses a fresh schema-4 dataset,
 without schema-3 migration, import or copy transition. Package A supplies the
 isolated definition/forest/history verifier; Package B supplies candidate project
-creation/movement service logic over caller-owned transactions for review. The
+creation/movement service logic over caller-owned transactions. The
 transaction adapter is test infrastructure, not another supported runtime. There
 is no user-facing v4 creation/open command, project-management UI, conversion
-reader, transition marker or activation control. C lifecycle/accounting, D UI and
-F integrated/native acceptance remain outstanding. Ordinary startup, creation and
-backup/restore remain v3 during A/B. Later package E
+reader, transition marker or activation control. C1 implements candidate
+hierarchical lifecycle, inherited eligibility and pure Direct/Cumulative project
+rollups for review; there is no user-facing C1 command. C2 protected evidence,
+Delete/templates and remaining task movement, D UI and F integrated/native
+acceptance remain outstanding. Protected work/reporting/template admission still
+refuses. Ordinary startup, creation and backup/restore remain v3 during A/B/C1.
+Later package E
 must validate fresh v4 and refuse incompatible originals without altering them,
 including journal cases, while retaining genuine supported crash recovery.
 See the [target boundary](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary).

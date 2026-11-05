@@ -10,6 +10,7 @@ from pathlib import Path
 
 from chronicle import schema_profiles as schema
 from chronicle.project_services import CandidateProjectContext, apply_project_operation
+from chronicle.project_lifecycle import apply_lifecycle_operation, OPERATIONS as LIFECYCLE_OPERATIONS
 from chronicle.records import Outcome, canonical
 
 
@@ -32,6 +33,16 @@ def receipt_extension(before, c, request, result):
     expected = dict(before, projects=after['projects'],
                     committed_requests=sorted(before['committed_requests']+[row], key=repr),
                     sqlite_sequence=[dict(name='committed_requests', seq=previous+1)])
+    if request.operation in LIFECYCLE_OPERATIONS:
+        entity = 'project' if request.operation.endswith('_project') else 'task'
+        table, field = entity+'s', entity+'_id'
+        key = request.args()[field]
+        archived = int(request.operation.startswith('archive_'))
+        expected['projects'] = before['projects']
+        expected[table] = sorted([dict(r, is_archived=archived,
+            archived_at_utc_us=request.action_utc_us if archived else None,
+            version=r['version']+1, updated_utc_us=request.action_utc_us) if r[field] == key else r
+            for r in before[table]], key=repr)
     if after != expected:
         raise ValueError('Unexpected receipt extension or unrelated row change')
 
@@ -124,7 +135,8 @@ class CandidateAdapter:
                 c.execute('ROLLBACK')
             else:
                 before = facts(c)
-                applied = apply_project_operation(c, request, self.context)
+                operation = apply_lifecycle_operation if request.operation in LIFECYCLE_OPERATIONS else apply_project_operation
+                applied = operation(c, request, self.context)
                 self.checkpoint('after_apply', c)
                 if applied is None:
                     c.execute('ROLLBACK')

@@ -125,6 +125,11 @@ class UnsupportedCandidateOperation(ValueError):
 SCHEMA4_HISTORY_OPERATIONS = frozenset((
     'create_project', 'create_child_project', 'move_project_subtree',
     'create_task', 'rename_project', 'rename_task',
+    'archive_project', 'unarchive_project', 'archive_task', 'unarchive_task',
+))
+
+SCHEMA4_LIFECYCLE_OPERATIONS = frozenset((
+    'archive_project', 'unarchive_project', 'archive_task', 'unarchive_task',
 ))
 
 SCHEMA4_MOVE_FIELDS = frozenset((
@@ -213,7 +218,7 @@ def candidate_move_result(projects, tasks, arguments):
 def verify_schema4_history(actual_projects, actual_tasks, receipt_rows, dataset_id):
     """Independent native candidate reconstruction; never a schema-3 adapter.
 
-    Deliberately refuses later lifecycle/template/recording/reporting operations.
+    Deliberately refuses template/recording/reporting and other C2 operations.
     The ordinary verify/verify_records functions and classification stay intact.
     """
     import json
@@ -243,7 +248,28 @@ def verify_schema4_history(actual_projects, actual_tasks, receipt_rows, dataset_
             raise UnsupportedCandidateOperation('Candidate history operation not implemented: ' + op)
         if row['receipt_class'] != 'administrative':
             raise ValueError('Incorrect candidate receipt classification')
-        if op == 'move_project_subtree':
+        if op in SCHEMA4_LIFECYCLE_OPERATIONS:
+            # Independent reconstruction: never call the service transition.
+            # Protected timer history is not admitted/replayed by this scope.
+            ProjectForest(list(projects.values()))
+            candidate_task_observations(list(tasks.values()), list(projects.values()))
+            entity = 'project' if op.endswith('_project') else 'task'
+            rows, field = (projects if entity == 'project' else tasks), entity+'_id'
+            if set(a) != {field, 'expected_version'}:
+                raise ValueError('Incorrect candidate lifecycle fields')
+            key = uuid_text(a[field])
+            integer(a['expected_version'], 'Reviewed lifecycle version', 1, 2**63-1)
+            if key not in rows or rows[key]['version'] != a['expected_version']:
+                raise ValueError('Candidate lifecycle prior identity/version differs')
+            archived = int(op.startswith('archive_'))
+            if rows[key]['is_archived'] == archived:
+                raise ValueError('No-op lifecycle cannot have a committed receipt')
+            rows[key] = dict(rows[key], is_archived=archived,
+                             archived_at_utc_us=now if archived else None,
+                             version=integer(rows[key]['version']+1, 'Lifecycle version', 1, 2**63-1),
+                             updated_utc_us=now)
+            expected = {field: key, 'version': rows[key]['version']}
+        elif op == 'move_project_subtree':
             expected = candidate_move_result(projects, tasks, a)
             if expected is None:
                 raise ValueError('No-op project movement cannot have a committed receipt')

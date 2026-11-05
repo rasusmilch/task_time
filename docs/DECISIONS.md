@@ -1563,9 +1563,10 @@ Stage 5 NOT STARTED; no native acceptance or pilot authorization follows.
 ### Fresh schema 4 and isolated Package A
 
 **Status:** target architecture selected; A accepted for continued functional
-development. B candidate services are implemented for independent review; ordinary
-runtime remains schema 3. C lifecycle/accounting, D UI, E activation and F
-integrated/native acceptance remain outstanding.
+development. B candidate services are accepted for continued development; ordinary
+runtime remains schema 3. C1 candidate lifecycle/accounting is implemented for
+review; C2 protected evidence/Delete/templates/task movement, D UI, E activation
+and F integrated/native acceptance remain outstanding.
 **Provenance:** explicit Package A execution approval records the user's fresh
 schema-4 decision. It supersedes the earlier read-only plan's offline copy
 transition and removes the schema-3 preservation/transition reservation.
@@ -1585,7 +1586,7 @@ Stage 4 IN PROGRESS; Stage 5 NOT STARTED; no native qualification follows.
 
 ### Package B caller-owned candidate operations
 
-**Status:** implemented for independent review, without ordinary runtime activation.
+**Status:** accepted for continued functional development, without ordinary runtime activation.
 **Provenance:** explicit Package B execution approval at accepted A revision
 `bbbb79b6bbc2d59159e57ed3be5266087ac5c62e`. The service accepts a caller-owned
 SQLite connection, exact Request and isolated dataset context; it never owns
@@ -1594,9 +1595,25 @@ subtree movement preserve A's Request format 1 and receipt contracts. Schema-4
 administrative classification is explicit and stable with identical DDL; v3 is
 unchanged. Real test-owned BEGIN IMMEDIATE transactions exercise no-op rollback,
 exact receipt reconciliation and independent final-state verification. Unsupported
-protected/lifecycle/template/reporting scope remains refused. SQL guard evidence
-with active work does not imply full runtime admission. No UI, migration/import,
-C integration, D management, E activation or F native acceptance follows.
+protected/template/reporting scope remains refused; C1 extends lifecycle below.
+SQL guard evidence with active work does not imply full runtime admission. No UI, migration/import,
+C2 integration, D management, E activation or F native acceptance follows.
+
+### Package C1 hierarchical lifecycle and accounting
+
+**Status:** candidate implementation for independent review; C remains incomplete.
+**Provenance:** explicit C1 execution approval at accepted B revision
+`768e947895db1ad048ae36a9c7d3bf1525b1de36`. Split C's original objective into
+C1 selected-only hierarchical lifecycle/inherited eligibility/derived project
+accounting and C2 protected evidence, nested unused-only Delete, templates and
+remaining task movement. No new request fields or lifecycle semantics are chosen.
+The candidate service retains caller-owned transactions and B's test-only adapter.
+Independent replay reconstructs lifecycle without using the service transition.
+Project Direct sums immediate task Individual; Cumulative folds descendant groups
+once, reusing the existing time attribution engine/cutoff and preserving task and
+application facts. Unsupported protected/template/reporting admission still refuses.
+SQL-only preservation tests are not complete runtime validation. No v4 launcher,
+UI, migration/import, Stage 4 completion or Stage 5 start follows.
 
 ## Open decisions
 

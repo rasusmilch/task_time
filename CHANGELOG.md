@@ -13,7 +13,7 @@ receipts or commits. No release or production qualification is implied below.
   counting each task once; no separate Customer entity or task-depth change.
   Select fresh schema 4 with the same application ID, retaining v3 files untouched
   without migration/import/copy transition. Ordinary runtime remains flat schema 3
-  during A/B; project UI and v4 activation are not implemented.
+  during A/B/C1; project UI and v4 activation are not implemented.
 - Supply Package A's isolated exact schema-4 candidate, SQL project-cycle/archive/
   recording/active safeguards, iterative immutable project forest and scoped
   independent native-v4 administrative-history verification. Root/child/move
@@ -32,8 +32,19 @@ receipts or commits. No release or production qualification is implied below.
   Add a test-only disposable transaction/reconciliation adapter, independent replay,
   immutable-fact comparisons and real rollback/interruption/lost-ack controls.
   No second worker, GUI, supported v4 startup, protected-work admission or migration.
-  C lifecycle/accounting, D UI, E activation and F integrated/native acceptance
-  remain outstanding; Stage 4 IN PROGRESS, Stage 5 NOT STARTED.
+  C1 extends lifecycle/accounting below; C2, D UI, E activation and F
+  integrated/native acceptance remain outstanding.
+- Add Package C1 candidate hierarchical Archive/Unarchive with selected-only
+  flags/dates/versions, complete active-task containment, inherited eligibility
+  observations and independent lifecycle replay over the existing test adapter.
+  Add pure Direct/Cumulative project accounting from the existing task engine and
+  cutoff, preserving task/application facts and counting each Individual once.
+  Test actual SQLite transactions, exact retries/no-op, independent flags, deep
+  forests, tamper/rollback/interruption/uncertainty and time/accounting invariants.
+  Keep protected-work/reporting/template admission refused. Retain Package C's
+  objective with C2 evidence/Delete/templates/remaining task movement outstanding;
+  no ordinary v4 worker, startup, UI, migration/import or qualification is added.
+  Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
 - Implement the separately approved pilot usability slice for independent review:
   coordinate/UUID-based eligible task double-click reuses Start/Stop/one atomic
   Switch; ChatGPT newly adjudicates the former other-active-task Open case.

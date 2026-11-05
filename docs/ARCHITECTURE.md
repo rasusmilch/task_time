@@ -364,7 +364,7 @@ The earlier Stage 4C hypothetical transition safety requirements remain historic
 context, not a migration obligation. The latest project-nesting decision selects
 fresh schema 4, application ID 0x4348524E. No schema-3 import/conversion reader,
 transformation staging, pending-conversion marker or converted-copy activation
-controller is selected. Original v3 files stay untouched. During A/B,
+controller is selected. Original v3 files stay untouched. During A/B/C1,
 ordinary creation/admission/backup/restore and supported native rollback remain
 exact schema 3; the isolated v4 candidate is never an ordinary opener/writer.
 
@@ -441,7 +441,7 @@ Native Windows theme/topmost/focus/operator qualification remains outstanding.
 The future project architecture and implemented usability slice follow the
 [selected organizational model and UX](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks).
 The delivered A–F task hierarchy remains historical. Ordinary runtime is still
-exact schema 3 with flat projects during A/B. The future runtime uses a
+exact schema 3 with flat projects during A/B/C1. The future runtime uses a
 fresh schema-4 database, without migration/import/copy transition. Refuse old data
 rather than recreating, clearing or transforming it. The isolated candidate owns
 its explicit v4 definition and does not change ordinary SQLiteStore behavior.
@@ -470,7 +470,7 @@ no worker operation or launcher path.
 SQLite connection, configured DELETE/EXTRA/FK. It is not an existing-dataset
 opener. `verify_schema` checks exact definitions/profile; `verify_structure` adds
 SQLite/FK integrity and complete project/task forest/active eligibility checks.
-`verify_candidate` verifies only A's supported administrative scope and always
+`verify_candidate` verifies the supported A/B/C1 administrative scope and always
 reports ordinary_startup_permitted=False. It refuses nonempty protected/template
 facts, changed configuration history and unsupported operations. It does not
 validate calendar rules, replay protected work, or promise complete runtime
@@ -482,8 +482,8 @@ descendants. Task observations are a separate candidate helper; original v3 task
 functions and MAX_TASK_LEVELS=3 are unchanged. No eager all-path cache is stored.
 
 `administration.verify_schema4_history` independently reconstructs native-v4
-root/child creation, project movement and existing task creation/rename effects
-in commit_seq order, with exact canonical bytes, UUIDs, versions, creation owners,
+root/child creation, project movement, selected-only lifecycle and existing task
+creation/rename effects in commit_seq order, with exact canonical bytes, UUIDs, versions, creation owners,
 relationships and timestamps. It neither translates v3 history nor supplies B's
 transactional executor. A no-op move cannot have a committed receipt. The candidate
 administrative set explicitly lists the approved 18 operations, adding only
@@ -506,8 +506,8 @@ project_id/version/parent_project_id; only the moved project's version/time/pare
 changes. Child links and immediate task memberships remain unchanged.
 
 These remain isolated candidate contracts. Package B implements the three project
-operations below; UI, lifecycle/reporting integration, v4 source startup and
-Windows acceptance remain outstanding.
+operations below; C1 extends lifecycle/accounting. UI, protected/reporting
+admission, v4 source startup and Windows acceptance remain outstanding.
 
 ### Package B candidate project services
 
@@ -532,9 +532,9 @@ The service compares installed complete logical facts with pre-write expected
 facts. Independent chronological replay remains in administration, not the
 service's mutation plan. `verify_candidate_transaction` factors the unchanged A
 supported-scope checks for a caller-owned transaction; `verify_candidate` retains
-its separate read-snapshot/rollback contract. Neither admits protected recording,
-lifecycle, template or reporting integration. SQL-only fixtures can exercise
-structural active/work guards without claiming complete candidate admission.
+its separate read-snapshot/rollback contract. C1 adds administrative lifecycle
+replay; protected recording, template and reporting integration remain refused.
+SQL-only fixtures can exercise structural active/work guards without claiming complete candidate admission.
 
 [project_candidate.py](../tests/rewrite/project_candidate.py) is test-owned
 infrastructure for exclusively owned disposable files, not a supported runtime or
@@ -552,8 +552,64 @@ the same Request. Unverified cleanup/evidence reports unverified. No automatic
 replacement request or Delete no-retry semantics is introduced. Killed-child
 tests join cleanup before reopening. These are candidate transaction experiments,
 not implementation of schema-4 worker coordination or power-loss qualification.
-C lifecycle/Delete/templates/accounting, D project UI, E fresh activation and F
-integrated/native acceptance remain unimplemented.
+C1 extends this foundation below. C2 protected evidence/Delete/templates/remaining
+task movement, D project UI, E fresh activation and F integrated/native acceptance
+remain unimplemented.
+
+### Package C1 candidate lifecycle and project accounting
+
+[project_lifecycle.py](../src/chronicle/project_lifecycle.py) exposes
+`apply_lifecycle_operation(connection, request, CandidateProjectContext(dataset_id))`
+over an already caller-owned exact schema-4 transaction. A pure `transition`
+calculates one selected row; one SQL UPDATE changes only is_archived,
+archived_at_utc_us, version and updated_utc_us. No connection/transaction/clock/UUID
+ownership or runtime registration is added. Exact arguments remain entity UUID
+and expected_version; result remains entity UUID and new version. Archive stamps
+the accepted instant, Unarchive clears the selected date, and repeated explicit
+state validates the complete current structure before returning unchanged.
+
+Archive checks every descendant project and every directly assigned task at all
+three task levels, or every descendant of the selected task. Any contained active
+timer refuses; unrelated active work is preserved. Descendant explicit flags,
+versions, timestamps, adjacency and all work/frozen facts are unchanged. Complete
+logical-fact comparison must succeed; the transaction owner rolls back on failure.
+The existing test adapter dispatches lifecycle, compares the exact permitted row
+and receipt extension independently, and retains B's transaction/reconciliation
+contract. No second coordinator is introduced.
+
+Candidate task observations expose depth, is_leaf, explicit_archived,
+ancestor_task_archived, project_effective_archived, effective_archived and
+eligible_for_new_work. ProjectForest's immutable archive mapping and complete
+ancestry are reused. Pure candidate_project_ancestry, candidate_project_destination,
+candidate_task_destination and candidate_active_in_project_subtree support future
+reviews without cached mutable paths. A task destination checks inherited archive,
+three-level parent capacity and a running parent; movement branch-height checks
+remain the caller's responsibility. None has no project ancestor and remains a
+virtual root/Unassigned context, never a persisted container.
+
+Independent schema-4 replay reconstructs the four lifecycle effects in commit_seq
+order without calling the service transition, verifies canonical bytes, versions,
+accepted timestamps and full surviving project/task rows, and rejects retained
+no-op or contradictory/missing history. Schema-3 replay is unchanged. Protected
+timer history is not yet replayed or admitted; active/work/frozen preservation
+fixtures establish SQL/structural properties only.
+
+[project_accounting.py](../src/chronicle/project_accounting.py) exposes pure
+`project_report(report, tasks, projects)` over one coordinated successful
+accounting.calculate report and complete current forests. It retains the exact
+cutoff and all original task Individual/Cumulative/application fields. It computes
+report["project_direct"] from each immediate task Individual once, then folds
+those groups in verified reverse project order into report["projects"] Cumulative.
+Every real project has a valid zero when empty; None keeps independent Unassigned
+amounts. Nonnegative signed-64-bit checked integer sums refuse overflow. Missing,
+inconsistent or unavailable amounts refuse instead of becoming zero.
+
+The projection does not split work, calculate local dates/DST, measure elapsed
+time, round, allocate POL-R, read frozen submissions or persist totals. Existing
+accounting.py owns attribution. Archive visibility does not discard retained
+Individual work. Project reparenting changes live rollups while task/application
+Actual remains unchanged. This C1/C2 execution split retains Package C's original
+complete lifecycle/accounting/integration objective; C1 alone does not complete C.
 
 Future implementation boundaries:
 
