@@ -105,8 +105,10 @@ creation and project movement services, accepted for continued development, with
 transaction ownership. C1 adds candidate selected-only hierarchical lifecycle,
 inherited eligibility and derived project Direct/Cumulative accounting for review;
 C2 adds complete candidate evidence verification, reviewed task/template operations
-and nested unused-only Delete for independent review. Project-management UI and
-ordinary schema-4 admission remain unavailable. See the
+and nested unused-only Delete, accepted for continued development. D adds the
+candidate graphical source for independent review through an internal test-only
+presentation profile. Ordinary schema-4 admission remains unavailable; connected
+widget and native acceptance require their actual display/platform evidence. See the
 [future architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability)
 and [separate workstreams](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
 
@@ -960,7 +962,7 @@ gates; no automatic external allocation verification is established.
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
 | Delivered task hierarchy, branch lifecycle, tree main/mini and nested templates under flat projects | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active task UI delivered for review; E templates delivered for review; nothing inherited from JSONL. |
-| Unlimited organizational project nesting | Fresh schema 4 selected; A supplies isolated schema/forest/history and B candidate root/child creation and project movement services for review. Ordinary runtime remains v3; C1 lifecycle/inherited eligibility/derived accounting is implemented for review. C2 complete candidate evidence/task/template/nested Delete backend is implemented for independent review; D UI, E activation and F integrated/native acceptance remain outstanding. No migration/import. |
+| Unlimited organizational project nesting | Fresh schema 4 selected; A supplies isolated schema/forest/history and B candidate root/child creation and project movement services for review. Ordinary runtime remains v3; C1 lifecycle/inherited eligibility/derived accounting is implemented for review. C2 backend is accepted for continued development; D candidate graphical source is implemented for independent review with actual connected Tk evidence separately required. E activation and F integrated/native acceptance remain outstanding. No migration/import. |
 | Double-click task activation and compact Mini | Implemented for independent review through existing Start/Stop/atomic Switch and shared report paths; native Windows UI acceptance remains outstanding. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
@@ -998,8 +1000,15 @@ candidate work/revision/active/frozen-export/POL-R/configuration/template and
 surviving-history validation. Its caller-owned task/template services enforce
 complete project ancestry; nested unused-only Delete requires exact volatile
 review/typed DELETE, finite receipt retirement and complete survivor proof.
-Uncertain Delete never retries. Protected evidence never retires. D UI, E ordinary
-startup/backup/restore and F integrated/native acceptance remain outstanding. No
+Uncertain Delete never retries. Protected evidence never retires. D supplies the
+same ChronicleApp's candidate Main/Archived Items, explicit project controls,
+movement and task/template destination reviews, complete Delete presentation and
+live path/UUID labels. It consumes C2 snapshots/reports and never writes SQLite
+from Tk. Its internal presentation profile requires matching verified schema-4
+readiness; schema3 remains the default. A test-only serialized Message bridge
+owns disposable C2 data. Connected Tk evidence is unavailable without a display;
+source/model tests do not imply that gate passed. E ordinary startup/backup/restore
+and F integrated/native acceptance remain outstanding. No
 ordinary v4 readiness is claimed.
 The main Treeview now dispatches eligible clicked leaf UUIDs
 to existing Start/Stop/atomic Switch. Compact Mini projects the same Individual

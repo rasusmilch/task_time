@@ -426,13 +426,17 @@ without schema-3 migration, import or copy transition. Package A supplies the
 isolated definition/forest/history verifier; Package B supplies candidate project
 creation/movement service logic over caller-owned transactions. The
 transaction adapter is test infrastructure, not another supported runtime. There
-is no user-facing v4 creation/open command, project-management UI, conversion
-reader, transition marker or activation control. C1 implements candidate
+is no user-facing v4 creation/open command, conversion reader, transition marker
+or activation control. D's graphical source is available only to the explicit
+internal schema4-candidate test harness; ordinary startup cannot select it. C1 implements candidate
 hierarchical lifecycle, inherited eligibility and pure Direct/Cumulative project
 rollups. C2 adds complete candidate evidence verification, task/template backend
 operations, nested unused-only Delete and read projections for independent review.
-There is no user-facing schema-4 command: D UI, E startup/backup/restore and F
-native acceptance remain outstanding. Candidate verification now accepts valid
+D now provides candidate nested Main/Archived Items and owned project movement,
+creation, task/template destination and Delete presentations for independent review.
+There is no user-facing schema-4 command: E startup/backup/restore and F native
+acceptance remain outstanding. Connected widget tests require an existing Tk
+display; portable model/worker results cannot establish widget/native acceptance. Candidate verification now accepts valid
 rich protected evidence while refusing unknown, malformed or contradictory content.
 Ordinary startup, creation and backup/restore remain v3 during A/B/C1/C2.
 Later package E

@@ -122,11 +122,16 @@ SQLiteStore, creation, startup and backup/restore remain schema 3. Package C's
 objective is split into C1 candidate lifecycle/inherited eligibility/derived
 project accounting, accepted for continued development, and C2 complete candidate
 semantic verification, protected evidence, nested unused-only Delete, templates
-and remaining task management, now implemented for independent review. C2 reuses
+and remaining task management, accepted for continued functional development. C2 reuses
 shared domain validation on caller-owned connections; its transaction adapter
-remains test-only. Ordinary SQLiteStore/worker/startup stay schema 3. D project
-UI, E fresh-v4 activation/backup/restore and F integrated/native acceptance remain
-outstanding. No migration/import exists. C2 adds schema-4-only project-ancestry
+remains test-only. D adds candidate graphical source in the existing ChronicleApp
+with an explicit internal schema4-candidate profile, iterative typed trees and
+owned project/task/template/Delete reviews for independent review. Only a test-owned
+serialized Message bridge connects disposable C2 data; no public candidate launcher
+or production worker is added. Connected Tk validation requires a real available
+display and is distinct from portable model/worker evidence. Ordinary
+SQLiteStore/worker/startup stay schema 3. E fresh-v4 activation/backup/restore and
+F integrated/native acceptance remain outstanding. No migration/import exists. C2 adds schema-4-only project-ancestry
 reviews to task creation/assignment/movement and Template Apply; schema-3 and
 A/B project request contracts remain unchanged. Delete remains no-receipt/no-retry
 after uncertainty; no protected receipt or evidence may retire.

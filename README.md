@@ -111,16 +111,22 @@ dataset with no migration/import of schema 3. Package A supplies an isolated exa
 DDL/SQL-guard, iterative forest and scoped history foundation. Package B adds
 candidate root/child creation and complete project Move / Reparent service logic
 over caller-owned transactions, accepted for continued development. Its adapter
-is test-only. No nested-project GUI or supported v4 runtime exists. Normal
+is test-only. Package D now supplies the nested-project graphical source through
+an explicit internal schema4-candidate presentation profile for independent review.
+It uses the same ChronicleApp/root and a test-only serialized C2 Message bridge;
+no supported v4 runtime or public candidate launcher exists. Normal
 `python run_chronicle.py`, SQLiteStore creation/open and backup/restore remain
 schema 3. C1 adds candidate hierarchical Archive/Unarchive, inherited eligibility
 and pure Direct/Cumulative project accounting for independent review. The existing
 task attribution engine and cutoff remain authoritative; no project owns work.
 C2 now supplies complete candidate semantic verification, protected work/frozen
 Timesheet/POL-R evidence, reviewed task/template operations and nested unused-only
-Delete for independent review. Valid rich evidence is admitted only by the isolated
-candidate verifier; malformed/unknown/incomplete evidence refuses. D graphical
-integration, E ordinary fresh-v4 startup/backup/restore and F native acceptance
+Delete, accepted for continued development. Valid rich evidence is admitted only by the isolated
+candidate verifier; malformed/unknown/incomplete evidence refuses. D adds nested
+Main/Archived Items, root/child creation, exact project/task movement and template
+destination reviews, complete Delete scope and preserved Mini/double-click behavior.
+Connected Tk acceptance requires an available display; source alone is not widget
+or native evidence. E ordinary fresh-v4 startup/backup/restore and F native acceptance
 remain outstanding. Ordinary Chronicle still runs schema 3; no migration/import
 or second worker exists.
 

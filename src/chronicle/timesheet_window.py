@@ -257,6 +257,22 @@ class TimesheetWindow:
         try:
             if value['dataset_id'] != self.owner.dataset_id: raise ValueError('Task choices belong to another dataset')
             rows = [(t['task_id'],(f"{t['name']} / {t['task_id']}",t['project_name'],'Archived' if t['effective_archived'] else 'Active')) for t in value['tasks']]
+            if self.owner.candidate_presentation:
+                from .project_ui import path_label, context
+                choices = dict(tasks=value['tasks'], projects=value['projects'])
+                context(choices)
+                live = {t['task_id']:t for t in self.owner.state['tasks']}
+                groups = {p['project_id']:p for p in self.owner.state['projects']}
+                for task in value['tasks']:
+                    old = live.get(task['task_id'])
+                    if old is None or any(old[k] != task[k] for k in ('name','version','parent_task_id','project_id')):
+                        raise ValueError('Live task context changed; refresh task choices')
+                for project in value['projects']:
+                    old = groups.get(project['project_id'])
+                    if old is None or any(old[k] != project[k] for k in ('name','version','parent_project_id')):
+                        raise ValueError('Live project context changed; refresh task choices')
+                rows = [(t['task_id'],(f"{t['name']} / {t['task_id']}",path_label(choices,'project',t['project_id']) if t['project_id'] else 'Unassigned',
+                    'Archived' if t['effective_archived'] else 'Active')) for t in value['tasks']]
             for key,values in rows: self.tasks.insert('', 'end',iid=key,values=values)
             self._reconciliation_choices()
         except Exception as exc: self.failure(exc)

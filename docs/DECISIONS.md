@@ -1565,8 +1565,9 @@ Stage 5 NOT STARTED; no native acceptance or pilot authorization follows.
 **Status:** target architecture selected; A accepted for continued functional
 development. B candidate services are accepted for continued development; ordinary
 runtime remains schema 3. C1 is accepted for continued development; C2 complete
-candidate backend is implemented for independent review. D UI, E activation and
-F integrated/native acceptance remain outstanding.
+candidate backend is accepted for continued development. D candidate graphical
+source is implemented for independent review; E activation and F integrated/native
+acceptance remain outstanding.
 **Provenance:** explicit Package A execution approval records the user's fresh
 schema-4 decision. It supersedes the earlier read-only plan's offline copy
 transition and removes the schema-3 preservation/transition reservation.
@@ -1617,7 +1618,7 @@ UI, migration/import, Stage 4 completion or Stage 5 start follows.
 
 ### Package C2 complete candidate evidence and protected Delete
 
-**Status:** implemented for independent review; candidate-only backend.
+**Status:** accepted for continued functional development; candidate-only backend.
 **Provenance:** explicit C2 execution approval at accepted C1 revision
 `9dc46d63efb553ea54aad600b19d8bfc3e21c822`. Admit valid complete schema-4 evidence
 only after independent structural, historical, protected and frozen checks. Reuse
@@ -1633,9 +1634,26 @@ block retirement. Definition erasure preserves retained self-contained source
 snapshots. Delete has no receipt and uncertain COMMIT never retries/reconciles;
 current presence is not historical proof. No tombstones or anti-replay ledger are
 introduced; erased administrative retry/provenance limits remain selected.
-D graphical integration, E ordinary fresh startup/backup/restore and F native
-acceptance remain unimplemented. No migration/import, Stage 4 closure or Stage 5
+D extends graphical integration below; E ordinary fresh startup/backup/restore
+and F native acceptance remain unimplemented. No migration/import, Stage 4 closure or Stage 5
 pilot authorization follows.
+
+### Package D internal candidate graphical profile
+
+**Status:** candidate source implemented for independent review; actual connected
+Tk validation requires a usable display, with native acceptance separate.
+**Provenance:** explicit Package D execution approval at accepted C2 revision
+`ea547ce80b7a9a80272e84ffc105f99acf363454`. Retain ChronicleApp, one root,
+app-owned Requests and existing Message/modal/uncertainty semantics. Add only an
+internal schema4-candidate presentation path, explicitly gated by matching verified
+backend readiness; ordinary schema3 remains default. A test-owned serialized C2
+bridge supplies disposable SQLite behavior and no production worker registration.
+Project/task moves remain distinct, destination reviews preserve approved formats,
+and Main/Archived Items installation is iterative with UUID identity and shared
+authoritative totals. Context archive dates are never fabricated; Delete never
+retries after uncertainty. No public candidate selector, persisted hierarchy,
+migration/import, E activation, F native acceptance, Stage 4 closure or Stage 5
+readiness follows.
 
 ## Open decisions
 

@@ -198,6 +198,10 @@ class TemplateApply(TemplateDialog):
         ttk.Label(self.window,text=f"Template: {source['name']} ({source['template_id']}) version {source['version']} — {len(source['nodes'])} nodes",wraplength=900).grid(row=0,column=0,padx=10,sticky='w')
         self.tree=ttk.Treeview(self.window);self.tree.heading('#0',text='Complete blueprint');self.tree.grid(row=1,column=0,sticky='nsew',padx=10)
         for n in source['nodes']:self.tree.insert(n['parent_node_id'] or '','end',iid=n['node_id'],text=n['name'],open=True)
+        if owner.candidate_presentation:
+            self._candidate_choices()
+            self.confirm_button.configure(text='Confirm Apply')
+            return
         self.choice=ttk.Combobox(self.window,state='readonly',width=110);self.choice.grid(row=2,column=0,padx=10,sticky='ew')
         self.choice.bind('<<ComboboxSelected>>',self.selected);self.options=[]
         tasks={t['task_id']:t for t in self.state['tasks']};projects={p['project_id']:p for p in self.state['projects']}
@@ -217,10 +221,67 @@ class TemplateApply(TemplateDialog):
 
     def selected(self,event=None):
         if self.phase!='reviewing':return
+        if self.owner.candidate_presentation:return self._candidate_selected()
         i=self.choice.current();o=self.options[i] if i>=0 else None;self.arguments=None
         if o:
             if not o['reason']:self.arguments=deepcopy(o['args'])
             self.status.configure(text='Destination: '+o['label']+'\n'+('Unavailable: '+o['reason'] if o['reason'] else f"Resulting maximum depth: {o['depth']}. Insert exactly {len(self.mapping)} fresh tasks; no work/timer/evidence copied."))
+        self.controls()
+
+    def _candidate_choices(self):
+        from .project_ui import destination_rows, context
+        from .tree_install import install
+        rows, children = destination_rows(self.state)
+        holder = ttk.Frame(self.window);holder.grid(row=2,column=0,padx=10,sticky='nsew')
+        holder.columnconfigure(0,weight=1);holder.rowconfigure(0,weight=1)
+        self.destination_tree = ttk.Treeview(holder, columns=('uuid','eligibility'), height=10, selectmode='browse')
+        self.destination_tree.heading('#0', text='Project / task destination')
+        self.destination_tree.heading('uuid', text='UUID')
+        self.destination_tree.heading('eligibility', text='Advisory eligibility')
+        self.destination_tree.grid(row=0,column=0,sticky='nsew')
+        scroll = ttk.Scrollbar(holder,orient='vertical',command=self.destination_tree.yview)
+        scroll.grid(row=0,column=1,sticky='ns');self.destination_tree.configure(yscrollcommand=scroll.set)
+        self.destination_tree.bind('<<TreeviewSelect>>', self.selected)
+        projects, tasks, forest, obs = context(self.state)
+        _, paths = graph(self.source['nodes']); height = max(map(len,paths.values()))
+        self.destinations = rows
+        for row in rows.values():
+            parent, group = row['destination']; reason = ''
+            if group is not None and forest.effective_archived[group]:reason = 'Project is effectively archived'
+            elif parent is not None:
+                if obs[parent]['effective_archived']:reason = 'Task is effectively archived'
+                elif self.state['active'] and self.state['active']['task_id'] == parent:reason = 'Running task cannot become a parent'
+                elif obs[parent]['depth'] + height > 3:reason = 'Exceeds three task levels'
+            row['values'] += (reason or 'Select to review',)
+            row['reason'] = reason
+        install(self.destination_tree, rows, children, open_roots=True)
+        task = self.owner._selected(); project = self.owner._selected_project()
+        key = self.owner.task_row(task['task_id']) if task else self.owner.project_row(project['project_id'] if project else None)
+        self.destination_tree.selection_set(key);self.selected()
+
+    def _candidate_selected(self):
+        from .project_ui import ancestry, path_label, context
+        from .schema4_templates import apply_effect as candidate_effect
+        self.arguments = None
+        chosen = self.destination_tree.selection()
+        row = self.destinations.get(chosen[0]) if chosen else None
+        if row:
+            parent, group = row['destination']
+            label = path_label(self.state, 'task', parent) if parent else path_label(self.state, 'project', group) if group else 'Unassigned'
+            try:
+                if row['reason']:raise ValueError(row['reason'])
+                projects, tasks, forest, obs = context(self.state)
+                args = dict(template_id=self.source['template_id'],expected_template_version=self.source['version'],reviewed_definition=deepcopy(self.source),
+                    destination_parent_task_id=parent,destination_project_id=group,expected_destination_parent_version=tasks[parent]['version'] if parent else None,
+                    expected_destination_project_version=projects[group]['version'] if group else None,node_mapping=deepcopy(self.mapping),
+                    reviewed_destination_project_ancestry=ancestry(self.state, group))
+                proposed=deepcopy(tasks)
+                candidate_effect('apply_template',args,{self.source['template_id']:deepcopy(self.source)},proposed,projects,self.state['active'],{},self.source['created_request_id'],0)
+                depth=max(task_observations(list(proposed.values()),list(projects.values()))[p['task_id']]['depth'] for p in self.mapping)
+                self.arguments=args
+                text=f'Resulting maximum task depth: {depth}. Insert {len(self.mapping)} fresh tasks; no recorded work is copied.'
+            except ValueError as exc:text='Unavailable: '+str(exc)
+            self.status.configure(text='Destination: '+label+'\n'+text)
         self.controls()
 
     def controls(self):

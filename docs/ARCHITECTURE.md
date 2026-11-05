@@ -552,8 +552,8 @@ the same Request. Unverified cleanup/evidence reports unverified. No automatic
 replacement request or Delete no-retry semantics is introduced. Killed-child
 tests join cleanup before reopening. These are candidate transaction experiments,
 not implementation of schema-4 worker coordination or power-loss qualification.
-C1/C2 extend this foundation below. D project UI, E fresh activation/backup/restore
-and F integrated/native acceptance remain unimplemented.
+C1/C2 and D candidate presentation extend this foundation below. E fresh
+activation/backup/restore and F integrated/native acceptance remain unimplemented.
 
 ### Package C1 candidate lifecycle and project accounting
 
@@ -691,8 +691,70 @@ snapshot/cutoff and existing attribution/allocation engines. They return complet
 relationships, explicit/effective eligibility, active identity, templates, direct
 task History and task/project Direct/Cumulative values. Calculation failure stays
 unavailable instead of becoming zero. Frozen reports remain independent of live
-reparenting/renaming. No mutable report/hierarchy cache is persisted. D rendering,
-E ordinary fresh-v4 startup/backup/restore and F native acceptance remain pending.
+reparenting/renaming. No mutable report/hierarchy cache is persisted. D adds candidate rendering
+below; E ordinary fresh-v4 startup/backup/restore and F native acceptance remain pending.
+
+### Package D candidate graphical integration
+
+ChronicleApp retains the only Tk root, accepted Request owner and matching delivery
+handler. Its internal presentation_profile defaults to schema3; schema4-candidate
+is reachable only from tests until E. Ready and snapshot messages require explicit
+matching schema_version=4 and candidate_verified=True, emitted after complete C2
+verification. Mismatch refuses. Ordinary schema-3 worker/startup are unchanged;
+schema-4-only requests cannot be queued to the schema-3 presentation path.
+
+[project_ui.py](../src/chronicle/project_ui.py) supplies pure projections and
+detached selected-destination reviews. ProjectForest and existing task observations
+own relationships/eligibility. Typed project:/task: UUIDs and one virtual
+group:unassigned preserve duplicate names and independent namespaces. Main reads
+task Individual/Cumulative and project Cumulative from the coordinated C2 report;
+project Individual remains —. Application totals are never summed from tree rows.
+All active project/task ancestors expand, while collapsed and archived work remains
+in the report. Missing accounting remains unavailable.
+
+[tree_install.py](../src/chronicle/tree_install.py) installs parent-first and moves
+survivors before removing obsolete rows deepest-first, all iteratively. It retains
+valid selected UUID, expansion, sibling order and scroll; unchanged rows receive
+no unnecessary item updates. Sort A-Z is sibling-only/session-local. Pure tests
+exercise depth beyond Python recursion; connected Tk tests use navigable depths.
+
+Visible root/child project controls freeze destination identity/version/ancestry
+before prompting; cancellation generates no mutation/request/action observation.
+Successful creation reveals the authoritative new UUID. Rename preserves identity.
+[ProjectMoveWindow](../src/chronicle/project_move_window.py) shares MoveWindow's
+owned modal/request lifecycle, with exact B project requests. Its compact forest
+shows Root and real projects, with advisory refusals, full selected paths/UUIDs and
+one frozen source closure. It builds only the chosen destination's complete review,
+not a subtree/plan or full path for every destination. Task Move remains separate
+and includes both C2 ancestry lists. New Task and Template Apply include the C2
+destination ancestry. All final stale/eligibility checks remain in C2.
+
+Archived Items preserves complete project/task context, one typed UUID each and
+the four existing sibling orders. Explicit rows use their own accepted archive
+timestamp; inherited tasks prefer nearest explicit task ancestry before nearest
+explicit project ancestry. Active context has no fabricated archive flag/date and
+cannot be deleted/unarchived through context actions. Dates use the dataset IANA
+zone and numeric offset. Complete Delete scope/counts and backend refusal reasons
+are rendered without another eligibility engine. Incomplete parsing cannot enable
+confirmation. Typed DELETE, final backend review equality and no-retry uncertainty
+remain unchanged. Template definition Delete remains separately owned.
+
+Mini, direct-task History, task-only reporting selection and frozen formats remain
+unchanged. Live task-choice paths/UUIDs are display labels checked against current
+relationships; they never alter TaskLabel or persisted frozen project context.
+Both Move operations share app-owned correlation, exact retries and shutdown
+handling; destroyed or failed presentation cannot orphan an accepted Request or
+turn an authoritative commit into a rejection.
+
+[schema4_ui_bridge.py](../tests/rewrite/schema4_ui_bridge.py) is test infrastructure:
+one serialized thread/Message queue over the existing disposable CandidateAdapter
+and C2 services. It emits verified readiness, real outcomes and read snapshots,
+preserves the separate Delete path, and joins bounded cleanup. It is not a
+production worker or public launcher. Unsupported test messages refuse explicitly.
+No GUI software is installed to obtain acceptance. Without a usable display,
+connected Tk tests remain skipped/unverified; model and real worker/SQLite results
+are reported separately. E activation/backup/restore and F native qualification
+remain outstanding. Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
 
 Remaining integration and selected backend contracts:
 
@@ -748,7 +810,8 @@ the same active/eligible selected task and Individual Today report. Full resolut
 stays in Main/owned modals; read-only navigation cannot enable mutation or bypass
 modal ownership. Keep Mini Open remains Off/session-local and topmost remains
 guarded. No new root, timer, worker or persistence is introduced. Native Windows
-layout/input acceptance remains outstanding; project nesting is still unimplemented.
+layout/input acceptance remains outstanding; project nesting is implemented only
+in the isolated candidate backend and D presentation path, not ordinary schema 3.
 
 ## Fresh hierarchy foundation
 

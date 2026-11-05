@@ -109,6 +109,8 @@ class DeleteWindow:
             self.phase='failed';self.status.configure(text=f'Preview unavailable: {value.error}');self.controls();return
         if (value.get('dataset_id')!=self.owner.dataset_id or value.get('entity_type')!=self.entity or value.get('entity_id')!=self.key):
             self.phase='failed';self.status.configure(text='Rejected preview from another dataset or selection.');self.controls();return
+        if self.owner.candidate_presentation:
+            return self._candidate_review(value)
         canonical(value);self.review=deepcopy(value);self.phase='ready' if value['eligible'] else 'blocked'
         selected=value['selected']
         self.context.configure(text=f"{self.entity}: {selected['name']}\nUUID: {self.key}\nProjects: {value['project_count']}    Tasks: {value['task_count']}    Administrative requests: {len(value['retire_receipts'])}\nExplicit archive: {bool(selected['is_archived'])}; effective archive: {value['effective_archived']}")
@@ -128,6 +130,37 @@ class DeleteWindow:
         if self.entity=='template':
             self.context.configure(text=f"Template: {selected['name']} ({self.key}) — version {selected['version']}\nNodes: {value['node_count']}; retained applications: {value['application_count']}; management receipts: {len(value['retire_receipts'])}\nApplied tasks and immutable Apply/Duplicate receipts are preserved.")
             for n in value['nodes']:self.tree.insert(n['parent_node_id'] or '', 'end',iid=n['node_id'],text=n['name'],values=(n['node_id'],'',''),open=True)
+        self.controls()
+
+    def _candidate_review(self, value):
+        from .project_ui import delete_projection, ordered
+        from .tree_install import install
+        self.review = None
+        try:
+            canonical(value)
+            if type(value['eligible']) is not bool:raise ValueError('Malformed backend eligibility')
+            selected = value['selected']
+            if self.entity == 'template':
+                nodes = selected['nodes']
+                rows = {'node:'+n['node_id']:dict(parent='node:'+n['parent_node_id'] if n['parent_node_id'] else '', text=n['name'], values=(n['node_id'],'','')) for n in nodes}
+                children = ordered(rows)
+                description = f"Nodes: {len(nodes)}; retained source snapshots: {len(value['source_context'])}"
+            else:
+                if value['project_count'] != len(value['projects']) or value['task_count'] != len(value['tasks']):raise ValueError('Incomplete Delete counts')
+                rows, children = delete_projection(value)
+                if len(rows) != value['project_count']+value['task_count']:raise ValueError('Duplicate Delete identities')
+                description = f"Projects: {value['project_count']}; tasks: {value['task_count']}"
+            install(self.tree, rows, children, open_roots=True)
+            for key in rows:
+                if self.tree.get_children(key):self.tree.item(key, open=True)
+            ancestry = ' → '.join(r['project_id'] for r in value['source_project_ancestry']) or 'Root / Unassigned'
+            self.context.configure(text=f"{self.entity}: {selected['name']} ({self.key}) — version {selected['version']}\n{description}\nSource project ancestry: {ancestry}\nAdministrative retirements: {len(value['retire_receipts'])}; explicit archive: {bool(selected['is_archived'])}; effective archive: {value['effective_archived']}")
+            self.status.configure(text=('Eligible unused scope. Review every row; this cannot be undone. Type DELETE.' if value['eligible'] else 'Delete refused.\n'+'\n'.join(value['reasons'])))
+            self.review = deepcopy(value)
+            self.phase = 'ready' if value['eligible'] else 'blocked'
+        except Exception as exc:
+            self.phase = 'failed';self.review = None
+            self.status.configure(text='Delete review unavailable; no authorization: ' + str(exc))
         self.controls()
 
     def submit(self):

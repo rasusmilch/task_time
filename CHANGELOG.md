@@ -13,7 +13,7 @@ receipts or commits. No release or production qualification is implied below.
   counting each task once; no separate Customer entity or task-depth change.
   Select fresh schema 4 with the same application ID, retaining v3 files untouched
   without migration/import/copy transition. Ordinary runtime remains flat schema 3
-  during A/B/C1/C2; project UI and v4 activation are not implemented.
+  during A/B/C1/C2/D; ordinary v4 activation is not implemented.
 - Supply Package A's isolated exact schema-4 candidate, SQL project-cycle/archive/
   recording/active safeguards, iterative immutable project forest and scoped
   independent native-v4 administrative-history verification. Root/child/move
@@ -32,8 +32,8 @@ receipts or commits. No release or production qualification is implied below.
   Add a test-only disposable transaction/reconciliation adapter, independent replay,
   immutable-fact comparisons and real rollback/interruption/lost-ack controls.
   No second worker, GUI, supported v4 startup, protected-work admission or migration.
-  C1 extends lifecycle/accounting below; C2, D UI, E activation and F
-  integrated/native acceptance remain outstanding.
+  C1/C2 and D extend this candidate below; E activation and F integrated/native
+  acceptance remain outstanding.
 - Add Package C1 candidate hierarchical Archive/Unarchive with selected-only
   flags/dates/versions, complete active-task containment, inherited eligibility
   observations and independent lifecycle replay over the existing test adapter.
@@ -57,7 +57,20 @@ receipts or commits. No release or production qualification is implied below.
   Add real rich SQLite, tampering, rollback, reconciliation and process-death
   controls. No ordinary v4 writer/startup, project GUI, migration/import,
   backup/restore activation or native acceptance. Stage 4 IN PROGRESS; Stage 5
-  NOT STARTED; D–F remain outstanding.
+  NOT STARTED; D adds candidate presentation below and E/F remain outstanding.
+- Add Package D candidate graphical source through an explicit internal
+  ChronicleApp presentation profile, preserving ordinary schema 3. Render nested
+  mixed project/task forests iteratively with stable typed UUID selection,
+  expansion, sibling sorting, active ancestry and existing authoritative totals.
+  Add root/child creation and owned project Move, retain separate task movement,
+  and freeze exact C2 task/template ancestry reviews. Extend Archived Items with
+  complete context/provenance and dataset-zone dates, and Delete with complete
+  backend scope/refusals and unchanged no-retry uncertainty. Preserve Mini,
+  double-click, direct History and frozen task-only reporting. Add test-only
+  serialized C2 Message/SQLite and real-widget cases; unavailable-display tests
+  remain unverified, not GUI acceptance. No production v4 worker/startup, migration,
+  backup/restore activation or native acceptance. E/F remain outstanding;
+  Stage 4 IN PROGRESS, Stage 5 NOT STARTED.
 - Implement the separately approved pilot usability slice for independent review:
   coordinate/UUID-based eligible task double-click reuses Start/Stop/one atomic
   Switch; ChatGPT newly adjudicates the former other-active-task Open case.

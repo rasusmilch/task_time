@@ -143,18 +143,28 @@ class ArchivedItemsWindow:
             return
         allowed = self.owner.can_mutate() and self.owner.root.grab_current() is None
         selected = self.selected()
-        explicit = selected and selected['item']['is_archived']
+        explicit = selected and selected['item'] is not None and selected['item']['is_archived']
         configure_changed(self.unarchive_button, state='normal' if allowed and explicit else 'disabled')
         configure_changed(self.history_button, state='normal' if allowed and selected and selected['entity'] == 'task' else 'disabled')
-        configure_changed(self.delete_button, state='normal' if allowed and selected else 'disabled')
+        configure_changed(self.delete_button, state='normal' if allowed and selected and not selected.get('context') else 'disabled')
         for control in (self.sort_control, self.period_control):
             configure_changed(control, state='readonly' if allowed else 'disabled')
         text = self.owner.status.cget('text')
-        if selected and not explicit:
+        if self.owner.candidate_presentation and selected and selected['item'] is not None:
+            from .project_ui import path_label
+            entity = selected['entity'];key = selected['item'][entity + '_id']
+            text += '\n' + path_label(self.snapshot, entity, key)
+            source = selected['source']
+            if source is not None:
+                source_entity = 'task' if 'task_id' in source else 'project'
+                text += f"\nArchive timestamp source: {source_entity} {source[source_entity + '_id']}"
+        if selected and not explicit and selected['source'] is not None:
             source = selected['source']
             entity = 'task' if 'task_id' in source else 'project'
             text += (f" Hidden by archived ancestor {entity}: {source['name']} ({source[entity + '_id']}). "
                      'Unarchive that explicit node to expose this branch.')
+        elif selected and selected.get('context'):
+            text += ' Original ancestry context only; no explicit archive state or date to clear.'
         if self.snapshot and self.snapshot['report'] is None:
             text += ' Time totals unavailable. ' + (self.snapshot.get('calculation_error') or '')
         configure_changed(self.status, text=text)
@@ -165,6 +175,13 @@ class ArchivedItemsWindow:
 
     def render(self, state):
         if not self.current():
+            return
+        if self.owner.candidate_presentation:
+            from .project_ui import archived_projection
+            from .tree_install import install
+            rows, children = archived_projection(state, self.sort.get(), self.period.get(), self.owner.zone)
+            install(self.tree, rows, children)
+            self.snapshot = deepcopy(state);self.rows = rows;self.controls()
             return
         rows, children = projection(state, self.sort.get(), self.period.get(), self.owner.zone)
         selected, scroll = self.tree.selection(), self.tree.yview()
@@ -207,13 +224,13 @@ class ArchivedItemsWindow:
         if not self.current() or not self.owner.can_mutate() or self.owner.root.grab_current() is not None:
             return False
         selected = self.selected()
-        if not selected or not selected['item']['is_archived']:
+        if not selected or selected['item'] is None or not selected['item']['is_archived']:
             return False
         entity, item = selected['entity'], selected['item']
         return self.owner._submit('unarchive_' + entity, **{entity + '_id': item[entity + '_id'], 'expected_version': item['version']})
 
     def delete(self):
-        if not self.current() or self.selected() is None:return False
+        if not self.current() or self.selected() is None or self.selected().get('context'):return False
         return self.owner.open_delete(_archived_origin=self)
 
     def history(self):

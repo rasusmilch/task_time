@@ -8,6 +8,8 @@ from .movement import snapshot, plan
 
 
 class MoveWindow:
+    operation = 'move_task_branch'
+
     def __init__(self, owner, task_id, state):
         self.owner, self.task_id, self.state = owner, task_id, deepcopy(state)
         self.disposed = self.presented = False
@@ -16,9 +18,20 @@ class MoveWindow:
         self.arguments = None
         self.return_focus = owner.root.focus_get()
         tasks = {t['task_id']:t for t in self.state['tasks']}
-        source = tasks[task_id]
-        members = snapshot(self.state['tasks'],task_id)
-        self.source_path = owner._task_path_label(task_id,self.state)
+        self.project_review = None
+        if self.operation == 'move_project_subtree':
+            from .project_ui import ProjectMoveReview, path_label
+            self.project_review = ProjectMoveReview(self.state, task_id)
+            source = self.project_review.projects[task_id]
+            members = self.project_review.base['reviewed_tasks']
+            self.source_path = path_label(self.state, 'project', task_id)
+            description = f"Source: {self.source_path}\nProject UUID: {task_id}\nDescendant projects: {len(self.project_review.branch)-1}; affected tasks: {len(members)}"
+        else:
+            source = tasks[task_id]
+            members = snapshot(self.state['tasks'],task_id)
+            self.source_path = owner._task_path_label(task_id,self.state)
+            description = f"Source: {self.source_path}\nTask UUID: {task_id}\nDescendant tasks: {len(members)-1}"
+        self.members = members
         self.destinations = {}
         self.window = tk.Toplevel(owner.root)
         try:
@@ -28,7 +41,7 @@ class MoveWindow:
             self.window.geometry('940x540')
             self.window.columnconfigure(0,weight=1)
             self.window.rowconfigure(1,weight=1)
-            ttk.Label(self.window,text=f"Source: {self.source_path}\nTask UUID: {task_id}\nDescendant tasks: {len(members)-1}",wraplength=900).grid(row=0,column=0,padx=12,pady=10,sticky='w')
+            ttk.Label(self.window,text=description,wraplength=900).grid(row=0,column=0,padx=12,pady=10,sticky='w')
             holder=ttk.Frame(self.window);holder.grid(row=1,column=0,padx=12,sticky='nsew')
             holder.columnconfigure(0,weight=1);holder.rowconfigure(0,weight=1)
             self.tree=ttk.Treeview(holder,columns=('uuid','eligibility'),selectmode='browse')
@@ -40,10 +53,12 @@ class MoveWindow:
             scroll=ttk.Scrollbar(holder,orient='vertical',command=self.tree.yview)
             scroll.grid(row=0,column=1,sticky='ns');self.tree.configure(yscrollcommand=scroll.set)
             projects={p['project_id']:p for p in self.state['projects']}
-            destinations=[(owner.project_row(None),None,None,'Unassigned')]
-            destinations += [(owner.project_row(p['project_id']),None,p['project_id'],f"{p['name']} ({p['project_id']})") for p in projects.values()]
-            destinations += [(owner.task_row(t['task_id']),t['task_id'],t['project_id'],owner._task_path_label(t['task_id'],self.state)) for t in self.state['tasks']]
-            for row,parent,group,label in destinations:
+            destinations=[]
+            if not owner.candidate_presentation:
+                destinations=[(owner.project_row(None),None,None,'Unassigned')]
+                destinations += [(owner.project_row(p['project_id']),None,p['project_id'],f"{p['name']} ({p['project_id']})") for p in projects.values()]
+                destinations += [(owner.task_row(t['task_id']),t['task_id'],t['project_id'],owner._task_path_label(t['task_id'],self.state)) for t in self.state['tasks']]
+            for row,parent,group,label in ([] if owner.candidate_presentation else destinations):
                 args=dict(task_id=task_id,expected_version=source['version'],
                           source_parent_task_id=source['parent_task_id'],source_project_id=source['project_id'],
                           destination_parent_task_id=parent,destination_project_id=group,
@@ -57,6 +72,7 @@ class MoveWindow:
                 except ValueError as exc:reason=str(exc)
                 self.destinations[row]=dict(arguments=args,label=label,reason=reason,unchanged=unchanged)
                 self.tree.insert('','end',iid=row,text=label,values=(parent or group or 'Virtual Unassigned',reason or ('Unchanged — same destination' if unchanged else 'Eligible')))
+            if owner.candidate_presentation:self._candidate_destinations()
             self.tree.bind('<<TreeviewSelect>>',self.selected)
             self.status=ttk.Label(self.window,text='Select a destination to review source → destination. No rows move before commitment.',wraplength=900)
             self.status.grid(row=2,column=0,padx=12,pady=10,sticky='w')
@@ -101,6 +117,8 @@ class MoveWindow:
 
     def selected(self,event=None):
         if not self.current() or self.phase!='reviewing':return
+        if self.owner.candidate_presentation:
+            return self._candidate_selected()
         rows=self.tree.selection();destination=self.destinations.get(rows[0]) if rows else None
         self.arguments=None
         if destination:
@@ -114,7 +132,48 @@ class MoveWindow:
 
     def submit(self):
         if not self.mutation_allowed() or self.arguments is None or not self.owner.can_mutate(origin=self):return False
-        return self.owner._submit('move_task_branch',_origin=self,**deepcopy(self.arguments))
+        return self.owner._submit(self.operation,_origin=self,**deepcopy(self.arguments))
+
+    def _candidate_destinations(self):
+        from .project_ui import destination_rows, context
+        from .tree_install import install
+        rows, children = destination_rows(self.state, project_only=self.project_review is not None)
+        projects, tasks, forest, observations = context(self.state)
+        branch = {r['task_id'] for r in self.members}
+        height = max((observations[k]['depth'] for k in branch), default=1) - (observations[self.task_id]['depth'] if self.project_review is None else 1) + 1
+        for key, row in rows.items():
+            parent, group = row['destination']; reason = None
+            if self.project_review is not None:reason = self.project_review.reason(group)
+            elif observations[self.task_id]['effective_archived']:reason = 'Source is effectively archived'
+            elif group is not None and forest.effective_archived[group]:reason = 'Destination is effectively archived'
+            elif parent is not None:
+                if parent in branch:reason = 'Task destination is in the moving branch'
+                elif observations[parent]['effective_archived']:reason = 'Task destination is effectively archived'
+                elif self.state['active'] and self.state['active']['task_id'] == parent:reason = 'Running task cannot become a parent'
+                elif observations[parent]['depth'] + height > 3:reason = 'Destination exceeds three task levels'
+            row['values'] += (reason or 'Select to review',)
+            self.destinations[key] = dict(parent=parent, group=group, reason=reason)
+        install(self.tree, rows, children, open_roots=True)
+
+    def _candidate_selected(self):
+        from .project_ui import task_move_arguments, path_label
+        selected = self.tree.selection(); choice = self.destinations.get(selected[0]) if selected else None
+        self.arguments = None
+        if choice:
+            parent, group = choice['parent'], choice['group']
+            label = path_label(self.state, 'task', parent) if parent else path_label(self.state, 'project', group) if group else 'Root' if self.project_review else 'Unassigned'
+            text = f'Source: {self.source_path}\nDestination: {label}\n'
+            try:
+                if choice['reason']:raise ValueError(choice['reason'])
+                if self.project_review is not None:
+                    arguments = self.project_review.arguments(group)
+                    unchanged = group == self.project_review.base['source_parent_project_id']
+                else:arguments, unchanged = task_move_arguments(self.state, self.task_id, parent, group, self.members)
+                self.arguments = arguments
+                text += 'Unchanged — no receipt or structural write.' if unchanged else 'Move this complete reviewed subtree; recorded work and timer identities remain unchanged.'
+            except ValueError as exc:text += 'Move unavailable: ' + str(exc)
+            self.status.configure(text=text)
+        self.controls()
 
     def retry(self):
         if not self.current() or self.phase!='unverified' or self.owner.pending is not self.request:return False

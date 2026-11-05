@@ -117,7 +117,20 @@ Actual, project rollups and unavailable state without writes. Shared schema-3
 recording/History/template-installation/evidence helpers require affected and
 broader portable regression. These tests do not establish native Windows, power
 loss, arbitrary concurrent-writer or ordinary schema-4 runtime qualification.
-D–F remain outstanding.
+D adds [pure Main/review controls](../tests/rewrite/test_schema4_project_ui.py),
+[archive/Delete projections](../tests/rewrite/test_schema4_archived_ui.py),
+[real threaded Message/SQLite controls](../tests/rewrite/test_schema4_ui_bridge.py)
+and [connected real Tk cases](../tests/rewrite/test_schema4_project_modal.py).
+Pure controls cover arbitrary depth, no row churn, survivor reparenting, typed
+identity, shared totals, provenance and exact selected-only destination reviews.
+The real disposable C2 bridge verifies startup/readiness, commits, exact retries,
+no-receipt Delete uncertainty and rich frozen/direct History reads without Tk.
+Connected cases exercise the same app/root with project/task controls, owned
+modals, stale reviews, destroyed dialogs, authoritative completion, Template Apply,
+Archive/Delete presentation and Mini/double-click. They require real widgets and
+remain explicitly skipped/unverified when no display exists. Neither portable
+controls nor generated widget events establish native Windows input/focus. E/F
+remain outstanding; all 29 unresolved filesystem skips remain unwaived.
 Ordinary v3
 DDL/classification/dispatch isolation and existing hot-journal tests remain required.
 
