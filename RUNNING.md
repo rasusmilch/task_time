@@ -422,10 +422,14 @@ E templates are implemented for independent review. Do not delete journals or ol
 to bypass refusal. Any hypothetical future data-preserving transformation would
 require separate source/target and safety approval; no such engine exists now.
 The selected unlimited project-nesting target uses a fresh schema-4 dataset,
-without schema-3 migration, import or copy transition. Package A supplies only an
-isolated candidate definition/forest/history verifier; there is no user-facing v4
-creation/open command, conversion reader, transition marker or activation control.
-Ordinary startup, creation and backup/restore remain v3 during A. Later package E
+without schema-3 migration, import or copy transition. Package A supplies the
+isolated definition/forest/history verifier; Package B supplies candidate project
+creation/movement service logic over caller-owned transactions for review. The
+transaction adapter is test infrastructure, not another supported runtime. There
+is no user-facing v4 creation/open command, project-management UI, conversion
+reader, transition marker or activation control. C lifecycle/accounting, D UI and
+F integrated/native acceptance remain outstanding. Ordinary startup, creation and
+backup/restore remain v3 during A/B. Later package E
 must validate fresh v4 and refuse incompatible originals without altering them,
 including journal cases, while retaining genuine supported crash recovery.
 See the [target boundary](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary).

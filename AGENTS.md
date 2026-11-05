@@ -113,10 +113,14 @@ The latest project-nesting approval selects unlimited organizational Projects
 (no Customer entity), with three task levels independent of project depth, on a
 fresh schema-4 database. No schema-3 migration, import, copy transition, legacy
 reader for conversion or activation marker is selected. Existing files stay intact.
-Package A supplies only an isolated schema-4 DDL/SQL-guard candidate, detached
-project forest and scoped independent administrative-history verification for
-review. Ordinary SQLiteStore, creation, startup and backup/restore remain schema 3;
-new project services/UI and schema-4 runtime activation are not delivered.
+Package A supplies the isolated schema-4 DDL/SQL guards, detached project forest
+and scoped independent administrative-history verification. Package B adds
+candidate root/child creation and project Move / Reparent service logic over a
+caller-owned transaction for independent review. Its real transaction/reconciliation
+adapter is test infrastructure only, with no runtime registration. Ordinary
+SQLiteStore, creation, startup and backup/restore remain schema 3. Package C
+lifecycle/Delete/templates/accounting, D project UI, E fresh-v4 activation and F
+integrated/native acceptance remain unimplemented; no migration/import exists.
 The separately approved pilot-usability execution implements clicked-leaf
 Start/Stop/one atomic Switch and compact Mini for independent review. ChatGPT's
 new adjudication resolves the former other-active-task double-click decision.

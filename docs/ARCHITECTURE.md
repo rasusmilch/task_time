@@ -364,7 +364,7 @@ The earlier Stage 4C hypothetical transition safety requirements remain historic
 context, not a migration obligation. The latest project-nesting decision selects
 fresh schema 4, application ID 0x4348524E. No schema-3 import/conversion reader,
 transformation staging, pending-conversion marker or converted-copy activation
-controller is selected. Original v3 files stay untouched. During Package A,
+controller is selected. Original v3 files stay untouched. During A/B,
 ordinary creation/admission/backup/restore and supported native rollback remain
 exact schema 3; the isolated v4 candidate is never an ordinary opener/writer.
 
@@ -441,7 +441,7 @@ Native Windows theme/topmost/focus/operator qualification remains outstanding.
 The future project architecture and implemented usability slice follow the
 [selected organizational model and UX](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks).
 The delivered A–F task hierarchy remains historical. Ordinary runtime is still
-exact schema 3 with flat projects during Package A. The future runtime uses a
+exact schema 3 with flat projects during A/B. The future runtime uses a
 fresh schema-4 database, without migration/import/copy transition. Refuse old data
 rather than recreating, clearing or transforming it. The isolated candidate owns
 its explicit v4 definition and does not change ordinary SQLiteStore behavior.
@@ -486,8 +486,10 @@ root/child creation, project movement and existing task creation/rename effects
 in commit_seq order, with exact canonical bytes, UUIDs, versions, creation owners,
 relationships and timestamps. It neither translates v3 history nor supplies B's
 transactional executor. A no-op move cannot have a committed receipt. The candidate
-administrative set adds only create_child_project and move_project_subtree;
-classification is not Delete-retirement permission.
+administrative set explicitly lists the approved 18 operations, adding only
+create_child_project and move_project_subtree to v3's original 16. It is independent
+of future runtime classification changes and generates byte-identical candidate
+DDL. Classification is not Delete-retirement permission.
 
 Request format 1 and canonical result encoding remain. Root creation uses
 project_id/name and returns project_id/version=1. Child creation adds
@@ -503,8 +505,55 @@ with task_id/expected_version/parent_task_id/project_id. A committed result is
 project_id/version/parent_project_id; only the moved project's version/time/parent
 changes. Child links and immediate task memberships remain unchanged.
 
-These are candidate contracts and tests, not delivery of project services, UI,
-reporting integration, v4 source startup or Windows acceptance.
+These remain isolated candidate contracts. Package B implements the three project
+operations below; UI, lifecycle/reporting integration, v4 source startup and
+Windows acceptance remain outstanding.
+
+### Package B candidate project services
+
+[project_services.py](../src/chronicle/project_services.py) exposes
+`apply_project_operation(connection, request, CandidateProjectContext(dataset_id))`.
+It requires an already owned transaction, exact candidate schema/profile and
+dataset identity. It opens/closes no connection, owns no path and never begins,
+commits or rolls back a transaction. No SQLiteStore/worker/startup route changes.
+The caller resolves exact committed requests before current-state evaluation.
+
+Root/child creation uses the accepted UUID/time/name normalization and exact A
+contracts. Child creation reviews every root-to-parent identity, relationship and
+version, refuses inherited archive, starts at version 1 and leaves the parent
+unchanged. Movement reviews both ancestries and complete UUID-sorted descendant
+project/task observations. It validates the full current/proposed forest, cycles,
+versions and effective archive before writes or no-op recognition. Only the source
+project's parent/version/updated timestamp changes. Descendant project rows, task
+identity/membership/parentage and all other facts stay unchanged. A fully eligible
+same-parent move returns unchanged without UPDATE, receipt or sequence advance.
+
+The service compares installed complete logical facts with pre-write expected
+facts. Independent chronological replay remains in administration, not the
+service's mutation plan. `verify_candidate_transaction` factors the unchanged A
+supported-scope checks for a caller-owned transaction; `verify_candidate` retains
+its separate read-snapshot/rollback contract. Neither admits protected recording,
+lifecycle, template or reporting integration. SQL-only fixtures can exercise
+structural active/work guards without claiming complete candidate admission.
+
+[project_candidate.py](../tests/rewrite/project_candidate.py) is test-owned
+infrastructure for exclusively owned disposable files, not a supported runtime or
+second worker. It uses BEGIN IMMEDIATE, exact receipt lookup/canonical comparison,
+full supported pre-validation, service execution, exact administrative receipt
+extension, independent final history verification, then COMMIT. No-op rolls back.
+Existing commit sequences and all surviving receipt bytes remain authoritative.
+Exact retry returns the original result before stale checks; conflicting content
+under the same request UUID refuses.
+
+Faults retire the old connection before independent readback. Verified exact
+committed evidence recovers the original result after lost acknowledgement;
+verified absence under test-owned exclusive ownership permits ordinary retry of
+the same Request. Unverified cleanup/evidence reports unverified. No automatic
+replacement request or Delete no-retry semantics is introduced. Killed-child
+tests join cleanup before reopening. These are candidate transaction experiments,
+not implementation of schema-4 worker coordination or power-loss qualification.
+C lifecycle/Delete/templates/accounting, D project UI, E fresh activation and F
+integrated/native acceptance remain unimplemented.
 
 Future implementation boundaries:
 

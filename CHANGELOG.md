@@ -13,7 +13,7 @@ receipts or commits. No release or production qualification is implied below.
   counting each task once; no separate Customer entity or task-depth change.
   Select fresh schema 4 with the same application ID, retaining v3 files untouched
   without migration/import/copy transition. Ordinary runtime remains flat schema 3
-  during A; project services/UI and v4 activation are not implemented.
+  during A/B; project UI and v4 activation are not implemented.
 - Supply Package A's isolated exact schema-4 candidate, SQL project-cycle/archive/
   recording/active safeguards, iterative immutable project forest and scoped
   independent native-v4 administrative-history verification. Root/child/move
@@ -23,6 +23,17 @@ receipts or commits. No release or production qualification is implied below.
   Add real disposable SQLite, deep-forest, tampering and isolation tests. Replace
   the earlier plan's conversion dependency with fresh activation/compatibility
   work in future E. No migration, v4 runtime, Windows acceptance or pilot approval.
+- Add Package B candidate root/child project creation and transactional project
+  Move / Reparent service logic over caller-owned SQLite transactions for review.
+  Preserve exact A requests/receipts, validate full reviewed ancestry/subtrees,
+  refuse stale/archive/cycle contexts and change only the selected project's
+  parent/version/update time. Fully reviewed no-op writes no receipt. Freeze v4
+  administrative classification with byte-identical DDL; leave v3 unchanged.
+  Add a test-only disposable transaction/reconciliation adapter, independent replay,
+  immutable-fact comparisons and real rollback/interruption/lost-ack controls.
+  No second worker, GUI, supported v4 startup, protected-work admission or migration.
+  C lifecycle/accounting, D UI, E activation and F integrated/native acceptance
+  remain outstanding; Stage 4 IN PROGRESS, Stage 5 NOT STARTED.
 - Implement the separately approved pilot usability slice for independent review:
   coordinate/UUID-based eligible task double-click reuses Start/Stop/one atomic
   Switch; ChatGPT newly adjudicates the former other-active-task Open case.

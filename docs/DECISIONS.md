@@ -1562,8 +1562,10 @@ Stage 5 NOT STARTED; no native acceptance or pilot authorization follows.
 
 ### Fresh schema 4 and isolated Package A
 
-**Status:** target architecture selected; A candidate supplied for independent
-review. Ordinary runtime remains schema 3; v4 services/UI/activation are future.
+**Status:** target architecture selected; A accepted for continued functional
+development. B candidate services are implemented for independent review; ordinary
+runtime remains schema 3. C lifecycle/accounting, D UI, E activation and F
+integrated/native acceptance remain outstanding.
 **Provenance:** explicit Package A execution approval records the user's fresh
 schema-4 decision. It supersedes the earlier read-only plan's offline copy
 transition and removes the schema-3 preservation/transition reservation.
@@ -1580,6 +1582,21 @@ functionality. Future E covers fresh activation, compatibility/startup and backu
 restore, including version-aware private recovery preflight for ambiguous journals;
 A preserves current v3 hot-journal behavior. Historical A–F delivery is unchanged.
 Stage 4 IN PROGRESS; Stage 5 NOT STARTED; no native qualification follows.
+
+### Package B caller-owned candidate operations
+
+**Status:** implemented for independent review, without ordinary runtime activation.
+**Provenance:** explicit Package B execution approval at accepted A revision
+`bbbb79b6bbc2d59159e57ed3be5266087ac5c62e`. The service accepts a caller-owned
+SQLite connection, exact Request and isolated dataset context; it never owns
+transactions, datasets, a worker or startup. Root/child creation and project
+subtree movement preserve A's Request format 1 and receipt contracts. Schema-4
+administrative classification is explicit and stable with identical DDL; v3 is
+unchanged. Real test-owned BEGIN IMMEDIATE transactions exercise no-op rollback,
+exact receipt reconciliation and independent final-state verification. Unsupported
+protected/lifecycle/template/reporting scope remains refused. SQL guard evidence
+with active work does not imply full runtime admission. No UI, migration/import,
+C integration, D management, E activation or F native acceptance follows.
 
 ## Open decisions
 

@@ -78,8 +78,18 @@ transition. Package A provides [schema/SQL safeguard tests](../tests/rewrite/tes
 They use real disposable SQLite images and independent expected relationships;
 in-flight SQL guard fixtures are not service execution. Candidate verification is
 scoped and always refuses ordinary readiness; unsupported recording/template/
-lifecycle/reporting integrations fail closed. These tests do not establish B/C
-services, UI, calendar rules, v4 startup or native Windows acceptance. Ordinary v3
+lifecycle/reporting integrations fail closed. Package B adds
+[real service/transaction behavior tests](../tests/rewrite/test_project_movement.py)
+using the [test-only candidate adapter](../tests/rewrite/project_candidate.py).
+They exercise root/child creation, deep ancestry and complete-subtree moves,
+changed-row-only facts, exact requests/receipts/retries, stale/archive/cycle
+refusal, no-op rollback, failed SQL/receipt/final validation, killed processes
+and independently reconciled lost acknowledgement. Portable process interruption
+proves the exercised SQLite behavior, not arbitrary power loss. Full candidate
+admission still refuses nonempty protected work; separate SQL/structural fixtures
+verify active/work preservation without widening that scope. These tests do not
+establish C integration, UI, calendar rules, v4 startup or native Windows acceptance.
+Ordinary v3
 DDL/classification/dispatch isolation and existing hot-journal tests remain required.
 
 | Guarantee (project nesting future; usability implemented) | Required behavior coverage |
@@ -394,7 +404,7 @@ The earlier A–F task-hierarchy target used fresh data, a distinct approved sch
 and strict old-dataset refusal, not v1 conversion tests. No migration engine,
 legacy import or backward-compatibility fixture obligation was selected. The new
 project-nesting target explicitly selects fresh v4, retaining old files without
-migration/import/copy transition. Test A's candidate in isolation; future E must
+migration/import/copy transition. Test A/B candidates in isolation; future E must
 preserve incompatible originals while retaining supported hot-journal recovery.
 Raw uncommitted header markers are not committed identity, and private version-aware
 recovery preflight remains the preferred future architecture. A does not implement
