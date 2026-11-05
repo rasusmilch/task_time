@@ -583,7 +583,7 @@ class SQLiteStore:
         cls.verify_receipts(c)
 
     @staticmethod
-    def verify_receipts(c):
+    def verify_receipts(c, *, context=None):
         """Validate detached receipt content and persisted work associations.
 
         Export and confirmation whole-content validation remains in _verify;
@@ -606,12 +606,13 @@ class SQLiteStore:
                 raise ValueError('Noncanonical committed request receipt')
             receipts[request.request_id] = (request, result)
             a, op = request.args(), request.operation
-            if row['receipt_class'] != receipt_class(op):
+            expected_class = receipt_class(op) if context is None else ('administrative' if op in context.administrative_operations else 'protected')
+            if row['receipt_class'] != expected_class:
                 raise ValueError('Incorrect committed receipt classification')
             for key in ('expected_version','expected_task_version','expected_active_version','expected_revision'):
                 if key in a and (type(a[key]) is not int or not 1 <= a[key] <= 2**63-1):
                     raise ValueError('Invalid reviewed version in receipt')
-            if op in ('create_task','rename_task','assign_task_to_project','create_project','rename_project','move_task_branch','archive_project','unarchive_project','archive_task','unarchive_task','create_template','edit_template','duplicate_template','archive_template','unarchive_template','apply_template'):
+            if op in (ADMINISTRATIVE_OPERATIONS if context is None else context.administrative_operations):
                 pass  # Complete bidirectional entity/version closure is checked below.
             elif op == 'set_week_start':
                 if (type(a.get('week_start')) is not int or not 0 <= a['week_start'] <= 6
@@ -635,7 +636,7 @@ class SQLiteStore:
                     raise ValueError('Correction receipt has no audit evidence')
             else:
                 raise ValueError('Unsupported committed receipt operation')
-        SQLiteStore.verify_administration(c, receipts)
+        (SQLiteStore.verify_administration if context is None else context.verify_administration)(c, receipts)
         for entry in c.execute('SELECT * FROM work_entries'):
             request, result = receipts[entry['created_request_id']]
             a = request.args()
@@ -737,8 +738,8 @@ class SQLiteStore:
         return value
 
     @staticmethod
-    def assert_lifecycle(c):
-        SQLiteStore.assert_structure(c)
+    def assert_lifecycle(c, *, structure=None):
+        (SQLiteStore.assert_structure if structure is None else structure)(c)
         bad = c.execute("""SELECT e.entry_id FROM work_entries e LEFT JOIN active_timer a USING(entry_id)
           WHERE (a.entry_id IS NOT NULL AND e.kind!='timed')
              OR (e.current_revision IS NULL AND a.entry_id IS NULL)

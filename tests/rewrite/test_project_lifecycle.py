@@ -172,7 +172,7 @@ def test_active_containment_blocks_complete_hierarchy_with_no_timer_mutation(pop
         assert facts(c)==state
         assert apply_lifecycle_operation(c,unrelated,a.context)==dict(project_id=key(2),version=2)
         for table in state.keys()-{'projects'}:assert facts(c)[table]==state[table]
-        with pytest.raises(UnsupportedCandidateOperation):schema.verify_candidate_transaction(c)
+        with pytest.raises(ValueError):schema.verify_candidate_transaction(c)
         c.execute('ROLLBACK')
     finally:c.close()
 
@@ -360,6 +360,6 @@ def test_sql_only_closed_work_frozen_bytes_and_confirmation_preservation(populat
         after=facts(c)
         for table in before.keys()-{'projects'}:assert after[table]==before[table]
         assert after['timesheet_exports'][0]['report_utf8']==blob
-        with pytest.raises(UnsupportedCandidateOperation):schema.verify_candidate_transaction(c)
+        with pytest.raises(ValueError):schema.verify_candidate_transaction(c)
         c.execute('ROLLBACK')
     finally:c.close()

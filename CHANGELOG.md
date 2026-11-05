@@ -13,7 +13,7 @@ receipts or commits. No release or production qualification is implied below.
   counting each task once; no separate Customer entity or task-depth change.
   Select fresh schema 4 with the same application ID, retaining v3 files untouched
   without migration/import/copy transition. Ordinary runtime remains flat schema 3
-  during A/B/C1; project UI and v4 activation are not implemented.
+  during A/B/C1/C2; project UI and v4 activation are not implemented.
 - Supply Package A's isolated exact schema-4 candidate, SQL project-cycle/archive/
   recording/active safeguards, iterative immutable project forest and scoped
   independent native-v4 administrative-history verification. Root/child/move
@@ -41,10 +41,23 @@ receipts or commits. No release or production qualification is implied below.
   cutoff, preserving task/application facts and counting each Individual once.
   Test actual SQLite transactions, exact retries/no-op, independent flags, deep
   forests, tamper/rollback/interruption/uncertainty and time/accounting invariants.
-  Keep protected-work/reporting/template admission refused. Retain Package C's
-  objective with C2 evidence/Delete/templates/remaining task movement outstanding;
+  C2 extends complete evidence admission below. Retain Package C's objective;
   no ordinary v4 worker, startup, UI, migration/import or qualification is added.
   Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
+- Add Package C2's complete isolated schema-4 backend for independent review:
+  exact semantic admission of work/revisions/active corrections, administrative
+  and template history, frozen Timesheets, POL-R confirmations and configuration.
+  Reuse shared recording, History, frozen and confirmation domain logic while
+  preserving ordinary schema-3 contracts/admission. Add exact schema-4 project
+  ancestry reviews for task creation/assignment/movement and Template Apply.
+  Implement nested unused-only Delete with complete volatile scope, typed DELETE,
+  finite whole-receipt retirement, strict protected/survivor proof, preserved
+  sequence high water and no-retry uncertainty. Preserve applied work after
+  template definition erasure and provide coordinated backend read projections.
+  Add real rich SQLite, tampering, rollback, reconciliation and process-death
+  controls. No ordinary v4 writer/startup, project GUI, migration/import,
+  backup/restore activation or native acceptance. Stage 4 IN PROGRESS; Stage 5
+  NOT STARTED; D–F remain outstanding.
 - Implement the separately approved pilot usability slice for independent review:
   coordinate/UUID-based eligible task double-click reuses Start/Stop/one atomic
   Switch; ChatGPT newly adjudicates the former other-active-task Open case.

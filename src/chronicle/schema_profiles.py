@@ -501,6 +501,7 @@ class CandidateVerification:
     schema_version: int = SCHEMA_VERSION
     structural_verified: bool = True
     administrative_history_verified: bool = True
+    semantic_verified: bool = True
 
     @property
     def ordinary_startup_permitted(self):
@@ -508,10 +509,10 @@ class CandidateVerification:
 
 
 def verify_candidate(c):
-    """Read-only supported administrative verification; no ordinary admission.
+    """Read-only complete candidate verification; no ordinary admission.
 
-    No timezone calculation, protected-work replay, template, Delete,
-    reporting, backup or runtime eligibility is claimed by this candidate API.
+    Complete C2 evidence checks remain candidate-only; backup/restore, ordinary
+    startup and native qualification are not granted by this API.
     """
     if c.in_transaction:
         raise ValueError('Candidate verification requires a separate completed transaction')
@@ -530,24 +531,9 @@ def verify_candidate(c):
 
 
 def verify_candidate_transaction(c):
-    """Read-only supported-scope gate inside a caller-owned transaction.
+    """Complete independent C2 semantics on the caller-owned transaction.
 
-    Owns no BEGIN/COMMIT/ROLLBACK. The separate-snapshot API above retains its
-    original contract. Supported administrative replay includes C1 lifecycle;
-    protected work, templates, configuration and reporting remain refused.
+    This grants no ordinary startup, worker, backup or restore authority.
     """
-    from .administration import verify_schema4_history, UnsupportedCandidateOperation
-    if not c.in_transaction:
-        raise ValueError('Candidate scope verification requires an owned transaction')
-    verify_structure(c)
-    supported_tables = {'dataset_meta', 'projects', 'tasks', 'committed_requests', 'sqlite_sequence'}
-    for table, in c.execute("SELECT name FROM sqlite_schema WHERE type='table'"):
-        if table not in supported_tables and c.execute(f'SELECT 1 FROM {table} LIMIT 1').fetchone():
-            raise UnsupportedCandidateOperation('Candidate integration not implemented: ' + table)
-    dataset_id = c.execute('SELECT dataset_id FROM dataset_meta').fetchone()[0]
-    meta = c.execute('SELECT week_start,polr_reminder_dismissed_local_date FROM dataset_meta').fetchone()
-    if tuple(meta) != (6, None):
-        raise UnsupportedCandidateOperation('Candidate configuration history not implemented')
-    verify_schema4_history(_rows(c, 'projects'), _rows(c, 'tasks'),
-                          _rows(c, 'committed_requests'), dataset_id)
-    return CandidateVerification()
+    from .schema4_evidence import verify_transaction
+    return verify_transaction(c)

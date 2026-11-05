@@ -62,6 +62,11 @@ def snapshot(adapter):
 
 
 def request(adapter, operation, **args):
+    if operation=='create_task' and 'reviewed_destination_project_ancestry' not in args:
+        state=snapshot(adapter);projects={p['project_id']:p for p in state['projects']}
+        group=args.get('project_id')
+        if args.get('parent_task_id') is not None:group=next(t['project_id'] for t in state['tasks'] if t['task_id']==args['parent_task_id'])
+        args=dict(args,reviewed_destination_project_ancestry=ancestry(projects,group))
     return Request.make(uid(), adapter.context.dataset_id, operation, NOW+100, **args)
 
 
@@ -599,7 +604,7 @@ def test_sql_only_active_and_historical_work_preservation_and_archive_guards(pop
         result = apply_project_operation(c,frozen,a.context)
         assert result['version'] == 2
         for table in before.keys()-{'projects'}: assert facts(c)[table] == before[table]
-        with pytest.raises(UnsupportedCandidateOperation): schema.verify_candidate_transaction(c)
+        with pytest.raises(ValueError): schema.verify_candidate_transaction(c)
         with pytest.raises(sqlite3.IntegrityError,match='hide active timer'):
             c.execute('UPDATE projects SET is_archived=1,archived_at_utc_us=? WHERE project_id=?',(NOW,key(2)))
         blocked = sql_project(c,archived=1)
@@ -640,7 +645,7 @@ def test_real_task_changes_invalidate_review_before_any_service_write(populated,
         if change == 'added':
             identity = sql_task(c,project=key(3))
             owner = c.execute('SELECT created_request_id FROM tasks WHERE task_id=?',(identity,)).fetchone()[0]
-            seed = Request.make(owner,a.context.dataset_id,'create_task',NOW,task_id=identity,name='Task',project_id=key(3),expected_project_version=1)
+            seed = Request.make(owner,a.context.dataset_id,'create_task',NOW,task_id=identity,name='Task',project_id=key(3),expected_project_version=1,reviewed_destination_project_ancestry=ancestry({p['project_id']:p for p in facts(c)['projects']},key(3)))
             c.execute('INSERT INTO committed_requests(request_id,operation,receipt_class,request_bytes,result_bytes,action_utc_us) VALUES(?,?,?,?,?,?)',
                       (owner,seed.operation,'administrative',seed.content(),canonical(dict(task_id=identity,version=1)),NOW))
         if change == 'removed':
@@ -691,7 +696,7 @@ def test_retained_direct_parent_work_is_reviewed_and_unchanged_sql_scope(populat
         assert apply_project_operation(c,frozen,a.context)['version'] == 2
         after = facts(c)
         for table in before.keys()-{'projects'}: assert after[table] == before[table]
-        with pytest.raises(UnsupportedCandidateOperation): schema.verify_candidate_transaction(c)
+        with pytest.raises(ValueError): schema.verify_candidate_transaction(c)
         c.execute('ROLLBACK')
     finally: c.close()
 

@@ -158,6 +158,15 @@ def execute(c,request):
     before=deepcopy(defs)
     result=effect(request.operation,request.args(),defs,tasks,projects,active,used,request.request_id,request.action_utc_us)
     if result is None:return None
+    return install(c,request,defs,tasks,before,result)
+
+
+def from_facts(facts):
+    return [dict(r,nodes=[{k:n[k] for k in NODE_FIELDS} for n in sorted(facts['template_nodes'],key=lambda n:n['position']) if n['template_id']==r['template_id']]) for r in facts['template_definitions']]
+
+
+def install(c,request,defs,tasks,before,result):
+    """Shared SQL installation of an already validated template effect."""
     if request.operation=='apply_template':
         for pair in result['created_tasks']:
             row=tasks[pair['task_id']];columns=tuple(row)
@@ -173,7 +182,3 @@ def execute(c,request):
         if graph_changed:
             for n in d['nodes']:c.execute('INSERT INTO template_nodes(template_id,node_id,parent_node_id,name,position) VALUES(?,?,?,?,?)',(key,n['node_id'],n['parent_node_id'],n['name'],n['position']))
     return result
-
-
-def from_facts(facts):
-    return [dict(r,nodes=[{k:n[k] for k in NODE_FIELDS} for n in sorted(facts['template_nodes'],key=lambda n:n['position']) if n['template_id']==r['template_id']]) for r in facts['template_definitions']]

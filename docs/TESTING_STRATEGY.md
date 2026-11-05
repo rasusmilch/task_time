@@ -77,31 +77,47 @@ transition. Package A provides [schema/SQL safeguard tests](../tests/rewrite/tes
 [native-v4 synthetic history tests](../tests/rewrite/test_schema4_history.py).
 They use real disposable SQLite images and independent expected relationships;
 in-flight SQL guard fixtures are not service execution. Candidate verification is
-scoped and always refuses ordinary readiness; unsupported recording/template/
-reporting integrations fail closed. C1 adds supported administrative lifecycle
-replay. Package B adds
+candidate-only and always refuses ordinary readiness. C1 adds lifecycle replay;
+C2 now verifies complete supported protected/template/reporting semantics. Package B adds
 [real service/transaction behavior tests](../tests/rewrite/test_project_movement.py)
 using the [test-only candidate adapter](../tests/rewrite/project_candidate.py).
 They exercise root/child creation, deep ancestry and complete-subtree moves,
 changed-row-only facts, exact requests/receipts/retries, stale/archive/cycle
 refusal, no-op rollback, failed SQL/receipt/final validation, killed processes
 and independently reconciled lost acknowledgement. Portable process interruption
-proves the exercised SQLite behavior, not arbitrary power loss. Full candidate
-admission still refuses nonempty protected work; separate SQL/structural fixtures
-verify active/work preservation without widening that scope. These tests do not
+proves the exercised SQLite behavior, not arbitrary power loss. C2 extends
+complete candidate admission to valid protected work; old SQL-only placeholder
+fixtures remain insufficient for semantic validity. These tests do not
 establish complete C integration, UI, v4 startup or native Windows acceptance.
 C1 adds [lifecycle tests](../tests/rewrite/test_project_lifecycle.py) and
 [project accounting tests](../tests/rewrite/test_project_accounting.py). Real
 candidate transactions cover exact selected-row/receipt effects, deep inherited
 archive, independent flags, active containment, no-op, stale review, rollback,
 lost acknowledgement, process interruption and independent tamper refusal.
-SQL-scoped work/frozen/active fixtures still refuse full candidate admission.
+SQL-scoped placeholder work/frozen/active fixtures still refuse semantic admission.
 Accounting uses the actual existing engine with independently specified totals
 for mixed direct/descendant work, retained former-leaf/archived work, virtual
 Unassigned, midnight/DST/date-only/active-cutoff attribution, deep iterative
 rollups, reparent conservation, checked overflow and unavailable-report refusal.
 Schema-3 lifecycle/accounting/worker authority and both DDLs remain unchanged.
-C2 evidence/Delete/templates/task-movement integration and D–F remain outstanding.
+C2 adds real [evidence](../tests/rewrite/test_schema4_evidence.py),
+[Delete](../tests/rewrite/test_project_delete.py),
+[templates](../tests/rewrite/test_schema4_templates.py),
+[task movement](../tests/rewrite/test_schema4_task_movement.py) and
+[integration](../tests/rewrite/test_schema4_integration.py) cases. Rich canonical
+SQLite records cover protected corrections/deleted revisions, historical
+leaf/archive/active eligibility, frozen labels/bytes/full-week cells, confirmed
+zero/prior chains/stale-source acknowledgement, configuration and reminders.
+Delete covers deep scope/counts, exact confirmation/staleness, protected and
+cross-survivor dependency refusal, whole-Apply/movement retirement, sequence
+preservation, complete survivor proof, bounded pre/post-COMMIT process death and
+no automatic retry after uncertainty. Template definition erasure preserves
+applied work and retained source snapshots. Backend reads conserve task/application
+Actual, project rollups and unavailable state without writes. Shared schema-3
+recording/History/template-installation/evidence helpers require affected and
+broader portable regression. These tests do not establish native Windows, power
+loss, arbitrary concurrent-writer or ordinary schema-4 runtime qualification.
+D–F remain outstanding.
 Ordinary v3
 DDL/classification/dispatch isolation and existing hot-journal tests remain required.
 

@@ -120,11 +120,16 @@ caller-owned transaction, accepted for continued functional development. Its
 real transaction/reconciliation adapter is test infrastructure only, with no runtime registration. Ordinary
 SQLiteStore, creation, startup and backup/restore remain schema 3. Package C's
 objective is split into C1 candidate lifecycle/inherited eligibility/derived
-project accounting, implemented for independent review, and C2 protected evidence,
-unused-only Delete, templates and remaining task movement integration, still
-unimplemented. D project UI, E fresh-v4 activation and F integrated/native
-acceptance remain outstanding; no migration/import exists. C1 does not admit
-nonempty protected work, templates, confirmations or reporting evidence.
+project accounting, accepted for continued development, and C2 complete candidate
+semantic verification, protected evidence, nested unused-only Delete, templates
+and remaining task management, now implemented for independent review. C2 reuses
+shared domain validation on caller-owned connections; its transaction adapter
+remains test-only. Ordinary SQLiteStore/worker/startup stay schema 3. D project
+UI, E fresh-v4 activation/backup/restore and F integrated/native acceptance remain
+outstanding. No migration/import exists. C2 adds schema-4-only project-ancestry
+reviews to task creation/assignment/movement and Template Apply; schema-3 and
+A/B project request contracts remain unchanged. Delete remains no-receipt/no-retry
+after uncertainty; no protected receipt or evidence may retire.
 The separately approved pilot-usability execution implements clicked-leaf
 Start/Stop/one atomic Switch and compact Mini for independent review. ChatGPT's
 new adjudication resolves the former other-active-task double-click decision.

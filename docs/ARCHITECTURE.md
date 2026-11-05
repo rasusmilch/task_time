@@ -364,7 +364,7 @@ The earlier Stage 4C hypothetical transition safety requirements remain historic
 context, not a migration obligation. The latest project-nesting decision selects
 fresh schema 4, application ID 0x4348524E. No schema-3 import/conversion reader,
 transformation staging, pending-conversion marker or converted-copy activation
-controller is selected. Original v3 files stay untouched. During A/B/C1,
+controller is selected. Original v3 files stay untouched. During A/B/C1/C2,
 ordinary creation/admission/backup/restore and supported native rollback remain
 exact schema 3; the isolated v4 candidate is never an ordinary opener/writer.
 
@@ -441,7 +441,7 @@ Native Windows theme/topmost/focus/operator qualification remains outstanding.
 The future project architecture and implemented usability slice follow the
 [selected organizational model and UX](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks).
 The delivered A–F task hierarchy remains historical. Ordinary runtime is still
-exact schema 3 with flat projects during A/B/C1. The future runtime uses a
+exact schema 3 with flat projects during A/B/C1/C2. The future runtime uses a
 fresh schema-4 database, without migration/import/copy transition. Refuse old data
 rather than recreating, clearing or transforming it. The isolated candidate owns
 its explicit v4 definition and does not change ordinary SQLiteStore behavior.
@@ -470,11 +470,11 @@ no worker operation or launcher path.
 SQLite connection, configured DELETE/EXTRA/FK. It is not an existing-dataset
 opener. `verify_schema` checks exact definitions/profile; `verify_structure` adds
 SQLite/FK integrity and complete project/task forest/active eligibility checks.
-`verify_candidate` verifies the supported A/B/C1 administrative scope and always
-reports ordinary_startup_permitted=False. It refuses nonempty protected/template
-facts, changed configuration history and unsupported operations. It does not
-validate calendar rules, replay protected work, or promise complete runtime
-admission. Later packages must supply those integrations.
+`verify_candidate` now delegates to C2's complete candidate semantic verifier and
+always reports ordinary_startup_permitted=False. Valid rich work, templates,
+configuration and frozen evidence are supported; malformed, unknown or incomplete
+evidence refuses. Complete candidate semantics do not grant worker/startup,
+backup/restore or native runtime admission.
 
 `hierarchy.ProjectForest` uses iterative complete coverage, immutable detached
 parent/children/root/order/archive observations and on-demand complete paths and
@@ -530,11 +530,11 @@ same-parent move returns unchanged without UPDATE, receipt or sequence advance.
 
 The service compares installed complete logical facts with pre-write expected
 facts. Independent chronological replay remains in administration, not the
-service's mutation plan. `verify_candidate_transaction` factors the unchanged A
-supported-scope checks for a caller-owned transaction; `verify_candidate` retains
+service's mutation plan. `verify_candidate_transaction` supplies the complete C2
+semantic boundary for a caller-owned transaction; `verify_candidate` retains
 its separate read-snapshot/rollback contract. C1 adds administrative lifecycle
-replay; protected recording, template and reporting integration remain refused.
-SQL-only fixtures can exercise structural active/work guards without claiming complete candidate admission.
+replay; C2 extends complete protected/template/reporting verification below.
+SQL-only placeholder fixtures still cannot establish complete evidence validity.
 
 [project_candidate.py](../tests/rewrite/project_candidate.py) is test-owned
 infrastructure for exclusively owned disposable files, not a supported runtime or
@@ -552,9 +552,8 @@ the same Request. Unverified cleanup/evidence reports unverified. No automatic
 replacement request or Delete no-retry semantics is introduced. Killed-child
 tests join cleanup before reopening. These are candidate transaction experiments,
 not implementation of schema-4 worker coordination or power-loss qualification.
-C1 extends this foundation below. C2 protected evidence/Delete/templates/remaining
-task movement, D project UI, E fresh activation and F integrated/native acceptance
-remain unimplemented.
+C1/C2 extend this foundation below. D project UI, E fresh activation/backup/restore
+and F integrated/native acceptance remain unimplemented.
 
 ### Package C1 candidate lifecycle and project accounting
 
@@ -591,8 +590,8 @@ Independent schema-4 replay reconstructs the four lifecycle effects in commit_se
 order without calling the service transition, verifies canonical bytes, versions,
 accepted timestamps and full surviving project/task rows, and rejects retained
 no-op or contradictory/missing history. Schema-3 replay is unchanged. Protected
-timer history is not yet replayed or admitted; active/work/frozen preservation
-fixtures establish SQL/structural properties only.
+timer chronology and complete protected evidence are supplied by C2 below; old
+placeholder fixtures remain SQL/structural evidence only.
 
 [project_accounting.py](../src/chronicle/project_accounting.py) exposes pure
 `project_report(report, tasks, projects)` over one coordinated successful
@@ -611,7 +610,91 @@ Individual work. Project reparenting changes live rollups while task/application
 Actual remains unchanged. This C1/C2 execution split retains Package C's original
 complete lifecycle/accounting/integration objective; C1 alone does not complete C.
 
-Future implementation boundaries:
+### Package C2 complete candidate backend
+
+[schema4_evidence.py](../src/chronicle/schema4_evidence.py) exposes
+verify_transaction(connection) for an owned transaction. schema_profiles keeps
+its separate-snapshot verify_candidate API and caller-owned
+verify_candidate_transaction delegate. Both validate the exact unchanged v4 DDL,
+profile, all tables, integrity/FKs, metadata/pinned timezone, forests, lifecycle,
+work/revisions/active corrections, templates, frozen exports, confirmations,
+configuration and complete retained request associations. Unknown operations or
+malformed canonical bytes refuse. Candidate semantic_verified never grants ordinary
+startup permission. Observed receipt sequence high water must cover retained
+chronology; legitimate retirement gaps remain valid.
+
+SQLiteStore's version-independent revision/receipt checks accept an explicit
+verification context; default v3 calls preserve existing behavior. A named-row
+connection view opens no connection and changes no caller row_factory. Existing
+export, confirmation, calendar and POL-R validators remain authoritative. The
+independent candidate chronology maintains historical active identity/start/version,
+entry/revision state, task eligibility and configuration in commit_seq order. It
+checks new work against the historical leaf/archive state, including full project
+ancestry. Final current flags never substitute for historical eligibility.
+
+[schema4_services.py](../src/chronicle/schema4_services.py) exposes
+apply_operation(connection, Request, CandidateProjectContext) over caller-owned
+transactions. A/B project contracts and C1 lifecycle remain unchanged. Shared
+recording_services extracts the existing recording/configuration/export/confirmation
+operation path; it owns no dataset, transaction or worker. The schema-3 TimerService
+uses that same path with its original eligibility and request contracts. Shared
+History reading and template SQL installation retain their existing domain logic.
+
+Schema-4 create_task and apply_template require
+reviewed_destination_project_ancestry. assign_task_to_project and move_task_branch
+require reviewed_source_project_ancestry and reviewed_destination_project_ancestry.
+Each is the exact ordered root-to-immediate-project list of
+project_id/expected_version/parent_project_id members, or [] for Unassigned. All
+existing UUID/version/subtree reviews remain required as applicable; parent moves,
+renames/version changes and archive changes stale the new review. Schema-3 shapes
+and Request format 1 are unchanged. Independent replay checks the same native-v4
+contracts without interpreting v3 receipts as v4. Task movement stays separate
+from project movement, preserves all work/flags and retains three task levels.
+
+Template management and Apply reuse the existing pure task-only template model.
+Complete destination ancestry, task capacity and running-parent checks precede
+fresh task creation. Apply/Duplicate source snapshots remain self-contained after
+proven definition erasure; historical uniqueness/provenance across erased intervals
+remains deliberately unverifiable. No project template nodes or copied work exist.
+
+[schema4_delete.py](../src/chronicle/schema4_delete.py) exposes preview and
+apply_delete on the same caller-owned candidate connection. Project scopes contain
+every descendant project and all immediately assigned tasks at every task level;
+task scopes contain the whole task subtree. The detached deterministic review
+contains selected rows, UUID-sorted scope/counts, source project ancestry, task
+context, eligibility reasons, exact receipt retirements and irreversible context.
+Exact typed DELETE and current review/version equality are mandatory. No receipt
+is inserted, and sqlite_sequence is preserved.
+
+Retirement is finite: project creation/child creation/rename/lifecycle owns only
+its included project; task creation/rename/assignment/lifecycle owns only its
+included task. Task movement requires every reviewed/changed task in scope.
+Project movement requires every reviewed project/task and changed project in scope.
+Apply requires its entire created task set. Passive ancestry is not ownership and
+never overrides survivor proof. Template management retires only through separate
+definition Delete. Unknown dependency classes, protected references (including
+zero/deleted work and old frozen project context) or unprovable surviving history
+block the entire scope. No receipt splits or protected retirement are permitted.
+
+Tasks delete deepest-first, projects in reverse forest order. Full independent
+semantics and exact complete survivor comparison precede COMMIT. The existing
+test-owned CandidateAdapter supplies a separate no-receipt Delete method under
+the same file ownership: any attempted-COMMIT uncertainty or unverified cleanup
+blocks further mutation/review. Delete never enters exact-receipt reconciliation
+or automatic retry. Presence is explicitly current state only; explicit exit and
+reopen plus a fresh review/typed confirmation is required for another Delete.
+No tombstone/ledger is added; fully erased administrative requests cannot promise
+historical retry recognition. Normal creation uses fresh caller-supplied UUIDs.
+
+Backend read_state, history, reconciliation and reminder consume one caller-owned
+snapshot/cutoff and existing attribution/allocation engines. They return complete
+relationships, explicit/effective eligibility, active identity, templates, direct
+task History and task/project Direct/Cumulative values. Calculation failure stays
+unavailable instead of becoming zero. Frozen reports remain independent of live
+reparenting/renaming. No mutable report/hierarchy cache is persisted. D rendering,
+E ordinary fresh-v4 startup/backup/restore and F native acceptance remain pending.
+
+Remaining integration and selected backend contracts:
 
 - Schema/FKs and independent cold admission validate project parent existence,
   canonical identity, same-dataset references and the full acyclic forest. A local

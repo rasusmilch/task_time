@@ -261,46 +261,8 @@ class TimerService:
         return {"entry_id": entry_id, "revision": revision}
 
     def _work_mutation(self, c, request, a):
-        op = request.operation
-        if type(a["comment"]) is not str:
-            raise ValueError("Work comment must be text")
-        adding = op.startswith("add_")
-        kind = "timed" if op in ("add_timed_work", "edit_closed_timed_work") else "date_only"
-        if adding:
-            uuid_text(a["task_id"])
-            uuid_text(a["entry_id"])
-            self._recordable(c, a['task_id'])
-            old, revision = None, 1
-        else:
-            old = self._reviewed_work(c, a["task_id"], a["entry_id"], a["expected_revision"],
-                                      None if op == "delete_work_entry" else kind)
-            kind, revision = old["kind"], old["revision"] + 1
-        if op == "delete_work_entry":
-            return self._append_revision(c, request, a["entry_id"], revision, kind,
-                                         old["start_utc_us"], old["stop_utc_us"], old["work_date"],
-                                         old["duration_us"], 1, a["comment"])
-        start = stop = day = duration = None
-        if kind == "timed":
-            start = resolve_minute(a["start_date"], a["start_time"], a["start_occurrence"], self.store.zone,
-                                   original=old["start_utc_us"] if old else None)
-            stop = resolve_minute(a["end_date"], a["end_time"], a["end_occurrence"], self.store.zone,
-                                  original=old["stop_utc_us"] if old else None)
-            if old and (start, stop) == (old["start_utc_us"], old["stop_utc_us"]):
-                return None
-            if stop <= start:
-                raise ValueError("End must be strictly after start in UTC")
-            if stop > request.action_utc_us:
-                raise ValueError("Timed work end cannot be later than the accepted observation")
-        else:
-            day, duration = parse_date(a["work_date"]).isoformat(), parse_duration(a["duration_text"])
-            if old and (day, duration) == (old["work_date"], old["duration_us"]):
-                return None
-        if adding:
-            c.execute("""INSERT INTO work_entries
-              (entry_id,task_id,kind,original_start_utc_us,current_revision,created_request_id) VALUES(?,?,?,?,1,?)""",
-                      (a["entry_id"], a["task_id"], kind, start, request.request_id))
-        return self._append_revision(c, request, a["entry_id"], revision, kind,
-                                     start, stop, day, duration, 0, a["comment"])
+        from .recording_services import apply_work
+        return apply_work(c, request, a, zone=self.store.zone, recordable=self._recordable)
 
     @staticmethod
     def _task(c, task_id, version):
@@ -585,6 +547,10 @@ class TimerService:
         def operation(c):
             a, op, now = request.args(), request.operation, request.action_utc_us
             local_date(now, self.store.zone)
+            from .recording_services import FIELDS as COMMON_FIELDS, apply_common
+            if op in COMMON_FIELDS:
+                return apply_common(c, request, dataset_id=self.store.dataset_id,
+                                    zone=self.store.zone, recordable=self._recordable)
             from .templates import OPERATIONS as TEMPLATE_OPS, execute as execute_template
             if op in TEMPLATE_OPS:return execute_template(c,request)
             from .lifecycle import OPERATIONS, transition
@@ -603,47 +569,13 @@ class TimerService:
                 return {entity + '_id': key, 'version': changed['version']}
             if op == 'move_task_branch':
                 return self._move_task_branch(c,request,a)
-            if op == 'dismiss_polr_reminder_today':
-                from .polr_allocation import civil
-                if set(a)!={'local_date'}:raise ValueError('Dismissal requires one local date')
-                day=civil(a['local_date'])
-                if day!=local_date(now,self.store.zone):raise StaleState('Dismissal date differs from accepted dataset-local observation')
-                if self.store.dismissed_date(c)==day.isoformat():return None
-                c.execute('UPDATE dataset_meta SET polr_reminder_dismissed_local_date=? WHERE singleton=1',(day.isoformat(),))
-                return dict(local_date=day.isoformat())
-            if op == 'confirm_polr_absolute':
-                from .polr_confirmation import fields,REQUEST_FIELDS
-                fields(a,REQUEST_FIELDS)
-                source=self.store.read_export(c,a['source_export_id']) if a['source_export_id'] is not None else None
-                seq=self._export_sequence(c,source.export_id) if source else None
-                return self.store.insert_confirmation(c,request,source,seq)
-            if op == 'register_timesheet_export':
-                from .timesheet import from_content
-                if set(a) != {'candidate'}:
-                    raise ValueError("Registration requires complete frozen candidate")
-                candidate = from_content(a['candidate'])
-                if candidate.dataset_id != self.store.dataset_id or candidate.timezone != self.store.timezone:
-                    raise ValueError("Wrong candidate dataset/timezone")
-                return self.store.insert_export(c,candidate,request)
             expected = {
                 "create_task": {"task_id", "name", "project_id"},
                 "rename_task": {"task_id", "name", "expected_version"},
                 "create_project": {"project_id", "name"},
                 "rename_project": {"project_id", "name", "expected_version"},
                 "assign_task_to_project": {"task_id", "project_id", "expected_version"},
-                "start_timer": {"task_id", "entry_id", "expected_task_version"},
-                "stop_timer": {"entry_id", "expected_version"},
-                "switch_timer": {"expected_active_entry_id", "expected_active_version", "next_task_id", "next_entry_id", "expected_task_version"},
-                "correct_active_start": {"entry_id", "expected_version", "date_text", "time_text", "occurrence", "comment"},
             }
-            timed_fields = {"task_id", "entry_id", "start_date", "start_time", "end_date", "end_time",
-                            "start_occurrence", "end_occurrence", "comment"}
-            dated_fields = {"task_id", "entry_id", "work_date", "duration_text", "comment"}
-            expected.update({"add_timed_work": timed_fields, "add_date_only_work": dated_fields,
-                             "edit_closed_timed_work": timed_fields | {"expected_revision"},
-                             "edit_date_only_work": dated_fields | {"expected_revision"},
-                             "delete_work_entry": {"task_id", "entry_id", "expected_revision", "comment"},
-                             "set_week_start": {"week_start", "expected_week_start"}})
             if op == 'create_task':
                 required = {'task_id','name'}
                 allowed = required | {'project_id','parent_task_id','expected_project_version','expected_parent_version'}
@@ -651,17 +583,6 @@ class TimerService:
                     raise ValueError('Incorrect create_task fields')
             elif op not in expected or set(a) != expected[op]:
                 raise ValueError("Unknown operation or incorrect request fields")
-            if op in ("add_timed_work", "add_date_only_work", "edit_closed_timed_work", "edit_date_only_work", "delete_work_entry"):
-                return self._work_mutation(c, request, a)
-            if op == "set_week_start":
-                new = integer(a["week_start"], "Week start", 0, 6)
-                prior = integer(a["expected_week_start"], "Reviewed week start", 0, 6)
-                if self.store.week_start != prior:
-                    raise StaleState("Reviewed week start changed; refresh before trying again")
-                if new == prior:
-                    return None
-                c.execute("UPDATE dataset_meta SET week_start=? WHERE singleton=1", (new,))
-                return {"week_start": new}
             if op in ("create_task", "create_project"):
                 entity = "task" if op == "create_task" else "project"
                 key, name = uuid_text(a[f"{entity}_id"]), name_text(a["name"])
@@ -711,39 +632,6 @@ class TimerService:
                     raise ValueError('Nested branch assignment requires separately approved structural movement')
                 c.execute("UPDATE tasks SET project_id=?,version=version+1,updated_utc_us=? WHERE task_id=?", (a["project_id"], now, a["task_id"]))
                 return {"task_id": a["task_id"], "version": row["version"] + 1}
-            if op == "start_timer":
-                self._task(c, a["task_id"], a["expected_task_version"])
-                self._recordable(c, a['task_id'])
-                if c.execute("SELECT 1 FROM active_timer").fetchone():
-                    raise StaleState("Another timer is active; use Switch")
-                self._open(c, a["task_id"], a["entry_id"], request)
-                return {"entry_id": a["entry_id"], "version": 1}
-            if op == "stop_timer":
-                active = self._active(c, a["entry_id"], a["expected_version"])
-                self._close(c, active, request)
-                return {"entry_id": active["entry_id"], "revision": 1}
-            if op == "switch_timer":
-                active = self._active(c, a["expected_active_entry_id"], a["expected_active_version"])
-                self._task(c, a["next_task_id"], a["expected_task_version"])
-                self._recordable(c, a['next_task_id'])
-                if active["task_id"] == a["next_task_id"]:
-                    raise ValueError("Switch requires a different task")
-                self._close(c, active, request)
-                self._open(c, a["next_task_id"], a["next_entry_id"], request)
-                return {"closed_entry_id": active["entry_id"], "entry_id": a["next_entry_id"], "version": 1}
-            active = self._active(c, a["entry_id"], a["expected_version"])
-            if type(a["comment"]) is not str:
-                raise ValueError("Correction comment must be text")
-            corrected = resolve_start(active["start_utc_us"], a["date_text"], a["time_text"], a["occurrence"], self.store.zone)
-            if corrected == active["start_utc_us"]:
-                return None
-            if corrected > now:
-                raise ValueError("Corrected start cannot be later than the accepted observation")
-            version = active["version"] + 1
-            c.execute("INSERT INTO active_start_corrections(entry_id,version,prior_start_utc_us,corrected_start_utc_us,audit_utc_us,comment,request_id) VALUES(?,?,?,?,?,?,?)",
-                      (active["entry_id"], version, active["start_utc_us"], corrected, now, a["comment"].strip(), request.request_id))
-            c.execute("UPDATE active_timer SET start_utc_us=?,version=? WHERE entry_id=?", (corrected, version, active["entry_id"]))
-            return {"entry_id": active["entry_id"], "version": version}
         return self.store.transact(request, operation)
 
     def reconcile_request(self, request: Request) -> Outcome:
@@ -820,53 +708,13 @@ class TimerService:
 
     def read_history_snapshot(self, task_id: str, *, cutoff_utc_us: int, period: str = "current_week",
                               start_date: str | None = None, end_date: str | None = None) -> dict:
-        """Detached History rows, deleted identities and their one-transaction context."""
-        from .work_history import build_history
-        uuid_text(task_id)
-        instant(cutoff_utc_us)
+        """Detached direct-task History under the ordinary owned read transaction."""
+        from .work_history import read_snapshot
+        uuid_text(task_id);instant(cutoff_utc_us)
         with self._read_transaction() as c:
-            if not c.execute("SELECT 1 FROM tasks WHERE task_id=?", (task_id,)).fetchone():
-                raise ValueError("Task identity is unknown")
-            weekday = self.store.week_start
-            if period == "current_week" and start_date is None and end_date is None:
-                _, first, last = week_dates(cutoff_utc_us, self.store.zone, weekday)
-            elif period == "all" and start_date is None and end_date is None:
-                first = last = None
-            elif period == "custom":
-                first, last = parse_date(start_date), parse_date(end_date)
-                from datetime import date
-                if last < first or last == date.max:
-                    raise ValueError("Require ordered inclusive dates with a representable end boundary")
-            else:
-                raise ValueError("Period must be current_week, custom with both dates, or all without bounds")
-            if first is not None:
-                # Validate even an empty/date-only result: absence of intervals
-                # does not make an unrepresentable calendar boundary acceptable.
-                to_us(datetime.combine(first, time(), self.store.zone))
-                to_us(datetime.combine(last + timedelta(days=1), time(), self.store.zone))
-            rows = [dict(r) for r in c.execute("""SELECT e.task_id,e.original_start_utc_us,e.created_request_id,r.*
-              FROM work_entries e JOIN work_revisions r ON r.entry_id=e.entry_id AND r.revision=e.current_revision
-              WHERE e.task_id=? AND r.is_deleted=0""", (task_id,))]
-            deleted = [dict(r) for r in c.execute("""SELECT e.task_id,e.entry_id,r.kind,r.revision,r.is_deleted,
-              r.start_utc_us,r.stop_utc_us,r.work_date,r.duration_us FROM work_entries e
-              JOIN work_revisions r ON r.entry_id=e.entry_id AND r.revision=e.current_revision
-              WHERE e.task_id=? AND r.is_deleted=1 ORDER BY e.entry_id""", (task_id,))]
-            row = c.execute("""SELECT a.*,e.original_start_utc_us,e.created_request_id FROM active_timer a
-              JOIN work_entries e USING(entry_id) WHERE a.task_id=?""", (task_id,)).fetchone()
-            active = dict(row) if row else None
-            if active:
-                audit = c.execute("SELECT comment,audit_utc_us,request_id FROM active_start_corrections WHERE entry_id=? ORDER BY version DESC LIMIT 1",
-                                  (active["entry_id"],)).fetchone()
-                if audit:
-                    active.update(dict(audit))
-                else:
-                    audit = c.execute("SELECT action_utc_us FROM committed_requests WHERE request_id=?", (active["created_request_id"],)).fetchone()
-                    active.update(comment="", audit_utc_us=audit[0], request_id=active["created_request_id"])
-        return {"dataset_id": self.store.dataset_id, "task_id": task_id, "cutoff_utc_us": cutoff_utc_us,
-                "period": period, "start_date": first.isoformat() if first else None,
-                "end_date": last.isoformat() if last else None, "week_start": weekday,
-                "rows": build_history(rows, active, cutoff_utc_us, self.store.zone, first, last),
-                "deleted_entries": deleted}
+            return read_snapshot(c,self.store.dataset_id,self.store.zone,task_id,cutoff_utc_us=cutoff_utc_us,
+                                 period=period,start_date=start_date,end_date=end_date,
+                                 read_week_start=lambda: self.store.week_start)
 
     def read_work_entry_revisions(self, entry_id: str) -> dict:
         """Detached identity, immutable closed/date-only revisions and active-start audits."""

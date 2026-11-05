@@ -198,7 +198,7 @@ NTFS, operator GUI/modal/focus, backup/restore, hot-journal recovery, actual
 suspend/resume and deployment qualification. Any hypothetical future data-preserving
 transition would require separate approval. A–F used fresh task-hierarchy data;
 the new project-nesting decision selects fresh schema 4 without a schema-3
-migration, import or copy transition. A/B/C1's isolated candidate leaves ordinary v3
+migration, import or copy transition. A/B/C1/C2's isolated candidate leaves ordinary v3
 startup and hot-journal behavior unchanged. Exercise timer → frozen export → absolute
 confirmation → correction → reconciliation → backup → cold restore/new session.
 
@@ -273,7 +273,7 @@ usability implementation grants no project-schema or qualification approval:
 | Workstream | Bounded scope and dependencies |
 | --- | --- |
 | A — Immediate pilot usability | Implemented for independent review: clicked-leaf Start/Stop/one atomic Switch through existing request paths, and compact Mini with a small state indicator and typed actionable diagnostics. ChatGPT resolves the former different-active-task decision as atomic Switch. Normal layout targets about 280x125, accommodating fonts/DPI and diagnostic height. Modal, uncertainty and duplicate-input protection remain. Native Windows layout/input acceptance is outstanding; no project schema change is implied. |
-| B — Unlimited organizational projects | Fresh schema 4 selected. A supplies the accepted isolated SQL/forest/history foundation; B is accepted for continued development; C1 adds candidate lifecycle/eligibility/derived project accounting for independent review. C2 and D–F remain unimplemented and require separate execution approvals. Ordinary runtime remains v3 during A/B/C1. No migration/import, Customer entity, project-owned work or task-depth change. |
+| B — Unlimited organizational projects | Fresh schema 4 selected. A supplies the accepted isolated SQL/forest/history foundation; B is accepted for continued development; C1 adds candidate lifecycle/eligibility/derived project accounting for independent review. C2 adds the complete candidate backend for independent review; D–F remain unimplemented and require separate execution approvals. Ordinary runtime remains v3 during A/B/C1/C2. No migration/import, Customer entity, project-owned work or task-depth change. |
 
 Complete structural project nesting before a longer pilot that depends on
 organizing real customer work. Do not discard, overwrite, convert or recreate
@@ -288,8 +288,8 @@ The revised project-nesting packages are separate from historical A–F above:
 | A | Isolated exact v4 schema/SQL guards, iterative forest and scoped independent history; accepted for continued functional development, ordinary runtime stays v3. |
 | B | Candidate root/child creation and complete-subtree Move / Reparent over caller-owned transactions, accepted for continued functional development. Real disposable transaction/receipt/reconciliation adapter is test-only; no ordinary runtime registration. |
 | C | Original objective retained: lifecycle, full Delete closure/approved receipt dependencies, templates and derived hierarchical accounting; execution is split into C1/C2 below. |
-| C1 | Implemented for review: candidate selected-only hierarchical Archive/Unarchive, inherited eligibility, active containment, independent administrative replay and pure Direct/Cumulative project rollups. No protected-work admission or ordinary runtime activation. |
-| C2 | Unimplemented: nested unused-only Delete/receipt retirement, protected work/revisions/active-start/frozen exports/POL-R evidence, template destination/Apply, remaining task movement and complete surviving history/evidence admission. |
+| C1 | Accepted for continued development: candidate selected-only hierarchical Archive/Unarchive, inherited eligibility, active containment, independent administrative replay and pure Direct/Cumulative project rollups. No protected-work admission or ordinary runtime activation. |
+| C2 | Implemented candidate backend for independent review: complete semantic/protected/frozen/POL-R/configuration/template evidence verification, ancestry-reviewed task/template operations, nested unused-only Delete with finite retirement and no-retry uncertainty, complete surviving history and coordinated backend read projections. No ordinary v4 worker/startup, GUI or backup/restore activation. |
 | D | Main, Archived Items and owned project-management/reparent UI with complete ancestry. |
 | E | Fresh v4 activation, compatibility, source startup and backup/restore. Preserve incompatible originals, including journal cases; version-aware private recovery preflight is preferred. No conversion workflow. |
 | F | Integrated regression, source operation and focused native Windows acceptance on the existing workstation. |

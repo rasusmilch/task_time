@@ -1564,9 +1564,9 @@ Stage 5 NOT STARTED; no native acceptance or pilot authorization follows.
 
 **Status:** target architecture selected; A accepted for continued functional
 development. B candidate services are accepted for continued development; ordinary
-runtime remains schema 3. C1 candidate lifecycle/accounting is implemented for
-review; C2 protected evidence/Delete/templates/task movement, D UI, E activation
-and F integrated/native acceptance remain outstanding.
+runtime remains schema 3. C1 is accepted for continued development; C2 complete
+candidate backend is implemented for independent review. D UI, E activation and
+F integrated/native acceptance remain outstanding.
 **Provenance:** explicit Package A execution approval records the user's fresh
 schema-4 decision. It supersedes the earlier read-only plan's offline copy
 transition and removes the schema-3 preservation/transition reservation.
@@ -1601,7 +1601,7 @@ C2 integration, D management, E activation or F native acceptance follows.
 
 ### Package C1 hierarchical lifecycle and accounting
 
-**Status:** candidate implementation for independent review; C remains incomplete.
+**Status:** accepted for continued development; C2 extends its candidate backend below.
 **Provenance:** explicit C1 execution approval at accepted B revision
 `768e947895db1ad048ae36a9c7d3bf1525b1de36`. Split C's original objective into
 C1 selected-only hierarchical lifecycle/inherited eligibility/derived project
@@ -1611,9 +1611,31 @@ The candidate service retains caller-owned transactions and B's test-only adapte
 Independent replay reconstructs lifecycle without using the service transition.
 Project Direct sums immediate task Individual; Cumulative folds descendant groups
 once, reusing the existing time attribution engine/cutoff and preserving task and
-application facts. Unsupported protected/template/reporting admission still refuses.
-SQL-only preservation tests are not complete runtime validation. No v4 launcher,
+application facts. C2 adds complete protected/template/reporting candidate
+verification below; SQL-only placeholder fixtures remain insufficient evidence. No v4 launcher,
 UI, migration/import, Stage 4 completion or Stage 5 start follows.
+
+### Package C2 complete candidate evidence and protected Delete
+
+**Status:** implemented for independent review; candidate-only backend.
+**Provenance:** explicit C2 execution approval at accepted C1 revision
+`9dc46d63efb553ea54aad600b19d8bfc3e21c822`. Admit valid complete schema-4 evidence
+only after independent structural, historical, protected and frozen checks. Reuse
+existing domain mathematics and the caller-owned service/transaction architecture,
+with no ordinary schema-4 worker or dataset opener. The same approval adds exact
+project-ancestry review fields to schema-4 task creation/assignment/movement and
+Template Apply only; A/B project and schema-3 contracts remain unchanged.
+
+Nested unused-only Delete uses complete scopes, exact volatile review and typed
+DELETE, finite whole-receipt retirement and independent survivor proof. Protected
+evidence never retires. Apply and movement spanning surviving affected identities
+block retirement. Definition erasure preserves retained self-contained source
+snapshots. Delete has no receipt and uncertain COMMIT never retries/reconciles;
+current presence is not historical proof. No tombstones or anti-replay ledger are
+introduced; erased administrative retry/provenance limits remain selected.
+D graphical integration, E ordinary fresh startup/backup/restore and F native
+acceptance remain unimplemented. No migration/import, Stage 4 closure or Stage 5
+pilot authorization follows.
 
 ## Open decisions
 

@@ -28,11 +28,29 @@ def receipt_extension(before, c, request, result):
     after = facts(c)
     previous = next((r['seq'] for r in before['sqlite_sequence'] if r['name'] == 'committed_requests'), 0)
     row = dict(commit_seq=previous+1, request_id=request.request_id, operation=request.operation,
-               receipt_class='administrative', request_bytes=request.content(),
+               receipt_class='administrative' if request.operation in schema.ADMINISTRATIVE_OPERATIONS else 'protected', request_bytes=request.content(),
                result_bytes=canonical(result), action_utc_us=request.action_utc_us)
     expected = dict(before, projects=after['projects'],
                     committed_requests=sorted(before['committed_requests']+[row], key=repr),
                     sqlite_sequence=[dict(name='committed_requests', seq=previous+1)])
+    op=request.operation
+    domains={
+      'create_task':{'tasks'},'rename_task':{'tasks'},'rename_project':{'projects'},
+      'assign_task_to_project':{'tasks'},'move_task_branch':{'tasks'},
+      'apply_template':{'tasks'},
+      'start_timer':{'work_entries','active_timer'},'stop_timer':{'work_entries','work_revisions','active_timer'},
+      'switch_timer':{'work_entries','work_revisions','active_timer'},
+      'correct_active_start':{'active_timer','active_start_corrections'},
+      'add_timed_work':{'work_entries','work_revisions'},'add_date_only_work':{'work_entries','work_revisions'},
+      'edit_closed_timed_work':{'work_entries','work_revisions'},'edit_date_only_work':{'work_entries','work_revisions'},
+      'delete_work_entry':{'work_entries','work_revisions'},'set_week_start':{'dataset_meta'},'dismiss_polr_reminder_today':{'dataset_meta'},
+      'register_timesheet_export':set(schema.EXPORT_TABLES),'confirm_polr_absolute':set(schema.CONFIRMATION_TABLES),
+    }
+    from chronicle.templates import MANAGEMENT
+    if op in MANAGEMENT:domains[op]={'template_definitions','template_nodes'}
+    if op in domains:
+        expected['projects']=before['projects']
+        for table in domains[op]:expected[table]=after[table]
     if request.operation in LIFECYCLE_OPERATIONS:
         entity = 'project' if request.operation.endswith('_project') else 'task'
         table, field = entity+'s', entity+'_id'
@@ -53,6 +71,7 @@ class CandidateAdapter:
         self.context = CandidateProjectContext(dataset_id)
         self.checkpoint = checkpoint
         self.retired = None
+        self.unresolved_delete = None
 
     def connect(self, readonly=False):
         c = sqlite3.connect(self.path.as_uri()+('?mode=ro' if readonly else '?mode=rw'),
@@ -61,8 +80,11 @@ class CandidateAdapter:
             c.execute('PRAGMA synchronous=EXTRA')
             c.execute('PRAGMA foreign_keys=ON')
             return c
-        except BaseException:
-            c.close()
+        except BaseException as primary:
+            try:c.close()
+            except Exception as secondary:
+                self.retired=c
+                primary.add_note('Candidate setup close failed: '+repr(secondary))
             raise
 
     def receipt(self, c, request):
@@ -78,12 +100,15 @@ class CandidateAdapter:
         return result
 
     def envelope(self, request):
+        if self.unresolved_delete is not None:raise RuntimeError('Delete outcome unresolved; exit and reopen before new mutation/review')
         request.content()
         if request.dataset_id != self.context.dataset_id:
             raise ValueError('Wrong candidate dataset')
 
     def inspect(self, request):
         """Independent exact evidence/absence under test-owned exclusive ownership."""
+        if request.operation in ('delete_project','delete_task','delete_template'):
+            return Outcome('unverified',error=RuntimeError('Delete has no receipt and must never reconcile/retry'))
         c = None
         try:
             self.envelope(request)
@@ -115,10 +140,12 @@ class CandidateAdapter:
             return Outcome('unverified', error=error)
 
     def execute(self, request):
+        if request.operation in ('delete_project','delete_task','delete_template'):
+            return Outcome('rejected',error=ValueError('Delete requires the separate no-receipt/no-retry path'))
         try:
             self.envelope(request)
-        except ValueError as error:
-            return Outcome('rejected', error=error)
+        except (ValueError,RuntimeError) as error:
+            return Outcome('unverified' if self.unresolved_delete is not None else 'rejected', error=error)
         c = None
         try:
             self.envelope(request)
@@ -135,17 +162,18 @@ class CandidateAdapter:
                 c.execute('ROLLBACK')
             else:
                 before = facts(c)
-                operation = apply_lifecycle_operation if request.operation in LIFECYCLE_OPERATIONS else apply_project_operation
-                applied = operation(c, request, self.context)
+                if request.operation in ('create_project','create_child_project','move_project_subtree'):
+                    applied = apply_project_operation(c,request,self.context)
+                else:
+                    from chronicle.schema4_services import apply_operation
+                    applied = apply_operation(c,request,self.context)
                 self.checkpoint('after_apply', c)
                 if applied is None:
                     c.execute('ROLLBACK')
                     result = Outcome('unchanged')
                 else:
-                    if request.operation not in schema.ADMINISTRATIVE_OPERATIONS:
-                        raise ValueError('Not a candidate administrative operation')
                     c.execute('INSERT INTO committed_requests(request_id,operation,receipt_class,request_bytes,result_bytes,action_utc_us) VALUES(?,?,?,?,?,?)',
-                              (request.request_id, request.operation, 'administrative', request.content(),
+                              (request.request_id, request.operation, 'administrative' if request.operation in schema.ADMINISTRATIVE_OPERATIONS else 'protected', request.content(),
                                canonical(applied), request.action_utc_us))
                     self.checkpoint('after_receipt', c)
                     receipt_extension(before, c, request, applied)
@@ -185,3 +213,59 @@ class CandidateAdapter:
             if clean and observed.status == 'conflict':
                 return Outcome('rejected', error=error)
             return Outcome('unverified', error=error)
+
+    def delete(self, request):
+        """No-receipt path under the same exclusive test-owned file authority."""
+        from chronicle.schema4_delete import OPERATIONS,apply_delete
+        if self.unresolved_delete is not None or self.retired is not None:
+            return Outcome('unverified',error=RuntimeError('Unresolved Delete/cleanup; no destructive retry'))
+        c=None;begun=attempted=False
+        try:
+            self.envelope(request)
+            if request.operation not in OPERATIONS:raise ValueError('Not a Delete request')
+            c=self.connect();c.execute('BEGIN IMMEDIATE');begun=True
+            before=facts(c)
+            result=apply_delete(c,request,self.context)
+            self.checkpoint('after_apply',c)
+            schema.verify_candidate_transaction(c)
+            from chronicle.schema4_delete import survivors
+            review=request.args()['review'];entity=review['entity_type']
+            expected=survivors(before,{p['project_id'] for p in review['projects']},
+                {t['task_id'] for t in review['tasks']},{r['request_id'] for r in review['retire_receipts']},
+                review['entity_id'] if entity=='template' else None)
+            if facts(c)!=expected:raise ValueError('Delete final survivor comparison failed')
+            self.checkpoint('before_commit',c)
+            attempted=True;c.execute('COMMIT');self.checkpoint('after_commit',c)
+            self.checkpoint('close',c);c.close();return Outcome('committed',result)
+        except Exception as primary:
+            clean=self.retired is None
+            if c is not None:
+                try:
+                    if c.in_transaction:
+                        self.checkpoint('rollback',c);c.execute('ROLLBACK')
+                except Exception as secondary:clean=False;primary.add_note('Delete rollback failed: '+repr(secondary))
+                try:self.checkpoint('close',c);c.close()
+                except Exception as secondary:
+                    clean=False;self.retired=c;primary.add_note('Delete close failed: '+repr(secondary))
+            if attempted or not clean:
+                self.unresolved_delete=request
+                primary.add_note('Delete outcome uncertain. Do not retry. Presence is current state only; exit and reopen for a fresh review/typed confirmation.')
+                return Outcome('unverified',error=primary)
+            return Outcome('rejected' if isinstance(primary,ValueError) else 'rolled_back' if begun else 'unavailable',error=primary)
+
+    def preview(self,entity,identity):
+        from chronicle.schema4_delete import preview
+        if self.retired is not None or self.unresolved_delete is not None:raise RuntimeError('Exit/reopen before another Delete review')
+        c=self.connect(readonly=True)
+        try:
+            c.execute('BEGIN');result=preview(c,self.context,entity,identity);c.execute('ROLLBACK');return result
+        finally:c.close()
+
+    def presence(self,entity,identity):
+        """Current read only; never proves the historical outcome of Delete."""
+        if self.retired is not None:raise RuntimeError('Old connection cleanup unverified')
+        if entity not in ('project','task','template'):raise ValueError('Invalid entity')
+        table='template_definitions' if entity=='template' else entity+'s'
+        c=self.connect(readonly=True)
+        try:return dict(entity_type=entity,entity_id=identity,present=c.execute(f'SELECT 1 FROM {table} WHERE {entity}_id=?',(identity,)).fetchone() is not None,historical_outcome_verified=False)
+        finally:c.close()

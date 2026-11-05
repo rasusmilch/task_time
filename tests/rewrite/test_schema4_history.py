@@ -41,6 +41,12 @@ class History:
                     created_request_id=request.request_id,created_utc_us=request.action_utc_us,updated_utc_us=request.action_utc_us,**context)
 
     def receipt(self,operation,args,result):
+        if operation=='create_task':
+            from chronicle.administration import _candidate_ancestry
+            from chronicle.hierarchy import ProjectForest
+            group=args.get('project_id')
+            if args.get('parent_task_id') is not None:group=self.tasks[args['parent_task_id']]['project_id']
+            args=dict(args,reviewed_destination_project_ancestry=_candidate_ancestry(ProjectForest(list(self.projects.values())),self.projects,group))
         seq=len(self.receipts)+1
         request=Request.make(key(1000+seq),self.dataset,operation,NOW+seq,**args)
         self.receipts.append(dict(commit_seq=seq,request_id=request.request_id,operation=operation,
@@ -167,9 +173,9 @@ def test_validated_noop_has_no_effect_and_cannot_have_a_receipt(candidate):
 
 
 @pytest.mark.parametrize('operation',['delete_project','move_task_branch','apply_template','start_timer','register_timesheet_export','confirm_polr_absolute'])
-def test_unimplemented_candidate_integrations_fail_closed(candidate,operation):
+def test_invalid_or_unsupported_candidate_requests_fail_closed(candidate,operation):
     h=History(candidate);h.receipt(operation,{},{});h.install()
-    with pytest.raises(UnsupportedCandidateOperation):schema.verify_candidate(candidate)
+    with pytest.raises(ValueError):schema.verify_candidate(candidate)
 
 
 @pytest.mark.parametrize('review',['cycle','archived source','archived destination','missing destination','root version','unsorted members','duplicate members','boolean version','unknown field'])
@@ -203,7 +209,7 @@ def test_child_creation_review_is_exact(candidate,damage):
     with pytest.raises(ValueError):verify_schema4_history(list(h.projects.values()),list(h.tasks.values()),h.receipts,h.dataset)
 
 
-def test_candidate_refuses_recording_integration_even_with_structurally_valid_active_facts(candidate):
+def test_complete_candidate_admits_exact_valid_active_evidence(candidate):
     from test_schema4 import sql_work,sql_active
     h=History(candidate);h.install();entry=key(500)
     request=Request.make(key(2000),h.dataset,'start_timer',NOW,task_id=key(102),entry_id=entry,expected_task_version=1)
@@ -215,7 +221,7 @@ def test_candidate_refuses_recording_integration_even_with_structurally_valid_ac
                       (request.request_id,request.operation,'protected',request.content(),canonical(dict(entry_id=entry,version=1)),NOW))
     candidate.execute('COMMIT')
     schema.verify_structure(candidate)
-    with pytest.raises(UnsupportedCandidateOperation,match='work_entries'):schema.verify_candidate(candidate)
+    assert schema.verify_candidate(candidate).semantic_verified
 
 
 def test_existing_rename_effects_remain_exact_native_candidate_history(candidate):
@@ -227,7 +233,7 @@ def test_existing_rename_effects_remain_exact_native_candidate_history(candidate
 
 
 @pytest.mark.parametrize('configuration',['week_start','dismissed'])
-def test_unimplemented_configuration_history_is_not_silently_accepted(candidate,configuration):
+def test_configuration_without_required_history_is_not_accepted(candidate,configuration):
     if configuration=='week_start':candidate.execute('UPDATE dataset_meta SET week_start=0')
     else:candidate.execute("UPDATE dataset_meta SET polr_reminder_dismissed_local_date='2026-10-19'")
-    with pytest.raises(UnsupportedCandidateOperation,match='configuration'):schema.verify_candidate(candidate)
+    with pytest.raises(ValueError,match='Configuration'):schema.verify_candidate(candidate)

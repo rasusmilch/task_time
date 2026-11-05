@@ -116,9 +116,13 @@ is test-only. No nested-project GUI or supported v4 runtime exists. Normal
 schema 3. C1 adds candidate hierarchical Archive/Unarchive, inherited eligibility
 and pure Direct/Cumulative project accounting for independent review. The existing
 task attribution engine and cutoff remain authoritative; no project owns work.
-C2 protected evidence/Delete/templates/task-movement integration, D UI, E fresh-v4
-activation and F integrated/native acceptance remain outstanding. Candidate
-verification still refuses nonempty protected recording/reporting/template facts.
+C2 now supplies complete candidate semantic verification, protected work/frozen
+Timesheet/POL-R evidence, reviewed task/template operations and nested unused-only
+Delete for independent review. Valid rich evidence is admitted only by the isolated
+candidate verifier; malformed/unknown/incomplete evidence refuses. D graphical
+integration, E ordinary fresh-v4 startup/backup/restore and F native acceptance
+remain outstanding. Ordinary Chronicle still runs schema 3; no migration/import
+or second worker exists.
 
 There are exactly two primary lifecycle actions: reversible **Archive** (Unarchive
 reverses it) and irreversible **Delete** of unused complete selected branches.
