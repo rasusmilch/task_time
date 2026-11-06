@@ -89,7 +89,7 @@ def rich(service, task, store, tmp_path):
 def test_consistent_snapshot_full_evidence_restore_reopen_and_independent_future_work(store, service, task, rich, tmp_path, populated):
     # A separate fresh image establishes the genuinely empty case.
     if not populated:
-        other = SQLiteStore(tmp_path/'empty', create=True, timezone='UTC')
+        other = SQLiteStore(tmp_path/'empty', create=True, timezone='UTC', schema_version=3)
         try:
             result = other.backup(tmp_path/'empty.sqlite3')
             assert result.verified
@@ -106,10 +106,10 @@ def test_consistent_snapshot_full_evidence_restore_reopen_and_independent_future
     assert logical(backup)==before==logical(store.path)
     assert store.path.read_bytes()==raw
     backup_bytes=backup.read_bytes()
-    restored=br.restore_image(backup,tmp_path/'recovered')
+    restored=br.restore_image(backup,tmp_path/'recovered', schema_version=3)
     assert restored.verified
     assert logical(restored.destination)==before
-    recovered=SQLiteStore(tmp_path/'recovered')
+    recovered=SQLiteStore(tmp_path/'recovered', schema_version=3)
     try:
         s=TimerService(recovered)
         assert recovered.dataset_id==store.dataset_id and recovered.week_start==0
@@ -132,12 +132,12 @@ def test_minimal_backup_validate_restore_without_rich_report_fixture(store,tmp_p
     before=logical(store.path);raw=store.path.read_bytes()
     result=store.backup(tmp_path/'minimal.sqlite3')
     assert result.verified,result.error
-    assert br.validate_image(result.destination).dataset_id==store.dataset_id
-    restored=br.restore_image(result.destination,tmp_path/'minimal-restored')
+    assert br.validate_image(result.destination, schema_version=3).dataset_id==store.dataset_id
+    restored=br.restore_image(result.destination,tmp_path/'minimal-restored', schema_version=3)
     assert restored.verified,restored.error
     assert logical(restored.destination)==before==logical(store.path)
     assert store.path.read_bytes()==raw
-    assert br.inspect_dataset(tmp_path/'minimal-restored').ordinary_startup_permitted
+    assert br.inspect_dataset(tmp_path/'minimal-restored', schema_version=3).ordinary_startup_permitted
 
 
 @pytest.mark.parametrize('kind',['file','directory','symlink','dangling','fifo','dataset','alias'])
@@ -197,17 +197,17 @@ def test_bounded_faults_keep_primary_do_not_roll_back_final_and_keep_source(stor
             raise primary
         monkeypatch.setattr(br.os,'link',publish)
     elif fault=='final':
-        def validate(path):
+        def validate(path, *, schema_version=3):
             calls.append(path)
             if path==target:raise primary
-            return original_validate(path)
+            return original_validate(path, schema_version=schema_version)
         monkeypatch.setattr(br,'validate_image',validate)
     result=store.backup(target)
     assert not result.verified and result.error is primary and logical(store.path)==before
     if fault in ('lost_ack','final','cleanup'):
         assert target.exists() and logical(target)==before
         assert result.phase in (br.BackupPhase.PUBLISHED_UNVERIFIED,br.BackupPhase.VERIFIED)
-        assert original_validate(target).dataset_id==store.dataset_id
+        assert original_validate(target, schema_version=3).dataset_id==store.dataset_id
     elif fault=='racing_target':assert target.read_bytes()==b'other owner'
     else:assert not target.exists()
     if fault!='cleanup':assert not list(tmp_path.glob('.chronicle-backup-*'))
@@ -233,7 +233,7 @@ def test_restore_existing_targets_never_change(store,tmp_path,kind):
     elif kind=='file':target.write_bytes(b'keep')
     elif kind=='source_alias':target=backup
     else:symlink(store.directory,target,True)
-    with pytest.raises((ValueError,FileExistsError)):br.restore_image(backup,target)
+    with pytest.raises((ValueError,FileExistsError)):br.restore_image(backup,target, schema_version=3)
     assert backup.read_bytes()==raw and logical(store.path)==before
     if kind=='nonempty_dir':assert (target/'unknown').read_bytes()==b'keep'
 
@@ -266,7 +266,7 @@ def test_invalid_source_is_read_only_and_target_not_reserved(store,service,rich,
         backup=tmp_path/'foreign';c=sqlite3.connect(backup);c.execute('CREATE TABLE other(x)');c.close()
     if fault=='corrupt':backup.write_bytes(b'not SQLite')
     raw=backup.read_bytes();target=tmp_path/'no-target'
-    with pytest.raises((ValueError,sqlite3.Error,KeyError)):br.restore_image(backup,target)
+    with pytest.raises((ValueError,sqlite3.Error,KeyError)):br.restore_image(backup,target, schema_version=3)
     assert not target.exists() and backup.read_bytes()==raw
 
 
@@ -277,7 +277,7 @@ def test_changed_source_after_staging_refuses_restore(store,tmp_path,monkeypatch
         copy(source,stage)
         with backup.open('ab') as f:f.write(b'changed')
     monkeypatch.setattr(br,'_copy',changed)
-    result=br.restore_image(backup,tmp_path/'restore')
+    result=br.restore_image(backup,tmp_path/'restore', schema_version=3)
     assert not result.verified and 'source changed' in str(result.error)
     assert not (tmp_path/'restore'/DATABASE).exists()
 
@@ -288,7 +288,7 @@ def test_worker_backup_uses_existing_owner_serialization_and_shutdown(tmp_path,m
         threads.append(threading.get_ident())
         return original(self,destination)
     monkeypatch.setattr(SQLiteStore,'backup',observed)
-    worker=DatabaseWorker(tmp_path/'source',create=True,timezone='UTC');worker.start()
+    worker=DatabaseWorker(tmp_path/'source',create=True,timezone='UTC', schema_version=3);worker.start()
     ready=receive(worker,'ready');task=uid();request=Request.make(uid(),ready['dataset_id'],'create_task',NOW,task_id=task,name='worker',project_id=None)
     worker.requests.put(Message('mutate',1,request))
     destination=tmp_path/'worker-backup'
@@ -309,14 +309,10 @@ def cli(*args):
 def test_cli_verify_restore_no_display_source_unchanged_reopen(store,tmp_path):
     backup=tmp_path/'backup';assert store.backup(backup).verified;raw=backup.read_bytes()
     verified=cli('--verify-backup',backup)
-    assert verified.returncode==0,verified.stderr
-    assert 'Backup verified' in verified.stdout
+    assert verified.returncode==1 and 'require schema 4' in verified.stderr
     result=cli('--restore-from',backup,'--data-dir',tmp_path/'restore')
-    assert result.returncode==0,result.stderr
-    assert 'Ready for a new Chronicle launch' in result.stdout
-    with_reopen=SQLiteStore(tmp_path/'restore')
-    try:assert with_reopen.dataset_id==store.dataset_id
-    finally:with_reopen.close()
+    assert result.returncode==1 and 'require schema 4' in result.stderr
+    assert not (tmp_path/'restore').exists()
     assert backup.read_bytes()==raw
 
 
@@ -399,7 +395,7 @@ def test_unowned_stage_and_unexpected_restore_objects_are_never_deleted(store,tm
         acquire(self)
         (self.path.parent/'unexpected').write_bytes(b'preserve')
     monkeypatch.setattr(br.DatasetLock,'acquire',reserve)
-    result=br.restore_image(tmp_path/'source-image',tmp_path/'restore')
+    result=br.restore_image(tmp_path/'source-image',tmp_path/'restore', schema_version=3)
     assert not result.verified and (tmp_path/'restore'/'unexpected').read_bytes()==b'preserve'
     assert not (tmp_path/'restore'/DATABASE).exists()
 
@@ -413,7 +409,7 @@ def test_worker_refuses_backup_until_exact_unverified_mutation_reconciles(tmp_pa
             return Outcome('unverified',error=OSError('acknowledgement unavailable'))
         return result
     monkeypatch.setattr(TimerService,'execute',uncertain)
-    worker=DatabaseWorker(tmp_path/'source',create=True,timezone='UTC');worker.start()
+    worker=DatabaseWorker(tmp_path/'source',create=True,timezone='UTC', schema_version=3);worker.start()
     try:
         ready=receive(worker,'ready')
         request=Request.make(uid(),ready['dataset_id'],'create_task',NOW,task_id=uid(),name='one',project_id=None)
@@ -435,22 +431,24 @@ def test_verification_and_restore_never_construct_root_app_or_worker(store,tmp_p
     monkeypatch.setattr(bootstrap.tk,'Tk',forbidden)
     monkeypatch.setattr(bootstrap,'ChronicleApp',forbidden)
     monkeypatch.setattr(bootstrap,'DatabaseWorker',forbidden)
-    assert bootstrap.main(['--verify-backup',str(backup)]).dataset_id==store.dataset_id
-    assert bootstrap.main(['--restore-from',str(backup),'--data-dir',str(tmp_path/'recovered-cli')]).verified
+    for args in (['--verify-backup',str(backup)],['--restore-from',str(backup),'--data-dir',str(tmp_path/'recovered-cli')]):
+        with pytest.raises(SystemExit) as caught:bootstrap.main(args)
+        assert caught.value.code==1
+    assert not (tmp_path/'recovered-cli').exists()
 
 
 def test_wal_rejection_does_not_create_sidecars(store,tmp_path):
     backup=tmp_path/'wal-image';assert store.backup(backup).verified
     c=sqlite3.connect(backup);c.execute('PRAGMA journal_mode=WAL');c.close()
     before={p.name:p.read_bytes() for p in tmp_path.iterdir() if p.is_file()}
-    with pytest.raises(ValueError,match='DELETE'):br.validate_image(backup)
+    with pytest.raises(ValueError,match='DELETE'):br.validate_image(backup, schema_version=3)
     assert {p.name:p.read_bytes() for p in tmp_path.iterdir() if p.is_file()}==before
 
 
 @pytest.mark.parametrize('network',['//server/share/new',r'\\server\share\new'])
 def test_restore_refuses_explicit_network_target_before_reservation(store,tmp_path,network):
     backup=tmp_path/'backup';assert store.backup(backup).verified
-    with pytest.raises(ValueError,match='local'):br.restore_image(backup,network)
+    with pytest.raises(ValueError,match='local'):br.restore_image(backup,network, schema_version=3)
 
 
 def test_backup_after_stop_switch_and_correction_preserves_all_receipts(service,task,store,tmp_path):
@@ -483,8 +481,8 @@ def test_real_sqlite_progress_interruption_has_no_published_partial_image(store,
 
 def test_stage_changes_before_publication_and_source_stability_reject(store,tmp_path,monkeypatch):
     validate=br.validate_image
-    def change(path):
-        image=validate(path)
+    def change(path, *, schema_version=3):
+        image=validate(path, schema_version=schema_version)
         if Path(path).name.startswith('.chronicle-backup-'):
             with Path(path).open('ab') as f:f.write(b'change after validation')
         return image
@@ -506,7 +504,7 @@ def test_unsuitable_source_does_not_reserve_restore_target(store,tmp_path,kind):
             path.chmod(0o600)
             pytest.skip('Native privilege bypasses file read permission; permission case unavailable')
     try:
-        with pytest.raises((ValueError,OSError)):br.restore_image(path,target)
+        with pytest.raises((ValueError,OSError)):br.restore_image(path,target, schema_version=3)
         assert not target.exists()
     finally:
         if kind=='unreadable':path.chmod(0o600)

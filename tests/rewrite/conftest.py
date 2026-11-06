@@ -1,3 +1,8 @@
+"""Historical schema-3 regressions select schema_version=3 explicitly.
+
+Fresh ordinary schema-4 production gates live in the test_runtime4 modules.
+No global schema constants or production validators are monkeypatched.
+"""
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -18,7 +23,7 @@ def uid():
 
 @pytest.fixture
 def store(tmp_path):
-    value = SQLiteStore(tmp_path / "new", create=True, timezone="America/Chicago")
+    value = SQLiteStore(tmp_path / "new", create=True, timezone="America/Chicago", schema_version=3)
     yield value
     value.close()
 

@@ -24,14 +24,14 @@ from test_interruptions import paused_child, rows
 def test_reopened_active_calendar_boundaries_without_startup_or_tick_writes(tmp_path, start, cutoff, today, week):
     start, cutoff = [to_us(datetime.fromisoformat(text)) for text in (start, cutoff)]
     directory = tmp_path / 'spaces and unicode Ω'
-    store = SQLiteStore(directory, create=True, timezone='America/Chicago')
+    store = SQLiteStore(directory, create=True, timezone='America/Chicago', schema_version=3)
     service = TimerService(store)
     task, entry = uid(), uid()
     service.create_task(task, 'Work', request_id=uid(), action_utc_us=start)
     service.start_timer(task, entry, expected_task_version=1, request_id=uid(), action_utc_us=start)
     before = rows(store)
     store.close()
-    store = SQLiteStore(directory)
+    store = SQLiteStore(directory, schema_version=3)
     try:
         for _ in range(3):
             state = TimerService(store).read_current_state(cutoff_utc_us=cutoff)
@@ -46,7 +46,7 @@ def test_reopened_active_calendar_boundaries_without_startup_or_tick_writes(tmp_
 
 @pytest.mark.parametrize('operation', ['stop', 'switch'])
 def test_long_sleep_gap_explicit_action_and_stale_rejections(tmp_path, operation):
-    store = SQLiteStore(tmp_path / 'sleep', create=True, timezone='America/Chicago')
+    store = SQLiteStore(tmp_path / 'sleep', create=True, timezone='America/Chicago', schema_version=3)
     try:
         service = TimerService(store)
         task, other, entry, next_entry = [uid() for _ in range(4)]
@@ -74,7 +74,7 @@ def test_long_sleep_gap_explicit_action_and_stale_rejections(tmp_path, operation
 
 def test_multiple_corrections_reopen_then_stop_preserves_audits(tmp_path):
     directory = tmp_path / 'corrected'
-    store = SQLiteStore(directory, create=True, timezone='America/Chicago')
+    store = SQLiteStore(directory, create=True, timezone='America/Chicago', schema_version=3)
     service = TimerService(store)
     task, entry = uid(), uid()
     service.create_task(task, 'Work', request_id=uid(), action_utc_us=NOW)
@@ -84,7 +84,7 @@ def test_multiple_corrections_reopen_then_stop_preserves_audits(tmp_path):
                                             comment='reviewed', request_id=uid(), action_utc_us=NOW + 60_000_000).status == 'committed'
     before = rows(store)
     store.close()
-    store = SQLiteStore(directory)
+    store = SQLiteStore(directory, schema_version=3)
     try:
         service = TimerService(store)
         assert rows(store) == before
@@ -102,7 +102,7 @@ def test_multiple_corrections_reopen_then_stop_preserves_audits(tmp_path):
 OWNER = r'''
 from chronicle.sqlite_store import SQLiteStore
 import sys
-store = SQLiteStore(sys.argv[1], create=sys.argv[2]=='create', timezone='UTC' if sys.argv[2]=='create' else None)
+store = SQLiteStore(sys.argv[1], create=sys.argv[2]=='create', timezone='UTC' if sys.argv[2]=='create' else None, schema_version=3)
 print('BARRIER', flush=True); sys.stdin.readline()
 store.close()
 '''
@@ -111,14 +111,14 @@ store.close()
 def test_separate_owner_crash_stale_lock_and_orderly_release(tmp_path):
     directory = tmp_path / 'owned'
     with paused_child(OWNER, directory, 'create'):
-        refused = child("from chronicle.sqlite_store import SQLiteStore; import sys; SQLiteStore(sys.argv[1])", directory)
+        refused = child("from chronicle.sqlite_store import SQLiteStore; import sys; SQLiteStore(sys.argv[1], schema_version=3)", directory)
         assert refused.returncode != 0 and ('Error' in refused.stderr)
     assert (directory / '.chronicle.lock').exists()
     # Both another process and the local owner can acquire after process death.
     with paused_child(OWNER, directory, 'open') as process:
         process.stdin.write('\n'); process.stdin.flush()
         assert process.wait(timeout=10) == 0
-    store = SQLiteStore(directory)
+    store = SQLiteStore(directory, schema_version=3)
     store.close()
 
 
@@ -133,15 +133,15 @@ def acquire(self):
     original(self)
     print('BARRIER', flush=True); sys.stdin.readline()
 DatasetLock.acquire = acquire
-store = SQLiteStore(sys.argv[1], create=True, timezone='UTC')
+store = SQLiteStore(sys.argv[1], create=True, timezone='UTC', schema_version=3)
 store.close()
 '''
     with paused_child(code, directory) as process:
-        refused = child("from chronicle.sqlite_store import SQLiteStore; import sys; SQLiteStore(sys.argv[1],create=True,timezone='UTC')", directory)
+        refused = child("from chronicle.sqlite_store import SQLiteStore; import sys; SQLiteStore(sys.argv[1],create=True,timezone='UTC', schema_version=3)", directory)
         assert refused.returncode != 0
         process.stdin.write('\n'); process.stdin.flush()
         assert process.wait(timeout=10) == 0
-    store = SQLiteStore(directory)
+    store = SQLiteStore(directory, schema_version=3)
     store.close()
 
 
@@ -155,7 +155,7 @@ original = DatasetLock.acquire
 def acquire(self):
     original(self); print('BARRIER', flush=True); sys.stdin.readline()
 DatasetLock.acquire = acquire
-try: SQLiteStore(sys.argv[1],create=True,timezone='UTC')
+try: SQLiteStore(sys.argv[1],create=True,timezone='UTC', schema_version=3)
 except ValueError as exc: assert 'refusing overwrite' in str(exc)
 else: raise AssertionError('Overwrote a newly observed file')
 '''
@@ -181,17 +181,17 @@ def test_initialization_failure_releases_os_ownership_without_deleting_partial(t
                       'schema_statements' if fault == 'schema' else '_profile',
                       partial_schema if fault == 'schema' else fail)
         with pytest.raises(OSError, match='initialization fault'):
-            SQLiteStore(directory, create=True, timezone='UTC')
+            SQLiteStore(directory, create=True, timezone='UTC', schema_version=3)
     assert (directory / DATABASE).exists()
     lock = DatasetLock(directory)
     lock.acquire(); lock.close()
-    with pytest.raises(ValueError): SQLiteStore(directory, create=True, timezone='UTC')
+    with pytest.raises(ValueError): SQLiteStore(directory, create=True, timezone='UTC', schema_version=3)
 
 
 @pytest.mark.parametrize('damage', ['header', 'identity', 'future', 'partial'])
 def test_damaged_dataset_refusal_preserves_main_file(tmp_path, damage):
     directory = tmp_path / damage
-    store = SQLiteStore(directory, create=True, timezone='UTC')
+    store = SQLiteStore(directory, create=True, timezone='UTC', schema_version=3)
     path = store.path
     if damage == 'identity': store.connection.execute('PRAGMA application_id=1')
     if damage == 'future': store.connection.execute('PRAGMA user_version=999')
@@ -200,7 +200,7 @@ def test_damaged_dataset_refusal_preserves_main_file(tmp_path, damage):
     if damage == 'partial': path.write_bytes(b'')
     before = path.read_bytes()
     with pytest.raises((ValueError, sqlite3.DatabaseError)):
-        SQLiteStore(directory)
+        SQLiteStore(directory, schema_version=3)
     assert path.read_bytes() == before
 
 
@@ -211,11 +211,11 @@ def test_unknown_jsonl_and_file_parent_are_never_replaced(tmp_path):
         (directory / name).write_bytes(b'untouched')
     before = {p.name: p.read_bytes() for p in directory.iterdir()}
     for create in (False, True):
-        with pytest.raises(ValueError): SQLiteStore(directory, create=create, timezone='UTC' if create else None)
+        with pytest.raises(ValueError): SQLiteStore(directory, create=create, timezone='UTC' if create else None, schema_version=3)
     assert {p.name: p.read_bytes() for p in directory.iterdir()} == before
     file_parent = tmp_path / 'file'
     file_parent.write_bytes(b'keep')
-    with pytest.raises(OSError): SQLiteStore(file_parent / 'dataset', create=True, timezone='UTC')
+    with pytest.raises(OSError): SQLiteStore(file_parent / 'dataset', create=True, timezone='UTC', schema_version=3)
     assert file_parent.read_bytes() == b'keep'
 
 
@@ -226,7 +226,7 @@ def test_native_permission_refusal_does_not_damage_dataset(tmp_path):
     parent.mkdir()
     parent.chmod(0o500)
     try:
-        with pytest.raises(PermissionError): SQLiteStore(parent / 'new', create=True, timezone='UTC')
+        with pytest.raises(PermissionError): SQLiteStore(parent / 'new', create=True, timezone='UTC', schema_version=3)
         assert not (parent / 'new').exists()
     finally:
         parent.chmod(0o700)
@@ -234,7 +234,7 @@ def test_native_permission_refusal_does_not_damage_dataset(tmp_path):
 
 def test_original_validation_error_survives_probe_cleanup_failure(tmp_path, monkeypatch):
     directory = tmp_path / 'bad'
-    store = SQLiteStore(directory, create=True, timezone='UTC')
+    store = SQLiteStore(directory, create=True, timezone='UTC', schema_version=3)
     store.close()
     primary = ValueError('original schema validation failure')
     original = SQLiteStore._probe
@@ -248,7 +248,7 @@ def test_original_validation_error_survives_probe_cleanup_failure(tmp_path, monk
     def invalid(c): raise primary
     monkeypatch.setattr(SQLiteStore, '_verify', staticmethod(invalid))
     with pytest.raises(ValueError, match='original schema validation') as caught:
-        SQLiteStore(directory)
+        SQLiteStore(directory, schema_version=3)
     assert caught.value is primary
     assert any('probe close failure' in note for note in primary.__notes__)
 
@@ -257,13 +257,13 @@ def test_native_readonly_database_refuses_mutation_and_releases_lock(tmp_path):
     if os.name != 'posix' or os.geteuid() == 0:
         pytest.skip('Requires native POSIX file permissions; Windows ACLs need native qualification')
     directory = tmp_path / 'readonly'
-    store = SQLiteStore(directory, create=True, timezone='UTC')
+    store = SQLiteStore(directory, create=True, timezone='UTC', schema_version=3)
     path = store.path
     store.close()
     before = path.read_bytes()
     path.chmod(0o400)
     try:
-        readonly = SQLiteStore(directory)  # SQLite may open a valid dataset read-only.
+        readonly = SQLiteStore(directory, schema_version=3)  # SQLite may open a valid dataset read-only.
         try:
             result = TimerService(readonly).create_project(uid(), 'Refused', request_id=uid(), action_utc_us=NOW)
             assert result.status in ('unavailable', 'rolled_back') and isinstance(result.error, sqlite3.OperationalError)

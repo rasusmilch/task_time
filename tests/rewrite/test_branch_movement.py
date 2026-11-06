@@ -169,7 +169,7 @@ def test_corrupt_multi_entity_evidence_refuses_complete_validation(store,service
         corrupt_with_original_guards(store.connection,'UPDATE committed_requests SET request_bytes=?,result_bytes=? WHERE request_id=?',(altered.content(),canonical(out),request.request_id))
     with pytest.raises(ValueError):SQLiteStore._verify_complete(store.connection)
     directory=store.directory;store.close()
-    with pytest.raises(ValueError):SQLiteStore(directory)
+    with pytest.raises(ValueError):SQLiteStore(directory, schema_version=3)
 
 
 def test_worker_move_frozen_evidence_accounting_backup_restore(store,service,rich,tmp_path):
@@ -177,7 +177,7 @@ def test_worker_move_frozen_evidence_accounting_backup_restore(store,service,ric
     # Rich root already has direct work and frozen/confirmed evidence.
     before=logical(store.path);old=service.read_current_state(cutoff_utc_us=NOW)['report'];args=review(store,root,project=q)
     dataset=store.dataset_id;directory=store.directory;store.close()
-    worker=DatabaseWorker(directory);worker.start()
+    worker=DatabaseWorker(directory, schema_version=3);worker.start()
     try:
         assert worker.results.get(timeout=10).kind=='ready'
         request=Request.make(uid(),dataset,'move_task_branch',NOW,**args)
@@ -192,8 +192,8 @@ def test_worker_move_frozen_evidence_accounting_backup_restore(store,service,ric
     assert all(row in after['committed_requests'] for row in before['committed_requests'])
     for table in before:
         if table not in ('tasks','committed_requests','sqlite_sequence'):assert after[table]==before[table]
-    target=tmp_path/'restore';assert br.restore_image(tmp_path/'image.sqlite3',target).verified
-    reopened=SQLiteStore(target)
+    target=tmp_path/'restore';assert br.restore_image(tmp_path/'image.sqlite3',target, schema_version=3).verified
+    reopened=SQLiteStore(target, schema_version=3)
     try:
         verify(reopened);assert logical(reopened.path)==after
         s=TimerService(reopened);assert s.execute(request).status=='committed'
@@ -207,7 +207,7 @@ import sys,json
 from chronicle.sqlite_store import SQLiteStore
 from chronicle.services import TimerService
 from chronicle.records import Request
-s=SQLiteStore(sys.argv[1]);real=s.connection;phase=sys.argv[3]
+s=SQLiteStore(sys.argv[1], schema_version=3);real=s.connection;phase=sys.argv[3]
 class Boundary:
  def __getattr__(self,n):return getattr(real,n)
  def execute(self,sql,*a):
@@ -224,7 +224,7 @@ def test_move_process_death_preserves_atomic_forest_and_receipt(store,service,ph
     before=logical(store.path);directory=store.directory;store.close()
     args=dict(request_id=request.request_id,dataset_id=request.dataset_id,operation=request.operation,action_utc_us=NOW,**request.args())
     with paused_child(CHILD,directory,json.dumps(args),phase):pass
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         if phase!='commit':assert logical(reopened.path)==before
         s=TimerService(reopened);assert s.execute(request).status=='committed'

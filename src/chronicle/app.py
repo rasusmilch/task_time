@@ -93,9 +93,19 @@ class _BackupOperation:
     busy: bool = True
 
 
+def backend_profile_matches(profile, value):
+    version = value.get('schema_version', 3)
+    candidate = value.get('candidate_verified') is True
+    semantic = value.get('semantic_verified') is True
+    ordinary = value.get('ordinary_startup_permitted') is True
+    if profile == 'schema4':return version == 4 and semantic and ordinary and not candidate
+    if profile == 'schema4-candidate':return version == 4 and candidate and not ordinary
+    return profile == 'schema3' and version == 3 and not candidate and not semantic and not ordinary
+
+
 class ChronicleApp:
     def __init__(self, root, worker, *, now_utc=utc_now, presentation_profile='schema3'):
-        if presentation_profile not in ('schema3', 'schema4-candidate'):
+        if presentation_profile not in ('schema3', 'schema4', 'schema4-candidate'):
             raise ValueError('Unknown presentation profile')
         self.presentation_profile = presentation_profile
         self.root, self.worker, self.now_utc = root, worker, now_utc
@@ -151,6 +161,10 @@ class ChronicleApp:
         self._tick_id = root.after(1000, self._tick)
 
     @property
+    def schema4_presentation(self):
+        return getattr(self, 'presentation_profile', 'schema3') in ('schema4','schema4-candidate')
+
+    @property
     def candidate_presentation(self):
         return getattr(self, 'presentation_profile', 'schema3') == 'schema4-candidate'
 
@@ -179,7 +193,7 @@ class ChronicleApp:
             button = ttk.Button(secondary, text=label, command=callback)
             button.grid(row=0, column=column, padx=2)
             self.buttons[label] = button
-        if self.candidate_presentation:
+        if self.schema4_presentation:
             self.buttons['Create project'].configure(text='New root project')
             self.buttons['New child project'] = ttk.Button(secondary, text='New child project', command=self.create_child_project)
             self.buttons['New child project'].grid(row=0, column=4, padx=2)
@@ -286,7 +300,7 @@ class ChronicleApp:
         return operation is not None and operation.busy
 
     def open_backup(self):
-        if self.candidate_presentation:return False  # Ordinary v4 backup activation belongs to E.
+        if self.candidate_presentation:return False  # Isolated candidate sessions cannot back up.
         if self._backup_opening or self.backup_dialog is not None or not self.can_mutate():
             return False
         from .history_window import widget_live
@@ -483,12 +497,12 @@ class ChronicleApp:
         if not self.alive:
             return
         task, active, enabled = self._selected(), self.state.get("active"), self.can_mutate()
-        if self.candidate_presentation:enabled &= self.root.grab_current() is None
+        if self.schema4_presentation:enabled &= self.root.grab_current() is None
         eligible = task is not None and task['is_leaf'] and not task['effective_archived']
         for name, button in self.buttons.items():
             allowed = enabled
             if name in ("Rename task", "Move / Reparent", "Add timed work", "Add date-only work", "Work History"):
-                allowed &= task is not None or name == 'Move / Reparent' and self.candidate_presentation and self._selected_project() is not None
+                allowed &= task is not None or name == 'Move / Reparent' and self.schema4_presentation and self._selected_project() is not None
             if name == 'New child project':
                 project = self._selected_project()
                 allowed &= project is not None and not project['effective_archived']
@@ -556,15 +570,15 @@ class ChronicleApp:
             configure_changed(self.status, text=reason)
 
     def _submit(self, operation, *, _origin=None, **arguments):
-        if self.candidate_presentation and _origin is None and self.root.grab_current() is not None:
+        if self.schema4_presentation and _origin is None and self.root.grab_current() is not None:
             return False
-        if not self.candidate_presentation and (operation in ('create_child_project','move_project_subtree') or
+        if not self.schema4_presentation and (operation in ('create_child_project','move_project_subtree') or
                 {'reviewed_source_project_ancestry','reviewed_destination_project_ancestry'} & arguments.keys()):
             return False
         if operation in ('delete_task','delete_project','delete_template') and (_origin is None or _origin is not self.deletion or not _origin.mutation_allowed()):
             return False
         moves = ('move_task_branch', 'move_project_subtree')
-        if operation in moves and (self.candidate_presentation or _origin is not None) and (
+        if operation in moves and (self.schema4_presentation or _origin is not None) and (
                 _origin is None or _origin is not self.movement or not _origin.mutation_allowed()
                 or operation != getattr(_origin, 'operation', 'move_task_branch')):
             return False
@@ -659,7 +673,7 @@ class ChronicleApp:
             return False
         from .hierarchy import task_paths
         if entity == 'project':
-            if self.candidate_presentation:
+            if self.schema4_presentation:
                 from .hierarchy import candidate_active_in_project_subtree
                 return candidate_active_in_project_subtree(self.state['tasks'], self.state['projects'], active, item['project_id'])
             return any(t['task_id'] == active['task_id'] and t['project_id'] == item['project_id']
@@ -679,7 +693,7 @@ class ChronicleApp:
                     else item['task_id'] in paths[t['task_id']] and t['task_id'] != item['task_id']
                     for t in self.state['tasks'])
         context_text = ''
-        if self.candidate_presentation and entity == 'project':
+        if self.schema4_presentation and entity == 'project':
             from .project_ui import ProjectMoveReview, path_label
             scope = ProjectMoveReview(self.state, item['project_id'])
             count = len(scope.base['reviewed_tasks'])
@@ -730,7 +744,7 @@ class ChronicleApp:
         if _archived_origin is not None:
             if self.archived is not _archived_origin or not _archived_origin.current():return False
             selected = _archived_origin.selected()
-            if selected is None or self.candidate_presentation and selected.get('context'):return False
+            if selected is None or self.schema4_presentation and selected.get('context'):return False
             entity,item = selected['entity'],selected['item']
             origin = _archived_origin.window
         if item is None:return False
@@ -828,7 +842,7 @@ class ChronicleApp:
             self._controls()
 
     def _ask_name(self, title, initial="", *, prompt="Name"):
-        if not self.can_mutate() or self.candidate_presentation and self.root.grab_current() is not None:
+        if not self.can_mutate() or self.schema4_presentation and self.root.grab_current() is not None:
             return None
         # Native/toolkit dialog waits are guarded; no application-authored nested loop.
         self.executing = True
@@ -840,7 +854,7 @@ class ChronicleApp:
             self._controls()
 
     def _new_task_reason(self):
-        if self.candidate_presentation:
+        if self.schema4_presentation:
             selected = self.tree.selection()
             if selected and selected[0] != self.project_row(None):
                 project = self._selected_project()
@@ -859,7 +873,7 @@ class ChronicleApp:
         return None
 
     def _task_path_label(self, task_id, state=None):
-        if self.candidate_presentation:
+        if self.schema4_presentation:
             from .project_ui import path_label
             return path_label(self.state if state is None else state, 'task', task_id)
         from .hierarchy import task_paths
@@ -884,13 +898,13 @@ class ChronicleApp:
         project = deepcopy(next((p for p in self.state['projects'] if p['project_id'] == project_id), None))
         destination = self._task_path_label(task['task_id']) if task else (f"{project['name']} ({project_id})" if project else 'Unassigned')
         extra = {}
-        if self.candidate_presentation:
+        if self.schema4_presentation:
             from .project_ui import new_task_review, path_label
             extra = new_task_review(self.state, task['task_id'] if task else None, project_id)
             if project and not task:destination = path_label(self.state, 'project', project_id)
         name = self._ask_name('New Task', prompt='Destination:\n' + destination.replace(' → ', '\n  → ') + '\nName (immediate child of this destination)')
         if name is not None:
-            if self.candidate_presentation:
+            if self.schema4_presentation:
                 return self._submit('create_task', task_id=str(uuid4()), name=name, **extra)
             return self._submit('create_task', task_id=str(uuid4()), name=name, project_id=project_id,
                                 parent_task_id=task['task_id'] if task else None,
@@ -906,14 +920,14 @@ class ChronicleApp:
                 self._submit("rename_task", task_id=task["task_id"], name=name, expected_version=task["version"])
 
     def create_project(self):
-        name = self._ask_name('New root project' if self.candidate_presentation else 'Create project')
+        name = self._ask_name('New root project' if self.schema4_presentation else 'Create project')
         if name is not None:
             result = self._submit("create_project", project_id=str(uuid4()), name=name)
-            return result if self.candidate_presentation else None
-        return False if self.candidate_presentation else None
+            return result if self.schema4_presentation else None
+        return False if self.schema4_presentation else None
 
     def create_child_project(self):
-        if not self.candidate_presentation or not self.can_mutate() or self.root.grab_current() is not None:
+        if not self.schema4_presentation or not self.can_mutate() or self.root.grab_current() is not None:
             return False
         project = deepcopy(self._selected_project())
         if project is None or project['effective_archived']:return False
@@ -948,7 +962,7 @@ class ChronicleApp:
         projects = list(self.state["projects"])
         def rename(project):
             prompt = 'Name'
-            if self.candidate_presentation:
+            if self.schema4_presentation:
                 from .project_ui import path_label
                 prompt = path_label(self.state, 'project', project['project_id']) + '\nName'
             name = self._ask_name("Rename project", project["name"], prompt=prompt)
@@ -958,7 +972,7 @@ class ChronicleApp:
         if selected:
             rename(selected)
         else:
-            if self.candidate_presentation:
+            if self.schema4_presentation:
                 from .project_ui import path_label
                 labels = [path_label(self.state, 'project', p['project_id']) for p in projects]
             else:labels = [f"{p['name']} ({p['project_id']})" for p in projects]
@@ -1017,7 +1031,7 @@ class ChronicleApp:
 
     def open_move(self):
         task = self._selected()
-        project = self._selected_project() if self.candidate_presentation else None
+        project = self._selected_project() if self.schema4_presentation else None
         if not self.can_mutate() or task is None and project is None or self.root.grab_current() is not None:
             return False
         from .move_window import MoveWindow
@@ -1981,7 +1995,7 @@ class ChronicleApp:
     def _unavailable(self, exc):
         self.state["report"] = None
         self.state["calculation_error"] = str(exc)
-        if self.candidate_presentation:
+        if self.schema4_presentation:
             # Clear numbers even if projection/formatting itself failed. Never
             # walk arbitrary project depth through Python recursion.
             stack = list(self.tree.get_children(''))
@@ -2041,7 +2055,7 @@ class ChronicleApp:
         return ('Group — Running task' if running else 'Group'), ()
 
     def _render(self, candidate):
-        if self.candidate_presentation:
+        if self.schema4_presentation:
             return self._render_candidate(candidate)
         from .hierarchy import task_paths
         paths = task_paths(candidate['tasks'])
@@ -2178,10 +2192,7 @@ class ChronicleApp:
         if message.kind == 'backup':
             self._backup_result(message)
         elif message.kind == "ready":
-            version = message.value.get('schema_version', 3)
-            verified = message.value.get('candidate_verified') is True
-            if ((self.candidate_presentation and (version != 4 or not verified))
-                    or (not self.candidate_presentation and (version != 3 or verified))):
+            if not backend_profile_matches(self.presentation_profile, message.value):
                 self.ready = False
                 raise ValueError('Presentation profile and verified backend schema do not match')
             self.ready = True
@@ -2210,7 +2221,7 @@ class ChronicleApp:
             request = self.pending
             self.executing = False
             self._mutation_outcome = result  # Authoritative matching delivery precedes all presentation.
-            if self.candidate_presentation and result.status == 'committed' and request.operation in ('create_project','create_child_project','move_project_subtree'):
+            if self.schema4_presentation and result.status == 'committed' and request.operation in ('create_project','create_child_project','move_project_subtree'):
                 self._project_reveal = request.args()['project_id']
             if result.status=='committed' and request.operation in ('create_template','duplicate_template'):
                 self._template_reveal=result.result['template_id']
@@ -2312,8 +2323,7 @@ class ChronicleApp:
                 self._unavailable(message.value.error)
             elif message.value.get("dataset_id") != self.dataset_id:
                 return  # No results from another dataset/session may replace this owner's view.
-            elif ((self.candidate_presentation and (message.value.get('schema_version') != 4 or message.value.get('candidate_verified') is not True))
-                    or (not self.candidate_presentation and message.value.get('schema_version',3) != 3)):
+            elif not backend_profile_matches(self.presentation_profile, message.value):
                 self.ready = False
                 self._unavailable(ValueError('Snapshot and presentation profile do not match verified backend schema'))
             else:

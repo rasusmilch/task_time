@@ -227,7 +227,7 @@ def test_delete_failures_atomic_or_truthfully_uncertain_and_never_retry(store,se
     before_retry=logical(store.path);assert service.reconcile_request(r).status=='unverified'
     assert logical(store.path)==before_retry
     if phase=='close':
-        reopened=SQLiteStore(store.directory)
+        reopened=SQLiteStore(store.directory, schema_version=3)
         try:verify(reopened)
         finally:reopened.close()
     elif phase not in ('final_validation','survivor_comparison'):verify(store)
@@ -246,7 +246,7 @@ def test_worker_uncertain_delete_blocks_retries_and_new_mutation_but_allows_pres
                 return value
         self.connection=Fault();return original(self,req)
     monkeypatch.setattr(SQLiteStore,'delete_unused',lost)
-    w=DatabaseWorker(directory);w.start()
+    w=DatabaseWorker(directory, schema_version=3);w.start()
     try:
         assert w.results.get(timeout=10).kind=='ready'
         w.requests.put(Message('mutate',1,r));assert receive(w,'mutate').status=='unverified'
@@ -277,13 +277,13 @@ def test_rich_survivors_backup_restore_reopen_continued_operation(store,service,
     assert service.execute(old).result==json.loads(retained['result_bytes'])
     assert service.reconcile_request(old).result==json.loads(retained['result_bytes'])
     assert logical(store.path)==after
-    directory=store.directory;store.close();assert br.inspect_dataset(directory).ordinary_startup_permitted
-    reopened=SQLiteStore(directory)
+    directory=store.directory;store.close();assert br.inspect_dataset(directory, schema_version=3).ordinary_startup_permitted
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         verify(reopened);backup=reopened.backup(tmp_path/'after-delete.sqlite3');assert backup.verified
     finally:reopened.close()
-    target=tmp_path/'restore';assert br.restore_image(backup.destination,target).verified
-    restored=SQLiteStore(target)
+    target=tmp_path/'restore';assert br.restore_image(backup.destination,target, schema_version=3).verified
+    restored=SQLiteStore(target, schema_version=3)
     try:
         verify(restored);s=TimerService(restored);new=create(s);dated(s,new);verify(restored)
         final=logical(restored.path)
@@ -298,7 +298,7 @@ import json,sys
 from chronicle.records import Request
 from chronicle.sqlite_store import SQLiteStore
 from chronicle.services import TimerService
-s=SQLiteStore(sys.argv[1]);real=s.connection;phase=sys.argv[3]
+s=SQLiteStore(sys.argv[1], schema_version=3);real=s.connection;phase=sys.argv[3]
 class Barrier:
  def __getattr__(self,n):return getattr(real,n)
  def execute(self,sql,*a):
@@ -313,7 +313,7 @@ def test_process_death_delete_all_or_none_without_historical_receipt(store,servi
     a=create(service);create(service,parent=a);r=request(store,review(service,'task',a));before=logical(store.path);directory=store.directory;store.close()
     args=dict(request_id=r.request_id,dataset_id=r.dataset_id,operation=r.operation,action_utc_us=NOW,**r.args())
     with paused_child(CHILD,directory,json.dumps(args),phase):pass
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         s=TimerService(reopened);verify(reopened)
         if phase=='commit':
@@ -373,7 +373,7 @@ def test_worker_delete_refuses_other_uncertain_request_until_exact_reconciliatio
         if req==ordinary:return Outcome('unverified',error=OSError('ordinary acknowledgement lost'))
         return outcome
     monkeypatch.setattr(TimerService,'execute',lost)
-    w=DatabaseWorker(directory);w.start()
+    w=DatabaseWorker(directory, schema_version=3);w.start()
     try:
         assert w.results.get(timeout=10).kind=='ready'
         w.requests.put(Message('mutate',1,ordinary));assert receive(w,'mutate').status=='unverified'

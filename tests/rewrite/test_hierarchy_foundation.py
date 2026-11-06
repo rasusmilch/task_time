@@ -229,7 +229,7 @@ def test_receipt_classes_immutable_protection_and_missing_version_detection(stor
     with pytest.raises(ValueError,match='administrative'):SQLiteStore._verify_complete(c)
     directory=store.directory;store.close()
     before=logical(directory/DATABASE)
-    with pytest.raises(ValueError):SQLiteStore(directory)
+    with pytest.raises(ValueError):SQLiteStore(directory, schema_version=3)
     assert logical(directory/DATABASE)==before
 
 
@@ -328,11 +328,11 @@ def test_independent_complete_validation_refuses_damaged_forest_and_admin_closur
     def snapshot():
         return {f.name:(br.metadata(f.stat()),f.read_bytes()) for f in directory.iterdir()}
     before=snapshot()
-    assert br.inspect_dataset(directory).classification==br.Compatibility.UNSAFE_OR_UNAVAILABLE
-    with pytest.raises(ValueError):SQLiteStore(directory)
-    with pytest.raises(ValueError):br.validate_image(directory/DATABASE)
-    with pytest.raises(ValueError):br.restore_image(directory/DATABASE,tmp_path/'must-not-exist')
-    worker=DatabaseWorker(directory);worker.start()
+    assert br.inspect_dataset(directory, schema_version=3).classification==br.Compatibility.UNSAFE_OR_UNAVAILABLE
+    with pytest.raises(ValueError):SQLiteStore(directory, schema_version=3)
+    with pytest.raises(ValueError):br.validate_image(directory/DATABASE, schema_version=3)
+    with pytest.raises(ValueError):br.restore_image(directory/DATABASE,tmp_path/'must-not-exist', schema_version=3)
+    worker=DatabaseWorker(directory, schema_version=3);worker.start()
     try:
         assert worker.results.get(timeout=10).kind=='startup_failed'
         assert worker.results.get(timeout=10).kind=='stopped'
@@ -352,10 +352,10 @@ def test_v2_rich_nested_backup_restore_worker_and_independent_later_work(store,s
     archive(service, 'task', child)
     baseline=logical(store.path);backup=store.backup(tmp_path/'hierarchy.sqlite3')
     assert backup.verified and logical(backup.destination)==baseline and logical(store.path)==baseline
-    target=tmp_path/'restored';restored=br.restore_image(backup.destination,target)
+    target=tmp_path/'restored';restored=br.restore_image(backup.destination,target, schema_version=3)
     assert restored.verified and logical(target/DATABASE)==baseline
-    assert br.inspect_dataset(target).classification==br.Compatibility.SUPPORTED_CURRENT
-    worker=DatabaseWorker(target);worker.start()
+    assert br.inspect_dataset(target, schema_version=3).classification==br.Compatibility.SUPPORTED_CURRENT
+    worker=DatabaseWorker(target, schema_version=3);worker.start()
     try:
         ready=worker.results.get(timeout=10);assert ready.kind=='ready'
         worker.requests.put(Message('read',1,NOW));value=receive(worker,'read')
@@ -376,7 +376,7 @@ import json,sys
 from chronicle.sqlite_store import SQLiteStore
 from chronicle.services import TimerService
 from chronicle.records import Request
-store=SQLiteStore(sys.argv[1]);service=TimerService(store)
+store=SQLiteStore(sys.argv[1], schema_version=3);service=TimerService(store)
 args=json.loads(sys.argv[2]);phase=sys.argv[3];real=store.connection
 class Boundary:
     def __getattr__(self,n):return getattr(real,n)
@@ -399,7 +399,7 @@ def test_child_creation_process_death_atomic_structure_receipt_and_retry(store,s
     directory=store.directory;before=logical(store.path);store.close()
     args=dict(request_id=request.request_id,dataset_id=request.dataset_id,operation=request.operation,action_utc_us=NOW,**request.args())
     with paused_child(CHILD,directory,json.dumps(args),phase):pass
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         service=TimerService(reopened);after=logical(reopened.path)
         if phase!='committed':assert after==before

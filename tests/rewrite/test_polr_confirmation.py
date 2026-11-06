@@ -73,7 +73,7 @@ def test_unknown_zero_equal_absolute_history_reopen_and_read_purity(service,task
     batches=service.list_polr_confirmation_batches();assert [b['batch_id'] for b in batches]==[first['batch_id'],second['batch_id']]
     assert batches[1]['cells'][0]['expected_prior_batch_id']==first['batch_id']
     batches[0]['cells'].clear();assert len(service.read_polr_confirmation_batch(first['batch_id'])['cells'])==1
-    directory=store.directory;store.close();reopened=SQLiteStore(directory)
+    directory=store.directory;store.close();reopened=SQLiteStore(directory, schema_version=3)
     try:assert TimerService(reopened).read_polr_current_cells([dict(task_id=task,work_date=DAY)])[0]==current
     finally:reopened.close()
 
@@ -262,7 +262,7 @@ def test_damaged_confirmation_read_and_reopen_refuse_without_repair(service,task
     conn.execute('PRAGMA foreign_keys=ON');raw=store.path.read_bytes()
     with pytest.raises(ValueError):service.read_polr_confirmation_batch(b['batch_id'])
     directory=store.directory;store.close()
-    with pytest.raises(ValueError):SQLiteStore(directory)
+    with pytest.raises(ValueError):SQLiteStore(directory, schema_version=3)
     assert (directory/'chronicle.sqlite3').read_bytes()==raw
 
 
@@ -275,7 +275,7 @@ def test_interrupted_confirmation_is_atomic_and_exact_retry_preserves_newer(serv
     code=TRANSACTION_CHILD
     if prefix:code=code.replace("phase == 'facts' and facts",f"phase == {phase!r} and sql.startswith({prefix!r})")
     with paused_child(code,directory,phase,frozen_json(r)):pass
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         s=TimerService(reopened);assert reopened.connection.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
         assert s.reconcile_request(r).status==('committed' if phase=='committed' else 'absent')

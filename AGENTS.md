@@ -117,8 +117,8 @@ Package A supplies the isolated schema-4 DDL/SQL guards, detached project forest
 and scoped independent administrative-history verification. Package B adds
 candidate root/child creation and project Move / Reparent service logic over a
 caller-owned transaction, accepted for continued functional development. Its
-real transaction/reconciliation adapter is test infrastructure only, with no runtime registration. Ordinary
-SQLiteStore, creation, startup and backup/restore remain schema 3. Package C's
+real transaction/reconciliation adapter is test infrastructure only, with no runtime registration. At B delivery ordinary
+SQLiteStore, creation, startup and backup/restore remained schema 3. Package C's
 objective is split into C1 candidate lifecycle/inherited eligibility/derived
 project accounting, accepted for continued development, and C2 complete candidate
 semantic verification, protected evidence, nested unused-only Delete, templates
@@ -129,9 +129,13 @@ with an explicit internal schema4-candidate profile, iterative typed trees and
 owned project/task/template/Delete reviews for independent review. Only a test-owned
 serialized Message bridge connects disposable C2 data; no public candidate launcher
 or production worker is added. Connected Tk validation requires a real available
-display and is distinct from portable model/worker evidence. Ordinary
-SQLiteStore/worker/startup stay schema 3. E fresh-v4 activation/backup/restore and
-F integrated/native acceptance remain outstanding. No migration/import exists. C2 adds schema-4-only project-ancestry
+display and is distinct from portable model/worker evidence. Package E now connects the same C2 services and D presentation through the existing
+SQLiteStore/DatabaseWorker/StartupWindow for fresh schema 4, including complete
+admission, paired private hot-journal preflight, backup/restore and exact ordinary
+reconciliation. Schema 3 is an explicit historical test policy only; ordinary
+startup, inspection, backup verification and restore refuse it unchanged. Candidate
+readiness remains separate from production semantic/ordinary readiness. F integrated/native
+acceptance remains outstanding; E implementation still requires independent review. No migration/import exists. C2 adds schema-4-only project-ancestry
 reviews to task creation/assignment/movement and Template Apply; schema-3 and
 A/B project request contracts remain unchanged. Delete remains no-receipt/no-retry
 after uncertainty; no protected receipt or evidence may retire.

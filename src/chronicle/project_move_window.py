@@ -6,6 +6,6 @@ class ProjectMoveWindow(MoveWindow):
     operation = 'move_project_subtree'
 
     def __init__(self, owner, project_id, state):
-        if not owner.candidate_presentation:
+        if not owner.schema4_presentation:
             raise ValueError('Project movement requires the explicit candidate profile')
         super().__init__(owner, project_id, state)

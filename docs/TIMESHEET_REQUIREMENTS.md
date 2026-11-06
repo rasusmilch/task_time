@@ -76,8 +76,9 @@ incomplete content requires explicit action. No legacy search/import occurs.
 
 One root/mainloop hands off to the ordinary app only after existing worker
 readiness; startup failure/cleanup cannot install a second authority. Cold
-inspection is not a prerequisite to ordinary recovery. Current schema 3, evidence,
-transactions and all recovery contracts stay unchanged. Native first-run evidence
+inspection is not a prerequisite to ordinary recovery. E selects fresh schema 4
+with complete semantic admission and owned private paired-copy journal preflight;
+exact transactions/evidence and no-retry Delete contracts remain unchanged. Native first-run evidence
 and independent acceptance remain outstanding; Stage 4 remains IN PROGRESS.
 
 ## SELECTED — Independent projects and tasks
@@ -98,8 +99,7 @@ Independent projects may share display names; identity is UUID, never name/path.
 
 Project nesting has no fixed product-level depth limit. Practical traversal,
 resource and SQLite limits are engineering safeguards requiring explicit truthful
-refusal, never silent truncation or a small fixed business depth. This target is
-not available in ordinary use: schema 3 still has flat projects. Package A adds
+refusal, never silent truncation or a small fixed business depth. Package E now connects this target to ordinary fresh schema 4. At its delivery, Package A added
 an isolated schema-4 candidate foundation. Package B adds candidate root/child
 creation and project movement services, accepted for continued development, with test-only
 transaction ownership. C1 adds candidate selected-only hierarchical lifecycle,
@@ -107,8 +107,9 @@ inherited eligibility and derived project Direct/Cumulative accounting for revie
 C2 adds complete candidate evidence verification, reviewed task/template operations
 and nested unused-only Delete, accepted for continued development. D adds the
 candidate graphical source for independent review through an internal test-only
-presentation profile. Ordinary schema-4 admission remains unavailable; connected
-widget and native acceptance require their actual display/platform evidence. See the
+presentation profile. E adds ordinary schema-4 admission through the existing
+store/worker/startup with production readiness distinct from the candidate. Connected
+widget evidence and native acceptance require their actual display/platform execution. See the
 [future architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability)
 and [separate workstreams](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
 
@@ -155,7 +156,7 @@ Stop/Switch; an active timer also blocks Delete's unused-only eligibility. No
 hierarchy operation silently stops, switches or restarts a timer. Archived or
 effectively archived leaves accept no new time; their history remains retained.
 
-The current runtime requires fresh schema-3 data: no version-1/2 migration,
+The current runtime requires fresh schema-4 data: no version-1/2/3 migration,
 backward-compatible mode, conversion engine, compatibility shim, JSONL import or
 old-runtime fallback. Its schema must identify itself distinctly so an old dataset
 cannot be mistaken for supported new data. Incompatible datasets may refuse.
@@ -165,14 +166,13 @@ filesystem objects is protection, not a requirement to make them compatible.
 Persisted project parentage selects schema 4 with application ID 0x4348524E.
 Use a new or genuinely empty destination under exclusive creation; no schema-3
 migration, import, copy transition, conversion reader, pending-conversion marker
-or converted-copy activation flow is authorized. The eventual v4 runtime refuses
-v3 without altering it. During A/B/C1/C2 the ordinary runtime remains schema 3;
+or converted-copy activation flow is authorized. The v4 runtime refuses
+v3 without altering it. During A/B/C1/C2 the ordinary runtime remained schema 3;
 only isolated candidate construction, caller-owned backend services,
 complete candidate evidence validation and pure
-project rollups exist. Future v4
-activation must preserve supported hot-journal recovery and refuse incompatible
+project rollups existed. E now preserves supported hot-journal recovery and refuses incompatible
 originals without modifying them; raw uncommitted headers are not committed
-identity. Version-aware private recovery preflight is the preferred future
+identity. Version-aware private recovery preflight is the implemented
 architecture, not implemented by A. See [schema safety](#selected--schema-compatibility-and-future-upgrade-safety).
 
 ### Project/task management and branch lifecycle
@@ -582,8 +582,8 @@ exports and confirmations neither erase nor increase calendar Actual.
 
 ## SELECTED — Calendar Actual displays
 
-Package D task navigation under flat projects is retained on current E schema 3;
-unlimited project navigation is the separate selected future target.
+Package E uses the accepted nested-project D navigation on fresh schema 4.
+Historical flat schema-3 presentation remains an explicit regression policy.
 Native Windows qualification of the changed interface remains outstanding. Main Individual/Cumulative share Today/This Week: Individual is
 direct Actual and Cumulative includes each descendant once. Group Cumulative sums
 member direct report facts over project descendants under the selected nesting model,
@@ -595,9 +595,9 @@ the selected eligible task as immediate parent, or Unassigned for no selection.
 The complete UUID/path and reviewed destination versions freeze before name entry.
 Move / Reparent uses the one B2 branch operation, not a second assignment policy.
 Application totals retain archived-task work when navigation hides it. Current
-schema-3 readers retain parent and archived work; live tasks/projects have no
+readers retain parent and archived work; live tasks/projects have no
 soft-delete fields. Frozen report task labels retain the existing is_deleted shape
-with value false in newly registered v3 reports. One coordinated refresh
+with value false in newly registered reports; schema 4 preserves that frozen format. One coordinated refresh
 uses one aware UTC cutoff and local observation date for main/mini. This week is the complete containing calendar
 week. Timed work is cutoff-capped; dated amounts belong wholly to their declared
 dates, including later dates within that week.
@@ -968,7 +968,7 @@ gates; no automatic external allocation verification is established.
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
 | Delivered task hierarchy, branch lifecycle, tree main/mini and nested templates under flat projects | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active task UI delivered for review; E templates delivered for review; nothing inherited from JSONL. |
-| Unlimited organizational project nesting | Fresh schema 4 selected; A supplies isolated schema/forest/history and B candidate root/child creation and project movement services for review. Ordinary runtime remains v3; C1 lifecycle/inherited eligibility/derived accounting is implemented for review. C2 backend is accepted for continued development; D candidate graphical source is implemented for independent review with actual connected Tk evidence separately required. E activation and F integrated/native acceptance remain outstanding. No migration/import. |
+| Unlimited organizational project nesting | Fresh schema 4 selected; A supplies isolated schema/forest/history and B candidate root/child creation and project movement services for review. Ordinary E runtime now uses fresh v4; C1 lifecycle/inherited eligibility/derived accounting is implemented for review. C2 backend is accepted for continued development; D candidate graphical source is implemented for independent review with actual connected Tk evidence separately required. E activation is implemented for independent review; F integrated/native acceptance remains outstanding. No migration/import. |
 | Double-click task activation and compact Mini | Implemented for independent review through existing Start/Stop/atomic Switch and shared report paths; native Windows UI acceptance remains outstanding. |
 | Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
 
@@ -989,9 +989,8 @@ current timestamps, inherited visibility and complete chronological receipt chec
 C2 adds irreversible unused-only Delete and finite administrative retirement with
 strict survivor preservation and explicit no-retry uncertainty. D connects the full
 active hierarchy and reviewed movement UI. E adds templates on schema 3; no migration is delivered.
-Ordinary schema-3 projects remain flat: no parent_project_id exists there;
-unlimited project nesting is
-still unavailable in ordinary use. Package A adds isolated schema-4 SQL safeguards,
+Historical schema-3 projects remain flat: no parent_project_id exists there.
+Ordinary E now selects fresh schema 4 and the nested presentation. Package A adds isolated schema-4 SQL safeguards,
 iterative project-forest observations and native-v4 administrative reconstruction.
 Package B implements candidate root/child creation and complete-subtree project
 Move / Reparent over caller-owned transactions. Exact reviewed requests, no-op
@@ -1011,11 +1010,11 @@ same ChronicleApp's candidate Main/Archived Items, explicit project controls,
 movement and task/template destination reviews, complete Delete presentation and
 live path/UUID labels. It consumes C2 snapshots/reports and never writes SQLite
 from Tk. Its internal presentation profile requires matching verified schema-4
-readiness; schema3 remains the default. A test-only serialized Message bridge
-owns disposable C2 data. Connected Tk evidence is unavailable without a display;
-source/model tests do not imply that gate passed. E ordinary startup/backup/restore
-and F integrated/native acceptance remain outstanding. No
-ordinary v4 readiness is claimed.
+readiness. E ordinary StartupWindow explicitly selects schema4 and requires
+semantic_verified plus ordinary_startup_permitted on actual v4 ready/snapshots.
+The separate candidate bridge remains test-only. Connected Tk evidence requires a display;
+source/model tests do not imply that gate passed. E startup/backup/restore is implemented
+for independent review; F integrated/native acceptance remains outstanding.
 The main Treeview now dispatches eligible clicked leaf UUIDs
 to existing Start/Stop/atomic Switch. Compact Mini projects the same Individual
 Today report and existing typed diagnostics, with read-only Show Main during
@@ -1143,18 +1142,19 @@ validation and protected destination contracts.
 The earlier A–F task-hierarchy approval selected fresh creation rather than a version-1
 transformation. No migration/backward compatibility obligation belongs to that
 plan; old files remain protected and incompatible data refuses. The current
-runtime supports only its exact version-3 schema; all version-1/2 datasets and
+runtime supports only its exact version-4 schema; all version-1/2/3 datasets and
 backups refuse without conversion, replacement or clearing remembered selection.
 No data transition belongs to the new project-nesting implementation. The latest
 explicit user decision selects a fresh schema-4 database, retaining application
 ID 0x4348524E. No migration, import, schema-3 reader for conversion, transformed
 copy or activation marker is required or implemented. Current ordinary admission
-and native hot-journal recovery remain schema 3 during A/B/C1/C2. The candidate is not a
-second supported runtime. Future package E must admit clean v4, refuse clean v3
-before writable access, recover genuinely supported v4 hot journals, and preserve
-incompatible v3 originals even when journals exist. A raw uncommitted marker cannot
-prove committed identity. Version-aware private recovery preflight is preferred;
-A neither implements it nor weakens existing recovery tests. Stage 4 remains
+and native hot-journal recovery remained schema 3 during A/B/C1/C2. The candidate is not a
+second production authority. Package E now admits clean v4, refuses clean v3
+before writable access, recovers supported v4 hot journals, and preserves incompatible
+v3 originals even when journals exist. A raw uncommitted marker cannot prove committed
+identity: E requires complete private paired-copy SQLite recovery/verification, cleanup
+and original stability under the existing lock before native original recovery.
+No recovered copy replaces the original; no migration or fallback exists. Stage 4 remains
 IN PROGRESS; no pilot is authorized.
 
 ## OPEN — Reserved user/ChatGPT decisions

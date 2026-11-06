@@ -91,16 +91,15 @@ def main(argv=None):
     if args.create and args.timezone is None:
         parser.error("--create requires --timezone with an explicit IANA key")
     root = tk.Tk()
-    worker = DatabaseWorker(args.data_dir, create=args.create, timezone=args.timezone)
+    from .startup import StartupWindow
     try:
-        app = ChronicleApp(root, worker)
-        worker.start()
-    except BaseException:
-        root.destroy()
-        raise
-    try:
+        startup = StartupWindow(root, app_factory=ChronicleApp, worker_factory=DatabaseWorker,
+                                schema_version=4, initial_selection=(args.data_dir.expanduser().absolute(),args.create,args.timezone),
+                                remember_selection=False)
         root.mainloop()
     finally:
-        if app.alive:
-            root.destroy()  # Unexpected interpreter exit still queues orderly worker closure.
-    return app
+        try:
+            root.destroy()  # Also closes the one root if startup construction fails.
+        except tk.TclError:
+            pass
+    return startup.app or startup

@@ -54,11 +54,11 @@ class MoveWindow:
             scroll.grid(row=0,column=1,sticky='ns');self.tree.configure(yscrollcommand=scroll.set)
             projects={p['project_id']:p for p in self.state['projects']}
             destinations=[]
-            if not owner.candidate_presentation:
+            if not owner.schema4_presentation:
                 destinations=[(owner.project_row(None),None,None,'Unassigned')]
                 destinations += [(owner.project_row(p['project_id']),None,p['project_id'],f"{p['name']} ({p['project_id']})") for p in projects.values()]
                 destinations += [(owner.task_row(t['task_id']),t['task_id'],t['project_id'],owner._task_path_label(t['task_id'],self.state)) for t in self.state['tasks']]
-            for row,parent,group,label in ([] if owner.candidate_presentation else destinations):
+            for row,parent,group,label in ([] if owner.schema4_presentation else destinations):
                 args=dict(task_id=task_id,expected_version=source['version'],
                           source_parent_task_id=source['parent_task_id'],source_project_id=source['project_id'],
                           destination_parent_task_id=parent,destination_project_id=group,
@@ -72,7 +72,7 @@ class MoveWindow:
                 except ValueError as exc:reason=str(exc)
                 self.destinations[row]=dict(arguments=args,label=label,reason=reason,unchanged=unchanged)
                 self.tree.insert('','end',iid=row,text=label,values=(parent or group or 'Virtual Unassigned',reason or ('Unchanged — same destination' if unchanged else 'Eligible')))
-            if owner.candidate_presentation:self._candidate_destinations()
+            if owner.schema4_presentation:self._candidate_destinations()
             self.tree.bind('<<TreeviewSelect>>',self.selected)
             self.status=ttk.Label(self.window,text='Select a destination to review source → destination. No rows move before commitment.',wraplength=900)
             self.status.grid(row=2,column=0,padx=12,pady=10,sticky='w')
@@ -117,7 +117,7 @@ class MoveWindow:
 
     def selected(self,event=None):
         if not self.current() or self.phase!='reviewing':return
-        if self.owner.candidate_presentation:
+        if self.owner.schema4_presentation:
             return self._candidate_selected()
         rows=self.tree.selection();destination=self.destinations.get(rows[0]) if rows else None
         self.arguments=None

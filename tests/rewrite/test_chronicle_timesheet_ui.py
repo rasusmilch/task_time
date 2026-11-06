@@ -227,7 +227,7 @@ def test_real_tk_server_production_timesheet_preview_calendars_modal_and_timer(c
     # Place enabled input probes in exposed main/mini regions, separate from disabled controls.
     hits=[]
     main_probe=tk.ttk.Button(root,text='Main input probe',command=lambda:hits.append('main'));main_probe.grid(row=8,column=0,sticky='w')
-    mini_probe=tk.ttk.Button(mini.window,text='Mini input probe',command=lambda:hits.append('mini'));mini_probe.pack()
+    mini_probe=tk.ttk.Button(mini.window,text='Mini input probe',command=lambda:hits.append('mini'));mini_probe.grid(row=6,column=0,columnspan=2)
     root.geometry('950x650+0+0');mini.window.geometry('340x240+900+540')
     click(app.buttons['Timesheet / POL-R']);sheet=app.timesheet
     sheet.window.geometry('850x620+250+0')

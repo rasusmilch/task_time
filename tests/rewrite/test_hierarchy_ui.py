@@ -185,7 +185,7 @@ def test_real_tk_active_nested_status_path_move_collapse_stop_and_reopen(connect
     app.mini.window.destroy();app.request_close();exit_settled(app);w.join(8)
     import tkinter as tk
     r=tk.Tk();errors=[];r.report_callback_exception=lambda *a:errors.append(a)
-    worker=DatabaseWorker(w.directory);fresh=ChronicleApp(r,worker,now_utc=clock);worker.start()
+    worker=DatabaseWorker(w.directory, schema_version=3);fresh=ChronicleApp(r,worker,now_utc=clock);worker.start()
     try:
         pump(r,lambda:fresh.ready and fresh.state['report'] is not None)
         assert fresh.state['active']==active

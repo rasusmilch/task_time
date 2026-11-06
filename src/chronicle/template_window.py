@@ -198,7 +198,7 @@ class TemplateApply(TemplateDialog):
         ttk.Label(self.window,text=f"Template: {source['name']} ({source['template_id']}) version {source['version']} — {len(source['nodes'])} nodes",wraplength=900).grid(row=0,column=0,padx=10,sticky='w')
         self.tree=ttk.Treeview(self.window);self.tree.heading('#0',text='Complete blueprint');self.tree.grid(row=1,column=0,sticky='nsew',padx=10)
         for n in source['nodes']:self.tree.insert(n['parent_node_id'] or '','end',iid=n['node_id'],text=n['name'],open=True)
-        if owner.candidate_presentation:
+        if owner.schema4_presentation:
             self._candidate_choices()
             self.confirm_button.configure(text='Confirm Apply')
             return
@@ -221,7 +221,7 @@ class TemplateApply(TemplateDialog):
 
     def selected(self,event=None):
         if self.phase!='reviewing':return
-        if self.owner.candidate_presentation:return self._candidate_selected()
+        if self.owner.schema4_presentation:return self._candidate_selected()
         i=self.choice.current();o=self.options[i] if i>=0 else None;self.arguments=None
         if o:
             if not o['reason']:self.arguments=deepcopy(o['args'])

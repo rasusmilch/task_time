@@ -372,7 +372,7 @@ def test_reopen_frozen_bytes_ignore_current_renderer_and_later_actual(registered
     dated(service,task,duration='2:00')
     service.rename_task(task,'Renamed',expected_version=1,request_id=uid(),action_utc_us=NOW)
     service.set_week_start(0,expected_week_start=6,request_id=uid(),action_utc_us=NOW)
-    directory=store.directory;store.close();reopened=SQLiteStore(directory)
+    directory=store.directory;store.close();reopened=SQLiteStore(directory, schema_version=3)
     try:
         s=TimerService(reopened)
         with monkeypatch.context() as m:
@@ -399,7 +399,7 @@ from chronicle.sqlite_store import SQLiteStore
 from chronicle.services import TimerService
 from pathlib import Path
 root,identity,destination,replacement,boundary=sys.argv[1:]
-store=SQLiteStore(root);service=TimerService(store)
+store=SQLiteStore(root, schema_version=3);service=TimerService(store)
 replacement=replacement=='True'
 name='replace' if replacement else 'link';original=getattr(files.os,name)
 def barrier():
@@ -414,7 +414,7 @@ conflict=service.inspect_registered_export_destination(identity,destination).con
 service.materialize_registered_timesheet_export(identity,destination,confirmed_overwrite=replacement,expected_conflict=conflict)
 '''
     with paused_child(code,directory,c.export_id,path,replacement,boundary):pass
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         recovered=TimerService(reopened)
         assert reopened.connection.execute('PRAGMA integrity_check').fetchone()[0]=='ok'

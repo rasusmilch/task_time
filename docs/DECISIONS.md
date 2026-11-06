@@ -1694,3 +1694,17 @@ insufficient, omit the historical assertion rather than fill it by assumption.
 Design-purpose statements do not imply undocumented user quotations or reasoning.
 This history records approved resolutions but grants no implementation
 authorization and makes no independent product or architecture decisions.
+
+## Project-nesting Package E execution boundary
+
+The later explicit Package E approval selects ordinary fresh schema 4 through the
+existing source launcher, StartupWindow, DatabaseWorker and SQLiteStore. It reuses
+accepted C2 services/verification and D presentation; candidate transaction/worker
+adapters remain test-only. Schema 3 remains explicit historical test policy, not a
+public fallback. Incompatible originals, including journaled originals whose raw
+headers may be uncommitted, must remain unchanged. Owned paired-copy native SQLite
+recovery/full verification and verified cleanup/stability precede any native
+original recovery. No migration/import/converted-copy activation is selected.
+E implementation and execution evidence require independent review; Package F
+integrated/native qualification and Stage 5 remain separately unauthorized.
+This records the new execution decision without changing earlier A–F provenance.

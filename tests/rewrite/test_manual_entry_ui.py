@@ -190,7 +190,7 @@ def test_real_tk_running_timer_week_change_midnight_and_restart(connected,root):
     gc.collect()
     reopened_root=tk.Tk();errors=[]
     reopened_root.report_callback_exception=lambda *args:errors.append(args)
-    reopened_worker=DatabaseWorker(worker.directory)
+    reopened_worker=DatabaseWorker(worker.directory, schema_version=3)
     reopened_app=ChronicleApp(reopened_root,reopened_worker,now_utc=clock)
     reopened_worker.start()
     try:
@@ -288,7 +288,7 @@ def test_real_tk_manual_unverified_exit_warning_is_owned_and_default_cancel(conn
     if confirm:
         root.after(6000,root.quit);root.mainloop();worker.join(timeout=5)
         assert not app.alive and not worker.is_alive()
-        store=SQLiteStore(worker.directory)
+        store=SQLiteStore(worker.directory, schema_version=3)
         try:
             assert store.connection.execute('SELECT count(*) FROM work_entries').fetchone()[0]==1
         finally:store.close()

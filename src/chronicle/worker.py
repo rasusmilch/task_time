@@ -18,19 +18,26 @@ class Message:
 
 
 class DatabaseWorker(Thread):
-    def __init__(self, directory, *, create=False, timezone=None):
+    def __init__(self, directory, *, create=False, timezone=None, schema_version=4):
         super().__init__(name="Chronicle database", daemon=False)
         self.directory, self.create, self.timezone = directory, create, timezone
+        self.schema_version = schema_version
         self.requests, self.results = Queue(), Queue()
 
     def run(self):
         store = None
         try:
-            store = SQLiteStore(self.directory, create=self.create, timezone=self.timezone)
-            service = TimerService(store)
+            store = SQLiteStore(self.directory, create=self.create, timezone=self.timezone,
+                                schema_version=self.schema_version)
+            if store.schema_version == 4:
+                from .schema4_runtime_service import Schema4RuntimeService
+                service = Schema4RuntimeService(store)
+            else: service = TimerService(store)
             unresolved = None
             unresolved_delete = None
-            self.results.put(Message("ready", value={"dataset_id": store.dataset_id,
+            verified = (dict(schema_version=4,semantic_verified=True,ordinary_startup_permitted=True)
+                        if store.schema_version == 4 else dict(schema_version=3))
+            self.results.put(Message("ready", value={**verified,"dataset_id": store.dataset_id,
                                                      "timezone": store.timezone, "zone": store.zone,
                                                      "runtime": store.info, "week_start": store.week_start}))
             while True:
@@ -40,6 +47,9 @@ class DatabaseWorker(Thread):
                 try:
                     if message.kind in ('mutate', 'reconcile') and unresolved_delete is not None:
                         value = Outcome('unverified', error=RuntimeError('Delete outcome unresolved; mutation/retry blocked. Inspect current presence, then exit and reopen.'))
+                    elif (self.schema_version == 4 and message.kind == 'mutate' and unresolved is not None
+                          and message.value.request_id != unresolved):
+                        value = Outcome('unavailable', error=RuntimeError('Another accepted request is unresolved; reconcile its exact identity before mutation'))
                     elif message.kind == 'mutate' and message.value.operation in ('delete_task','delete_project','delete_template') and unresolved is not None:
                         value = Outcome('unavailable', error=RuntimeError('Delete refused while another accepted request is unresolved'))
                     elif message.kind == 'delete_preview':

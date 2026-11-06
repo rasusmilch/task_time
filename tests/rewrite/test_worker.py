@@ -28,7 +28,7 @@ def test_connection_thread_operation_reconcile_and_shutdown(tmp_path, monkeypatc
             threads.append(("close", threading.get_ident()))
             return super().close()
     monkeypatch.setattr(module, "SQLiteStore", Observed)
-    worker = DatabaseWorker(tmp_path / "new", create=True, timezone="UTC")
+    worker = DatabaseWorker(tmp_path / "new", create=True, timezone="UTC", schema_version=3)
     worker.start()
     ready = receive(worker, "ready")
     frozen = Request.make(uid(), ready["dataset_id"], "create_task", NOW, task_id=uid(), name="Worker", project_id=None)
@@ -46,7 +46,7 @@ def test_connection_thread_operation_reconcile_and_shutdown(tmp_path, monkeypatc
 
 
 def test_startup_failure_reports_and_stops_without_creating_dataset(tmp_path):
-    worker = DatabaseWorker(tmp_path / "missing")
+    worker = DatabaseWorker(tmp_path / "missing", schema_version=3)
     worker.start()
     assert isinstance(receive(worker, "startup_failed"), ValueError)
     receive(worker, "stopped")
@@ -65,7 +65,7 @@ def test_cleanup_failure_stays_on_owner_thread_until_explicit_retry(tmp_path, mo
                 raise OSError("cleanup fault")
             return super().close()
     monkeypatch.setattr(module, "SQLiteStore", FailCloseOnce)
-    worker = DatabaseWorker(tmp_path / "new", create=True, timezone="UTC")
+    worker = DatabaseWorker(tmp_path / "new", create=True, timezone="UTC", schema_version=3)
     worker.start()
     receive(worker, "ready")
     worker.requests.put(Message("shutdown"))
@@ -86,7 +86,7 @@ def test_exception_delivery_then_exact_absent_reconciliation_and_queued_reads(tm
             raise OSError('worker operation failed before response')
         return original(service, request)
     monkeypatch.setattr(TimerService, 'execute', fail_once)
-    worker = DatabaseWorker(tmp_path / 'worker', create=True, timezone='UTC')
+    worker = DatabaseWorker(tmp_path / 'worker', create=True, timezone='UTC', schema_version=3)
     worker.start()
     try:
         ready = receive(worker, 'ready')
@@ -124,7 +124,7 @@ def test_failed_startup_cleanup_remains_on_worker_until_explicit_retry(tmp_path,
                 raise OSError('startup close not established')
             return super().close()
     monkeypatch.setattr(module, 'SQLiteStore', FailedStartup)
-    worker = DatabaseWorker(tmp_path / 'startup', create=True, timezone='UTC')
+    worker = DatabaseWorker(tmp_path / 'startup', create=True, timezone='UTC', schema_version=3)
     worker.start()
     try:
         assert receive(worker, 'startup_failed') is primary
@@ -163,7 +163,7 @@ def test_failed_validation_probe_cleanup_is_not_reported_stopped(tmp_path, monke
         @staticmethod
         def _verify(connection): raise primary
     monkeypatch.setattr(module, 'SQLiteStore', FailedValidation)
-    worker = DatabaseWorker(directory)
+    worker = DatabaseWorker(directory, schema_version=3)
     worker.start()
     try:
         assert receive(worker, 'startup_failed') is primary
@@ -179,7 +179,7 @@ def test_failed_validation_probe_cleanup_is_not_reported_stopped(tmp_path, monke
 
 
 def test_mixed_work_history_revisions_and_week_change_use_same_worker(tmp_path):
-    worker=DatabaseWorker(tmp_path/'mixed',create=True,timezone='America/Chicago')
+    worker=DatabaseWorker(tmp_path/'mixed',create=True,timezone='America/Chicago', schema_version=3)
     worker.start()
     try:
         ready=receive(worker,'ready');task,entry=uid(),uid()

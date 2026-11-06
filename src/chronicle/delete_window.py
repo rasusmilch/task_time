@@ -109,7 +109,7 @@ class DeleteWindow:
             self.phase='failed';self.status.configure(text=f'Preview unavailable: {value.error}');self.controls();return
         if (value.get('dataset_id')!=self.owner.dataset_id or value.get('entity_type')!=self.entity or value.get('entity_id')!=self.key):
             self.phase='failed';self.status.configure(text='Rejected preview from another dataset or selection.');self.controls();return
-        if self.owner.candidate_presentation:
+        if self.owner.schema4_presentation:
             return self._candidate_review(value)
         canonical(value);self.review=deepcopy(value);self.phase='ready' if value['eligible'] else 'blocked'
         selected=value['selected']

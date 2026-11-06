@@ -171,7 +171,7 @@ def test_real_tk_dismiss_commit_not_queue_exact_retry_uncertain_and_restart(conn
     assert requests==[request] and app.reminder['dismissed_local_date']==DAY and not app.reminder['reminder_due']
     directory=worker.directory;root.destroy();worker.join(8);assert not worker.is_alive()
     other=tk.Tk();other.test_errors=[];other.report_callback_exception=lambda *a:other.test_errors.append(a)
-    fresh_worker=DatabaseWorker(directory);fresh=ChronicleApp(other,fresh_worker,now_utc=clock);fresh_worker.start()
+    fresh_worker=DatabaseWorker(directory, schema_version=3);fresh=ChronicleApp(other,fresh_worker,now_utc=clock);fresh_worker.start()
     try:
         pump(other,lambda:fresh.ready and fresh.reminder is not None);ready(fresh)
         assert not fresh.reminder['reminder_due'] and fresh.reminder['dismissed_local_date']==DAY
@@ -314,10 +314,10 @@ def test_real_tk_explicit_dismiss_suppresses_even_when_calculation_unavailable(c
 
 
 def test_real_tk_startup_dismissal_stays_suppressed_when_only_calculation_fails(root,tmp_path,monkeypatch):
-    directory=tmp_path/'existing';store=SQLiteStore(directory,create=True,timezone='America/Chicago')
+    directory=tmp_path/'existing';store=SQLiteStore(directory,create=True,timezone='America/Chicago', schema_version=3)
     service=TimerService(store);service.dismiss_polr_reminder_today(DAY,request_id=uid(),action_utc_us=NOW);store.close()
     fault=ValueError('accounting currently unavailable')
-    worker=DatabaseWorker(directory);clock=Clock();app=ChronicleApp(root,worker,now_utc=clock)
+    worker=DatabaseWorker(directory, schema_version=3);clock=Clock();app=ChronicleApp(root,worker,now_utc=clock)
     with monkeypatch.context() as m:
         m.setattr('chronicle.timesheet.calculate_daily',lambda *a,**k:(_ for _ in ()).throw(fault))
         worker.start()

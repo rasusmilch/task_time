@@ -194,7 +194,7 @@ def test_candidate_is_not_ordinary_startup_and_never_creates_owner_lock(candidat
     path=next(r[2] for r in candidate.execute('PRAGMA database_list') if r[1]=='main')
     from pathlib import Path
     directory=Path(path).parent;before=Path(path).read_bytes()
-    with pytest.raises(ValueError,match='require version 3'):runtime.SQLiteStore(directory)
+    with pytest.raises(ValueError,match='require version 3'):runtime.SQLiteStore(directory, schema_version=3)
     assert Path(path).read_bytes()==before and not (directory/'.chronicle.lock').exists()
 
 

@@ -184,7 +184,7 @@ def test_real_tk_saved_reports_recovery_after_actual_application_restart(connect
     # New owner/worker/Tk root: no old widget or in-memory candidate is needed.
     other=tk.Tk();other.geometry('950x650+0+0');errors=[];other.report_callback_exception=lambda *args:errors.append(args)
     other.test_errors=errors
-    next_worker=DatabaseWorker(directory);next_app=ChronicleApp(other,next_worker,now_utc=clock)
+    next_worker=DatabaseWorker(directory, schema_version=3);next_app=ChronicleApp(other,next_worker,now_utc=clock)
     next_worker.start()
     try:
         pump(other,lambda:next_app.ready and next_app.state.get('report') is not None)

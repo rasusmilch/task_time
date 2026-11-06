@@ -89,7 +89,7 @@ class Client:
 
 @contextmanager
 def owner(directory, create=False):
-    worker = DatabaseWorker(directory, create=create, timezone='America/Chicago' if create else None)
+    worker = DatabaseWorker(directory, create=create, timezone='America/Chicago' if create else None, schema_version=3)
     worker.start()
     try:
         message = worker.results.get(timeout=12)
@@ -273,11 +273,11 @@ def test_complete_hierarchy_template_record_report_confirm_correct_backup_restor
         assert backup.verified and logical(image)==baseline
         assert c.state(cutoff)==original_state
         assert all(row in baseline['polr_confirmation_cells'] for row in confirmed_before['polr_confirmation_cells'])
-    assert br.validate_image(image).dataset_id == initial['dataset_id']
+    assert br.validate_image(image, schema_version=3).dataset_id == initial['dataset_id']
     source_bytes, image_bytes = (directory/'chronicle.sqlite3').read_bytes(), image.read_bytes()
     restored = tmp_path/'restored Ω'
-    assert br.restore_image(image, restored).verified
-    assert br.inspect_dataset(restored).ordinary_startup_permitted
+    assert br.restore_image(image, restored, schema_version=3).verified
+    assert br.inspect_dataset(restored, schema_version=3).ordinary_startup_permitted
     assert logical(restored/'chronicle.sqlite3')==baseline
     with owner(restored) as fresh:
         assert fresh.ready['dataset_id']==initial['dataset_id']
@@ -287,7 +287,7 @@ def test_complete_hierarchy_template_record_report_confirm_correct_backup_restor
         assert logical(restored/'chronicle.sqlite3')==baseline  # Retry does not duplicate.
         fresh.commit('stop_timer', cutoff, entry_id=running, expected_version=1)
         fresh.dated(second[2], '0:01')
-    assert br.inspect_dataset(restored).ordinary_startup_permitted
+    assert br.inspect_dataset(restored, schema_version=3).ordinary_startup_permitted
     assert (directory/'chronicle.sqlite3').read_bytes()==source_bytes and image.read_bytes()==image_bytes
     assert report_path.read_bytes()==candidate.report_utf8 and logical(directory/'chronicle.sqlite3')==baseline
 
@@ -331,8 +331,8 @@ def test_lifecycle_whole_apply_delete_erased_provenance_restore(tmp_path):
             if b'"operation":"apply_template"' in r[4] or b'"operation":"duplicate_template"' in r[4]:assert r in after['committed_requests']
         assert any(v['template_id']==survivor['template_id'] for v in c.state()['templates'])
         image=tmp_path/'lifecycle.sqlite3'; assert c.call('backup',dict(destination=str(image),request_id=uid()))['result'].verified
-    assert br.inspect_dataset(directory).ordinary_startup_permitted
-    assert br.restore_image(image,tmp_path/'restored').verified
+    assert br.inspect_dataset(directory, schema_version=3).ordinary_startup_permitted
+    assert br.restore_image(image,tmp_path/'restored', schema_version=3).verified
     with owner(tmp_path/'restored') as fresh:
         assert logical(tmp_path/'restored'/'chronicle.sqlite3')==after
         assert fresh.call('reconcile',old_apply).status=='committed'
@@ -390,7 +390,7 @@ def test_contract_C_to_G_through_worker_frozen_registration_restore(tmp_path,mon
         assert sum(quarters)*15*M-sum(v.actual_us for v in candidate.basis)==adjustment
         c.commit('register_timesheet_export',candidate=candidate.content())
         image=tmp_path/'snapshot';assert c.call('backup',dict(destination=str(image),request_id=uid()))['result'].verified
-    assert br.restore_image(image,tmp_path/'restored').verified
+    assert br.restore_image(image,tmp_path/'restored', schema_version=3).verified
     with owner(tmp_path/'restored') as c:
         assert c.call('timesheet_export',candidate.export_id)==candidate
 
@@ -429,4 +429,4 @@ def test_lost_delivery_retains_different_retry_contracts_after_worker_restart(tm
     with owner(directory) as c:
         assert logical(directory/'chronicle.sqlite3')==committed
         c.project('Explicit new session')
-    assert br.inspect_dataset(directory).ordinary_startup_permitted
+    assert br.inspect_dataset(directory, schema_version=3).ordinary_startup_permitted

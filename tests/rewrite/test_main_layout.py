@@ -58,7 +58,7 @@ def assert_layout(app):
         assert int(frame.grid_info()['row'])==index and int(frame.grid_info()['column'])==0
     label=next(w for w in settings.winfo_children() if w.winfo_class()=='TLabel' and w.cget('text')=='Week starts')
     groups=([app.buttons[k] for k in PRIMARY],
-            [app.buttons[k] for k in SECONDARY]+([app.buttons['New child project']] if app.candidate_presentation else []),
+            [app.buttons[k] for k in SECONDARY]+([app.buttons['New child project']] if app.schema4_presentation else []),
             [label,app.week_selector,app.period_selector,app.sort_control,app.keep_mini_control],
             [app.new_task_hint])
     for frame,widgets in zip(frames,groups):
@@ -94,11 +94,11 @@ def identities(app):
 @pytest.mark.parametrize('size',['720x420','850x550'])
 def test_actual_geometry_control_set_and_independent_rows(main,size):
     app,w,clock=main
-    expected=set(PRIMARY+SECONDARY+OTHER)|({'New child project'} if app.candidate_presentation else set())
+    expected=set(PRIMARY+SECONDARY+OTHER)|({'New child project'} if app.schema4_presentation else set())
     assert set(app.buttons)==expected and len(set(app.buttons.values()))==len(expected)
     for key,callback in zip(PRIMARY+SECONDARY,CALLBACKS):assert app.buttons[key].cget('command').endswith(callback)
-    assert app.buttons['Create project'].cget('text')==('New root project' if app.candidate_presentation else 'Create project')
-    if app.candidate_presentation:assert app.buttons['New child project'].cget('command').endswith('create_child_project')
+    assert app.buttons['Create project'].cget('text')==('New root project' if app.schema4_presentation else 'Create project')
+    if app.schema4_presentation:assert app.buttons['New child project'].cget('command').endswith('create_child_project')
     assert app.root.minsize()==(720,420) and (app.root.winfo_width(),app.root.winfo_height())==(850,550)
     assert app.period.get()=='Today' and not app.sort_alpha.get() and not app.keep_mini_open.get()
     assert app.week_selector.current()==app.state['week_start']
@@ -112,7 +112,7 @@ def test_actual_geometry_control_set_and_independent_rows(main,size):
     assert identities(app)==original and facts(w)==before and app.state['report']==report and clock.calls==calls
     assert app.pending is None and app.selected_task_id() is None
     assert app.buttons['Rename task'].instate(['disabled']) and app.buttons['Start'].instate(['disabled'])
-    if app.candidate_presentation:assert app.buttons['New child project'].instate(['disabled'])
+    if app.schema4_presentation:assert app.buttons['New child project'].instate(['disabled'])
 
 
 def created(app,key,attribute):
@@ -129,7 +129,7 @@ def test_connected_controls_resize_preserves_timer_selection_facts_and_modal(mai
     monkeypatch.setattr('chronicle.app.simpledialog.askstring',lambda *a,**k:next(names))
     original=identities(app)
     p=created(app,'Create project','project_id');select(app,app.project_row(p))
-    if app.candidate_presentation:
+    if app.schema4_presentation:
         assert app.buttons['New child project'].instate(['!disabled'])
         child=created(app,'New child project','project_id')
         assert next(r for r in app.state['projects'] if r['project_id']==child)['parent_project_id']==p

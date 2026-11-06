@@ -604,7 +604,7 @@ def test_real_tk_history_owned_unverified_exit_default_cancel_and_orderly_shutdo
         root.after(6000,root.quit); root.mainloop()
         assert not app.alive
         worker.join(timeout=5); assert not worker.is_alive()
-        store=SQLiteStore(worker.directory)
+        store=SQLiteStore(worker.directory, schema_version=3)
         try: assert len(TimerService(store).read_work_entry_revisions(b)['revisions'])==2
         finally: store.close()
     else:

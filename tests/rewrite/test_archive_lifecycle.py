@@ -171,10 +171,10 @@ def test_corrupt_archive_evidence_refuses_startup_inspection_backup_restore(stor
         assert not store.backup(tmp_path/'invalid-backup.sqlite3').verified
     assert not (tmp_path/'invalid-backup.sqlite3').exists()
     directory=store.directory;store.close();before=directory.joinpath('chronicle.sqlite3').read_bytes()
-    assert not br.inspect_dataset(directory).ordinary_startup_permitted
-    with pytest.raises(ValueError): SQLiteStore(directory)
+    assert not br.inspect_dataset(directory, schema_version=3).ordinary_startup_permitted
+    with pytest.raises(ValueError): SQLiteStore(directory, schema_version=3)
     target=tmp_path/'never-created'
-    with pytest.raises(ValueError): br.restore_image(directory/'chronicle.sqlite3',target)
+    with pytest.raises(ValueError): br.restore_image(directory/'chronicle.sqlite3',target, schema_version=3)
     assert not target.exists() and directory.joinpath('chronicle.sqlite3').read_bytes()==before
 
 
@@ -185,9 +185,9 @@ def test_rich_lifecycle_worker_backup_restore_fresh_operation(store,service,rich
     for table in before:
         if table not in ('tasks','committed_requests','sqlite_sequence'): assert frozen[table]==before[table]
     backup=store.backup(tmp_path/'archive.sqlite3');assert backup.verified and logical(backup.destination)==frozen
-    target=tmp_path/'restore';assert br.restore_image(backup.destination,target).verified
+    target=tmp_path/'restore';assert br.restore_image(backup.destination,target, schema_version=3).verified
     directory=store.directory;store.close()
-    worker=DatabaseWorker(target);worker.start()
+    worker=DatabaseWorker(target, schema_version=3);worker.start()
     try:
         ready=worker.results.get(timeout=10);assert ready.kind=='ready'
         r=Request.make(uid(),ready.value['dataset_id'],'unarchive_task',NOW+M,task_id=a,expected_version=current+1)
@@ -197,7 +197,7 @@ def test_rich_lifecycle_worker_backup_restore_fresh_operation(store,service,rich
         r=Request.make(uid(),ready.value['dataset_id'],'add_date_only_work',NOW+M,task_id=a,entry_id=uid(),work_date='2026-10-19',duration_text='0:01',comment='after restore')
         worker.requests.put(Message('mutate',3,r));assert receive(worker,'mutate').status=='committed'
     finally: worker.requests.put(Message('shutdown'));worker.join(10);assert not worker.is_alive()
-    restored=SQLiteStore(target)
+    restored=SQLiteStore(target, schema_version=3)
     try: verify(restored)
     finally: restored.close()
     assert logical(directory/'chronicle.sqlite3')==frozen==logical(backup.destination)
@@ -211,7 +211,7 @@ import sys,json
 from chronicle.sqlite_store import SQLiteStore
 from chronicle.services import TimerService
 from chronicle.records import Request
-s=SQLiteStore(sys.argv[1]);real=s.connection;phase=sys.argv[3]
+s=SQLiteStore(sys.argv[1], schema_version=3);real=s.connection;phase=sys.argv[3]
 class Boundary:
  def __getattr__(self,n):return getattr(real,n)
  def execute(self,sql,*a):
@@ -226,7 +226,7 @@ def test_archive_child_process_death_preserves_exact_boundary(store,service,phas
     a=create(service);r=request(store,'task',a);directory=store.directory;before=logical(store.path);store.close()
     args=dict(request_id=r.request_id,dataset_id=r.dataset_id,operation=r.operation,action_utc_us=r.action_utc_us,**r.args())
     with paused_child(CHILD,directory,json.dumps(args),phase):pass
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         if phase!='commit': assert logical(reopened.path)==before
         service=TimerService(reopened);assert service.execute(r).status=='committed'

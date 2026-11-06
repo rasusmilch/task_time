@@ -77,7 +77,7 @@ def test_real_images_classify_and_preserve_source_and_external_evidence(image,ri
     damage(image,kind)
     report=Path(rich['candidate'].preferred_destination)
     before=preserved(image,report,store.path)
-    result=br.inspect_dataset(image)
+    result=br.inspect_dataset(image, schema_version=3)
     assert result.classification==classification and result.exit_status==status
     assert result.candidate_path==image/DATABASE and result.supported_schema_version==SCHEMA_VERSION
     assert result.full_validation_completed==(kind=='supported')
@@ -97,11 +97,18 @@ def test_real_images_classify_and_preserve_source_and_external_evidence(image,ri
 
 @pytest.mark.parametrize('kind,classification,status',CASES)
 def test_source_launcher_headless_status_and_no_state_writes(image,kind,classification,status):
+    # The table above still proves every original schema-3 classification through
+    # its explicit helper. Ordinary CLI admission is now schema 4: old semantic
+    # content is not reinterpreted as current, and a forged 4 marker is not a v4 DDL.
+    if kind in ('supported','table_definition','trigger','extra','timezone','reminder','current','association','export','receipt'):
+        classification,status=C.OLDER_UNSUPPORTED,2
+    elif kind=='newer':classification,status=C.UNSUPPORTED_LAYOUT,3
+    elif kind=='missing_table':classification,status=C.UNSAFE_OR_UNAVAILABLE,4
     damage(image,kind);before=preserved(image)
     result=cli('--inspect-dataset',image)
     assert result.returncode==status,(result.stdout,result.stderr)
     assert classification.value in result.stdout and 'No upgrade was performed.' in result.stdout
-    assert ('startup: permitted' in result.stdout)==(kind=='supported')
+    assert 'startup: permitted' not in result.stdout
     assert 'Example' not in result.stdout and 'TclError' not in result.stderr
     assert preserved(image)==before
 
@@ -109,10 +116,10 @@ def test_source_launcher_headless_status_and_no_state_writes(image,kind,classifi
 @pytest.mark.parametrize('kind',['older','newer','future','foreign','missing_table','table_definition','trigger','extra','timezone','reminder','current','revision','association','export','receipt','header','truncated','corrupt_lower','wal'])
 def test_startup_backup_and_restore_refuse_before_adoption_or_target_reservation(image,kind,tmp_path):
     damage(image,kind);before=preserved(image);target=tmp_path/'not-reserved'
-    for action in (lambda:SQLiteStore(image),lambda:br.validate_image(image/DATABASE),lambda:br.restore_image(image/DATABASE,target)):
+    for action in (lambda:SQLiteStore(image, schema_version=3),lambda:br.validate_image(image/DATABASE, schema_version=3),lambda:br.restore_image(image/DATABASE,target, schema_version=3)):
         with pytest.raises((ValueError,sqlite3.Error,KeyError)):action()
         assert preserved(image)==before and not target.exists()
-    worker=DatabaseWorker(image);worker.start()
+    worker=DatabaseWorker(image, schema_version=3);worker.start()
     try:
         assert worker.results.get(timeout=5).kind=='startup_failed'
         receive(worker,'stopped')
@@ -140,7 +147,9 @@ def test_headless_inspection_constructs_no_tk_app_worker_or_lock(image,monkeypat
     monkeypatch.setattr(bootstrap,'ChronicleApp',forbidden)
     monkeypatch.setattr(bootstrap,'DatabaseWorker',forbidden)
     monkeypatch.setattr(br.DatasetLock,'acquire',forbidden)
-    before=preserved(image);assert bootstrap.main(['--inspect-dataset',str(image)]).exit_status==0
+    before=preserved(image)
+    with pytest.raises(SystemExit) as caught:bootstrap.main(['--inspect-dataset',str(image)])
+    assert caught.value.code==2
     assert preserved(image)==before
 
 
@@ -171,7 +180,7 @@ def test_unsafe_paths_never_open_sqlite_or_change_objects(image,tmp_path,monkeyp
     if kind=='unreadable':before=br.metadata(path.lstat())
     else:before=preserved(image)
     try:
-        result=br.inspect_dataset(directory)
+        result=br.inspect_dataset(directory, schema_version=3)
         assert result.classification==C.UNSAFE_OR_UNAVAILABLE and not result.ordinary_startup_permitted
         assert (br.metadata(path.lstat()) if kind=='unreadable' else preserved(image))==before
     finally:
@@ -182,7 +191,7 @@ def test_unsafe_paths_never_open_sqlite_or_change_objects(image,tmp_path,monkeyp
 def test_invalid_or_network_path_is_not_resolved_or_created(value,monkeypatch):
     def forbidden(*a):pytest.fail('Invalid path reached filesystem inspection')
     monkeypatch.setattr(br,'_cold_directory',forbidden)
-    assert br.inspect_dataset(value).classification==C.UNSAFE_OR_UNAVAILABLE
+    assert br.inspect_dataset(value, schema_version=3).classification==C.UNSAFE_OR_UNAVAILABLE
 
 
 @pytest.mark.parametrize('suffix',['-journal','-wal','-shm'])
@@ -191,7 +200,7 @@ def test_outstanding_sidecar_is_retained_and_not_recovered(image,suffix,monkeypa
     before=preserved(image)
     def forbidden(*a):pytest.fail('Cold inspector must not enter SQLite recovery')
     monkeypatch.setattr(br,'_readonly',forbidden)
-    result=br.inspect_dataset(image)
+    result=br.inspect_dataset(image, schema_version=3)
     assert result.classification==C.UNSAFE_OR_UNAVAILABLE and 'clean cold' in result.explanation
     assert preserved(image)==before
 
@@ -201,8 +210,8 @@ def test_wal_header_refuses_before_sqlite_connection_and_keeps_directory(image,m
     def forbidden(*a,**kw):pytest.fail('WAL candidate reached SQLite open')
     monkeypatch.setattr(br,'_readonly',forbidden)
     monkeypatch.setattr(SQLiteStore,'_probe',forbidden)
-    assert br.inspect_dataset(image).classification==C.UNSUPPORTED_PROFILE
-    with pytest.raises(br.UnsupportedImageProfile):SQLiteStore(image)
+    assert br.inspect_dataset(image, schema_version=3).classification==C.UNSUPPORTED_PROFILE
+    with pytest.raises(br.UnsupportedImageProfile):SQLiteStore(image, schema_version=3)
     assert preserved(image)==before
 
 
@@ -238,7 +247,7 @@ def test_original_faults_never_claim_completion_or_mutate(image,monkeypatch,faul
             result=Connection(readonly(path));connections.append(result);return result
         monkeypatch.setattr(br,'_readonly',opened)
     try:
-        result=br.inspect_dataset(image)
+        result=br.inspect_dataset(image, schema_version=3)
         assert result.classification==C.UNSAFE_OR_UNAVAILABLE and result.error is primary
         assert not result.full_validation_completed and not result.ordinary_startup_permitted
         assert result.error.__traceback__ is not None and len(connections)<=1
@@ -259,7 +268,7 @@ def test_primary_validation_error_survives_failed_readonly_close_without_retry(i
     def fail(c):raise primary
     monkeypatch.setattr(br,'_readonly',opened);monkeypatch.setattr(SQLiteStore,'_verify_complete',staticmethod(fail))
     try:
-        result=br.inspect_dataset(image)
+        result=br.inspect_dataset(image, schema_version=3)
         assert result.error is primary and len(connections)==1 and not result.full_validation_completed
         assert any('read-only close unavailable' in n for n in primary.__notes__)
         assert preserved(image)==before
@@ -285,7 +294,7 @@ def test_change_during_inspection_rejects_without_cleaning_changed_source(image,
             else:(image/(DATABASE+'-journal')).write_bytes(b'explicit test journal')
             changed.append(preserved(image))
     monkeypatch.setattr(br,'_readonly',lambda p:Connection(readonly(p)))
-    result=br.inspect_dataset(image)
+    result=br.inspect_dataset(image, schema_version=3)
     assert result.classification==C.UNSAFE_OR_UNAVAILABLE and result.observed_user_version is None
     assert len(changed)==1 and preserved(image)==changed[0]
 
@@ -300,7 +309,7 @@ def test_inspection_uses_one_readonly_query_only_connection_and_full_gate(image,
     calls=[]
     def checked(c):calls.append(c);return complete(c)
     monkeypatch.setattr(br,'_readonly',opened);monkeypatch.setattr(SQLiteStore,'_verify_complete',staticmethod(checked))
-    before=preserved(image);result=br.inspect_dataset(image)
+    before=preserved(image);result=br.inspect_dataset(image, schema_version=3)
     assert result.ordinary_startup_permitted and calls==seen and len(seen)==1
     with pytest.raises(sqlite3.ProgrammingError):seen[0].execute('SELECT 1')
     assert preserved(image)==before
@@ -364,8 +373,8 @@ def test_killed_inspection_leaves_no_transformation_and_next_owner_works(image,p
     before=preserved(image);facts=logical(image/DATABASE)
     with paused_child(INSPECTION_CHILD,image,phase):pass
     assert preserved(image)==before and logical(image/DATABASE)==facts
-    assert br.inspect_dataset(image).ordinary_startup_permitted
-    reopened=SQLiteStore(image)
+    assert br.inspect_dataset(image, schema_version=3).ordinary_startup_permitted
+    reopened=SQLiteStore(image, schema_version=3)
     try:
         service=TimerService(reopened);task=uid()
         assert service.create_task(task,'After read-only interruption',request_id=uid(),action_utc_us=NOW).status=='committed'
@@ -386,16 +395,16 @@ assert Path(str(path)+'-journal').is_file()
 print('BARRIER',flush=True);sys.stdin.readline()
 '''
     with paused_child(code,image):pass
-    before=preserved(image);result=br.inspect_dataset(image)
+    before=preserved(image);result=br.inspect_dataset(image, schema_version=3)
     assert result.classification==C.UNSAFE_OR_UNAVAILABLE and not result.full_validation_completed
     assert preserved(image)==before and (image/(DATABASE+'-journal')).exists()
 
 
 def test_rich_current_inspection_backup_restore_reopen_and_independent_work(image,rich,tmp_path):
     source=image/DATABASE;before=preserved(image);facts=logical(source)
-    first=br.inspect_dataset(image);assert first.ordinary_startup_permitted
+    first=br.inspect_dataset(image, schema_version=3);assert first.ordinary_startup_permitted
     assert preserved(image)==before and logical(source)==facts
-    store=SQLiteStore(image);service=TimerService(store)
+    store=SQLiteStore(image, schema_version=3);service=TimerService(store)
     backup=tmp_path/'recovery-image'
     try:
         reconciliation=service.read_polr_reconciliation(cutoff_utc_us=NOW)
@@ -405,10 +414,10 @@ def test_rich_current_inspection_backup_restore_reopen_and_independent_work(imag
         assert store.backup(backup).verified and logical(backup)==facts
     finally:store.close()
     original=preserved(image);backup_bytes=backup.read_bytes()
-    assert br.validate_image(backup).dataset_id==rich['candidate'].dataset_id
-    restored=br.restore_image(backup,tmp_path/'restored');assert restored.verified
-    assert br.inspect_dataset(tmp_path/'restored').ordinary_startup_permitted
-    reopened=SQLiteStore(tmp_path/'restored');service=TimerService(reopened)
+    assert br.validate_image(backup, schema_version=3).dataset_id==rich['candidate'].dataset_id
+    restored=br.restore_image(backup,tmp_path/'restored', schema_version=3);assert restored.verified
+    assert br.inspect_dataset(tmp_path/'restored', schema_version=3).ordinary_startup_permitted
+    reopened=SQLiteStore(tmp_path/'restored', schema_version=3);service=TimerService(reopened)
     try:
         assert logical(reopened.path)==facts
         assert service.read_polr_reconciliation(cutoff_utc_us=NOW)==reconciliation
@@ -430,9 +439,9 @@ def test_real_tk_normal_startup_after_inspection_and_rejection_without_upgrade_u
     from chronicle.app import ChronicleApp
     from test_timesheet_save_ui import exit_settled
     damage(image,kind);before=preserved(image)
-    result=br.inspect_dataset(image)
+    result=br.inspect_dataset(image, schema_version=3)
     assert result.ordinary_startup_permitted==(kind=='supported') and preserved(image)==before
-    worker=DatabaseWorker(image);app=ChronicleApp(root,worker,now_utc=Clock());worker.start()
+    worker=DatabaseWorker(image, schema_version=3);app=ChronicleApp(root,worker,now_utc=Clock());worker.start()
     try:
         if kind!='supported':
             pump(root,lambda:app._worker_stopped)
@@ -447,10 +456,10 @@ def test_real_tk_normal_startup_after_inspection_and_rejection_without_upgrade_u
         click(app.buttons['Start']);pump(root,lambda:app.pending is None and app.state['active'] is not None)
         active=dict(app.state['active']);app.request_close();exit_settled(app)
         worker.join(8);assert not worker.is_alive()
-        assert br.inspect_dataset(image).ordinary_startup_permitted
+        assert br.inspect_dataset(image, schema_version=3).ordinary_startup_permitted
         # Ordinary reopen constructs fresh UI/worker ownership, never an upgrade session.
         other=tk.Tk();other_errors=[];other.report_callback_exception=lambda *a:other_errors.append(a)
-        next_worker=DatabaseWorker(image);fresh=ChronicleApp(other,next_worker,now_utc=Clock());next_worker.start()
+        next_worker=DatabaseWorker(image, schema_version=3);fresh=ChronicleApp(other,next_worker,now_utc=Clock());next_worker.start()
         try:
             pump(other,lambda:fresh.ready and fresh.state.get('report') is not None)
             assert fresh.state['active']==active and fresh.pending is None
@@ -466,7 +475,7 @@ def test_real_tk_normal_startup_after_inspection_and_rejection_without_upgrade_u
 
 @pytest.mark.parametrize('literal',["'TIMED'","'timed  '"])
 def test_same_version_literal_change_is_not_normalized_into_supported_schema(tmp_path,literal):
-    directory=tmp_path/'literal';store=SQLiteStore(directory,create=True,timezone='UTC');store.close()
+    directory=tmp_path/'literal';store=SQLiteStore(directory,create=True,timezone='UTC', schema_version=3);store.close()
     c=sqlite3.connect(directory/DATABASE)
     try:
         sql=c.execute("SELECT sql FROM sqlite_schema WHERE name='work_entries'").fetchone()[0]
@@ -475,7 +484,7 @@ def test_same_version_literal_change_is_not_normalized_into_supported_schema(tmp
         c.commit()
     finally:c.close()
     before=preserved(directory)
-    assert br.inspect_dataset(directory).classification==C.UNSUPPORTED_LAYOUT
+    assert br.inspect_dataset(directory, schema_version=3).classification==C.UNSUPPORTED_LAYOUT
     assert preserved(directory)==before
 
 
@@ -493,7 +502,7 @@ def test_layout_refusal_keeps_original_diagnostic_when_close_also_fails(image,mo
     monkeypatch.setattr(br,'_readonly',opened);monkeypatch.setattr(SQLiteStore,'_verify_schema',staticmethod(fail))
     before=preserved(image)
     try:
-        result=br.inspect_dataset(image)
+        result=br.inspect_dataset(image, schema_version=3)
         assert result.error is primary and result.classification==C.UNSAFE_OR_UNAVAILABLE
         assert not result.full_validation_completed and len(connections)==1
         assert any('close also failed' in n for n in primary.__notes__) and preserved(image)==before
@@ -504,7 +513,7 @@ def test_busy_cold_image_returns_unavailable_without_writable_recovery(image):
     c=sqlite3.connect(image/DATABASE,isolation_level=None)
     c.execute('BEGIN EXCLUSIVE');before=preserved(image)
     try:
-        result=br.inspect_dataset(image)
+        result=br.inspect_dataset(image, schema_version=3)
         assert result.classification==C.UNSAFE_OR_UNAVAILABLE
         assert isinstance(result.error,sqlite3.OperationalError) and not result.full_validation_completed
         assert preserved(image)==before

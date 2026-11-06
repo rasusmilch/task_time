@@ -138,13 +138,13 @@ def test_synthetic_windows_binding_through_actual_report_startup_backup_and_rest
         m.setattr(os,'fstat',descriptor)
         for module in (files,br,db):
             m.setattr(module,'path_matches_handle',partial(binding,windows=True))
-        reopened=db.SQLiteStore(directory)
+        reopened=db.SQLiteStore(directory, schema_version=3)
         try:
             assert reopened.dataset_id==identity
-            assert br.inspect_dataset(directory).ordinary_startup_permitted
+            assert br.inspect_dataset(directory, schema_version=3).ordinary_startup_permitted
             result=reopened.backup(tmp_path/'image.sqlite3')
             assert result.verified,result.error
-            assert br.restore_image(result.destination,tmp_path/'restored').verified
+            assert br.restore_image(result.destination,tmp_path/'restored', schema_version=3).verified
             payload=b'frozen report';digest=hashlib.sha256(payload).hexdigest();target=tmp_path/'report'
             assert files.materialize('test',target,payload,digest,directory).verified
             assert files.materialize('test',target,payload,digest,directory).phase==files.PublicationPhase.REUSED
@@ -155,7 +155,7 @@ def test_synthetic_windows_binding_through_actual_report_startup_backup_and_rest
                                      confirmed_overwrite=True,expected_conflict=conflict).verified
             assert target.read_bytes()==payload
         finally:reopened.close()
-    restored=db.SQLiteStore(tmp_path/'restored')
+    restored=db.SQLiteStore(tmp_path/'restored', schema_version=3)
     try:assert restored.dataset_id==identity
     finally:restored.close()
 

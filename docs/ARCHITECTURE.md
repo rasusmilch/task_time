@@ -328,9 +328,9 @@ The CLI reports deterministic statuses documented in [RUNNING.md](../RUNNING.md#
 
 | Classification | Required observation |
 | --- | --- |
-| SUPPORTED_CURRENT | Chronicle identity/version 3, supported profile, exact DDL/STRICT/guards, complete SQLite/FK and all Chronicle evidence/receipt validation, successful close and stable final fingerprint. |
+| SUPPORTED_CURRENT | Chronicle identity/version 4, supported profile, exact DDL/STRICT/guards, complete SQLite/FK and all Chronicle evidence/receipt validation, successful close and stable final fingerprint. |
 | OLDER_UNSUPPORTED / NEWER_UNSUPPORTED | Chronicle identity and differing version marker after generic SQLite integrity/FK checks; current Chronicle semantics are not applied to an unknown version. A lower marker does not prove an authentic older schema. |
-| UNSUPPORTED_LAYOUT | Current identity/version with a different DDL signature. `_verify_schema` is the sole existing schema authority, now separated from semantic checks; token comparison preserves quoted literals. |
+| UNSUPPORTED_LAYOUT | Current identity/version with a different DDL signature. The selected schema policy supplies exact DDL verification, separate from semantic checks; SQL comparison preserves quoted literals. |
 | FOREIGN_DATABASE | A trustworthy SQLite application identity differs. |
 | UNSUPPORTED_PROFILE | An identifiable unsupported operational format/profile, including WAL header selection; full Chronicle integrity is not claimed. |
 | UNSAFE_OR_UNAVAILABLE | Unsuitable/unstable/unreadable source, outstanding sidecar, integrity/evidence failure or inspection/cleanup uncertainty. A damaged lower-marker file is not accepted as an older schema. |
@@ -338,15 +338,16 @@ The CLI reports deterministic statuses documented in [RUNNING.md](../RUNNING.md#
 Normal startup remains a separate owner path. Bounded regular-file/header/profile
 and metadata admission replaces whole-file startup fingerprints. WAL headers and
 unsuitable paths refuse before writable access. Clean, sidecar-free candidates
-still pass non-mutating `_probe`/`_verify_complete` preflight before lock creation,
+still pass non-mutating `_probe`/selected complete verification before lock creation,
 preserving unsupported-data refusal without new files or configuration writes.
 An outstanding regular rollback journal defers SQL validation until DatasetLock
-is held: the existing worker-owned `mode=rw` connection lets SQLite natively
-recover the committed image. Admission is repeated under ownership; raw header
-application/version markers are not treated as committed evidence before rollback.
+is held. For schema 4 the paired private recovery preflight below must fully verify
+the recovered v4 copy and cleanup/source stability before any original `mode=rw`
+connection may recover its supported committed image. Admission is repeated under
+ownership; raw header application/version markers are never committed authority.
 Chronicle never parses, replays, removes or repairs journals itself.
 
-The owned connection then runs `_verify_complete` in a read transaction, requires
+The owned connection then runs the selected complete verifier in a read transaction, requires
 the actual DELETE profile and checks the recovered identity before configuring
 and verifying DELETE/EXTRA/foreign keys. Complete validation includes full SQLite
 integrity, exact DDL/STRICT/guards, metadata/lifecycle, immutable work revisions,
@@ -365,16 +366,49 @@ context, not a migration obligation. The latest project-nesting decision selects
 fresh schema 4, application ID 0x4348524E. No schema-3 import/conversion reader,
 transformation staging, pending-conversion marker or converted-copy activation
 controller is selected. Original v3 files stay untouched. During A/B/C1/C2,
-ordinary creation/admission/backup/restore and supported native rollback remain
-exact schema 3; the isolated v4 candidate is never an ordinary opener/writer.
+ordinary creation/admission/backup/restore and supported native rollback remained
+exact schema 3; A/B/C1/C2 did not activate an ordinary v4 opener/writer.
 
-Future package E activates only fresh v4 and complete v4 validation. It must refuse
-clean v3 before writable opening and preserve incompatible originals with journals,
-while genuine supported v4 hot journals retain SQLite-native recovery. Raw header
-markers cannot establish committed identity. Version-aware private recovery
-preflight remains the preferred future solution to that ambiguity; A does not
-implement it or alter current v3 hot-journal behavior. Cold inspection remains
-read-only/non-recovering. Native qualification is a separate gate.
+Package E implements fresh-v4 activation through the existing owner, with explicit
+version policy in [schema_policy.py](../src/chronicle/schema_policy.py). Legacy
+schema-3 DDL/verifiers and explicit test selection remain intact; ordinary store,
+worker and startup default to 4. No public version selector or migration exists.
+Clean v3 refuses before writable opening. Raw journaled headers are not authority.
+[recovery_preflight.py](../src/chronicle/recovery_preflight.py) copies the admitted
+DB/journal pair under DatasetLock to an exclusive private directory outside the
+original; checked handles, bounded initial sizes, source metadata and digests
+record the copy. SQLite recovers only that pair. Full v4 schema/semantic verification,
+successful private connection/file cleanup and repeated source stability checks
+must finish before the original opens writable for native SQLite rollback under
+the same lock. The recovered original passes the full gate again before ready.
+Unknown private files are never recursively removed; failed cleanup retains its
+owner and lock for the worker's explicit cleanup retry. The private copy never
+becomes the dataset. Cold inspection remains read-only/non-recovering. Native
+Windows/NTFS and power-loss qualification remain separate gates.
+
+## Package E production schema-4 ownership
+
+[schema4_runtime_service.py](../src/chronicle/schema4_runtime_service.py) is a thin
+Request/read facade over caller-owned C2 services. SQLiteStore alone owns BEGIN
+IMMEDIATE, receipt lookup, mutation, insertion, full independent final verification,
+COMMIT, rollback and retained connection cleanup. Exact prior receipt lookup precedes
+stale-state checks; no-op rolls back without a receipt/sequence advance. Ordinary
+uncertainty reconciles the same Request via an independently verified read probe.
+Delete uses the existing separate no-receipt path and C2 survivor proof; any uncertain
+COMMIT permanently blocks mutation/retry/backup in that session. Presence is current
+state only; explicit exit/reopen and a fresh review/typed DELETE remain required.
+
+The same DatabaseWorker serializes all reads/mutations/backup and publishes readiness
+only after exact DDL, complete semantic and operational-profile validation. The
+facade uses store-owned read snapshots and the existing C2 accounting/history and
+shared Timesheet/POL-R/file engines; [service_reads.py](../src/chronicle/service_reads.py)
+extracts the existing day calculation without duplicating allocation mathematics.
+Production imports no CandidateAdapter or CandidateBridge. Tests reuse the pure read
+dispatch but retain distinct transaction ownership/readiness. Normal and explicit
+source launches use the same StartupWindow and one root/worker; explicit CLI still
+never reads or replaces remembered selection. Supported backup/verify/restore now
+select exact v4; the established exclusive publication, staged validation, source
+stability, final readback and no-final-unlink rules remain unchanged.
 
 ## Implemented main and mini presentation
 
@@ -382,12 +416,12 @@ Main retains its 850x550 initial geometry and 720x420 minimum. Its outer toolbar
 contains independent primary-management, secondary-action, display-settings and
 guidance frames, avoiding shared column widths between unrelated rows. Primary
 holds New Task, Rename task, Create project and Rename project; secondary holds
-Move / Reparent, Mini mode, Delete and Templates, plus the candidate-only New child
-project. The candidate root-project label remains on the same Create project
+Move / Reparent, Mini mode, Delete and Templates, plus the schema-4 New child
+project. The schema-4 root-project label remains on the same Create project
 button/key/callback. Settings retain the existing week/period/sort/Keep Mini
 controls. The hint wraps at 680 pixels below them. Widgets are constructed once;
 resize changes no commands, bindings, eligibility, requests or persisted layout.
-The same frames serve ordinary schema 3 and the isolated schema-4 candidate.
+The same frames serve explicit legacy schema 3, ordinary schema4 and the isolated schema4-candidate.
 
 `task_row`/`project_row` distinguish task:UUID, project:UUID and group:unassigned.
 D projects the complete effectively active forest from the existing detached worker
@@ -458,11 +492,10 @@ Native Windows theme/topmost/focus/operator qualification remains outstanding.
 
 The future project architecture and implemented usability slice follow the
 [selected organizational model and UX](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks).
-The delivered A–F task hierarchy remains historical. Ordinary runtime is still
-exact schema 3 with flat projects during A/B/C1/C2. The future runtime uses a
-fresh schema-4 database, without migration/import/copy transition. Refuse old data
-rather than recreating, clearing or transforming it. The isolated candidate owns
-its explicit v4 definition and does not change ordinary SQLiteStore behavior.
+The delivered A–F task hierarchy remains historical. A/B/C1/C2 kept ordinary schema 3
+while building the isolated v4 definition and services. E now selects that exact
+fresh schema-4 definition through the existing SQLiteStore, without migration/import/
+copy transition. Old data refuses rather than being recreated, cleared or transformed.
 
 Use one self-referencing Project adjacency relation: stable project UUID plus
 optional parent-project identity. Root parent is absent; duplicate display names
@@ -710,16 +743,19 @@ relationships, explicit/effective eligibility, active identity, templates, direc
 task History and task/project Direct/Cumulative values. Calculation failure stays
 unavailable instead of becoming zero. Frozen reports remain independent of live
 reparenting/renaming. No mutable report/hierarchy cache is persisted. D adds candidate rendering
-below; E ordinary fresh-v4 startup/backup/restore and F native acceptance remain pending.
+below; E now connects ordinary fresh-v4 startup/backup/restore for review. F native acceptance remains pending.
 
 ### Package D candidate graphical integration
 
 ChronicleApp retains the only Tk root, accepted Request owner and matching delivery
-handler. Its internal presentation_profile defaults to schema3; schema4-candidate
-is reachable only from tests until E. Ready and snapshot messages require explicit
-matching schema_version=4 and candidate_verified=True, emitted after complete C2
-verification. Mismatch refuses. Ordinary schema-3 worker/startup are unchanged;
-schema-4-only requests cannot be queued to the schema-3 presentation path.
+handler. The ordinary StartupWindow explicitly selects presentation_profile=schema4
+only after production ready contains schema_version=4, semantic_verified=True and
+ordinary_startup_permitted=True. Every snapshot must match. schema4-candidate is
+still test-only and requires candidate_verified=True without ordinary permission.
+The default direct-construction schema3 profile preserves explicit historical tests;
+no schema4 request may reach that legacy presentation/worker. One shared structural
+predicate serves both v4 profiles; candidate backup restrictions remain separate.
+Mismatch refuses before the application can mutate.
 
 [project_ui.py](../src/chronicle/project_ui.py) supplies pure projections and
 detached selected-destination reviews. ProjectForest and existing task observations
@@ -771,8 +807,8 @@ preserves the separate Delete path, and joins bounded cleanup. It is not a
 production worker or public launcher. Unsupported test messages refuse explicitly.
 No GUI software is installed to obtain acceptance. Without a usable display,
 connected Tk tests remain skipped/unverified; model and real worker/SQLite results
-are reported separately. E activation/backup/restore and F native qualification
-remain outstanding. Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
+are reported separately. E now connects production activation/backup/restore for review;
+F native qualification remains outstanding. Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
 
 Remaining integration and selected backend contracts:
 
@@ -828,17 +864,19 @@ the same active/eligible selected task and Individual Today report. Full resolut
 stays in Main/owned modals; read-only navigation cannot enable mutation or bypass
 modal ownership. Keep Mini Open remains Off/session-local and topmost remains
 guarded. No new root, timer, worker or persistence is introduced. Native Windows
-layout/input acceptance remains outstanding; project nesting is implemented only
-in the isolated candidate backend and D presentation path, not ordinary schema 3.
+layout/input acceptance remains outstanding; E now connects the accepted nested
+backend and D presentation to ordinary schema 4.
 
 ## Fresh hierarchy foundation
 
 This section records the delivered task-hierarchy foundation under flat projects;
-the new project-nesting architecture above is a separate unimplemented workstream.
+the project-nesting E architecture above supersedes its ordinary version selection.
+The schema-3 interfaces/DDL below remain historical and explicit regression policy.
 
 **A/B1/B2/C1/C2/D/E ACCEPTED FOR FUNCTIONAL DEVELOPMENT; F DEVELOPMENT REVIEW PENDING.**
 Package E implements templates. Schema version 3 and application
-ID 0x4348524E identify the sole supported fresh layout, together with exact DDL.
+ID 0x4348524E identified that fresh layout, together with exact DDL. Current E
+selects exact schema 4 with unchanged application ID and an added nullable project parent.
 Versions 1/2 refuse without conversion/replacement or clearing remembered selection.
 Creation uses the existing exclusive new/empty-directory path. Current normal
 owned native SQLite recovery and cold non-recovering inspection retain their
@@ -965,7 +1003,7 @@ cache, new worker or Python hierarchy projection becomes authoritative.
 
 | Relation / implementation status | Fields/relationships and purpose |
 | --- | --- |
-| projects | Implemented B1/current schema 3: stable UUID, name, reviewed version, explicit archive flag, nullable current UTC archive timestamp and owning created_request_id deferred FK; no project-parent column. No target soft-delete flag. Eligible unused Delete removes the row, not protected evidence. Duplicate names are valid; projects own no work/timer. |
+| projects | Historical B1/schema 3: stable UUID, name, reviewed version, explicit archive flag, nullable current UTC archive timestamp and owning created_request_id deferred FK; no project-parent column. No target soft-delete flag. Eligible unused Delete removes the row, not protected evidence. Duplicate names are valid; projects own no work/timer. |
 | tasks | B1: stable UUID, optional project FK, optional self-parent FK, name, reviewed version, explicit archive flag/current UTC timestamp and owning created_request_id deferred FK. No target soft-delete flag; parent cannot be self. Duplicate names are valid. Eligible unused Delete removes the row under the dependency boundary below. |
 | task structure | Parent adjacency is the authority. A subtree shares current project membership; root project may be NULL. B1 stores matching project_id on every descendant; root membership may be NULL. Parent adjacency is the only hierarchy authority, with tasks_project/tasks_parent indexes. B2 implements atomic subtree movement with the unchanged guards; do not add a second mutable membership authority. |
 | template_definitions | Implemented E: template_id/name/name_key/version/is_archived/archived_at_utc_us/unique creation receipt/created and updated UTC timestamps. STRICT range/archive guards, partial unique name_key index for active rows; Python canonical casefold verified independently. |
@@ -1347,7 +1385,7 @@ Stage 1A established explicit data-dir/create/zone startup; current `bootstrap`
 also supports the source setup/remembered selection described above. `dataset_lock` holds
 OS ownership before writable open; unknown/nonempty create targets and unknown
 schema versions refuse without data cleanup. `sqlite_store` owns isolation_level=None,
-BEGIN IMMEDIATE/COMMIT/ROLLBACK and checked STRICT fresh schema (originally version 1; E now supports only version 3). Dataset/task/
+BEGIN IMMEDIATE/COMMIT/ROLLBACK and checked STRICT fresh schema (originally version 1, then 3; current project-nesting E selects version 4). Dataset/task/
 project UUIDs, optional membership, timed work identities/current immutable revisions,
 one active row, immutable active-start audits and committed receipts are relational.
 Original start never changes; active effective start/version follows its audit chain.

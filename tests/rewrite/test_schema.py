@@ -19,7 +19,7 @@ def test_ordinary_admission_reads_only_bounded_header_without_image_fingerprint(
     def forbidden(*a): pytest.fail('Ordinary startup used a full cold-image fingerprint')
     monkeypatch.setattr(backup_restore, '_fingerprint', forbidden)
     monkeypatch.setattr(module.os, 'read', observe)
-    reopened = SQLiteStore(directory)
+    reopened = SQLiteStore(directory, schema_version=3)
     try:
         assert reads and set(reads) == {100}
     finally:
@@ -54,7 +54,7 @@ def test_startup_rechecks_candidate_after_ownership_before_adoption(store, monke
         patch.setattr(DatasetLock, 'acquire', changed_after_lock)
         patch.setattr(SQLiteStore, '_profile', forbidden)
         diagnostic = 'DELETE journal profile' if changed == 'wal' else 'Not a supported Chronicle schema'
-        with pytest.raises(ValueError, match=diagnostic): SQLiteStore(directory)
+        with pytest.raises(ValueError, match=diagnostic): SQLiteStore(directory, schema_version=3)
     assert len(owners) == 1 and owners[0].file is None
     assert observed == [database_files()]
     assert lock_path.read_bytes() == lock_bytes
@@ -80,7 +80,7 @@ def test_fresh_profile_and_reopen(store):
     dataset = store.dataset_id
     directory = store.directory
     store.close()
-    reopened = SQLiteStore(directory)
+    reopened = SQLiteStore(directory, schema_version=3)
     try:
         assert reopened.dataset_id == dataset
         assert reopened.timezone == "America/Chicago"
@@ -105,16 +105,16 @@ def test_unknown_or_partial_create_is_refused_without_changes(tmp_path, name):
     path.write_bytes(b"original")
     before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
     with pytest.raises(ValueError):
-        SQLiteStore(tmp_path, create=True, timezone="America/Chicago")
+        SQLiteStore(tmp_path, create=True, timezone="America/Chicago", schema_version=3)
     assert before == {p.name: p.read_bytes() for p in tmp_path.iterdir()}
 
 
 def test_noncreating_open_and_invalid_zone(tmp_path):
     with pytest.raises(ValueError):
-        SQLiteStore(tmp_path)
+        SQLiteStore(tmp_path, schema_version=3)
     assert list(tmp_path.iterdir()) == []
     with pytest.raises(ValueError):
-        SQLiteStore(tmp_path, create=True, timezone="../bad")
+        SQLiteStore(tmp_path, create=True, timezone="../bad", schema_version=3)
     assert list(tmp_path.iterdir()) == []
 
 
@@ -202,20 +202,20 @@ def test_incomplete_guards_and_future_version_refused(store):
     store.connection.execute("PRAGMA user_version=999")
     store.close()
     with pytest.raises(ValueError, match="schema"):
-        SQLiteStore(path)
+        SQLiteStore(path, schema_version=3)
 
 
 def test_timezone_conflict_refused(store):
     path = store.directory
     store.close()
     with pytest.raises(ValueError, match="conflicts"):
-        SQLiteStore(path, timezone="UTC")
+        SQLiteStore(path, timezone="UTC", schema_version=3)
 
 
 def test_unknown_normal_open_does_not_add_files(tmp_path):
     (tmp_path / DATABASE).write_bytes(b"not a SQLite database")
     with pytest.raises(sqlite3.DatabaseError):
-        SQLiteStore(tmp_path)
+        SQLiteStore(tmp_path, schema_version=3)
     assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == {DATABASE: b"not a SQLite database"}
 
 
@@ -227,7 +227,7 @@ def test_both_active_closed_and_orphan_direct_sql_are_refused_on_open(store, ser
     store.connection.execute("DELETE FROM active_timer")
     store.close()
     with pytest.raises(ValueError, match="lifecycle"):
-        SQLiteStore(directory)
+        SQLiteStore(directory, schema_version=3)
 
 
 def test_existing_unsupported_journal_profile_is_refused_without_conversion(store, monkeypatch):
@@ -249,5 +249,5 @@ def test_existing_unsupported_journal_profile_is_refused_without_conversion(stor
         pytest.fail("Unsupported profile must be rejected before writable connection/profile changes")
     monkeypatch.setattr(SQLiteStore, "_connect", forbidden)
     with pytest.raises(ValueError, match="no automatic conversion"):
-        SQLiteStore(directory)
+        SQLiteStore(directory, schema_version=3)
     assert {p.name: p.read_bytes() for p in directory.iterdir()} == before

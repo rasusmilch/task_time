@@ -64,7 +64,7 @@ def test_dismiss_same_day_restart_new_day_absence_and_purity(service,task,store)
     assert all_facts(store)==after
     dated(service,task,day='2026-10-13',duration='1:00')
     assert not status(service,'2026-10-19')['reminder_due']
-    directory=store.directory;store.close();opened=SQLiteStore(directory)
+    directory=store.directory;store.close();opened=SQLiteStore(directory, schema_version=3)
     try:
         fresh=TimerService(opened)
         assert not status(fresh,'2026-10-19')['reminder_due']
@@ -86,7 +86,7 @@ def test_corrupt_dismissal_refuses_reopen_without_repair(store,date_text):
     store.connection.execute('PRAGMA ignore_check_constraints=ON')
     store.connection.execute('UPDATE dataset_meta SET polr_reminder_dismissed_local_date=?',(date_text,))
     directory=store.directory;raw=store.path.read_bytes();store.close()
-    with pytest.raises(ValueError):SQLiteStore(directory)
+    with pytest.raises(ValueError):SQLiteStore(directory, schema_version=3)
     assert (directory/'chronicle.sqlite3').read_bytes()==raw
 
 
@@ -143,7 +143,7 @@ def test_old_exact_dismiss_retry_never_reinstalls_yesterday(service,store):
 
 def test_readable_dismissal_metadata_survives_calculation_failure_and_reopen(service,store,monkeypatch):
     service.dismiss_polr_reminder_today('2026-10-19',request_id=uid(),action_utc_us=NOW)
-    directory=store.directory;store.close();opened=SQLiteStore(directory);fresh=TimerService(opened)
+    directory=store.directory;store.close();opened=SQLiteStore(directory, schema_version=3);fresh=TimerService(opened)
     fault=ValueError('accounting unavailable')
     try:
         with monkeypatch.context() as m:

@@ -190,10 +190,10 @@ def test_connected_saved_confirmed_dismissed_backup_and_cold_recovery(connected,
     assert app.state['active']==active and dialog.close()
     app.request_close();exit_settled(app)
     backup=tmp_path/'backup.sqlite3';raw=backup.read_bytes()
-    assert br.validate_image(backup).dataset_id==app.dataset_id
-    restored=br.restore_image(backup,tmp_path/'restore');assert restored.verified
+    assert br.validate_image(backup, schema_version=3).dataset_id==app.dataset_id
+    restored=br.restore_image(backup,tmp_path/'restore', schema_version=3);assert restored.verified
     assert logical(restored.destination)==before
-    recovered=SQLiteStore(tmp_path/'restore')
+    recovered=SQLiteStore(tmp_path/'restore', schema_version=3)
     try:
         s=TimerService(recovered)
         assert s.read_current_state(cutoff_utc_us=NOW)['active']==active
@@ -308,7 +308,7 @@ def test_root_destruction_queues_shutdown_after_accepted_backup(connected,root,t
     result=receive(worker,'backup')
     assert result['request_id']==operation.request_id and result['result'].verified
     receive(worker,'stopped');worker.join(5)
-    assert not worker.is_alive() and br.validate_image(target).dataset_id==app.dataset_id
+    assert not worker.is_alive() and br.validate_image(target, schema_version=3).dataset_id==app.dataset_id
     assert not root.test_errors
 
 
@@ -319,6 +319,6 @@ def test_verified_file_cleanup_failure_is_not_reported_as_unverified_content(con
     monkeypatch.setattr(br,'_remove_owned',fail)
     assert dialog.create();result=wait_backup(app)
     assert result.phase is br.BackupPhase.VERIFIED and result.error is primary and not result.verified
-    assert br.validate_image(target).dataset_id==app.dataset_id
+    assert br.validate_image(target, schema_version=3).dataset_id==app.dataset_id
     assert 'Backup file verified; temporary cleanup did not complete.' in dialog.status.cget('text')
     assert root.test_errors[-1][1] is primary and dialog.close()

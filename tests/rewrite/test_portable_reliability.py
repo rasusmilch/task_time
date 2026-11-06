@@ -52,7 +52,7 @@ def test_definitive_worker_stop_retains_uncertainty_without_queueing_dead_worker
     assert decisions[-1]['default']=='no'
     monkeypatch.setattr('chronicle.app.messagebox.askyesno',lambda *a,**kw:True)
     assert app.exceptional_exit() and not app.alive
-    reopened=SQLiteStore(worker.directory)
+    reopened=SQLiteStore(worker.directory, schema_version=3)
     try:
         assert TimerService(reopened).reconcile_request(request).status=='absent'
         assert not reopened.connection.execute('SELECT 1 FROM active_timer').fetchone()
@@ -162,7 +162,7 @@ def test_real_tk_server_accepted_timer_then_close_drains_exact_mutation(connecte
         beat=[];root.after(10,lambda:beat.append(True));pump(root,lambda:beat)
     finally:release.set()
     exit_settled(app);worker.join(5);assert not worker.is_alive()
-    reopened=SQLiteStore(worker.directory)
+    reopened=SQLiteStore(worker.directory, schema_version=3)
     try:
         s=TimerService(reopened);assert s.reconcile_request(request).status=='committed'
         rows=logical(reopened.path)
@@ -220,7 +220,7 @@ def test_connected_uncertainty_backup_shutdown_cold_restore_fresh_session(store,
     reconciliation=service.read_polr_reconciliation(cutoff_utc_us=NOW)
     assert reconciliation['coverage']['MISMATCH']>0
     directory=store.directory;before=logical(store.path);store.close()
-    worker=DatabaseWorker(directory);app=ChronicleApp(root,worker,now_utc=Clock());worker.start()
+    worker=DatabaseWorker(directory, schema_version=3);app=ChronicleApp(root,worker,now_utc=Clock());worker.start()
     try:
         pump(root,lambda:app.ready and app.state.get('report') is not None)
         active=dict(app.state['active']);dialog=open_backup(app);backup=tmp_path/'connected-backup'
@@ -248,20 +248,20 @@ def test_connected_uncertainty_backup_shutdown_cold_restore_fresh_session(store,
         assert app._submit('create_project',project_id=uid(),name='accepted before exit')
         final_request=app.pending;app.request_close();exit_settled(app);worker.join(8);assert not worker.is_alive()
         original=logical(directory/'chronicle.sqlite3');backup_bytes=backup.read_bytes()
-        reopened=SQLiteStore(directory)
+        reopened=SQLiteStore(directory, schema_version=3)
         try:
             assert TimerService(reopened).reconcile_request(request).status=='committed'
             assert TimerService(reopened).read_current_state(cutoff_utc_us=NOW)['active']==active
             assert any(r[1]==final_request.request_id for r in original['committed_requests'])
         finally:reopened.close()
-        assert br.validate_image(backup).dataset_id==app.dataset_id
-        restored=br.restore_image(backup,tmp_path/'restored-session');assert restored.verified
-        recovered=SQLiteStore(tmp_path/'restored-session')
+        assert br.validate_image(backup, schema_version=3).dataset_id==app.dataset_id
+        restored=br.restore_image(backup,tmp_path/'restored-session', schema_version=3);assert restored.verified
+        recovered=SQLiteStore(tmp_path/'restored-session', schema_version=3)
         try:assert TimerService(recovered).read_polr_reconciliation(cutoff_utc_us=NOW)==reconciliation
         finally:recovered.close()
         assert logical(restored.destination)==before
         fresh_root=tk.Tk();fresh_errors=[];fresh_root.report_callback_exception=lambda *a:fresh_errors.append(a)
-        next_worker=DatabaseWorker(tmp_path/'restored-session')
+        next_worker=DatabaseWorker(tmp_path/'restored-session', schema_version=3)
         fresh=ChronicleApp(fresh_root,next_worker,now_utc=Clock());next_worker.start()
         try:
             pump(fresh_root,lambda:fresh.ready and fresh.state.get('report') is not None)

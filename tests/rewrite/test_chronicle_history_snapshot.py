@@ -105,7 +105,7 @@ def test_bad_display_row_preparation_never_changes_input(service, task, store):
 
 def test_empty_snapshot_still_requires_representable_utc_calendar_boundaries(tmp_path):
     from chronicle.services import TimerService
-    store=SQLiteStore(tmp_path/'positive-offset-boundary',create=True,timezone='Asia/Tokyo')
+    store=SQLiteStore(tmp_path/'positive-offset-boundary',create=True,timezone='Asia/Tokyo', schema_version=3)
     try:
         service=TimerService(store); task=uid()
         service.create_task(task,'Empty',request_id=uid(),action_utc_us=NOW)

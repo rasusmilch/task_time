@@ -15,10 +15,11 @@ import stat
 from uuid import uuid4
 
 from .dataset_lock import DatasetLock
-from .sqlite_store import (APPLICATION_ID, SCHEMA_VERSION, BUSY_MS, DATABASE,
+from .sqlite_store import (APPLICATION_ID, BUSY_MS, DATABASE,
                            SQLiteStore, UnsupportedSchemaLayout, runtime_info)
 from .timesheet_files import (destination_path, metadata, protect, _owned, _remove_owned,
                              same_file_identity, same_domain_metadata, path_matches_handle)
+from .schema_policy import policy_for
 
 
 class Compatibility(str, Enum):
@@ -43,7 +44,7 @@ class CompatibilityResult:
     candidate_path: Path | None
     observed_application_id: int | None = None
     observed_user_version: int | None = None
-    supported_schema_version: int = SCHEMA_VERSION
+    supported_schema_version: int = 4
     observed_journal_profile: str | None = None
     full_validation_completed: bool = False
     ordinary_startup_permitted: bool = False
@@ -145,6 +146,7 @@ def _readonly(path):
         c.row_factory = sqlite3.Row
         c.execute('PRAGMA query_only=ON')
         c.execute('PRAGMA foreign_keys=ON')
+        c.execute('PRAGMA synchronous=EXTRA')
     except BaseException as primary:
         _close(c, primary)
         raise
@@ -160,7 +162,7 @@ def _close(connection, primary=None):
         primary.add_note(f'SQLite connection close also failed: {secondary!r}')
 
 
-def validate_image(value) -> Image:
+def validate_image(value, *, schema_version=4) -> Image:
     """Independent read-only full integrity plus the production semantic validator."""
     runtime_info()
     path = destination_path(value)
@@ -170,7 +172,8 @@ def validate_image(value) -> Image:
         c.execute('BEGIN')
         if c.execute('PRAGMA journal_mode').fetchone()[0] != 'delete':
             raise ValueError('Backup requires the supported DELETE journal profile')
-        SQLiteStore._verify_complete(c)
+        if schema_version == 3: SQLiteStore._verify_complete(c)
+        else: policy_for(schema_version).verify(c)
         meta = c.execute('SELECT * FROM dataset_meta').fetchone()
         result = Image(path, meta['dataset_id'], meta['timezone'], meta['week_start'], before, digest)
         c.execute('COMMIT')
@@ -201,7 +204,7 @@ def _cold_sidecars(directory):
         raise OSError('A SQLite journal/sidecar is present; close other sessions. A clean cold image cannot be established without recovery.')
 
 
-def inspect_dataset(value) -> CompatibilityResult:
+def inspect_dataset(value, *, schema_version=4) -> CompatibilityResult:
     """Cold diagnostic only; no lock, writable connection, conversion or retry."""
     kind, path, error = Compatibility.UNSAFE_OR_UNAVAILABLE, None, None
     c = None
@@ -228,9 +231,10 @@ def inspect_dataset(value) -> CompatibilityResult:
             if profile != 'delete':
                 raise UnsupportedImageProfile('Inspection requires DELETE journaling; no conversion is available.', profile)
             phase = 'independent schema and evidence validation'
-            if application_id == APPLICATION_ID and version == SCHEMA_VERSION:
+            if application_id == APPLICATION_ID and version == schema_version:
                 try:
-                    SQLiteStore._verify_complete(c)
+                    if schema_version == 3: SQLiteStore._verify_complete(c)
+                    else: policy_for(schema_version).verify(c)
                 except UnsupportedSchemaLayout as exc:
                     kind, error = Compatibility.UNSUPPORTED_LAYOUT, exc
                     explanation = 'Current version marker has an unsupported schema definition; no automatic repair/upgrade.'
@@ -245,7 +249,7 @@ def inspect_dataset(value) -> CompatibilityResult:
                 if application_id != APPLICATION_ID:
                     kind = Compatibility.FOREIGN_DATABASE
                     explanation = 'SQLite application identity is not Chronicle; ordinary startup is not permitted.'
-                elif version < SCHEMA_VERSION:
+                elif version < schema_version:
                     kind = Compatibility.OLDER_UNSUPPORTED
                     explanation = 'Observed lower version marker only; authenticity of an older Chronicle schema is not established. No automatic migration.'
                 else:
@@ -291,7 +295,7 @@ def inspect_dataset(value) -> CompatibilityResult:
         kind, error, complete = Compatibility.UNSAFE_OR_UNAVAILABLE, exc, False
         application_id = version = profile = None  # Do not publish potentially unstable observations.
         explanation = f'Could not complete {phase} ({type(exc).__name__}). A safe clean cold image was not established; no recovery or repair was attempted.'
-    return CompatibilityResult(kind, path, application_id, version, SCHEMA_VERSION, profile,
+    return CompatibilityResult(kind, path, application_id, version, schema_version, profile,
                                complete, complete and kind == Compatibility.SUPPORTED_CURRENT, explanation, error)
 
 
@@ -423,7 +427,7 @@ def _same_content(stage, target):
             raise cleanup_error
 
 
-def _publish(source, target, *, dataset=None, source_image=None, reserved=None):
+def _publish(source, target, *, dataset=None, source_image=None, reserved=None, schema_version=4):
     stage = created = image = None
     phase, error = BackupPhase.NOT_STARTED, None
     try:
@@ -436,7 +440,7 @@ def _publish(source, target, *, dataset=None, source_image=None, reserved=None):
         _copy(source, stage)
         _sync(stage, created)
         phase = BackupPhase.VALIDATING
-        image = validate_image(stage)
+        image = validate_image(stage, schema_version=schema_version)
         _owned(stage, created)
         if source_image is not None and _fingerprint(source_image.path) != (source_image.metadata, source_image.digest):
             raise OSError('Restore source changed during staging')
@@ -458,7 +462,7 @@ def _publish(source, target, *, dataset=None, source_image=None, reserved=None):
         published = _regular(target)
         if not same_file_identity(published, created):
             raise OSError('Published backup identity differs from owned staging')
-        final = validate_image(target)
+        final = validate_image(target, schema_version=schema_version)
         _same_content(stage, target)
         if final.digest != image.digest or final.dataset_id != image.dataset_id:
             raise OSError('Final backup does not match validated staging')
@@ -475,7 +479,7 @@ def _publish(source, target, *, dataset=None, source_image=None, reserved=None):
                 if (stat.S_ISREG(observed.st_mode) and created is not None
                         and same_file_identity(observed, created)):
                     phase = BackupPhase.PUBLISHED_UNVERIFIED
-                    validate_image(target)
+                    validate_image(target, schema_version=schema_version)
                 else:
                     primary.add_note('Final object exists but is not proven to be our publication; retained untouched.')
             except Exception as secondary:
@@ -494,17 +498,22 @@ def _publish(source, target, *, dataset=None, source_image=None, reserved=None):
     return BackupResult(str(target), phase, image, error)
 
 
-def backup_connection(source, destination, dataset) -> BackupResult:
+def backup_connection(source, destination, dataset, *, schema_version=4) -> BackupResult:
     target = destination_path(destination)
     if source.in_transaction:
         raise RuntimeError('Backup refuses an executing or unresolved transaction')
-    SQLiteStore._verify(source)
-    return _publish(source, target, dataset=dataset)
+    if schema_version == 3:
+        SQLiteStore._verify(source)
+    else:
+        source.execute('BEGIN')
+        try: policy_for(schema_version).verify(source)
+        finally: source.execute('ROLLBACK')
+    return _publish(source, target, dataset=dataset, schema_version=schema_version)
 
 
-def restore_image(source_path, directory) -> BackupResult:
+def restore_image(source_path, directory, *, schema_version=4) -> BackupResult:
     """Cold install only. Source validation precedes any target reservation."""
-    image = validate_image(source_path)
+    image = validate_image(source_path, schema_version=schema_version)
     if isinstance(directory, (str, Path)) and str(directory).startswith(('\\\\', '//')):
         raise ValueError('Restore requires a supported local dataset directory, not a network path')
     target_dir = destination_path(directory)
@@ -522,7 +531,7 @@ def restore_image(source_path, directory) -> BackupResult:
             raise OSError('Restore source changed after preliminary validation')
         source = _readonly(image.path)
         result = _publish(source, target_dir / DATABASE, source_image=image,
-                          reserved=(target_dir, (observed.st_dev, observed.st_ino)))
+                          reserved=(target_dir, (observed.st_dev, observed.st_ino)), schema_version=schema_version)
     except BaseException as primary:
         if source is not None:
             _close(source, primary)

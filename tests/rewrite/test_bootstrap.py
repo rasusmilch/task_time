@@ -17,14 +17,14 @@ def child(code, *arguments):
 
 
 def test_separate_process_second_owner_refused(store):
-    code = "from chronicle.sqlite_store import SQLiteStore; import sys; s=SQLiteStore(sys.argv[1])"
+    code = "from chronicle.sqlite_store import SQLiteStore; import sys; s=SQLiteStore(sys.argv[1], schema_version=3)"
     result = child(code, store.directory)
     assert result.returncode != 0
     assert "BlockingIOError" in result.stderr or "PermissionError" in result.stderr or "OSError" in result.stderr
 
 
 def test_directory_alias_second_owner_refused(store, tmp_path):
-    code = "from chronicle.sqlite_store import SQLiteStore; import sys; s=SQLiteStore(sys.argv[1])"
+    code = "from chronicle.sqlite_store import SQLiteStore; import sys; s=SQLiteStore(sys.argv[1], schema_version=3)"
     alias = tmp_path / "alias"
     try:
         alias.symlink_to(store.directory, target_is_directory=True)
@@ -54,7 +54,7 @@ def test_directory_alias_setup_windows_privilege_denial_is_narrow(store, tmp_pat
 
 def test_normal_restart_and_crash_keep_same_active_identity(tmp_path):
     path = tmp_path / "fresh"
-    store = SQLiteStore(path, create=True, timezone="America/Chicago")
+    store = SQLiteStore(path, create=True, timezone="America/Chicago", schema_version=3)
     service = TimerService(store)
     task, entry = uid(), uid()
     service.create_task(task, "Timer", request_id=uid(), action_utc_us=NOW)
@@ -62,11 +62,11 @@ def test_normal_restart_and_crash_keep_same_active_identity(tmp_path):
     store.close()
     code = """from chronicle.sqlite_store import SQLiteStore
 import sys,os
-s=SQLiteStore(sys.argv[1]); assert s.connection.execute('SELECT entry_id FROM active_timer').fetchone()[0] == sys.argv[2]
+s=SQLiteStore(sys.argv[1], schema_version=3); assert s.connection.execute('SELECT entry_id FROM active_timer').fetchone()[0] == sys.argv[2]
 os._exit(0)
 """
     assert child(code, path, entry).returncode == 0
-    reopened = SQLiteStore(path)
+    reopened = SQLiteStore(path, schema_version=3)
     try:
         active = TimerService(reopened).read_current_state(cutoff_utc_us=NOW + 1)["active"]
         assert active["entry_id"] == entry and active["start_utc_us"] == NOW

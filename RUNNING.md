@@ -103,7 +103,7 @@ Reopen that same dataset without `--create`:
 python run_chronicle.py --data-dir PATH
 ```
 
-E creates fresh schema 3 only: projects are flat and task parentage has at most three levels under a project
+Current project-nesting E creates fresh schema 4 only: projects may nest without a product-depth cap; task parentage has at most three levels under a project
 or Unassigned, new recording is leaf-only, and historical parent work remains
 retained. Package D now renders the full active hierarchy. New Task creates an Unassigned
 root with no selection/Unassigned selected, a root with a project selected, or an
@@ -279,7 +279,7 @@ Portable helper tests and static inspection do not establish Windows qualificati
 The prior standalone metadata probe remains a fallback until this scope is natively
 verified. The collector and bounded evidence-safety repair were independently
 accepted initially for limited native MetadataProbe use. Historical scope results
-do not qualify changed schema-3 source. Repeat native F2 only after independent
+do not qualify changed schema-4 source. Repeat native F2 only after independent
 review of its corrective source, using a new evidence directory; do not proceed
 automatically to broader scopes, operator qualification, suspend/resume or pilot. See
 [acceptance provenance](docs/DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
@@ -387,16 +387,16 @@ the dataset and acquires its normal ownership lock.
 
 | Exit | Classification / meaning |
 | --- | --- |
-| 0 | SUPPORTED_CURRENT: complete version-3 schema, integrity and evidence verified; ordinary current-version startup permitted. |
+| 0 | SUPPORTED_CURRENT: complete version-4 schema, integrity and evidence verified; ordinary current-version startup permitted. |
 | 2 | OLDER_UNSUPPORTED / NEWER_UNSUPPORTED: trustworthy observed version marker differs; no automatic migration or downgrade. A lower marker does not authenticate a historical Chronicle schema. |
 | 3 | FOREIGN_DATABASE / UNSUPPORTED_LAYOUT / UNSUPPORTED_PROFILE: wrong application identity, differing current-version DDL or unsupported SQLite format/profile. |
 | 4 | UNSAFE_OR_UNAVAILABLE: safe identity/integrity or successful inspection/cleanup/reporting could not be established. |
 
-Argument-parser errors also use exit 2 and print usage. Only exact fresh schema 3
-with application ID 0x4348524E is supported. Versions 1/2 refuse; no migration,
+Argument-parser errors also use exit 2 and print usage. Only exact fresh schema 4
+with application ID 0x4348524E is supported. Versions 1/2/3 refuse; no migration,
 downgrade or automatic replacement is available. A failed remembered old-version open
 retains its selection and all prior data; choose a different new/empty directory
-explicitly to create v3. Never use --create on retained data.
+explicitly to create v4. Never use --create on retained data.
 
 Missing/unreadable/unstable files, symlinks (including directory aliases), unsuitable
 objects and explicit network paths refuse. WAL-format headers refuse before SQLite
@@ -413,35 +413,35 @@ Do not delete sidecars or change permissions to force inspection. Metadata/diges
 checks are bounded observations, not reliable exclusion of another writer or
 hostile-directory protection. Use Backup Chronicle for a consistent live image.
 
-E's supported image is exact fresh schema 3. These commands preserve and validate
+Current project-nesting E's supported image is exact fresh schema 4. These commands preserve and validate
 its task parentage, archive metadata, direct work and protected evidence, with no
-migration, backward-compatible mode or automatic conversion of version-1/2 datasets.
+migration, backward-compatible mode or automatic conversion of version-1/2/3 datasets.
 Existing files remain protected; choose a different new/empty folder explicitly
-for fresh v3 creation. Hierarchy, lifecycle and movement are connected by D;
+for fresh v4 creation. Hierarchy, lifecycle and movement are connected by D;
 E templates are implemented for independent review. Do not delete journals or old databases
 to bypass refusal. Any hypothetical future data-preserving transformation would
 require separate source/target and safety approval; no such engine exists now.
-The selected unlimited project-nesting target uses a fresh schema-4 dataset,
-without schema-3 migration, import or copy transition. Package A supplies the
-isolated definition/forest/history verifier; Package B supplies candidate project
-creation/movement service logic over caller-owned transactions. The
-transaction adapter is test infrastructure, not another supported runtime. There
-is no user-facing v4 creation/open command, conversion reader, transition marker
-or activation control. D's graphical source is available only to the explicit
-internal schema4-candidate test harness; ordinary startup cannot select it. C1 implements candidate
-hierarchical lifecycle, inherited eligibility and pure Direct/Cumulative project
-rollups. C2 adds complete candidate evidence verification, task/template backend
-operations, nested unused-only Delete and read projections for independent review.
-D now provides candidate nested Main/Archived Items and owned project movement,
-creation, task/template destination and Delete presentations for independent review.
-There is no user-facing schema-4 command: E startup/backup/restore and F native
-acceptance remain outstanding. Connected widget tests require an existing Tk
-display; portable model/worker results cannot establish widget/native acceptance. Candidate verification now accepts valid
-rich protected evidence while refusing unknown, malformed or contradictory content.
-Ordinary startup, creation and backup/restore remain v3 during A/B/C1/C2.
-Later package E
-must validate fresh v4 and refuse incompatible originals without altering them,
-including journal cases, while retaining genuine supported crash recovery.
+The ordinary source launcher now uses fresh schema 4 and the existing serialized
+DatabaseWorker/SQLiteStore. The nested Main/Archived Items, project creation/move,
+reviewed task/template destinations, work, History, Timesheets and POL-R use the
+approved backend; the candidate bridge remains test-only. There is no public
+schema selector and no schema-3 fallback. Existing v3 folders and backup images
+are incompatible: retain them and explicitly choose a different new/empty folder.
+No migration, import, transformed copy or activation marker exists.
+
+Clean incompatible originals refuse before writable opening. For an original with
+a rollback journal, startup first acquires the dataset lock, copies the exact paired
+files into an owned private directory outside the dataset, lets SQLite recover only
+that pair, validates complete v4 evidence and verifies cleanup/source stability.
+Only then may SQLite recover the supported original under the same lock. Failure
+retains diagnostics/ownership until cleanup succeeds; do not delete journals or
+replace the original with the private copy. Cold inspection/backup verification do
+not recover images. Native Windows/NTFS recovery remains separately unverified.
+
+The internal schema4-candidate presentation remains test-only; ordinary startup
+explicitly selects schema4 with verified semantic/ordinary readiness. Package E's
+implementation and execution evidence require independent review. Package F native
+qualification remains outstanding. Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
 See the [target boundary](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary).
 
 ## Main hierarchy and Move / Reparent
@@ -590,7 +590,7 @@ form does not stop an existing timer.
 
 Week starts accepts Monday through Sunday (initially Sunday) and saves the choice
 in this dataset. It changes containing-week totals, not work dates or amounts.
-Stages 1–3 originally used fresh schema 1. E now supports exact fresh schema 3:
+Stages 1–3 originally used fresh schema 1. The earlier task-hierarchy E supported exact fresh schema 3; current project-nesting E uses fresh schema 4:
 version-1 datasets and older development schema signatures
 refuse without migration/recreation. Choose a new disposable directory explicitly;
 never delete or overwrite an existing dataset as an automatic startup action.

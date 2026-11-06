@@ -66,7 +66,7 @@ def test_date_redate_duration_noops_delete_and_reopen(service,task,store):
     assert service.execute(request).result=={'entry_id':entry,'revision':3}
     assert facts(store)==before
     directory=store.directory; store.close()
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         from chronicle.services import TimerService
         assert TimerService(reopened).read_work_entry_revisions(entry)==detail
@@ -158,7 +158,7 @@ def test_reopen_validates_revision_chains_and_dates(service,task,store,damage):
             if damage in ('gap','date','delete_values'): c.execute(statement)
         if damage=='current' and statement.startswith('CREATE TRIGGER current_revision_forward'): c.execute(statement)
     directory=store.directory;store.close()
-    with pytest.raises((ValueError,sqlite3.DatabaseError)): SQLiteStore(directory)
+    with pytest.raises((ValueError,sqlite3.DatabaseError)): SQLiteStore(directory, schema_version=3)
 
 
 @pytest.mark.parametrize('operation',['add_timed_work','add_date_only_work','edit_closed_timed_work','edit_date_only_work','delete_work_entry','set_week_start'])
@@ -166,7 +166,7 @@ def test_reopen_validates_revision_chains_and_dates(service,task,store,damage):
 def test_mixed_operations_process_death_keep_atomic_facts(tmp_path,operation,phase):
     from test_interruptions import paused_child,TRANSACTION_CHILD,frozen_json
     from chronicle.services import TimerService
-    store=SQLiteStore(tmp_path/'interrupted-mixed',create=True,timezone='America/Chicago')
+    store=SQLiteStore(tmp_path/'interrupted-mixed',create=True,timezone='America/Chicago', schema_version=3)
     s=TimerService(store);task=uid();s.create_task(task,'Interrupted',request_id=uid(),action_utc_us=NOW)
     if operation in ('edit_date_only_work','delete_work_entry'): entry=dated(s,task)
     elif operation=='edit_closed_timed_work': entry=timed(s,task)
@@ -183,7 +183,7 @@ def test_mixed_operations_process_death_keep_atomic_facts(tmp_path,operation,pha
     code=TRANSACTION_CHILD.replace("'DELETE FROM active_'", "'DELETE FROM active_', 'UPDATE dataset_meta'")
     with paused_child(code,directory,phase,frozen_json(request)):
         pass
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         s=TimerService(reopened)
         assert reopened.connection.execute('PRAGMA integrity_check').fetchone()[0]=='ok'

@@ -67,7 +67,7 @@ def test_real_tk_source_subset_manual_history_exact_frozen_work_and_restart(conn
     sheet.close();moved=dest.with_name('moved-report.txt');dest.rename(moved)
     directory=worker.directory;root.destroy();worker.join(timeout=8);assert not worker.is_alive()
     other_root=tk.Tk();other_root.test_errors=[];other_root.report_callback_exception=lambda *a:other_root.test_errors.append(a)
-    other_worker=DatabaseWorker(directory);other_app=ChronicleApp(other_root,other_worker,now_utc=clock);other_worker.start()
+    other_worker=DatabaseWorker(directory, schema_version=3);other_app=ChronicleApp(other_root,other_worker,now_utc=clock);other_worker.start()
     try:
         pump(other_root,lambda:other_app.ready and other_app.state.get('report') is not None)
         fresh=open_sheet(other_app);saved_reports(other_app,fresh,c.export_id)
@@ -241,7 +241,7 @@ def test_real_tk_unverified_confirmation_confirmed_exceptional_exit_preserves_ev
     monkeypatch.setattr('chronicle.app.messagebox.askyesno',yes)
     app.request_close();exit_settled(app)
     assert calls[0]['parent'] is sheet.window and calls[0]['default']=='no' and dest.read_bytes()==c.report_utf8
-    store=SQLiteStore(worker.directory)
+    store=SQLiteStore(worker.directory, schema_version=3)
     try:
         service=TimerService(store)
         assert service.reconcile_request(r).status=='committed'

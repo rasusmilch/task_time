@@ -186,7 +186,7 @@ MetadataProbe use. Windows qualification is NOT COMPLETE. The accepted integrati
 coverage audit identified no material missing portable cross-boundary coverage
 at its flat-schema baseline. B1 separately exercises changed v2 boundaries. See
 [acceptance provenance](DECISIONS.md#stage-4c-and-portable-tooling-acceptance).
-B1 originally introduced schema 2. E now implements exact fresh schema 3 for
+B1 originally introduced schema 2. The earlier task-hierarchy E implemented fresh schema 3 for
 independent review, with the same application ID; versions 1/2 refuse without
 transformation, replacement or compatibility mode. Stage 4C's historical future-transition safety contract is not
 a hierarchy migration requirement; no migration engine is active. B2 movement is implemented for review.
@@ -198,8 +198,9 @@ NTFS, operator GUI/modal/focus, backup/restore, hot-journal recovery, actual
 suspend/resume and deployment qualification. Any hypothetical future data-preserving
 transition would require separate approval. A–F used fresh task-hierarchy data;
 the new project-nesting decision selects fresh schema 4 without a schema-3
-migration, import or copy transition. A/B/C1/C2's isolated candidate leaves ordinary v3
-startup and hot-journal behavior unchanged. Exercise timer → frozen export → absolute
+migration, import or copy transition. A/B/C1/C2's isolated candidate left ordinary v3
+startup and hot-journal behavior unchanged; project-nesting E now activates exact
+fresh v4 with private paired recovery preflight and incompatible-original preservation. Exercise timer → frozen export → absolute
 confirmation → correction → reconciliation → backup → cold restore/new session.
 
 The bounded source-startup usability slice adds first-run local folder/readable
@@ -266,14 +267,14 @@ separate. No backup/copy rewrite or secure-byte-erasure guarantee is selected.
 The latest [requirements](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks)
 and [future architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability)
 supersede flat projects as the organizational target without rewriting A–F delivery
-or acceptance history. Current source is still exact schema 3, flat projects and
+or acceptance history. The pre-project source used exact schema 3, flat projects and
 three task levels. Usability and project nesting remain separate workstreams;
 usability implementation grants no project-schema or qualification approval:
 
 | Workstream | Bounded scope and dependencies |
 | --- | --- |
 | A — Immediate pilot usability | Implemented for independent review: clicked-leaf Start/Stop/one atomic Switch through existing request paths, and compact Mini with a small state indicator and typed actionable diagnostics. ChatGPT resolves the former different-active-task decision as atomic Switch. Normal layout targets about 280x125, accommodating fonts/DPI and diagnostic height. Modal, uncertainty and duplicate-input protection remain. Native Windows layout/input acceptance is outstanding; no project schema change is implied. |
-| B — Unlimited organizational projects | Fresh schema 4 selected. A supplies the accepted isolated SQL/forest/history foundation; B is accepted for continued development; C1 adds candidate lifecycle/eligibility/derived project accounting for independent review. C2 is accepted for continued development. D adds candidate graphical source for independent review with connected widget evidence separately required; E/F remain unimplemented and require separate execution approvals. Ordinary runtime remains v3 during A/B/C1/C2. No migration/import, Customer entity, project-owned work or task-depth change. |
+| B — Unlimited organizational projects | Fresh schema 4 selected. A supplies the accepted isolated SQL/forest/history foundation; B is accepted for continued development; C1 adds candidate lifecycle/eligibility/derived project accounting for independent review. C2 is accepted for continued development. D adds candidate graphical source for independent review with connected widget evidence separately required; E activation is implemented for independent review; F remains separately unauthorized. Ordinary runtime stayed v3 during A/B/C1/C2 and now selects fresh v4. No migration/import, Customer entity, project-owned work or task-depth change. |
 
 Complete structural project nesting before a longer pilot that depends on
 organizing real customer work. Do not discard, overwrite, convert or recreate
@@ -285,17 +286,18 @@ The revised project-nesting packages are separate from historical A–F above:
 
 | Package | Scope and activation boundary |
 | --- | --- |
-| A | Isolated exact v4 schema/SQL guards, iterative forest and scoped independent history; accepted for continued functional development, ordinary runtime stays v3. |
+| A | Isolated exact v4 schema/SQL guards, iterative forest and scoped independent history; accepted for continued functional development; at A delivery ordinary runtime stayed v3. |
 | B | Candidate root/child creation and complete-subtree Move / Reparent over caller-owned transactions, accepted for continued functional development. Real disposable transaction/receipt/reconciliation adapter is test-only; no ordinary runtime registration. |
 | C | Original objective retained: lifecycle, full Delete closure/approved receipt dependencies, templates and derived hierarchical accounting; execution is split into C1/C2 below. |
 | C1 | Accepted for continued development: candidate selected-only hierarchical Archive/Unarchive, inherited eligibility, active containment, independent administrative replay and pure Direct/Cumulative project rollups. No protected-work admission or ordinary runtime activation. |
 | C2 | Implemented candidate backend for independent review: complete semantic/protected/frozen/POL-R/configuration/template evidence verification, ancestry-reviewed task/template operations, nested unused-only Delete with finite retirement and no-retry uncertainty, complete surviving history and coordinated backend read projections. No ordinary v4 worker/startup, GUI or backup/restore activation. |
 | D | Candidate graphical source implemented for independent review: same ChronicleApp/root, explicit internal profile, iterative nested Main/Archived Items, exact creation/movement/template destination reviews and full Delete presentation. Test-owned C2 Message bridge only; connected Tk requires an available display. No ordinary v4 activation. |
-| E | Fresh v4 activation, compatibility, source startup and backup/restore. Preserve incompatible originals, including journal cases; version-aware private recovery preflight is preferred. No conversion workflow. |
+| E | Implemented for independent review: fresh v4 activation through the existing worker/store/StartupWindow, production readiness, full semantic admission, owned private paired-journal preflight, exact reconciliation, backup/cold verification/restore and shutdown. Incompatible originals remain untouched. No conversion workflow. Native qualification is not claimed. |
 | F | Integrated regression, source operation and focused native Windows acceptance on the existing workstation. |
 
-A does not activate a partial v4 application. B–D and complete E guards/validation
-must be reviewed before ordinary v4 creation/open is enabled. F supplies actual
+A did not activate a partial v4 application. Accepted B–D now feed the implemented
+E production integration; E source and execution evidence require independent review
+before authorizing F integrated/native qualification. F supplies actual
 cross-boundary/native evidence; portable candidate tests cannot close that gate.
 Outstanding native qualification remains a separate gate; this documentation does
 not reclassify F2 evidence, legacy outcomes, 29 unresolved skips or F3/F4 status.

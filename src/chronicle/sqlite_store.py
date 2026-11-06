@@ -7,6 +7,7 @@ import os
 import re
 import stat
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 import sqlite3
 from uuid import uuid4
@@ -16,7 +17,7 @@ from .records import Outcome, Request, canonical, uuid_text, integer, receipt_cl
 from .timekeeping import MIN_US, MAX_US, load_zone, parse_date, instant
 from .timesheet_files import metadata, same_domain_metadata, path_matches_handle
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 3  # Legacy DDL/history authority; ordinary admission selects CURRENT_SCHEMA4.
 APPLICATION_ID = 0x4348524E
 DATABASE = "chronicle.sqlite3"
 BUSY_MS = 750
@@ -329,15 +330,26 @@ class UnsupportedSchemaLayout(ValueError):
 
 
 class SQLiteStore:
-    def __init__(self, directory: Path, *, create: bool = False, timezone: str | None = None):
+    def __init__(self, directory: Path, *, create: bool = False, timezone: str | None = None,
+                 schema_version: int = 4):
         runtime_info()
+        from .schema_policy import policy_for
+        self.policy = policy_for(schema_version)
+        self.schema_version = self.policy.version
         if type(create) is not bool:
             raise ValueError("Create must be boolean")
-        self.directory = Path(directory).expanduser().resolve()
+        if self.schema_version == 4:
+            from .launcher_selection import local_path
+            self.directory = local_path(Path(directory).expanduser().absolute())
+        else:
+            self.directory = Path(directory).expanduser().resolve()
         self.path = self.directory / DATABASE
         self.connection = None
         self._retired = None
         self._reconciliation_probe = None
+        self._private_recovery = None
+        self._startup_admission = None
+        self._unresolved_delete = None
         self.lock = DatasetLock(self.directory)
         if create:
             if timezone is None:
@@ -361,19 +373,31 @@ class SQLiteStore:
                 self.connection = self._connect()
                 self._profile()
                 self.connection.execute("BEGIN IMMEDIATE")
-                for statement in schema_statements():
+                for statement in self.policy.statements():
                     self.connection.execute(statement)
                 self.connection.execute("INSERT INTO dataset_meta(singleton,dataset_id,timezone,week_start) VALUES(1,?,?,6)", (str(uuid4()), timezone))
                 self.connection.execute(f"PRAGMA application_id={APPLICATION_ID}")
-                self.connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+                self.connection.execute(f"PRAGMA user_version={self.schema_version}")
+                if self.schema_version == 4:
+                    self._verify_selected(self.connection)
                 self.connection.execute("COMMIT")
             else:
                 # Recheck admission under ownership before any writable open. A
                 # journaled image may need native rollback before identity reads.
-                admitted, _ = self._admit_existing()
+                admitted, journal = self._admit_existing()
+                if self.schema_version == 4:
+                    if (admitted, journal) != self._startup_admission:
+                        raise OSError('Dataset changed before owned schema-4 admission')
+                    if journal:
+                        from .recovery_preflight import PrivateRecovery
+                        self._private_recovery = PrivateRecovery(self.path)
+                        self._private_recovery.authorize(self.policy, timezone=timezone)
+                        self._private_recovery = None
                 self.connection = self._connect()
+                if self.schema_version == 4:
+                    self._read_profile(self.connection)
                 self.connection.execute("BEGIN")
-                self._verify_complete(self.connection)
+                self._verify_selected(self.connection)
                 if self.connection.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
                     raise ValueError("Unsupported dataset journal mode; DELETE is required; no automatic conversion")
                 if timezone is not None and self.connection.execute("SELECT timezone FROM dataset_meta").fetchone()[0] != timezone:
@@ -385,7 +409,7 @@ class SQLiteStore:
                 if recovered[:3] != admitted[:3]:
                     raise OSError("Dataset identity changed during startup")
                 self._profile()
-            self._verify(self.connection)
+            self._verify_selected(self.connection, complete=False)
             row = self.connection.execute("SELECT * FROM dataset_meta").fetchone()
             self.dataset_id, self.timezone = row["dataset_id"], row["timezone"]
             uuid_text(self.dataset_id)
@@ -451,6 +475,8 @@ class SQLiteStore:
 
     def _validate_existing(self, timezone):
         before, journal = self._admit_existing()
+        if self.schema_version == 4:
+            self._startup_admission = (before, journal)
         if journal:
             # A read-only connection cannot recover a genuinely hot journal.
             # Only the owned ordinary connection below may ask SQLite to do so.
@@ -458,7 +484,7 @@ class SQLiteStore:
         probe = self._probe()
         try:
             probe.execute("BEGIN")
-            self._verify_complete(probe)
+            self._verify_selected(probe)
             # Refuse unsupported development profiles; never convert an existing dataset.
             if probe.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
                 raise ValueError("Unsupported dataset journal mode; DELETE is required; no automatic conversion")
@@ -498,15 +524,74 @@ class SQLiteStore:
         conn = sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True,
                                isolation_level=None, timeout=BUSY_MS / 1000)
         conn.row_factory = sqlite3.Row
+        if self.schema_version == 4:
+            try:
+                self._read_profile(conn)
+                conn.execute('PRAGMA query_only=ON')
+            except BaseException as primary:
+                try: conn.close()
+                except Exception as secondary:
+                    self._retired = conn
+                    primary.add_note(f'Read-only profile cleanup also failed: {secondary!r}')
+                    primary._chronicle_cleanup_store = self
+                raise
         return conn
+
+    @staticmethod
+    def _read_profile(c):
+        """Connection-local settings only; no journal conversion or file writes."""
+        c.execute(f'PRAGMA busy_timeout={BUSY_MS}')
+        c.execute('PRAGMA synchronous=EXTRA')
+        c.execute('PRAGMA foreign_keys=ON')
+
+    def _verify_selected(self, c, *, complete=True):
+        if self.schema_version == 3:
+            return self._verify_complete(c) if complete else self._verify(c)
+        owned = self.schema_version == 4 and not c.in_transaction
+        if owned: c.execute('BEGIN')
+        try:
+            result = self.policy.verify(c, complete=complete)
+        except BaseException as primary:
+            if owned:
+                try: c.execute('ROLLBACK')
+                except Exception as secondary: primary.add_note(f'Verification rollback also failed: {secondary!r}')
+            raise
+        else:
+            if owned: c.execute('ROLLBACK')
+            return result
+
+    @contextmanager
+    def read_transaction(self):
+        """One authoritative read snapshot; retain failed cleanup on this owner."""
+        self._recover_connection()
+        c = self.connection
+        try:
+            c.execute('BEGIN')
+            if self.schema_version == 4:
+                self._verify_selected(c)
+            else:
+                self.assert_lifecycle(c)
+                self.assert_confirmations(c)
+            yield c
+            c.execute('COMMIT')
+        except BaseException as primary:
+            try:
+                if c.in_transaction: c.execute('ROLLBACK')
+            except Exception as secondary: primary.add_note(f'Read rollback failed: {secondary!r}')
+            self.connection, self._retired = None, c
+            try:
+                c.close()
+                self._retired = None
+            except Exception as secondary: primary.add_note(f'Read close failed: {secondary!r}')
+            raise
 
     def backup(self, destination):
         """Serialized worker operation; never recover an uncertain connection here."""
         if (self.connection is None or self._retired is not None or self._reconciliation_probe is not None
-                or self.connection.in_transaction):
+                or self.connection.in_transaction or self._unresolved_delete is not None):
             raise RuntimeError('Backup requires a healthy connection with no unresolved transaction')
         from .backup_restore import backup_connection
-        return backup_connection(self.connection, destination, self.directory)
+        return backup_connection(self.connection, destination, self.directory, schema_version=self.schema_version)
 
     def _profile(self):
         c = self.connection
@@ -938,6 +1023,8 @@ class SQLiteStore:
         return json.loads(row["result_bytes"])
 
     def _recover_connection(self):
+        if self.schema_version == 4 and self.lock.file is None:
+            raise RuntimeError('Dataset ownership is not established')
         if self._reconciliation_probe is not None:
             self._reconciliation_probe.close()
             self._reconciliation_probe = None
@@ -948,7 +1035,7 @@ class SQLiteStore:
             self.connection = self._connect()
             try:
                 self._profile()
-                self._verify(self.connection)
+                self._verify_selected(self.connection, complete=False)
             except BaseException as primary:
                 c, self.connection = self.connection, None
                 self._retired = c
@@ -960,6 +1047,8 @@ class SQLiteStore:
                 raise
 
     def reconcile(self, request: Request) -> Outcome:
+        if self.schema_version == 4 and (request.operation in ('delete_task','delete_project','delete_template') or self._unresolved_delete is not None):
+            return Outcome('unverified', error=ValueError('Delete never reconciles/retries; inspect current presence, then exit/reopen for a fresh review.'))
         content = request.content()
         if request.dataset_id != self.dataset_id:
             return Outcome("rejected", error=ValueError("Wrong dataset identity"))
@@ -972,7 +1061,7 @@ class SQLiteStore:
             self._reconciliation_probe = c  # Retain cleanup ownership even after failed close.
             try:
                 c.execute("BEGIN")
-                self._verify(c)
+                self._verify_selected(c, complete=False)
                 result = self._receipt(c, request, content)
                 c.execute("ROLLBACK")
             except BaseException as primary:
@@ -999,6 +1088,8 @@ class SQLiteStore:
     def delete_unused(self, request: Request) -> Outcome:
         """No-receipt Delete boundary; an uncertain COMMIT is never reconciled/retried."""
         from .deletion import OPERATIONS, capture, apply
+        if self.schema_version == 4 and self._unresolved_delete is not None:
+            return Outcome('unverified', error=ValueError('Delete outcome unresolved; exit/reopen before another mutation.'))
         try:
             request.content()
         except (ValueError, TypeError) as exc:
@@ -1012,15 +1103,21 @@ class SQLiteStore:
             c = self.connection
             c.execute('BEGIN IMMEDIATE')
             begun = True
-            self._verify_complete(c)
+            self._verify_selected(c)
             # A surviving request UUID belongs to its original exact content, never Delete.
             if c.execute('SELECT 1 FROM committed_requests WHERE request_id=?', (request.request_id,)).fetchone():
                 raise RequestConflict('Delete request identity already belongs to a retained request')
-            before = capture(c)
-            result, expected = apply(c, request, before)
-            self._verify_complete(c)
-            if capture(c) != expected:
-                raise ValueError('Delete changed protected/unrelated survivors or failed to remove exact scope')
+            if self.schema_version == 4:
+                from .schema4_delete import apply_delete
+                from .project_services import CandidateProjectContext
+                result = apply_delete(c, request, CandidateProjectContext(self.dataset_id))
+                self._verify_selected(c)
+            else:
+                before = capture(c)
+                result, expected = apply(c, request, before)
+                self._verify_selected(c)
+                if capture(c) != expected:
+                    raise ValueError('Delete changed protected/unrelated survivors or failed to remove exact scope')
             commit_attempted = True
             c.execute('COMMIT')
             return Outcome('committed', result)
@@ -1050,11 +1147,14 @@ class SQLiteStore:
                 primary.add_note(f'Delete connection close failed: {secondary!r}')
                 cleaned = False
             if commit_attempted or not cleaned:
+                if self.schema_version == 4: self._unresolved_delete = request
                 primary.add_note('Delete outcome is uncertain. Do not retry; inspect current presence, then exit and reopen. Absence is not historical proof.')
                 return Outcome('unverified', error=primary)
             return Outcome('rejected' if isinstance(primary, ValueError) else 'rolled_back', error=primary)
 
     def transact(self, request: Request, operation) -> Outcome:
+        if self.schema_version == 4 and self._unresolved_delete is not None:
+            return Outcome('unverified', error=ValueError('Uncertain Delete blocks mutation until exit/reopen.'))
         content = request.content()
         if request.dataset_id != self.dataset_id:
             return Outcome("rejected", error=ValueError("Wrong dataset identity"))
@@ -1074,6 +1174,8 @@ class SQLiteStore:
         c = self.connection
         try:
             old = self._receipt(c, request, content)
+            if self.schema_version == 4:
+                self._verify_selected(c)
             if old is not None:
                 c.execute("ROLLBACK")
                 return Outcome("committed", old)
@@ -1081,13 +1183,17 @@ class SQLiteStore:
             if result is None:
                 c.execute("ROLLBACK")
                 return Outcome("unchanged")
-            self.assert_lifecycle(c)  # Cross-table final invariant, before any commit.
+            if self.schema_version == 3:
+                self.assert_lifecycle(c)  # Cross-table final invariant, before any commit.
             c.execute("INSERT INTO committed_requests(request_id,operation,receipt_class,request_bytes,result_bytes,action_utc_us) VALUES(?,?,?,?,?,?)",
-                      (request.request_id, request.operation, receipt_class(request.operation), content, canonical(result), request.action_utc_us))
-            self.assert_confirmations(c)
+                      (request.request_id, request.operation, self.policy.receipt_class(request.operation), content, canonical(result), request.action_utc_us))
+            if self.schema_version == 4:
+                self._verify_selected(c)
+            else:
+                self.assert_confirmations(c)
             from .templates import OPERATIONS as TEMPLATE_OPS
-            if request.operation in TEMPLATE_OPS:
-                self._verify_complete(c)
+            if self.schema_version == 3 and request.operation in TEMPLATE_OPS:
+                self._verify_selected(c)
             c.execute("COMMIT")
             return Outcome("committed", result)
         except Exception as primary:
@@ -1123,6 +1229,11 @@ class SQLiteStore:
 
     def close(self):
         errors = []
+        if self._private_recovery is not None:
+            try:
+                self._private_recovery.close()
+                self._private_recovery = None
+            except Exception as exc: errors.append(exc)
         for c in (self.connection, self._retired, self._reconciliation_probe):
             if c is not None:
                 try:

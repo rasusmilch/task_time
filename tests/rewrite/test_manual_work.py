@@ -102,7 +102,7 @@ def test_explicit_repeat_and_non_hour_transition(service,task,store,tmp_path):
     r=service.read_work_entry_revisions(entry)['revisions'][0]
     assert r['stop_utc_us']-r['start_utc_us']==H
     from chronicle.services import TimerService
-    with_store=SQLiteStore(tmp_path/'lord-howe',create=True,timezone='Australia/Lord_Howe')
+    with_store=SQLiteStore(tmp_path/'lord-howe',create=True,timezone='Australia/Lord_Howe', schema_version=3)
     try:
         s=TimerService(with_store); t=uid()
         s.create_task(t,'Half hour',request_id=uid(),action_utc_us=NOW)
@@ -189,7 +189,7 @@ def test_unknown_schema_objects_refuse_without_recreation(store):
     directory=store.directory;store.close()
     before={p.name:p.read_bytes() for p in directory.iterdir()}
     with pytest.raises(ValueError,match='Unexpected schema'):
-        SQLiteStore(directory)
+        SQLiteStore(directory, schema_version=3)
     assert {p.name:p.read_bytes() for p in directory.iterdir()}==before
 
 

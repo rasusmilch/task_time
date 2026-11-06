@@ -136,7 +136,7 @@ def test_real_tk_uncertain_delete_never_retries_presence_not_historical_success(
     monkeypatch.setattr('chronicle.app.messagebox.askyesno',lambda *a,**k:True)
     assert app.exit_delete_uncertain();exit_settled(app);worker.join(8);assert not worker.is_alive()
     # Ordinary fresh reopen validates current facts but cannot reconstruct Delete's historical result.
-    s=SQLiteStore(worker.directory)
+    s=SQLiteStore(worker.directory, schema_version=3)
     try:
         s._verify_complete(s.connection)
         assert bool(s.connection.execute('SELECT 1 FROM tasks WHERE task_id=?',(a,)).fetchone())!=committed

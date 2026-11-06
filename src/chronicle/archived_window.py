@@ -150,7 +150,7 @@ class ArchivedItemsWindow:
         for control in (self.sort_control, self.period_control):
             configure_changed(control, state='readonly' if allowed else 'disabled')
         text = self.owner.status.cget('text')
-        if self.owner.candidate_presentation and selected and selected['item'] is not None:
+        if self.owner.schema4_presentation and selected and selected['item'] is not None:
             from .project_ui import path_label
             entity = selected['entity'];key = selected['item'][entity + '_id']
             text += '\n' + path_label(self.snapshot, entity, key)
@@ -176,7 +176,7 @@ class ArchivedItemsWindow:
     def render(self, state):
         if not self.current():
             return
-        if self.owner.candidate_presentation:
+        if self.owner.schema4_presentation:
             from .project_ui import archived_projection
             from .tree_install import install
             rows, children = archived_projection(state, self.sort.get(), self.period.get(), self.owner.zone)

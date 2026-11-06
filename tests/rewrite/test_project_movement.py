@@ -788,7 +788,7 @@ def test_ordinary_worker_refuses_candidate_project_operations(tmp_path):
     from chronicle.worker import DatabaseWorker, Message
     from test_worker import receive
     directory = tmp_path/'ordinary'
-    worker = DatabaseWorker(directory,create=True,timezone='UTC')
+    worker = DatabaseWorker(directory,create=True,timezone='UTC', schema_version=3)
     worker.start()
     try:
         ready = receive(worker,'ready')

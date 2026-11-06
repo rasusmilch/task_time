@@ -140,12 +140,12 @@ def test_delete_source_preserves_apply_duplicate_and_all_protected_evidence(stor
         content=json.loads(row[4]);op=content['operation']
         if op in ('apply_template','duplicate_template'):assert row in after['committed_requests']
     assert read(store.connection)[copy['template_id']]==copy
-    original=store.directory;store.close();assert br.inspect_dataset(original).ordinary_startup_permitted
-    s=SQLiteStore(original)
+    original=store.directory;store.close();assert br.inspect_dataset(original, schema_version=3).ordinary_startup_permitted
+    s=SQLiteStore(original, schema_version=3)
     try:image=s.backup(tmp_path/'backup.sqlite3');assert image.verified
     finally:s.close()
-    assert br.restore_image(image.destination,tmp_path/'restored').verified
-    s=SQLiteStore(tmp_path/'restored')
+    assert br.restore_image(image.destination,tmp_path/'restored', schema_version=3).verified
+    s=SQLiteStore(tmp_path/'restored', schema_version=3)
     try:
         verify(s);v=TimerService(s);a=make(v,'After restore');assert send(v,'apply_template',**apply_args(a)).status=='committed'
         verify(s)
@@ -205,7 +205,7 @@ import sys,json
 from chronicle.sqlite_store import SQLiteStore
 from chronicle.services import TimerService
 from chronicle.records import Request
-s=SQLiteStore(sys.argv[1]);real=s.connection;phase=sys.argv[3]
+s=SQLiteStore(sys.argv[1], schema_version=3);real=s.connection;phase=sys.argv[3]
 class Barrier:
  def __getattr__(self,n):return getattr(real,n)
  def execute(self,sql,*a):
@@ -219,7 +219,7 @@ s.connection=Barrier();assert TimerService(s).execute(Request.make(**json.loads(
 def test_apply_process_death_and_exact_reopen(store,service,phase):
     d=make(service);args=apply_args(d);r=Request.make(uid(),store.dataset_id,'apply_template',NOW,**args);directory=store.directory;before=logical(store.path);store.close()
     with paused_child(CHILD,directory,json.dumps(dict(request_id=r.request_id,dataset_id=r.dataset_id,operation=r.operation,action_utc_us=NOW,**args)),phase):pass
-    s=SQLiteStore(directory)
+    s=SQLiteStore(directory, schema_version=3)
     try:
         verify(s)
         if phase=='insert':assert logical(s.path)==before
@@ -235,12 +235,12 @@ def test_real_old_schema_refuses_preserving_bytes_entries_and_metadata(tmp_path,
     # Identity alone is already incompatible: no schema recreation/initialization is attempted.
     from test_dataset_compatibility import preserved
     before=preserved(directory)
-    inspected=br.inspect_dataset(directory);assert inspected.classification==br.Compatibility.OLDER_UNSUPPORTED
+    inspected=br.inspect_dataset(directory, schema_version=3);assert inspected.classification==br.Compatibility.OLDER_UNSUPPORTED
     assert preserved(directory)==before
-    with pytest.raises(ValueError,match='supported|version'):SQLiteStore(directory)
+    with pytest.raises(ValueError,match='supported|version'):SQLiteStore(directory, schema_version=3)
     assert preserved(directory)==before
     target=tmp_path/'restore'
-    with pytest.raises(ValueError,match='supported|version'):br.restore_image(path,target)
+    with pytest.raises(ValueError,match='supported|version'):br.restore_image(path,target, schema_version=3)
     assert not target.exists()
     assert preserved(directory)==before
 
@@ -311,7 +311,7 @@ def test_worker_template_delete_commit_uncertainty_no_retry_and_readonly_presenc
                 return value
         self.connection=Fault();return original(self,req)
     with patch.object(SQLiteStore,'delete_unused',lost):
-        worker=DatabaseWorker(directory);worker.start()
+        worker=DatabaseWorker(directory, schema_version=3);worker.start()
         try:
             assert worker.results.get(timeout=10).kind=='ready'
             worker.requests.put(Message('mutate',1,request));assert receive(worker,'mutate').status=='unverified';before=logical(directory/DATABASE)

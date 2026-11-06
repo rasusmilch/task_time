@@ -46,7 +46,7 @@ def test_register_exact_atomic_frozen_recovery_and_later_changes(service,task,st
     assert service.execute(replace(r,action_utc_us=NOW+1)).status=='rejected'
     assert len(service.list_registered_timesheet_exports())==1
     directory=store.directory;store.close()
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         s=TimerService(reopened)
         assert s.read_registered_timesheet_export(c.export_id)==c
@@ -137,7 +137,7 @@ def test_ambiguous_registration_reuses_same_request_after_new_work(service,task,
 @pytest.mark.parametrize('phase',['tasks','basis','cells','master','receipt','commit_ready','committed'])
 def test_process_death_export_transaction_is_atomic(tmp_path,phase):
     from test_interruptions import paused_child,TRANSACTION_CHILD,frozen_json
-    directory=tmp_path/'interrupted-export';store=SQLiteStore(directory,create=True,timezone='America/Chicago')
+    directory=tmp_path/'interrupted-export';store=SQLiteStore(directory,create=True,timezone='America/Chicago', schema_version=3)
     s=TimerService(store);task=uid();s.create_task(task,'A',request_id=uid(),action_utc_us=NOW);case_c(s,task)
     c=preview(s);r=request(store,c);before=facts(store);store.close()
     table={'tasks':'tasks','basis':'week_basis','cells':'cells','master':'exports'}.get(phase)
@@ -146,7 +146,7 @@ def test_process_death_export_transaction_is_atomic(tmp_path,phase):
         prefix='INSERT INTO timesheet_export_'+table if table!='exports' else 'INSERT INTO timesheet_exports'
         code=code.replace("phase == 'facts' and facts",f"phase == {phase!r} and sql.startswith({prefix!r})")
     with paused_child(code,directory,phase,frozen_json(r)): pass
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         s=TimerService(reopened)
         assert reopened.connection.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
@@ -178,4 +178,4 @@ def test_corrupted_evidence_read_and_reopen_refuse_without_recalculation(service
     with pytest.raises((ValueError,UnicodeError)):
         service.read_registered_timesheet_export(c.export_id)
     directory=store.directory;store.close()
-    with pytest.raises(ValueError):SQLiteStore(directory)
+    with pytest.raises(ValueError):SQLiteStore(directory, schema_version=3)

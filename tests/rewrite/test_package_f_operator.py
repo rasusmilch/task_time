@@ -98,12 +98,12 @@ def workflow(app, worker, clock, tmp_path, monkeypatch, activate):
     backup=tmp_path/'online.sqlite3';d=open_backup(app);d.destination.set(str(backup));assert d.create();assert wait_backup(app).verified;assert d.close()
     original=logical(Path(worker.directory)/'chronicle.sqlite3');assert logical(backup)==original
     app.request_close();exit_settled(app);worker.join(8);assert not worker.is_alive()
-    restored=tmp_path/'restored';assert br.validate_image(backup).dataset_id==app.dataset_id
-    assert br.restore_image(backup,restored).verified
+    restored=tmp_path/'restored';assert br.validate_image(backup, schema_version=3).dataset_id==app.dataset_id
+    assert br.restore_image(backup,restored, schema_version=3).verified
     original_bytes=Path(worker.directory,'chronicle.sqlite3').read_bytes();image_bytes=backup.read_bytes()
     # The first root has been destroyed by normal Close before creating this root.
     fresh_root=tk.Tk();errors=[];fresh_root.report_callback_exception=lambda *e:errors.append(e)
-    fresh_worker=DatabaseWorker(restored);fresh=ChronicleApp(fresh_root,fresh_worker,now_utc=clock);fresh_worker.start()
+    fresh_worker=DatabaseWorker(restored, schema_version=3);fresh=ChronicleApp(fresh_root,fresh_worker,now_utc=clock);fresh_worker.start()
     try:
         pump(fresh_root,lambda:fresh.ready and fresh.state.get('report') is not None)
         assert fresh.dataset_id==app.dataset_id and fresh.state['active']==active and fresh.pending is None
@@ -119,7 +119,7 @@ def workflow(app, worker, clock, tmp_path, monkeypatch, activate):
         fresh_worker.join(8);assert not fresh_worker.is_alive()
     assert not errors and not app.root.test_errors
     assert Path(worker.directory,'chronicle.sqlite3').read_bytes()==original_bytes and backup.read_bytes()==image_bytes
-    assert report.read_bytes()==candidate.report_utf8 and br.inspect_dataset(restored).ordinary_startup_permitted
+    assert report.read_bytes()==candidate.report_utf8 and br.inspect_dataset(restored, schema_version=3).ordinary_startup_permitted
 
 
 def test_real_tk_connected_callback_workflow_restore_fresh_owner(connected,tmp_path,monkeypatch):

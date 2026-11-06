@@ -26,6 +26,7 @@ def launch(root, tmp_path):
     values = []
     places = ls.Locations(tmp_path/'user-local'/'Data', tmp_path/'user-local'/'launcher-selection.json')
     def make(**kw):
+        kw.setdefault('schema_version', 3)  # Historical schema-3 startup fixtures.
         value = StartupWindow(root, app_factory=kw.pop('app_factory', ChronicleApp),
             worker_factory=kw.pop('worker_factory', DatabaseWorker),
             locations=kw.pop('locations', places), timezone_id='Central Standard Time', **kw)
@@ -47,7 +48,7 @@ def choose_create(flow, directory):
 
 
 def seed(directory, *, active=False):
-    store = SQLiteStore(directory, create=True, timezone='Australia/Lord_Howe')
+    store = SQLiteStore(directory, create=True, timezone='Australia/Lord_Howe', schema_version=3)
     service = TimerService(store)
     task, entry = uid(), uid()
     assert service.create_task(task, 'Retained', request_id=uid(), action_utc_us=NOW).status == 'committed'
@@ -107,7 +108,7 @@ def test_real_tk_remembered_or_default_existing_opens_without_create_or_timezone
         return DatabaseWorker(directory, **kw)
     flow = launch(worker_factory=worker)
     pump(root, lambda: flow.app is not None and flow.app.state.get('report') is not None)
-    assert calls == [(data, {'create': False, 'timezone': None})]
+    assert calls == [(data, {'create': False, 'timezone': None, 'schema_version': 3})]
     assert flow.app.dataset_id == identity and flow.app.timezone == 'Australia/Lord_Howe'
     assert flow.app.state['active']['entry_id'] == entry
     assert logical(data/'chronicle.sqlite3') == facts
@@ -226,7 +227,7 @@ def test_real_tk_corrupt_record_explicit_choice_opens_without_replacing_record(l
 
 
 def test_real_tk_second_owner_refusal_never_adopts_or_replaces_selection(launch, root, tmp_path):
-    data = tmp_path/'owned'; owner = SQLiteStore(data, create=True, timezone='UTC')
+    data = tmp_path/'owned'; owner = SQLiteStore(data, create=True, timezone='UTC', schema_version=3)
     try:
         record = tmp_path/'user-local'/'launcher-selection.json'
         ls.remember(record, data, None); raw = record.read_bytes()
@@ -317,24 +318,26 @@ runpy.run_path('run_chronicle.py', run_name='__main__')
 
 
 def seed_active(data):
-    store = SQLiteStore(data)
+    store = SQLiteStore(data)  # Ordinary source launcher created schema 4.
     task, entry = uid(), uid()
-    service = TimerService(store)
+    from runtime4_cases import Runtime
+    service = Runtime(store)
     try:
-        assert service.create_task(task, 'Active', request_id=uid(), action_utc_us=NOW).status == 'committed'
-        assert service.start_timer(task, entry, expected_task_version=1, request_id=uid(), action_utc_us=NOW).status == 'committed'
+        service.send('create_task',task_id=task,name='Active',parent_task_id=None,expected_parent_version=None,project_id=None,expected_project_version=None,reviewed_destination_project_ancestry=[])
+        service.send('start_timer',task_id=task,entry_id=entry,expected_task_version=1)
         return task, entry
     finally: store.close()
 
 
 def test_real_tk_explicit_cli_does_not_read_or_replace_remembered_selection(root, tmp_path, monkeypatch):
-    data = tmp_path/'explicit'; identity, _ = seed(data)
+    data = tmp_path/'explicit'
+    store = SQLiteStore(data,create=True,timezone='Etc/UTC');identity=store.dataset_id;store.close()
     record = tmp_path/'selection'; ls.remember(record, tmp_path/'remembered', None)
     raw = record.read_bytes()
     original = ChronicleApp
     class Driver(original):
-        def __init__(self, root, worker):
-            super().__init__(root, worker)
+        def __init__(self, root, worker, **kw):
+            super().__init__(root, worker, **kw)
             root.after(10, self.drive)
         def drive(self):
             if self.ready and self.state.get('report') is not None:
@@ -357,8 +360,11 @@ def test_recovery_commands_never_construct_onboarding(store, tmp_path, monkeypat
     monkeypatch.setattr(bootstrap, 'ChronicleApp', forbidden)
     monkeypatch.setattr(bootstrap, 'DatabaseWorker', forbidden)
     monkeypatch.setattr(ls, 'locations', forbidden)
-    assert bootstrap.main(['--verify-backup', str(backup)]).dataset_id == store.dataset_id
-    assert bootstrap.main(['--restore-from', str(backup), '--data-dir', str(tmp_path/'restored')]).verified
+    # Legacy image refusal is intentional at the ordinary schema-4 CLI.
+    for command in (['--verify-backup',str(backup)],['--restore-from',str(backup),'--data-dir',str(tmp_path/'restored')]):
+        with pytest.raises(SystemExit) as caught: bootstrap.main(command)
+        assert caught.value.code==1
+    assert not (tmp_path/'restored').exists()
 
 
 def test_real_tk_no_legacy_discovery(launch, root, tmp_path, monkeypatch):
@@ -410,8 +416,8 @@ def test_real_tk_folder_chooser_reentry_cancel_and_exception_preserve_setup(laun
 def test_real_tk_failed_handoff_retires_callbacks_then_retains_setup_and_dataset(launch, root, tmp_path, monkeypatch, when):
     callbacks = []
     class Broken(ChronicleApp):
-        def __init__(self, root, worker):
-            super().__init__(root, worker)
+        def __init__(self, root, worker, **kw):
+            super().__init__(root, worker, **kw)
             root.after(20, lambda: callbacks.append('obsolete partial app'))
             if when == 'constructor': raise OSError('constructor handoff failed')
         def _handle(self, message):

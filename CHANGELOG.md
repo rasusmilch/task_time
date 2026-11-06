@@ -6,6 +6,20 @@ receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
+- Project-nesting Package E connects the accepted schema-4 backend and nested UI
+  through ordinary source startup and the existing worker/SQLite owner. Full
+  semantic admission, exact receipts/reconciliation, no-retry Delete, all backend
+  reads, backup/cold verification/restore and shutdown use explicit version policy.
+  Clean legacy data refuses before writable access; journaled originals require
+  owned private paired-copy recovery/validation/cleanup before supported native
+  recovery. Existing schema-3 files are never migrated, imported or replaced.
+  Production SQLite/worker/Tk, rich protected-evidence, interruption and recovery
+  tests accompany explicit historical schema-3 regression. A legacy Timesheet
+  input-probe fixture now uses Mini's established grid layout rather than mixing
+  geometry managers; its modal/input assertions remain intact. E is for independent
+  review; native qualification, Stage 4 completion and Stage 5 are not claimed.
+
+
 ### Clean rewrite — connected timer foundation and selected core
 
 - Repair Main toolbar overflow at the unchanged 720x420 minimum using independent

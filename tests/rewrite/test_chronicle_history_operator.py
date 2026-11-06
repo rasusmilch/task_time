@@ -205,7 +205,7 @@ def test_real_tk_server_history_to_inline_edit_delete_details_modal_return_and_r
     assert not app.alive and not worker.is_alive() and not root.test_errors
     gc.collect()
     new_root=tk.Tk(); errors=[]; new_root.report_callback_exception=lambda *args:errors.append(args)
-    new_worker=DatabaseWorker(worker.directory); new_app=ChronicleApp(new_root,new_worker,now_utc=clock)
+    new_worker=DatabaseWorker(worker.directory, schema_version=3); new_app=ChronicleApp(new_root,new_worker,now_utc=clock)
     new_worker.start()
     try:
         pump(new_root,lambda:new_app.ready and new_app.state['report'] is not None)

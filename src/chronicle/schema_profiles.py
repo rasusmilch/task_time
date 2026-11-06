@@ -1,8 +1,8 @@
-"""Isolated schema-4 candidate, never ordinary startup or mutation authority.
+"""Exact schema-4 DDL and pure candidate/production verification foundation.
 
-This explicit DDL retains the reviewed relational/evidence model. It is not
-built by modifying schema-3 SQL at runtime. Later packages must complete service,
-lifecycle, reporting and startup integration before production admission exists.
+The approved DDL is independent of legacy schema-3 SQL. Ordinary admission uses
+schema_policy and the existing SQLiteStore; isolated candidate construction below
+remains test infrastructure, never another production opener or transaction owner.
 """
 from dataclasses import dataclass
 import re

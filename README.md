@@ -114,21 +114,21 @@ over caller-owned transactions, accepted for continued development. Its adapter
 is test-only. Package D now supplies the nested-project graphical source through
 an explicit internal schema4-candidate presentation profile for independent review.
 It uses the same ChronicleApp/root and a test-only serialized C2 Message bridge;
-no supported v4 runtime or public candidate launcher exists. Normal
-`python run_chronicle.py`, SQLiteStore creation/open and backup/restore remain
-schema 3. C1 adds candidate hierarchical Archive/Unarchive, inherited eligibility
+the bridge remains test-only with no public candidate launcher. Package E now uses
+`python run_chronicle.py`, ordinary SQLiteStore/DatabaseWorker/StartupWindow and
+backup/restore for fresh schema 4. C1 adds candidate hierarchical Archive/Unarchive, inherited eligibility
 and pure Direct/Cumulative project accounting for independent review. The existing
 task attribution engine and cutoff remain authoritative; no project owns work.
 C2 now supplies complete candidate semantic verification, protected work/frozen
 Timesheet/POL-R evidence, reviewed task/template operations and nested unused-only
-Delete, accepted for continued development. Valid rich evidence is admitted only by the isolated
-candidate verifier; malformed/unknown/incomplete evidence refuses. D adds nested
+Delete, accepted for continued development. E reuses that complete independent verifier
+for ordinary admission and transaction completion; malformed/unknown/incomplete evidence refuses. D adds nested
 Main/Archived Items, root/child creation, exact project/task movement and template
 destination reviews, complete Delete scope and preserved Mini/double-click behavior.
 Connected Tk acceptance requires an available display; source alone is not widget
-or native evidence. E ordinary fresh-v4 startup/backup/restore and F native acceptance
-remain outstanding. Ordinary Chronicle still runs schema 3; no migration/import
-or second worker exists.
+or native evidence. E ordinary fresh-v4 startup/backup/restore is implemented for
+independent review. F integrated/native acceptance remains outstanding. Schema 3
+refuses unchanged; no migration/import or second worker exists.
 
 There are exactly two primary lifecycle actions: reversible **Archive** (Unarchive
 reverses it) and irreversible **Delete** of unused complete selected branches.
@@ -183,7 +183,7 @@ uniqueness stays strict. Typed Delete never retries uncertainty; ordinary templa
 operations retain exact Retry/Reconcile. No scheduler, sync or copied time.
 
 
-Current runtime supports only exact fresh schema 3, **without v1/v2 migration,
+Current runtime supports only exact fresh schema 4, **without v1/v2/v3 migration,
 compatibility mode or legacy import**. Version-1/2 datasets/backups refuse and remain
 protected; failed remembered startup does not replace data or clear selection.
 Backup/restore/cold inspection completely validate v3 structure and evidence.
@@ -277,17 +277,19 @@ GO. Stage 4C adds `python run_chronicle.py --inspect-dataset DATA_DIR`: close ot
 sessions first. This cold read-only command classifies current/unsupported versions,
 layout, foreign identity, profile and unsafe/unavailable data without creating a
 lock or starting Tk/worker. Healthy current data passes complete independent
-validation; all other cases refuse ordinary startup. E supports only schema 3,
+validation; all other cases refuse ordinary startup. Current project-nesting E supports only schema 4,
 with no automatic upgrade, downgrade or repair. Stage 4C inspection, protected
 refusal and bounded owned SQLite-native rollback recovery are independently
 accepted for functional development.
 The earlier A–F foundation used fresh data. Unlimited project nesting requires a
 fresh schema 4, without migration/import or transformation of existing schema-3
 datasets. A/B/C1 remain isolated candidate foundation/services/accounting;
-ordinary runtime
-activation belongs to later package E. Schema-3 and unknown schemas refuse in the
-eventual v4 runtime
-rather than being cleared, transformed or reconstructed. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
+Package E now connects the accepted backend and nested GUI to the existing production
+worker and source launcher for independent review. Schema-3 and unknown schemas refuse
+rather than being cleared, transformed or reconstructed. Journaled originals undergo
+owned paired-copy recovery verification outside the dataset before any supported
+original is opened for native recovery. Schema 3 remains available only to explicit
+historical test fixtures, never a public fallback or conversion route. See [RUNNING.md](RUNNING.md) for concise setup, optional venv,
 source launch, troubleshooting and native Windows source validation. Initial pip
 installation needs internet or an approved local wheel source and available IT
 permission; ordinary Chronicle operation is offline and never installs packages.

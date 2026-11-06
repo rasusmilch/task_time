@@ -104,7 +104,7 @@ class Clock:
 
 @pytest.fixture
 def connected(root, tmp_path):
-    worker = DatabaseWorker(tmp_path / "fresh", create=True, timezone="America/Chicago")
+    worker = DatabaseWorker(tmp_path / "fresh", create=True, timezone="America/Chicago", schema_version=3)
     clock = Clock()
     app = ChronicleApp(root, worker, now_utc=clock)
     worker.start()
@@ -236,7 +236,7 @@ def test_real_tk_slow_worker_accepted_instant_reentry_and_queued_shutdown(connec
     root.mainloop()
     assert not app.alive
     worker.join(timeout=5)
-    store = SQLiteStore(worker.directory)
+    store = SQLiteStore(worker.directory, schema_version=3)
     try:
         active = TimerService(store).read_current_state(cutoff_utc_us=NOW + 1)["active"]
         assert active["start_utc_us"] == request.action_utc_us == NOW
@@ -328,7 +328,7 @@ def test_real_tk_unverified_confirmed_exit_does_not_stop_timer(connected, root, 
     root.after(6000, root.quit)
     root.mainloop()
     worker.join(timeout=5)
-    store = SQLiteStore(worker.directory)
+    store = SQLiteStore(worker.directory, schema_version=3)
     try:
         assert store.connection.execute("SELECT entry_id FROM active_timer").fetchone()[0] == entry
     finally:
@@ -457,7 +457,7 @@ def test_real_tk_ui_calls_are_on_creator_thread_and_empty_mini(connected, root, 
 
 
 def test_real_tk_startup_failure_can_close_without_waiting_for_dead_worker(root, tmp_path):
-    worker = DatabaseWorker(tmp_path / "missing")
+    worker = DatabaseWorker(tmp_path / "missing", schema_version=3)
     app = ChronicleApp(root, worker)
     worker.start()
     pump(root, lambda: app._worker_stopped)
@@ -518,7 +518,7 @@ def test_real_tk_root_launcher_source_smoke(root, tmp_path, monkeypatch):
     app.worker.join(timeout=5)
     assert finished and not app.alive and not app.worker.is_alive(), app.status.cget("text") if app.alive else "source driver timed out"
     assert (old / "evidence").read_bytes() == b"untouched old data"
-    store = SQLiteStore(directory)
+    store = SQLiteStore(directory)  # Actual ordinary source launch creates schema 4.
     try:
         assert store.connection.execute("SELECT count(*) FROM active_timer").fetchone()[0] == 1
     finally:
@@ -916,7 +916,7 @@ def test_real_tk_correction_modal_exceptional_exit_is_reachable(connected, root,
 
 @contextmanager
 def _reopen_store(worker):
-    store = SQLiteStore(worker.directory)
+    store = SQLiteStore(worker.directory, schema_version=3)
     try:
         yield store
     finally:
@@ -1260,7 +1260,7 @@ def test_real_tk_cleanup_failure_cannot_cancel_back_into_closed_worker(connected
     app.request_close()
     pump(root, lambda: 'Worker cleanup failed' in app.status.cget('text'))
     assert app.alive and worker.is_alive() and app.closing
-    assert child('from chronicle.sqlite_store import SQLiteStore; import sys; SQLiteStore(sys.argv[1])', worker.directory).returncode != 0
+    assert child('from chronicle.sqlite_store import SQLiteStore; import sys; SQLiteStore(sys.argv[1], schema_version=3)', worker.directory).returncode != 0
     app.cancel_close()
     assert app.closing, 'A cleanup-only worker cannot resume normal mutations'
     assert not app.stop() and app.pending is None
@@ -1284,7 +1284,7 @@ def test_real_tk_failed_startup_cleanup_retry_is_accessible(root, tmp_path, monk
                 raise OSError('startup connection still owned')
             return super().close()
     monkeypatch.setattr(module, 'SQLiteStore', FailedStartup)
-    worker = DatabaseWorker(tmp_path / 'partial', create=True, timezone='UTC')
+    worker = DatabaseWorker(tmp_path / 'partial', create=True, timezone='UTC', schema_version=3)
     app = ChronicleApp(root, worker)
     worker.start()
     try:

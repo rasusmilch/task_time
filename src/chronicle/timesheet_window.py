@@ -257,7 +257,7 @@ class TimesheetWindow:
         try:
             if value['dataset_id'] != self.owner.dataset_id: raise ValueError('Task choices belong to another dataset')
             rows = [(t['task_id'],(f"{t['name']} / {t['task_id']}",t['project_name'],'Archived' if t['effective_archived'] else 'Active')) for t in value['tasks']]
-            if self.owner.candidate_presentation:
+            if self.owner.schema4_presentation:
                 from .project_ui import path_label, context
                 choices = dict(tasks=value['tasks'], projects=value['projects'])
                 context(choices)

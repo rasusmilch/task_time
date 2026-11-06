@@ -84,7 +84,7 @@ def test_genuine_hot_journal_native_startup_preserves_all_committed_evidence(hot
     output = report.read_bytes()
     leave_hot_journal(directory, header=header)
     cold = preserved(directory, report)
-    result = br.inspect_dataset(directory)
+    result = br.inspect_dataset(directory, schema_version=3)
     assert result.classification == br.Compatibility.UNSAFE_OR_UNAVAILABLE
     assert not result.full_validation_completed
     assert preserved(directory, report) == cold
@@ -92,7 +92,7 @@ def test_genuine_hot_journal_native_startup_preserves_all_committed_evidence(hot
     assert result.returncode == 4 and 'UNSAFE_OR_UNAVAILABLE' in result.stdout
     assert preserved(directory, report) == cold
     if owner == 'worker':
-        worker = DatabaseWorker(directory)
+        worker = DatabaseWorker(directory, schema_version=3)
         worker.start()
         try:
             first = worker.results.get(timeout=10)
@@ -104,7 +104,7 @@ def test_genuine_hot_journal_native_startup_preserves_all_committed_evidence(hot
             worker.requests.put(Message('shutdown'))
             worker.join(10)
             assert not worker.is_alive()
-    recovered = SQLiteStore(directory)
+    recovered = SQLiteStore(directory, schema_version=3)
     try:
         assert logical(recovered.path) == before
         assert recovered._profile_values() == {'journal_mode':'delete', 'synchronous':3, 'foreign_keys':1}
@@ -114,9 +114,9 @@ def test_genuine_hot_journal_native_startup_preserves_all_committed_evidence(hot
         assert not Path(str(recovered.path) + '-journal').exists()
     finally:
         recovered.close()
-    assert br.inspect_dataset(directory).ordinary_startup_permitted
+    assert br.inspect_dataset(directory, schema_version=3).ordinary_startup_permitted
     # Repeated reopen changes no evidence, and legitimate new work still commits.
-    reopened = SQLiteStore(directory)
+    reopened = SQLiteStore(directory, schema_version=3)
     try:
         assert logical(reopened.path) == before
         service = TimerService(reopened)
@@ -150,7 +150,7 @@ def test_hot_journal_cold_inspector_never_opens_sqlite_or_owns_session(hot_datas
         m.setattr(bootstrap.DatabaseWorker, '__init__', forbidden)
         m.setattr(br, '_readonly', forbidden)
         m.setattr(SQLiteStore, '_connect', forbidden)
-        assert br.inspect_dataset(directory).classification == br.Compatibility.UNSAFE_OR_UNAVAILABLE
+        assert br.inspect_dataset(directory, schema_version=3).classification == br.Compatibility.UNSAFE_OR_UNAVAILABLE
     assert preserved(directory) == before
 
 
@@ -174,7 +174,7 @@ def test_hot_journal_competing_owner_prevents_writable_recovery(hot_dataset, mon
     try:
         monkeypatch.setattr(SQLiteStore, '_connect', forbidden)
         with pytest.raises(OSError):
-            SQLiteStore(directory)
+            SQLiteStore(directory, schema_version=3)
         assert lock.file is not None and not lock.file.closed
         contender = DatasetLock(directory)
         try:
@@ -219,7 +219,7 @@ def test_hot_journal_admission_does_not_treat_raw_header_markers_as_committed(ho
         return value
     with monkeypatch.context() as m:
         m.setattr(module.os, 'read', header_observation)
-        recovered = SQLiteStore(directory)
+        recovered = SQLiteStore(directory, schema_version=3)
         try:
             assert logical(recovered.path) == before
         finally:
@@ -251,7 +251,7 @@ def test_hot_journal_worker_ready_waits_for_owned_full_validation_and_profile(ho
             pause('profile')
             super()._profile()
     monkeypatch.setattr(module, 'SQLiteStore', Observed)
-    worker = module.DatabaseWorker(directory)
+    worker = module.DatabaseWorker(directory, schema_version=3)
     worker.start()
     try:
         assert entered.wait(10)
@@ -279,11 +279,11 @@ def test_hot_journal_recovery_does_not_adopt_invalid_committed_state(hot_dataset
     def forbidden(*a): pytest.fail('Invalid recovered state reached runtime configuration')
     monkeypatch.setattr(SQLiteStore, '_profile', forbidden)
     with pytest.raises((ValueError, KeyError, sqlite3.Error)):
-        SQLiteStore(directory)
+        SQLiteStore(directory, schema_version=3)
     # SQLite may have physically rolled back the journal; Chronicle wrote no facts.
     assert logical(directory/'chronicle.sqlite3') == committed
     from chronicle.worker import DatabaseWorker
-    worker = DatabaseWorker(directory)
+    worker = DatabaseWorker(directory, schema_version=3)
     worker.start()
     try:
         assert worker.results.get(timeout=10).kind == 'startup_failed'
@@ -327,7 +327,7 @@ def test_hot_journal_startup_faults_preserve_primary_and_never_publish_ready(hot
             if fault == 'profile': raise primary
             super()._profile()
     monkeypatch.setattr(module, 'SQLiteStore', Failed)
-    worker = module.DatabaseWorker(directory)
+    worker = module.DatabaseWorker(directory, schema_version=3)
     worker.start()
     try:
         message = worker.results.get(timeout=10)
@@ -373,7 +373,7 @@ def test_hot_recovery_failed_close_retains_lock_for_worker_cleanup_retry(hot_dat
         close(self)
     if cleanup == 'lock': monkeypatch.setattr(DatasetLock, 'close', lock_close)
     monkeypatch.setattr(module, 'SQLiteStore', Failed)
-    worker = module.DatabaseWorker(directory)
+    worker = module.DatabaseWorker(directory, schema_version=3)
     worker.start()
     try:
         message = worker.results.get(timeout=10)
@@ -403,7 +403,7 @@ def test_real_tk_hot_journal_worker_startup_and_ordinary_timer_close_reopen(hot_
     from test_timesheet_save_ui import exit_settled
     directory, before, rich = hot_dataset
     leave_hot_journal(directory)
-    worker = DatabaseWorker(directory)
+    worker = DatabaseWorker(directory, schema_version=3)
     app = ChronicleApp(root, worker, now_utc=Clock())
     worker.start()
     try:
@@ -420,8 +420,8 @@ def test_real_tk_hot_journal_worker_startup_and_ordinary_timer_close_reopen(hot_
         worker.join(10)
         assert not worker.is_alive()
     assert not root.test_errors
-    assert br.inspect_dataset(directory).ordinary_startup_permitted
-    reopened = SQLiteStore(directory)
+    assert br.inspect_dataset(directory, schema_version=3).ordinary_startup_permitted
+    reopened = SQLiteStore(directory, schema_version=3)
     try:
         assert TimerService(reopened).read_current_state(cutoff_utc_us=NOW)['active'] is None
         after = logical(reopened.path)
@@ -464,7 +464,7 @@ request = Request(**a)
 def barrier():
     print('BARRIER', flush=True)
     sys.stdin.readline()
-store = SQLiteStore(path)
+store = SQLiteStore(path, schema_version=3)
 service = TimerService(store)
 class Observed:
     def __init__(self, inner): self.inner = inner
@@ -516,7 +516,7 @@ def rows(store):
 @pytest.mark.parametrize('phase', ['before', 'begin', 'facts', 'receipt', 'commit_ready', 'committed', 'refresh'])
 def test_process_interruption_atomic_facts_and_exact_receipt(tmp_path, operation, phase):
     directory = tmp_path / 'interruption'
-    store = SQLiteStore(directory, create=True, timezone='America/Chicago')
+    store = SQLiteStore(directory, create=True, timezone='America/Chicago', schema_version=3)
     service = TimerService(store)
     first, second, project, entry, next_entry = [uid() for _ in range(5)]
     assert service.create_project(project, 'P', request_id=uid(), action_utc_us=NOW).status == 'committed'
@@ -537,7 +537,7 @@ def test_process_interruption_atomic_facts_and_exact_receipt(tmp_path, operation
     store.close()
     with paused_child(TRANSACTION_CHILD, directory, phase, frozen_json(frozen)) as process:
         process.kill()
-    reopened = SQLiteStore(directory)
+    reopened = SQLiteStore(directory, schema_version=3)
     try:
         service = TimerService(reopened)
         assert reopened.connection.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
@@ -582,7 +582,7 @@ def test_process_interruption_atomic_facts_and_exact_receipt(tmp_path, operation
 @pytest.mark.parametrize('phase', ['ordinary', 'reopen'])
 def test_active_owner_crash_and_repeated_reopen(tmp_path, phase):
     directory = tmp_path / 'active'
-    store = SQLiteStore(directory, create=True, timezone='America/Chicago')
+    store = SQLiteStore(directory, create=True, timezone='America/Chicago', schema_version=3)
     service = TimerService(store)
     task, entry = uid(), uid()
     service.create_task(task, 'Active', request_id=uid(), action_utc_us=NOW)
@@ -592,7 +592,7 @@ def test_active_owner_crash_and_repeated_reopen(tmp_path, phase):
     code = r'''
 from chronicle.sqlite_store import SQLiteStore
 import sys
-store = SQLiteStore(sys.argv[1])
+store = SQLiteStore(sys.argv[1], schema_version=3)
 if sys.argv[2] == 'ordinary':
     from chronicle.services import TimerService
     assert TimerService(store).read_current_state(cutoff_utc_us=int(sys.argv[3]))['active'] is not None
@@ -603,7 +603,7 @@ print('BARRIER', flush=True); sys.stdin.readline()
     if phase == 'reopen':
         with paused_child(code, directory, phase, NOW):
             pass  # Another crash during reopening must not create a new Start.
-    reopened = SQLiteStore(directory)
+    reopened = SQLiteStore(directory, schema_version=3)
     try:
         assert rows(reopened) == original
         assert reopened.connection.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
@@ -633,14 +633,14 @@ else:
             if index == 0:
                 print('BARRIER', flush=True); sys.stdin.readline()
     module.schema_statements = statements
-SQLiteStore(sys.argv[1], create=True, timezone='UTC')
+SQLiteStore(sys.argv[1], create=True, timezone='UTC', schema_version=3)
 '''
     with paused_child(code, directory, phase):
         pass
     before = {p.name: p.read_bytes() for p in directory.iterdir() if p.is_file()}
     for create in (True, False):
         with pytest.raises((ValueError, sqlite3.DatabaseError)):
-            SQLiteStore(directory, create=create, timezone='UTC' if create else None)
+            SQLiteStore(directory, create=create, timezone='UTC' if create else None, schema_version=3)
     assert all((directory / name).read_bytes() == data for name, data in before.items())
     assert {p.name for p in directory.iterdir()} == before.keys()
 
@@ -648,7 +648,7 @@ SQLiteStore(sys.argv[1], create=True, timezone='UTC')
 @pytest.mark.parametrize('committed', [False, True])
 def test_interrupted_worker_shutdown_drains_accepted_request_truthfully(tmp_path, committed):
     directory = tmp_path / 'shutdown'
-    store = SQLiteStore(directory, create=True, timezone='UTC')
+    store = SQLiteStore(directory, create=True, timezone='UTC', schema_version=3)
     request = Request.make(uid(), store.dataset_id, 'create_task', NOW, task_id=uid(), name='Accepted', project_id=None)
     store.close()
     code = r'''
@@ -671,7 +671,7 @@ def execute(self,request):
     self.store.connection=Observed(self.store.connection)
     return original(self,request)
 TimerService.execute=execute
-worker=DatabaseWorker(sys.argv[1]); worker.start()
+worker=DatabaseWorker(sys.argv[1], schema_version=3); worker.start()
 assert worker.results.get(timeout=5).kind=='ready'
 worker.requests.put(Message('mutate',1,request))
 worker.requests.put(Message('shutdown'))
@@ -679,7 +679,7 @@ worker.join(timeout=10)
 '''
     with paused_child(code, directory, frozen_json(request), committed):
         pass
-    reopened = SQLiteStore(directory)
+    reopened = SQLiteStore(directory, schema_version=3)
     try:
         assert TimerService(reopened).reconcile_request(request).status == ('committed' if committed else 'absent')
         assert len(rows(reopened)['tasks']) == int(committed)
@@ -690,12 +690,12 @@ worker.join(timeout=10)
 
 @pytest.mark.parametrize('phase',['begin','facts','receipt','committed'])
 def test_reminder_dismissal_process_death_never_confirms_or_partially_commits(tmp_path,phase):
-    directory=tmp_path/'dismissal';store=SQLiteStore(directory,create=True,timezone='America/Chicago')
+    directory=tmp_path/'dismissal';store=SQLiteStore(directory,create=True,timezone='America/Chicago', schema_version=3)
     request=Request.make(uid(),store.dataset_id,'dismiss_polr_reminder_today',NOW,local_date='2026-10-19')
     before=rows(store);store.close()
     code=TRANSACTION_CHILD.replace("facts = sql.startswith((", "facts = sql.startswith(('UPDATE dataset_meta', ")
     with paused_child(code,directory,phase,frozen_json(request)):pass
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         service=TimerService(reopened);committed=phase=='committed'
         assert service.reconcile_request(request).status==('committed' if committed else 'absent')
@@ -738,12 +738,12 @@ if kind=='backup' and phase=='progress':
  br._copy=partial
 if kind=='backup' and phase=='validation':
  verify=br.validate_image
- def validate(path):
-  result=verify(path)
+ def validate(path, *, schema_version=3):
+  result=verify(path, schema_version=schema_version)
   if path.name.startswith('.chronicle-backup-'):barrier()
   return result
  br.validate_image=validate
-worker=DatabaseWorker(path);worker.start();assert worker.results.get(timeout=5).kind=='ready'
+worker=DatabaseWorker(path, schema_version=3);worker.start();assert worker.results.get(timeout=5).kind=='ready'
 if kind=='backup':worker.requests.put(Message('backup',1,dict(request_id=request_id,destination=destination)))
 else:
  args=dict(export_id=export_id,destination=destination)
@@ -764,7 +764,7 @@ def test_worker_file_process_death_protects_facts_and_never_rolls_back_published
     from test_timesheet_candidate import preview
     from test_manual_work import dated
     from chronicle.backup_restore import validate_image
-    directory=tmp_path/'source';store=SQLiteStore(directory,create=True,timezone='America/Chicago');s=TimerService(store)
+    directory=tmp_path/'source';store=SQLiteStore(directory,create=True,timezone='America/Chicago', schema_version=3);s=TimerService(store)
     task,active=uid(),uid();assert s.create_task(task,'Work',request_id=uid(),action_utc_us=NOW).status=='committed'
     dated(s,task);assert s.start_timer(task,active,expected_task_version=1,request_id=uid(),action_utc_us=NOW).status=='committed'
     candidate=preview(s);assert s.register_timesheet_export(candidate,request_id=uid(),action_utc_us=NOW).status=='committed'
@@ -772,14 +772,14 @@ def test_worker_file_process_death_protects_facts_and_never_rolls_back_published
     destination=tmp_path/'external'
     if kind=='overwrite':destination.write_bytes(b'original conflicting file')
     with paused_child(FILE_CHILD,directory,kind,phase,destination,candidate.export_id,uid()):pass
-    reopened=SQLiteStore(directory)
+    reopened=SQLiteStore(directory, schema_version=3)
     try:
         assert logical(reopened.path)==before and reopened.path.read_bytes()==raw
         assert reopened.connection.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
         assert TimerService(reopened).read_current_state(cutoff_utc_us=NOW)['active']['entry_id']==active
     finally:reopened.close()
     if phase=='after':
-        if kind=='backup':assert validate_image(destination).dataset_id==before['dataset_meta'][0][1]
+        if kind=='backup':assert validate_image(destination, schema_version=3).dataset_id==before['dataset_meta'][0][1]
         else:assert destination.read_bytes()==candidate.report_utf8
     elif kind=='overwrite':assert destination.read_bytes()==b'original conflicting file'
     else:assert not destination.exists()

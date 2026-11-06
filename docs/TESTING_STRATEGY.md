@@ -68,7 +68,7 @@ The separate usability slice is implemented for independent review; its focused
 [behavior tests](../tests/rewrite/test_pilot_usability.py) distinguish portable
 fault/state tests, generated Tk event dispatch and real XTest server input. No
 portable result establishes native Windows layout/focus acceptance. These criteria
-do not transfer A–F evidence to future project nesting. Existing schema 3, F2
+do not transfer A–F evidence to future project nesting. Historical schema-3 evidence, F2
 classifications, all 29 unresolved filesystem skips and F3/F4 status remain unchanged.
 
 The latest fresh-data decision selects v4 without v3 migration/import/copy
@@ -155,11 +155,48 @@ preserved, and X11 execution does not establish native Windows acceptance.
 Tk callbacks and XTest controls remain distinct from native
 Windows qualification. Demonstrable D1 fixture corrections (UUID shadowing and
 waiting before initial Timesheet dispatch) retain their behavioral assertions.
-Package E activation still requires explicit independent approval. History's
+Package E activation implementation is now authorized for execution and independent review; Package F remains unauthorized. History's
 accepted complete date/time sorting correction remains unchanged, as do backend
 calculations, work, receipts and frozen evidence.
-Ordinary v3
-DDL/classification/dispatch isolation and existing hot-journal tests remain required.
+Explicit legacy v3
+DDL/classification/domain tests and existing hot-journal tests remain required;
+ordinary CLI expectations intentionally refuse legacy images under the v4 policy.
+
+### Package E ordinary runtime evidence
+
+Production integration tests use real default-schema-4 SQLiteStore,
+Schema4RuntimeService, DatabaseWorker and StartupWindow; no CandidateAdapter or
+CandidateBridge can establish ordinary readiness. See
+[test_runtime4_store.py](../tests/rewrite/test_runtime4_store.py),
+[test_runtime4_worker.py](../tests/rewrite/test_runtime4_worker.py),
+[test_runtime4_ui.py](../tests/rewrite/test_runtime4_ui.py),
+[test_runtime4_backup.py](../tests/rewrite/test_runtime4_backup.py),
+[test_runtime4_recovery.py](../tests/rewrite/test_runtime4_recovery.py) and
+[test_runtime4_interruptions.py](../tests/rewrite/test_runtime4_interruptions.py).
+The rich worker workflow retains work/revisions, active correction and Switch,
+frozen report bytes, zero/source confirmations, project/task movement, templates,
+Delete, config/reminders, backup/close/CLI verify/restore/reopen and another mutation.
+Independent logical facts and canonical receipt/retry results are checked.
+
+Killed-child cases interrupt actual owned transactions before BEGIN, after domain
+writes/receipts, before COMMIT and after COMMIT across operation families. Separate
+Delete tests inspect current presence only and never reconcile/reexecute it. Faults
+retain the original diagnostic and verify rollback or original-request evidence.
+Private recovery tests use genuine spilled SQLite journals, including a POSIX
+journal-unlink failure leaving an apparent v4 header over committed v3 undo facts.
+Only SQLite recovers private copies; original incompatible DB/journal bytes and
+metadata must remain unchanged. Private close failure retains ownership until cleanup.
+These establish exercised process-death/filesystem behavior, not physical power loss
+or Windows/NTFS acceptance. Production readiness, candidate readiness, X11/Tk and
+native Windows evidence remain distinct.
+
+Historical schema-3 domain/worker fixtures explicitly select schema_version=3.
+Their DDL, requests, receipts and behavioral assertions remain version-specific;
+ordinary source/CLI launch tests follow the approved v4 behavior instead. No public
+schema selector or fallback is added. Full portable regression and applicable legacy
+connected UI regression are required for shared transaction/read/GUI changes; all
+29 unresolved filesystem skips remain unwaived. Package F/F2/F3/F4 execution requires
+separate authorization. Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
 
 | Guarantee (project nesting future; usability implemented) | Required behavior coverage |
 | --- | --- |
@@ -675,7 +712,7 @@ retain C2's now-selected finite dependency/transaction design on unchanged DDL; 
 
 | Guarantee | Required focused evidence |
 | --- | --- |
-| Fresh schema boundary | E now supports only exact fresh v3; maintain refusal and validation for every subsequent approved change. new/empty creation is exclusive. Old/foreign/partial/damaged/WAL candidates refuse without conversion, replacement, file deletion or repair. Cold inspection stays read-only/non-recovering; supported new images retain locked native rollback recovery and complete validation before readiness. |
+| Fresh schema boundary | Current project-nesting E supports only exact fresh v4; historical v3 fixtures remain explicit; maintain refusal and validation for every subsequent approved change. new/empty creation is exclusive. Old/foreign/partial/damaged/WAL candidates refuse without conversion, replacement, file deletion or repair. Cold inspection stays read-only/non-recovering; supported new images retain locked native rollback recovery and complete validation before readiness. |
 | Forest and depth | Real SQLite task/project UUIDs and duplicate task names; virtual Unassigned has the same three task levels as real projects. No-selection New Task creates an Unassigned root; otherwise use the selected project/group or eligible task. Cycles/self-parent/cross-dataset/depth overflow reject. Moving a height-two subtree must check its deepest leaf, not just destination depth. Test SQL-enforced constraints separately from transactional cross-row postconditions. |
 | New-time eligibility | Start, Switch destination and both manual writers accept only eligible leaves. Existing parent direct work remains readable/correctable/deletable as work. Adding child/move/template cannot make a running task ineligible; archive/delete active containing branches refuse. No implicit timer event or synthetic Stop. |
 | Name reuse | Existing, archived and actually deleted project/task names may be reused through normal Create, always with fresh UUIDs. No automatic restore, merge, overwrite or reuse of an existing identity. Do not transfer the active-template trim/casefold uniqueness rule to tasks/projects. Erased old raw requests have the separate explicitly limited historical-retry promise. |

@@ -124,7 +124,7 @@ def test_mixed_precise_running_future_correction_deletion_and_frozen(service,tas
     ('America/Chicago','2026-12-31T06:00:00+00:00','2027-01-01T06:00:00+00:00','2027-01-01T07:00:00+00:00','2026-12-31',24*H),
     ('UTC','2028-02-29T00:00:00+00:00','2028-03-01T00:00:00+00:00','2028-03-01T12:00:00+00:00','2028-02-29',24*H)])
 def test_actual_calendar_attribution_dst_nonhour_year_and_leap(tmp_path,zone,start,end,cutoff,day,expected):
-    store=SQLiteStore(tmp_path/'zone',create=True,timezone=zone);service=TimerService(store); task=uid();entry=uid()
+    store=SQLiteStore(tmp_path/'zone',create=True,timezone=zone, schema_version=3);service=TimerService(store); task=uid();entry=uid()
     stamp=lambda s:to_us(datetime.fromisoformat(s))
     try:
         service.create_task(task,'Unicode 雪',request_id=uid(),action_utc_us=stamp(start))

@@ -25,7 +25,7 @@ def test_seven_selected_weeks_reader_agreement_and_reopen(service,task,store,wee
     after=facts(store)
     assert all(before[k]==after[k] for k in before if k not in ('dataset_meta','committed_requests'))
     assert store.week_start==weekday
-    directory=store.directory;store.close();reopened=SQLiteStore(directory)
+    directory=store.directory;store.close();reopened=SQLiteStore(directory, schema_version=3)
     try:
         assert TimerService(reopened).read_current_state(cutoff_utc_us=NOW)['week_start']==weekday
     finally: reopened.close()

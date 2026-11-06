@@ -1,4 +1,5 @@
 """First-run/remembered source launch, outside the authoritative application session."""
+from pathlib import Path
 from queue import Empty
 import stat
 import sys
@@ -80,8 +81,15 @@ def admit_folder(value, *, create):
 
 
 class StartupWindow:
-    def __init__(self, root, *, app_factory, worker_factory, locations=None, timezone_id=None):
+    def __init__(self, root, *, app_factory, worker_factory, locations=None, timezone_id=None,
+                 schema_version=4, initial_selection=None, remember_selection=True):
         self.root, self.app_factory, self.worker_factory = root, app_factory, worker_factory
+        from .schema_policy import policy_for
+        self.schema_version = policy_for(schema_version).version
+        self.initial_selection = initial_selection
+        self.remember_selection = remember_selection
+        if locations is None and initial_selection is not None:
+            locations = selection.Locations(Path(initial_selection[0]), None)
         self.locations = selection.locations() if locations is None else locations
         self.expected = None
         self.remember_allowed = self.locations.record is not None
@@ -147,6 +155,11 @@ class StartupWindow:
     def discover(self):
         self.discover_id = None
         if not self.alive:
+            return
+        if self.initial_selection is not None:
+            directory, create, timezone = self.initial_selection
+            self.folder.delete(0, 'end'); self.folder.insert(0, str(directory))
+            self.begin(directory, create=create, timezone=timezone)
             return
         try:
             if self.locations.record is not None:
@@ -232,7 +245,8 @@ class StartupWindow:
             self.failure = None
             self.stopped = self.cleanup_failed = False
             self.directory = directory
-            self.worker = self.worker_factory(directory, create=create, timezone=timezone)
+            self.worker = self.worker_factory(directory, create=create, timezone=timezone,
+                                              schema_version=self.schema_version)
             self.controls()
             self.status.configure(text='Opening your dataset; please wait for complete validation…')
             self.worker.start()
@@ -290,7 +304,11 @@ class StartupWindow:
         callbacks = set(self.root.tk.call('after', 'info'))
         destroy_script = self.root.bind('<Destroy>') or ''
         try:
-            self.app = self.app_factory(self.root, self.worker)
+            from .app import backend_profile_matches
+            profile = 'schema4' if self.schema_version == 4 else 'schema3'
+            if not backend_profile_matches(profile,ready.value):
+                raise ValueError('Worker readiness does not authorize this startup profile')
+            self.app = self.app_factory(self.root, self.worker, presentation_profile=profile)
             self.app._handle(ready)  # Deliver the actual worker result through the established owner path.
         except Exception as exc:
             # Construction/ready delivery has not yielded to operator input. Retire
@@ -319,6 +337,7 @@ class StartupWindow:
             return
         self.frame.destroy()
         self.alive = False
+        if not self.remember_selection: return
         try:
             if not self.remember_allowed:
                 raise ValueError(self.locations.diagnostic or 'The unreadable/unsupported selection record was preserved')
