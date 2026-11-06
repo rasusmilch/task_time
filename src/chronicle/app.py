@@ -1039,8 +1039,20 @@ class ChronicleApp:
             return
         submission.outcome = result
         if result.status != 'unverified': self._move_submission = None
-        if self.movement is submission.origin:
-            self.movement.record_result(result)
+        dialog = submission.origin
+        if self.movement is dialog and not dialog.disposed:
+            dialog.accept_result_state(result)
+            try:
+                dialog.record_result(result)
+            except Exception as primary:
+                primary.add_note(f'Authoritative Move outcome remains {result.status}; presentation failed.')
+                try: dialog.controls()
+                except Exception as secondary:
+                    primary.add_note(f'Move control recovery also failed: {secondary!r}')
+                try: self._diagnose(primary)
+                except Exception as secondary:
+                    primary.add_note(f'Move diagnostic reporting also failed: {secondary!r}')
+                    traceback.print_exception(primary)
 
     def exit_move_uncertain(self):
         if self.pending is None or self.pending.operation not in ('move_task_branch','move_project_subtree') or self.executing:
@@ -2184,7 +2196,9 @@ class ChronicleApp:
             self._diagnose(message.value)
         elif message.kind in ("mutate", "reconcile"):
             if (self.pending is None or message.token != self._pending_token or not self.executing
-                    or message.request != self.pending):
+                    or message.request != self.pending
+                    or (self.pending.operation in ('move_task_branch','move_project_subtree')
+                        and message.request is not self.pending)):
                 return  # A duplicate completion cannot consume a newer accepted request.
             result = message.value
             request = self.pending
@@ -2215,6 +2229,9 @@ class ChronicleApp:
                 return
             if result.status != 'unverified':
                 self.pending, self._pending_token = None, None
+            if request.operation in ('move_task_branch','move_project_subtree'):
+                # Matching Move settlement must precede optional view notifications.
+                self._move_result(request, message.token, result)
             if result.error:
                 self._diagnose(result.error)
             try:
@@ -2235,7 +2252,6 @@ class ChronicleApp:
                 self._diagnose(exc)
             try:
                 self._template_result(request,message.token,result)
-                self._move_result(request, message.token, result)
                 self._work_editor_result(request, message.token, result)
                 if self.history is not None:
                     self.history.mutation_result(request, message.token, result)

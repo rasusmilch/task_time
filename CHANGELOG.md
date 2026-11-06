@@ -8,6 +8,15 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Settle matching task/project Move outcome and phase in ChronicleApp before
+  fallible presentation, retaining exact Request/token correlation and unverified
+  retry guards. A status exception no longer strands a verified Move as executing;
+  existing controls restore normal Close without forced modal release. Preserve
+  the primary diagnostic through secondary control/reporting faults. Add connected
+  result-state, stale/destroyed-owner and real receipt/Close controls. Mini and
+  History implementations, backend contracts and ordinary schema-3 startup stay
+  unchanged; schema 4 remains candidate-only.
+
 - Correct History's selected chronological direction within each local date:
   newest-first now orders timed segment start/stop UTC timestamps descending,
   oldest-first ascending, with stable UUID ties and date-only rows after timed

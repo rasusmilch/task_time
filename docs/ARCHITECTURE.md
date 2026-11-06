@@ -410,8 +410,15 @@ Full paths/UUIDs distinguish duplicates. Final B2 validation remains authoritati
 Commit updates current grouping through a fresh read; no-op says unchanged; rejected
 review requires closing/reopening. Unverified Move keeps the original Request/token
 in ChronicleApp for exact Retry/Reconcile or explicit default-No exceptional exit.
-Destroyed/disposed windows cannot lose or retarget accepted requests. Completion is
-recorded before presentation; existing stale-delivery checks still apply. This is
+Destroyed/disposed windows cannot lose or retarget accepted requests. The app checks
+the exact accepted Request object and delivery token, then settles the matching
+dialog through `accept_result_state` before optional presentation notifications.
+This method assigns only Python phase/outcome state; `record_result` renders it.
+A rendering exception retains the original diagnostic and attempts existing control
+restoration without changing the settled outcome, grab or focus. Terminal verified
+results remain normally closable; unverified results retain the original Request
+and exact Retry/Reconcile guard. Secondary control/diagnostic failures are attached
+to the primary error. No automatic close or forced grab release is used. This is
 separate from C2's no-retry uncertainty contract. All existing modal/backup/shutdown
 exclusions apply; main/mini/Archived Items cannot bypass the owned Move.
 

@@ -179,9 +179,12 @@ class MoveWindow:
         if not self.current() or self.phase!='unverified' or self.owner.pending is not self.request:return False
         return self.owner.retry()
 
-    def record_result(self,result):
+    def accept_result_state(self,result):
+        """Settle the owner's matching outcome without touching presentation."""
         self.outcome=result
         self.phase='unverified' if result.status=='unverified' else 'complete' if result.status in ('committed','unchanged') else 'failed'
+
+    def record_result(self,result):
         if not self.current():return
         text=('Move not verified; retain this exact request and Retry/Reconcile, or explicitly exit.' if self.phase=='unverified' else
               'Move committed. Updated hierarchy is read from the worker.' if result.status=='committed' else

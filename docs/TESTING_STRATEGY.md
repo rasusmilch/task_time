@@ -131,17 +131,25 @@ Archive/Delete presentation and Mini/double-click. They require real widgets and
 remain explicitly skipped/unverified when no display exists. Neither portable
 controls nor generated widget events establish native Windows input/focus. E/F
 remain outstanding; all 29 unresolved filesystem skips remain unwaived.
-D1 executes these cases on an isolated Xvfb display when available, retaining
-per-node results for the original 34 connected scenarios. A failed Move result
-presentation can leave the committed dialog in its executing phase; that observed
-defect remains for separate adjudication, without changing request ownership or
-weakening its Close assertion. Demonstrable fixture errors (UUID variable
-shadowing and waiting before initial Timesheet dispatch) may be corrected while
-retaining all behavioral assertions. Bare Xvfb supplies no window manager:
-topmost-property failures must remain reported separately from successful Tk or
-XTest controls. D1 cannot be fully validated while these GUI gates fail; Package E
-activation remains unauthorized. History's complete date/time sorting correction
-does not change any backend calculation, work, receipt or frozen evidence.
+D1 exposed a committed Move dialog stranded in its executing phase after a
+presentation exception, plus two Mini topmost failures under bare Xvfb. D1a
+separates owner-settled Move phase/outcome from rendering, preserving the original
+Close assertion, exact Request/token identity, modal ownership and unverified retry.
+Its isolated Openbox-managed Xvfb run passes all 65 Package D tests, including all
+34 original connected scenarios without skips. Both unchanged Mini topmost tests
+pass under the verified WM; an independent mapped-Tk control also clears topmost.
+The two Mini failures were environment-dependent for these tested conditions;
+bare Xvfb supplies no window manager. The expanded D1a schema-3 GUI run passes 291
+tests but fails the unchanged `test_app` minimum-size toolbar assertion under
+Openbox. At width 720, Delete and Templates extend beyond their frame even after
+layout events settle. This unrelated layout failure is preserved for adjudication;
+no layout source or assertion is changed and D1a is not fully validated.
+Tk callbacks and XTest controls remain distinct from native
+Windows qualification. Demonstrable D1 fixture corrections (UUID shadowing and
+waiting before initial Timesheet dispatch) retain their behavioral assertions.
+Package E activation still requires explicit independent approval. History's
+accepted complete date/time sorting correction remains unchanged, as do backend
+calculations, work, receipts and frozen evidence.
 Ordinary v3
 DDL/classification/dispatch isolation and existing hot-journal tests remain required.
 
@@ -607,6 +615,14 @@ advisory invalid choices, transactional races, active identity and full-path rev
 manual collapse, fresh nested-active startup and immutable saved/confirmed evidence.
 Blocked, destroyed, rejected, unverified and presentation-failure cases retain the
 accepted Request, exact Move retry and explicit shutdown; C2 remains no-retry.
+[test_move_result_state.py](../tests/rewrite/test_move_result_state.py) isolates
+the D1a completion boundary: state-only assignments, real task/project transactions
+with exact request/result receipts, fallible status/control/notification callbacks,
+primary/secondary diagnostics, normal Close/grab release, destroyed/older owners
+and stale/equal-but-distinct request deliveries. Explicit synthetic terminal and
+unverified delivery controls exercise real widgets and exact subsequent recovery;
+they do not establish SQL rollback merely from a supplied Outcome. Separate real
+backend no-op/stale tests verify unchanged facts and no extra receipt.
 Existing modal/mini/Archived Items guards and lifecycle tests remain applicable.
 Separate XTest input selects/commits Move and inspects/cancels the real toolkit name
 dialog. These are Linux portable/input observations, not native Windows qualification.
