@@ -236,3 +236,241 @@ def test_unverified_ordinary_request_blocks_other_mutation_and_backup_until_exac
         result=h.exchange('reconcile',original);assert result.status=='committed'
         assert h.facts()==before
         h.project(name='After exact resolution')
+
+
+@pytest.fixture
+def isolation_faults(monkeypatch):
+    """Real COMMIT fault and failed independent I/O; never a fabricated Outcome."""
+    from chronicle.schema4_runtime_service import Schema4RuntimeService
+    from test_runtime4_store import Fault
+    state=dict(original=None,mode='after',fired=False,probe_unavailable=True,
+               inspection=None,calls=[],probe_error=OSError('E1 independent receipt probe unavailable'))
+    execute=Schema4RuntimeService.execute;service_reconcile=Schema4RuntimeService.reconcile_request
+    transact=SQLiteStore.transact;store_reconcile=SQLiteStore.reconcile;probe=SQLiteStore._probe
+    def observed_execute(self,r):
+        state['calls'].append(('service.execute',r))
+        if r is state['original'] and not state['fired']:
+            state['fired']=True;self.store.connection=Fault(self.store.connection,state['mode'])
+        return execute(self,r)
+    def observed_service_reconcile(self,r):
+        state['calls'].append(('service.reconcile_request',r));return service_reconcile(self,r)
+    def observed_transact(self,r,operation):
+        state['calls'].append(('store.transact',r));return transact(self,r,operation)
+    def observed_store_reconcile(self,r):
+        state['calls'].append(('store.reconcile',r));state['inspection']=r
+        try:return store_reconcile(self,r)
+        finally:state['inspection']=None
+    def failed_probe(self):
+        if state['original'] is not None and state['inspection'] is state['original'] and state['probe_unavailable']:
+            raise state['probe_error']
+        return probe(self)
+    monkeypatch.setattr(Schema4RuntimeService,'execute',observed_execute)
+    monkeypatch.setattr(Schema4RuntimeService,'reconcile_request',observed_service_reconcile)
+    monkeypatch.setattr(SQLiteStore,'transact',observed_transact)
+    monkeypatch.setattr(SQLiteStore,'reconcile',observed_store_reconcile)
+    monkeypatch.setattr(SQLiteStore,'_probe',failed_probe)
+    return state
+
+
+def unresolved_owners(worker):
+    """Observe the existing worker frame while it waits on its queue; test only."""
+    import sys
+    frame=sys._current_frames()[worker.ident]
+    while frame.f_code is not DatabaseWorker.run.__code__:frame=frame.f_back
+    return frame.f_locals['unresolved'],frame.f_locals['unresolved_delete']
+
+
+def isolation_evidence(path,h,original,before,after,result,calls):
+    import json
+    owner,deleted=unresolved_owners(h.worker)
+    def identity(value):
+        return dict(type=type(value).__name__,object_id=id(value),
+                    request_id=value.request_id if isinstance(value,Request) else value)
+    report=dict(original=identity(original),owner=identity(owner),delete_owner=identity(deleted),
+                outcome=result.status,before=before,after=after,
+                dispatch_calls=[dict(method=method,request=identity(r)) for method,r in calls])
+    path.write_text(json.dumps(report,indent=2,default=lambda v:dict(bytes_hex=v.hex()))+'\n')
+
+
+def arm_unverified(h,control,mode='after'):
+    original=Request.make(uid(),h.ready['dataset_id'],'create_project',h.now+1,
+                          project_id=uid(),name='Original accepted request')
+    before=h.facts();control.update(original=original,mode=mode)
+    first=h.exchange('mutate',original)
+    assert first.status=='unverified' and 'Original COMMIT' in str(first.error)
+    assert first.error is not control['probe_error']
+    assert len(h.facts()['committed_requests'])==len(before['committed_requests'])+(mode=='after')
+    if mode=='before':assert h.facts()==before
+    return original,first
+
+
+def test_unrelated_reconcile_cannot_execute_while_original_is_unverified(tmp_path,monkeypatch,isolation_faults):
+    control=isolation_faults
+    with session(tmp_path/'isolation',True) as h:
+        original,first=arm_unverified(h,control)
+        unrelated=Request.make(uid(),h.ready['dataset_id'],'create_project',h.now+2,
+                               project_id=uid(),name='Unrelated must never execute')
+        before=h.facts();assert all(row[1]!=unrelated.request_id for row in before['committed_requests'])
+        start=len(control['calls']);result=h.exchange('reconcile',unrelated);after=h.facts()
+        isolation_evidence(tmp_path/'reconcile-isolation.json',h,original,before,after,result,control['calls'][start:])
+        assert result.status=='unavailable',result
+        assert after==before and control['calls'][start:]==[]
+        assert unresolved_owners(h.worker)==(original,None)
+        assert unresolved_owners(h.worker)[0] is original
+        control['probe_unavailable']=False
+        assert h.exchange('reconcile',original).status=='committed'
+        assert unresolved_owners(h.worker)==(None,None) and h.facts()==before
+
+
+def blocked_value(case,original):
+    from dataclasses import replace
+    if case=='original':return original
+    if case=='equal clone':
+        clone=replace(original);assert clone==original and clone is not original;return clone
+    if case=='same uuid changed':return replace(original,action_utc_us=original.action_utc_us+1)
+    if case=='other':return replace(original,request_id=uid())
+    if case=='wrong dataset':return replace(original,dataset_id=uid())
+    if case=='different operation':return replace(original,operation='rename_project')
+    if case=='unknown operation':return replace(original,operation='unknown_operation')
+    if case=='none':return None
+    if case=='mapping':return dict(request_id=original.request_id)
+    if case=='invalid request':return replace(original,arguments=b'not canonical JSON')
+    raise AssertionError(case)
+
+
+BLOCKED_CASES=[('mutate','original')]+[(kind,case) for kind in ('mutate','reconcile')
+    for case in ('equal clone','same uuid changed','other','wrong dataset','different operation',
+                 'unknown operation','none','mapping','invalid request')]
+
+
+@pytest.mark.parametrize('kind,case',BLOCKED_CASES)
+def test_unresolved_owner_refuses_all_other_mutation_capable_dispatch(tmp_path,isolation_faults,kind,case):
+    control=isolation_faults
+    with session(tmp_path/'blocked',True) as h:
+        original,first=arm_unverified(h,control);incoming=blocked_value(case,original)
+        before=h.facts();start=len(control['calls'])
+        result=h.exchange(kind,incoming)
+        assert result.status=='unavailable' and 'original Request' in str(result.error)
+        assert h.facts()==before and control['calls'][start:]==[]
+        owner,deleted=unresolved_owners(h.worker);assert owner is original and deleted is None
+        # Ordinary reads and failed exact reconciliation cannot erase ownership.
+        assert h.state()['schema_version']==4 and h.facts()==before
+        assert unresolved_owners(h.worker)[0] is original
+        again=h.exchange('reconcile',original)
+        assert again.status=='unverified' and again.error is control['probe_error']
+        assert again.error is not first.error and unresolved_owners(h.worker)[0] is original
+        assert h.facts()==before
+        control['probe_unavailable']=False
+        resolved=h.exchange('reconcile',original)
+        assert resolved.status=='committed' and h.facts()==before
+        assert unresolved_owners(h.worker)==(None,None)
+        assert sum(method=='service.execute' and r is original for method,r in control['calls'])==1
+
+
+def committed_receipt(path,request,outcome):
+    import sqlite3
+    from chronicle.records import canonical
+    with sqlite3.connect(path.as_uri()+'?mode=ro',uri=True) as c:
+        row=c.execute('SELECT request_bytes,result_bytes FROM committed_requests WHERE request_id=?',(request.request_id,)).fetchone()
+        assert row==(request.content(),canonical(outcome.result))
+        assert c.execute('SELECT count(*) FROM committed_requests WHERE request_id=?',(request.request_id,)).fetchone()[0]==1
+
+
+@pytest.mark.parametrize('mode',['before','after'])
+def test_exact_original_reconciliation_alone_resolves_absence_or_lost_acknowledgement(tmp_path,isolation_faults,mode):
+    control=isolation_faults
+    with session(tmp_path/'resolution',True) as h:
+        original,first=arm_unverified(h,control,mode);before=h.facts()
+        for kind in ('mutate','reconcile'):
+            assert h.exchange(kind,blocked_value('other',original)).status=='unavailable'
+            assert h.facts()==before and unresolved_owners(h.worker)[0] is original
+        blocked=h.exchange('backup',dict(request_id=uid(),destination=str(tmp_path/'blocked.sqlite3')))
+        assert blocked['result'].status=='unavailable' and not (tmp_path/'blocked.sqlite3').exists()
+        again=h.exchange('reconcile',original)
+        assert again.status=='unverified' and again.error is control['probe_error']
+        assert unresolved_owners(h.worker)[0] is original and h.facts()==before
+        control['probe_unavailable']=False;start=len(control['calls'])
+        resolved=h.exchange('reconcile',original);assert resolved.status=='committed'
+        calls=control['calls'][start:]
+        assert [method for method,r in calls]==(['service.reconcile_request','store.reconcile','service.execute','store.transact'] if mode=='before' else ['service.reconcile_request','store.reconcile'])
+        assert all(r is original for method,r in calls)
+        assert unresolved_owners(h.worker)==(None,None)
+        committed_receipt(Path(h.worker.directory)/'chronicle.sqlite3',original,resolved)
+        assert len(h.facts()['committed_requests'])==1 and len(h.facts()['projects'])==1
+        preserved=h.facts();assert h.exchange('reconcile',original).result==resolved.result
+        assert h.facts()==preserved
+        h.project(name='After independently established resolution')
+        # Once ownership is resolved, the existing independent reconcile route is available.
+        fresh=Request.make(uid(),h.ready['dataset_id'],'create_project',h.now+2,project_id=uid(),name='Independent later request')
+        assert h.exchange('reconcile',fresh).status=='committed'
+        target=tmp_path/'healthy-backup.sqlite3'
+        assert h.exchange('backup',dict(request_id=uid(),destination=str(target)))['result'].verified
+        assert logical(target)==h.facts()
+        isolation_evidence(tmp_path/'exact-resolution.json',h,original,before,h.facts(),resolved,calls)
+
+
+def test_unverified_service_fault_on_blocked_attempt_cannot_replace_accepted_owner(tmp_path,monkeypatch,isolation_faults):
+    from chronicle.schema4_runtime_service import Schema4RuntimeService
+    control=isolation_faults
+    with session(tmp_path/'replacement',True) as h:
+        original,first=arm_unverified(h,control);before=h.facts();entered=[]
+        reconcile=Schema4RuntimeService.reconcile_request
+        def fail_other(self,r):
+            if r is not original:
+                entered.append(r);raise OSError('Must never become another unverified owner')
+            return reconcile(self,r)
+        monkeypatch.setattr(Schema4RuntimeService,'reconcile_request',fail_other)
+        assert h.exchange('reconcile',blocked_value('other',original)).status=='unavailable'
+        assert not entered and h.facts()==before
+        assert unresolved_owners(h.worker)[0] is original
+        control['probe_unavailable']=False
+        assert h.exchange('reconcile',original).status=='committed'
+
+
+def test_uncertain_delete_ownership_is_not_replaced_and_never_retries(tmp_path,isolation_faults):
+    from dataclasses import replace
+    control=isolation_faults;directory=tmp_path/'delete'
+    with session(directory,True) as h:
+        p=h.project();review=h.exchange('delete_preview',dict(entity_type='project',entity_id=p))
+        original=Request.make(uid(),h.ready['dataset_id'],'delete_project',h.now+1,
+            project_id=p,expected_version=1,review=review,confirmed_text='DELETE')
+        control.update(original=original,mode='after',fired=False)
+        result=h.exchange('mutate',original)
+        assert result.status=='unverified' and 'Original COMMIT' in str(result.error)
+        owner,deleted=unresolved_owners(h.worker);assert owner is original and deleted is original
+        before=h.facts();assert not before['projects'] and not before['committed_requests']
+        start=len(control['calls'])
+        for kind,case in [('reconcile','original')]+BLOCKED_CASES:
+            result=h.exchange(kind,blocked_value(case,original))
+            assert result.status=='unavailable' and 'Delete outcome unresolved' in str(result.error)
+            owner,deleted=unresolved_owners(h.worker);assert owner is original and deleted is original
+            assert h.facts()==before and control['calls'][start:]==[]
+        presence=h.exchange('delete_presence',dict(entity_type='project',entity_id=p))
+        assert presence['present'] is False and presence['historical_outcome_verified'] is False
+        assert h.state()['schema_version']==4 and h.facts()==before
+        owner,deleted=unresolved_owners(h.worker);assert owner is original and deleted is original
+        target=tmp_path/'blocked-delete.sqlite3'
+        assert h.exchange('backup',dict(request_id=uid(),destination=str(target)))['result'].status=='unavailable'
+        assert not target.exists()
+        isolation_evidence(tmp_path/'delete-isolation.json',h,original,before,h.facts(),result,control['calls'][start:])
+    # Explicit shutdown/reopen discards session ownership, never proves old Delete's outcome.
+    with session(directory) as fresh:
+        assert unresolved_owners(fresh.worker)==(None,None)
+        assert fresh.exchange('delete_presence',dict(entity_type='project',entity_id=p))['historical_outcome_verified'] is False
+        q=fresh.project();review=fresh.exchange('delete_preview',dict(entity_type='project',entity_id=q))
+        request,result=fresh.send('delete_project',project_id=q,expected_version=1,review=review,confirmed_text='DELETE')
+        assert request is not original and request.request_id!=original.request_id
+        assert not fresh.facts()['projects'] and not fresh.facts()['committed_requests']
+
+
+def test_new_session_reconciles_persisted_exact_content_without_live_object_ownership(tmp_path,isolation_faults):
+    from dataclasses import replace
+    control=isolation_faults;directory=tmp_path/'restart'
+    with session(directory,True) as h:
+        original,first=arm_unverified(h,control);before=h.facts()
+    control['probe_unavailable']=False
+    with session(directory) as fresh:
+        clone=replace(original);assert clone is not original and clone==original
+        result=fresh.exchange('reconcile',clone)
+        assert result.status=='committed' and fresh.facts()==before
+        committed_receipt(directory/'chronicle.sqlite3',original,result)

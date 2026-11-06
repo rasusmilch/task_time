@@ -44,12 +44,17 @@ class DatabaseWorker(Thread):
                 message = self.requests.get()
                 if message.kind == "shutdown":
                     break
+                processed_request = False
                 try:
                     if message.kind in ('mutate', 'reconcile') and unresolved_delete is not None:
-                        value = Outcome('unverified', error=RuntimeError('Delete outcome unresolved; mutation/retry blocked. Inspect current presence, then exit and reopen.'))
-                    elif (self.schema_version == 4 and message.kind == 'mutate' and unresolved is not None
-                          and message.value.request_id != unresolved):
-                        value = Outcome('unavailable', error=RuntimeError('Another accepted request is unresolved; reconcile its exact identity before mutation'))
+                        value = Outcome('unavailable' if self.schema_version == 4 else 'unverified', error=RuntimeError('Delete outcome unresolved; mutation/retry blocked. Inspect current presence, then exit and reopen.'))
+                    elif (self.schema_version == 4 and unresolved is not None
+                          and (message.kind == 'mutate'
+                               or message.kind == 'reconcile' and message.value is not unresolved)):
+                        value = Outcome('unavailable', error=RuntimeError('An accepted request is unresolved; only explicit reconciliation of the original Request object is permitted'))
+                    elif (self.schema_version == 4 and message.kind in ('mutate','reconcile')
+                          and not isinstance(message.value, Request)):
+                        value = Outcome('unavailable', error=ValueError('Mutation/reconciliation requires an accepted Request'))
                     elif message.kind == 'mutate' and message.value.operation in ('delete_task','delete_project','delete_template') and unresolved is not None:
                         value = Outcome('unavailable', error=RuntimeError('Delete refused while another accepted request is unresolved'))
                     elif message.kind == 'delete_preview':
@@ -97,8 +102,10 @@ class DatabaseWorker(Thread):
                             raise RuntimeError('Backup refused while a mutation is unresolved')
                         value = store.backup(message.value['destination'])
                     elif message.kind == "mutate":
+                        processed_request = True
                         value = service.execute(message.value)
                     elif message.kind == "reconcile":
+                        processed_request = True
                         value = service.reconcile_request(message.value)
                         if value.status == "absent":
                             value = service.execute(message.value)  # Explicit retry, exact same request.
@@ -108,7 +115,17 @@ class DatabaseWorker(Thread):
                         value = {'export_id':message.value['export_id'],'destination':message.value.get('destination'),'result':value}
                 except Exception as exc:
                     value = Outcome("unverified" if message.kind in ("mutate", "reconcile") else "unavailable", error=exc)
-                if message.kind in ('mutate', 'reconcile'):
+                if self.schema_version == 4 and processed_request:
+                    # Only authorized service processing can acquire/settle ownership.
+                    # Equal UUID/content is not this live session's accepted object.
+                    if value.status == 'unverified':
+                        if unresolved is None:
+                            unresolved = message.value
+                        if message.value.operation in ('delete_task','delete_project','delete_template') and unresolved_delete is None:
+                            unresolved_delete = message.value
+                    elif unresolved is message.value:
+                        unresolved = None
+                elif self.schema_version == 3 and message.kind in ('mutate', 'reconcile'):
                     if value.status == 'unverified':
                         unresolved = message.value.request_id
                         if message.value.operation in ('delete_task', 'delete_project', 'delete_template') and unresolved_delete is None:

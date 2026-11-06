@@ -6,6 +6,14 @@ receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
+- Repair schema-4 worker unresolved-request isolation: retain the original frozen
+  Request object, block all mutate dispatch during uncertainty and permit only
+  exact-original explicit reconciliation. Blocked attempts preserve their incoming
+  correlation without calling services or replacing recovery ownership. Keep proven
+  absence retry, persisted receipt reconciliation, Delete no-retry precedence and
+  the explicit legacy schema-3 path. Real SQLite/worker controls preserve the
+  reproduced bypass and verify commit faults, clone/UUID refusal and retained Delete.
+
 - Project-nesting Package E connects the accepted schema-4 backend and nested UI
   through ordinary source startup and the existing worker/SQLite owner. Full
   semantic admission, exact receipts/reconciliation, no-retry Delete, all backend

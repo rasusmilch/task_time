@@ -178,6 +178,25 @@ frozen report bytes, zero/source confirmations, project/task movement, templates
 Delete, config/reminders, backup/close/CLI verify/restore/reopen and another mutation.
 Independent logical facts and canonical receipt/retry results are checked.
 
+Package E1 extends the existing real production worker tests with the dispatch
+isolation boundary. The retained baseline records unrelated reconcile actually
+committing a second project/receipt while the original remains unverified. New
+controls inject real pre-COMMIT failure or post-COMMIT lost acknowledgement and
+unavailable independent probe I/O, then verify complete SQLite facts and receipts
+around every blocked dispatch. They exercise original/repeated mutate, distinct
+equal-content/same-UUID objects, changed content/dataset/operation and invalid
+values. Service/store spies prove blocked attempts never reach execution or
+reconciliation. Test-only worker-frame observations establish the exact live
+owner object in addition to independent persisted readback; internal state alone
+is insufficient. Failed exact reconciliation retains ownership/diagnostics, proven
+absence retries only the original, committed evidence returns its original result,
+and terminal resolution restores mutation/reconciliation/backup. Uncertain real
+Delete retains both references, blocks every retry and preserves presence-only
+semantics through explicit shutdown/reopen/fresh review. New-session reconciliation
+still accepts canonical persisted content independently of prior object identity.
+No synthetic Outcome substitutes for these new transaction controls. Existing
+legacy schema-3 tests, candidate bridge and connected modal/Move tests remain intact.
+
 Killed-child cases interrupt actual owned transactions before BEGIN, after domain
 writes/receipts, before COMMIT and after COMMIT across operation families. Separate
 Delete tests inspect current presence only and never reconcile/reexecute it. Faults

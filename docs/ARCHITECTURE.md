@@ -393,9 +393,22 @@ Request/read facade over caller-owned C2 services. SQLiteStore alone owns BEGIN
 IMMEDIATE, receipt lookup, mutation, insertion, full independent final verification,
 COMMIT, rollback and retained connection cleanup. Exact prior receipt lookup precedes
 stale-state checks; no-op rolls back without a receipt/sequence advance. Ordinary
-uncertainty reconciles the same Request via an independently verified read probe.
+uncertainty retains the original accepted frozen Request object in the schema-4
+worker's one volatile recovery slot. While it exists, every mutate dispatch refuses;
+only reconcile carrying that exact object may call the service. Equal UUID/content
+or a newer token alone cannot authorize another object. A newer token with the
+original object remains valid. Blocked attempts return unavailable with their own
+incoming token/reference, never call mutation/reconciliation services and cannot
+acquire, replace or clear unresolved ownership. Only an authorized processed result
+can update that ownership. An unsuccessful reconciliation retains the same object;
+independently verified absence and cleanup permit only its existing exact-request
+execution path. Verified terminal resolution restores ordinary mutation, independent
+reconciliation and healthy backup. A new session still uses persisted canonical
+receipt identity/content, without an object registry or serialization change.
 Delete uses the existing separate no-receipt path and C2 survivor proof; any uncertain
-COMMIT permanently blocks mutation/retry/backup in that session. Presence is current
+COMMIT retains the original Delete Request and takes precedence over ordinary retry:
+all mutate/reconcile dispatch refuses without replacing either unresolved reference.
+It permanently blocks mutation/retry/backup in that session. Presence is current
 state only; explicit exit/reopen and a fresh review/typed DELETE remain required.
 
 The same DatabaseWorker serializes all reads/mutations/backup and publishes readiness
