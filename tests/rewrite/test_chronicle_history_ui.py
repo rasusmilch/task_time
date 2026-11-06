@@ -140,6 +140,32 @@ def open_history(app):
     return history
 
 
+def test_real_tk_complete_same_day_direction_is_session_local_and_read_only(connected, root):
+    app,worker,clock=connected
+    task=selected_task(app);entries=[]
+    for hour in ('06','07','08'):
+        entry=uid();entries.append(entry)
+        mutation(app,'add_timed_work',task_id=task,entry_id=entry,start_date='2026-10-19',start_time=hour+':00',
+            end_date='2026-10-19',end_time=hour+':15',start_occurrence=None,end_occurrence=None,comment='Same-day ordering')
+    history=open_history(app);settle_history_events(history)
+    def displayed():return [history.mapping[h]['entry_id'] for h in history.tree.get_children()]
+    assert displayed()==list(reversed(entries)) and history.newest_first
+    before=evidence(worker);cutoff=history.snapshot['cutoff_utc_us'];calls=clock.calls;token=app._token
+    command=history.tree.heading('date','command')
+    select(history,entries[1]);root.tk.call(command)
+    assert displayed()==entries and not history.newest_first and not app._history_newest_first
+    assert not history.tree.selection() and root.grab_current() is history.window
+    select(history,entries[0]);root.tk.call(command)
+    assert displayed()==list(reversed(entries)) and history.newest_first and app._history_newest_first
+    assert not history.tree.selection() and history.snapshot['cutoff_utc_us']==cutoff
+    assert app._token==token and clock.calls==calls and app.pending is None and evidence(worker)==before
+    assert history.sort_dates() and not app._history_newest_first
+    assert history.close() and app.history is None and root.grab_current() is None
+    history=open_history(app)
+    assert not history.newest_first and displayed()==entries
+    assert history.close() and evidence(worker)==before
+
+
 def select(history, entry_id, day=None):
     handle = next(h for h, r in history.mapping.items() if r['entry_id']==entry_id and (day is None or r['work_date']==day))
     history.tree.selection_set(handle)

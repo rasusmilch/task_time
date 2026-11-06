@@ -620,8 +620,14 @@ interaction or choosing another task. It supplies History controls and Close,
 not main-window Start/Stop. Timers continue. Duplicate/reentrant requests do not
 retarget, replace or refresh it. Every application starts newest-first; successful
 date-direction changes persist only in that application session across openings,
-not in settings or a preference file. Within-day timed portions stay chronological;
-dated entries follow without fabricated clock positions.
+not in settings or a preference file. The selected direction applies to complete
+date/time ordering: newest-first uses newest local date and latest timed segment
+first; oldest-first uses oldest local date and earliest timed segment first.
+Within each date, order timed portions by actual UTC segment start, then segment
+stop, reversing both timestamps for newest-first. Identical timestamps use a stable
+entry-UUID tie-break. Date-only entries follow timed portions in either direction,
+ordered by UUID without fabricated clock positions. Repeated local DST minutes
+remain ordered by UTC instant with the existing offset disambiguation.
 
 Default Current week, inclusive Custom and All history are available. Load on
 presentation, Apply, switching to Current week/All and explicit Refresh. Sorting

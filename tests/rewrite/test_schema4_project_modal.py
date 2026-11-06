@@ -154,7 +154,7 @@ def test_archived_context_and_delete_complete_nested_presentation(connected_cand
         assert view.unarchive_button.instate(['disabled']) and p in view.status.cget('text')
         view.tree.selection_set(ui.project_row(p));assert view.unarchive();settled(app)
         assert app.tree.exists(ui.project_row(p)) and not app.tree.exists(ui.task_row(t))
-        assert next(t for t in app.state['tasks'] if t['task_id']==view.rows[ui.task_row(t)]['item']['task_id'])['is_archived']==1
+        assert next(row for row in app.state['tasks'] if row['task_id']==view.rows[ui.task_row(t)]['item']['task_id'])['is_archived']==1
         assert view.close();return
     select(app,ui.project_row(p));assert app.open_delete();d=app.deletion
     pump(app.root,lambda:d.phase in ('ready','blocked'))
@@ -204,7 +204,7 @@ def test_template_apply_review_and_direct_history_and_task_only_timesheet(connec
     assert len(app.history.snapshot['rows'])==1;assert app.history.close()
     select(app,ui.project_row(p));assert not app.open_history()
     assert app.open_timesheet();sheet=app.timesheet
-    pump(app.root,lambda:sheet.choices_token is None)
+    pump(app.root,lambda:sheet.presented and sheet.choices_token is None and sheet.tasks.exists(t))
     assert deep in sheet.tasks.item(t,'values')[1]
     assert sheet.close()
 

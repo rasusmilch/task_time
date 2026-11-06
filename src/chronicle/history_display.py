@@ -4,7 +4,7 @@ from copy import deepcopy
 import json
 
 from .records import integer, uuid_text
-from .timekeeping import from_us, local_minute_candidates, parse_date
+from .timekeeping import from_us, instant, local_minute_candidates, parse_date
 
 
 def duration_text(value: int) -> str:
@@ -58,9 +58,15 @@ def prepare_rows(rows, task_id: str, zone, newest_first: bool):
                 if row["stop_utc_us"] <= row["start_utc_us"]:
                     raise ValueError("Invalid closed History endpoints")
                 from_us(row["stop_utc_us"])
-    copied.sort(key=lambda r: ((-1 if newest_first else 1) * parse_date(r["work_date"]).toordinal(),
-                               r["kind"] == "date_only", r["segment_start_utc_us"] or 0,
-                               r["segment_stop_utc_us"] or 0, r["entry_id"]))
+    def sort_key(row):
+        direction = -1 if newest_first else 1
+        day = direction * parse_date(row["work_date"]).toordinal()
+        if row["kind"] == "date_only":
+            return day, True, row["entry_id"]
+        start = instant(row["segment_start_utc_us"])
+        stop = instant(row["segment_stop_utc_us"])
+        return day, False, direction * start, direction * stop, row["entry_id"]
+    copied.sort(key=sort_key)
     prepared = []
     for row in copied:
         dated = row["kind"] == "date_only"

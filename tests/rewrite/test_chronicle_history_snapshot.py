@@ -57,7 +57,7 @@ def test_precise_history_duration(value,text):
     assert duration_text(value) == text
 
 
-def test_formatter_full_metadata_midnight_link_and_stable_date_groups(service, task, store):
+def test_formatter_full_metadata_midnight_link_and_complete_date_time_direction(service, task, store):
     e = timed(service, task, '2026-10-17', '23:00', '2026-10-19', '01:00')
     d = dated(service, task, '2026-10-18', '14:00')
     active = uid()
@@ -68,7 +68,10 @@ def test_formatter_full_metadata_midnight_link_and_stable_date_groups(service, t
     oldest = prepare_rows(rows, task, store.zone, False)
     assert [r[0]['work_date'] for r in newest] == sorted([r['work_date'] for r in rows], reverse=True)
     for day in {r['work_date'] for r in rows}:
-        assert [r for r in newest if r[0]['work_date']==day] == [r for r in oldest if r[0]['work_date']==day]
+        timed_new=[r for r in newest if r[0]['work_date']==day and r[0]['kind']=='timed']
+        timed_old=[r for r in oldest if r[0]['work_date']==day and r[0]['kind']=='timed']
+        assert timed_new==list(reversed(timed_old))
+        assert [r for r in newest if r[0]['work_date']==day and r[0]['kind']=='date_only'] == [r for r in oldest if r[0]['work_date']==day and r[0]['kind']=='date_only']
     parts = [values for row,values in newest if row['entry_id']==e]
     assert all(values[0]=='↔' for values in parts)
     assert parts[1][4]=='2026-10-19 00:00'

@@ -8,6 +8,15 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Correct History's selected chronological direction within each local date:
+  newest-first now orders timed segment start/stop UTC timestamps descending,
+  oldest-first ascending, with stable UUID ties and date-only rows after timed
+  rows in both directions. Validate segment timestamps without treating epoch
+  zero as missing; preserve linked portions, metadata, formatting, accounting
+  and session/modal ownership. Add pure and existing-window SQLite/Tk controls.
+  D1 executes candidate GUI validation separately from native Windows; failures
+  remain evidence for independent adjudication, with no Package E activation.
+
 - Select documentation-only requirements/architecture for unlimited nested
   organizational Projects, mixed child projects/direct tasks and derived totals
   counting each task once; no separate Customer entity or task-depth change.

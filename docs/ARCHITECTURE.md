@@ -1552,7 +1552,9 @@ loads immediately; Custom needs Apply. Refresh uses last applied bounds, or Curr
 week before first success. One standard-library `calendar` panel changes drafts
 only; Cancel/Escape and bounded month navigation keep the local modal owner.
 `history_display` prepares complete strings and date-group ordering without I/O.
-Within-day UTC order remains stable. Linked selection is visual only. A failed
+Within-day UTC segment start/stop order follows the selected date/time direction;
+identical timestamps retain stable UUID ties and date-only rows remain after timed
+rows without invented endpoints. Linked selection is visual only. A failed
 preparation retains trusted prior rows; a failed widget installation invalidates
 and hides untrusted handles. Old rows are never represented as current after a
 failed read. Explicit Refresh recovers. Sorting uses no new cutoff/read; only a
