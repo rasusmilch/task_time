@@ -142,8 +142,16 @@ The two Mini failures were environment-dependent for these tested conditions;
 bare Xvfb supplies no window manager. The expanded D1a schema-3 GUI run passes 291
 tests but fails the unchanged `test_app` minimum-size toolbar assertion under
 Openbox. At width 720, Delete and Templates extend beyond their frame even after
-layout events settle. This unrelated layout failure is preserved for adjudication;
-no layout source or assertion is changed and D1a is not fully validated.
+layout events settle. D1b retains that failed baseline and repairs only `_build`'s
+toolbar geometry through independent compact row frames, with no minimum-size,
+callback, eligibility or main-action-panel change. Its real-widget controls cover
+both profiles at 720x420 and 850x550: actual row/control bounds, settings/hint,
+nonoverlap, tree viewport and lower actions, stable widget/command identity and
+resize purity under an active timer, modal and pending request. The original
+minimum-size assertion remains unchanged and now passes: the D1b Openbox run passes
+all nine focused layout/original controls and all 46 `test_app` cases. The separate
+Package D run retains all 34 original connected passes. Prior failed baselines are
+preserved, and X11 execution does not establish native Windows acceptance.
 Tk callbacks and XTest controls remain distinct from native
 Windows qualification. Demonstrable D1 fixture corrections (UUID shadowing and
 waiting before initial Timesheet dispatch) retain their behavioral assertions.
@@ -623,6 +631,13 @@ and stale/equal-but-distinct request deliveries. Explicit synthetic terminal and
 unverified delivery controls exercise real widgets and exact subsequent recovery;
 they do not establish SQL rollback merely from a supplied Outcome. Separate real
 backend no-op/stale tests verify unchanged facts and no extra receipt.
+[test_main_layout.py](../tests/rewrite/test_main_layout.py) uses the existing
+schema-3 worker and test-owned C2 bridge with actual Tk frames/widgets. It checks
+both approved window sizes, exact independent toolbar rows/control sets, natural
+sizes and unclipped guidance, vertical access, unchanged commands/bindings and
+geometry changes without requests, time observations, selection loss, timer changes
+or SQL writes. Existing connected creation/Move/Templates/Mini/Start/Stop actions
+and modal/pending guards remain exercised through their original controls.
 Existing modal/mini/Archived Items guards and lifecycle tests remain applicable.
 Separate XTest input selects/commits Move and inspects/cancels the real toolkit name
 dialog. These are Linux portable/input observations, not native Windows qualification.

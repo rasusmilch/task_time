@@ -378,6 +378,17 @@ read-only/non-recovering. Native qualification is a separate gate.
 
 ## Implemented main and mini presentation
 
+Main retains its 850x550 initial geometry and 720x420 minimum. Its outer toolbar
+contains independent primary-management, secondary-action, display-settings and
+guidance frames, avoiding shared column widths between unrelated rows. Primary
+holds New Task, Rename task, Create project and Rename project; secondary holds
+Move / Reparent, Mini mode, Delete and Templates, plus the candidate-only New child
+project. The candidate root-project label remains on the same Create project
+button/key/callback. Settings retain the existing week/period/sort/Keep Mini
+controls. The hint wraps at 680 pixels below them. Widgets are constructed once;
+resize changes no commands, bindings, eligibility, requests or persisted layout.
+The same frames serve ordinary schema 3 and the isolated schema-4 candidate.
+
 `task_row`/`project_row` distinguish task:UUID, project:UUID and group:unassigned.
 D projects the complete effectively active forest from the existing detached worker
 snapshot under flat project groups: empty projects remain, task parentage is exact, archived descendants stay

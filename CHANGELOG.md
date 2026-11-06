@@ -8,6 +8,13 @@ receipts or commits. No release or production qualification is implied below.
 
 ### Clean rewrite — connected timer foundation and selected core
 
+- Repair Main toolbar overflow at the unchanged 720x420 minimum using independent
+  primary, secondary, display-settings and guidance frames. Keep normal 850x550
+  geometry, natural control sizes, all existing keys/callbacks and candidate-only
+  child-project access; bound hint wrapping to 680 pixels. Add connected geometry,
+  vertical-access, widget-identity and resize-purity controls for both profiles.
+  No changes to Mini, History, Move settlement, backend or schema activation.
+
 - Settle matching task/project Move outcome and phase in ChronicleApp before
   fallible presentation, retaining exact Request/token correlation and unverified
   retry guards. A status exception no longer strands a verified Move as executing;

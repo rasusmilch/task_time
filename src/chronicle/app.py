@@ -162,40 +162,46 @@ class ChronicleApp:
         self.root.rowconfigure(2, weight=1)
         bar = ttk.Frame(self.root)
         bar.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
+        bar.columnconfigure(0, weight=1)
+        primary, secondary, settings, guidance = (ttk.Frame(bar) for _ in range(4))
+        for row, frame in enumerate((primary, secondary, settings, guidance)):
+            frame.grid(row=row, column=0, sticky="ew")
         self.buttons = {}
         for column, (label, callback) in enumerate((
             ("New Task", self.create_task), ("Rename task", self.rename_task),
-            ("Create project", self.create_project), ("Rename project", self.rename_project),
+            ("Create project", self.create_project), ("Rename project", self.rename_project))):
+            button = ttk.Button(primary, text=label, command=callback)
+            button.grid(row=0, column=column, padx=2)
+            self.buttons[label] = button
+        for column, (label, callback) in enumerate((
             ("Move / Reparent", self.open_move), ("Mini mode", self.open_mini),
-            ("Delete", self.open_delete))):
-            button = ttk.Button(bar, text=label, command=callback)
+            ("Delete", self.open_delete), ("Templates...", self.open_templates))):
+            button = ttk.Button(secondary, text=label, command=callback)
             button.grid(row=0, column=column, padx=2)
             self.buttons[label] = button
         if self.candidate_presentation:
             self.buttons['Create project'].configure(text='New root project')
-            self.buttons['New child project'] = ttk.Button(bar, text='New child project', command=self.create_child_project)
-            self.buttons['New child project'].grid(row=3, column=0, columnspan=2, sticky='w', pady=4)
-        ttk.Label(bar, text="Week starts").grid(row=1, column=0, sticky="e", pady=(6,0))
-        self.week_selector = ttk.Combobox(bar, values=WEEKDAYS, state="disabled", width=12)
+            self.buttons['New child project'] = ttk.Button(secondary, text='New child project', command=self.create_child_project)
+            self.buttons['New child project'].grid(row=0, column=4, padx=2)
+        ttk.Label(settings, text="Week starts").grid(row=0, column=0, sticky="e", pady=(6,0))
+        self.week_selector = ttk.Combobox(settings, values=WEEKDAYS, state="disabled", width=12)
         self.week_selector.current(6)
-        self.week_selector.grid(row=1, column=1, sticky="w", pady=(6,0))
+        self.week_selector.grid(row=0, column=1, sticky="w", pady=(6,0))
         self.week_selector.bind("<<ComboboxSelected>>", self._week_changed)
         self.period = tk.StringVar(self.root, "Today")
-        self.period_selector = ttk.Combobox(bar, values=("Today", "This Week"),
+        self.period_selector = ttk.Combobox(settings, values=("Today", "This Week"),
                                           textvariable=self.period, state="readonly", width=12)
-        self.period_selector.grid(row=1, column=2, padx=4)
+        self.period_selector.grid(row=0, column=2, padx=4)
         self.period_selector.bind("<<ComboboxSelected>>", self._presentation_changed)
         self.sort_alpha = tk.BooleanVar(self.root, False)
-        self.sort_control = ttk.Checkbutton(bar, text="Sort A-Z", variable=self.sort_alpha,
+        self.sort_control = ttk.Checkbutton(settings, text="Sort A-Z", variable=self.sort_alpha,
                                             command=self._presentation_changed)
-        self.sort_control.grid(row=1, column=3)
+        self.sort_control.grid(row=0, column=3)
         self.keep_mini_open = tk.BooleanVar(self.root, False)
-        self.keep_mini_control = ttk.Checkbutton(bar, text="Keep Mini Open", variable=self.keep_mini_open)
-        self.keep_mini_control.grid(row=1, column=4, columnspan=2)
-        self.buttons['Templates...'] = ttk.Button(bar,text='Templates...',command=self.open_templates)
-        self.buttons['Templates...'].grid(row=1,column=6,padx=3)
-        self.new_task_hint = ttk.Label(bar, text='', wraplength=760)
-        self.new_task_hint.grid(row=2, column=0, columnspan=7, sticky='w', pady=(4,0))
+        self.keep_mini_control = ttk.Checkbutton(settings, text="Keep Mini Open", variable=self.keep_mini_open)
+        self.keep_mini_control.grid(row=0, column=4)
+        self.new_task_hint = ttk.Label(guidance, text='', wraplength=680)
+        self.new_task_hint.grid(row=0, column=0, sticky='w', pady=(4,0))
         self.headline = ttk.Label(self.root, text="Today: —    This week: —")
         self.headline.grid(row=1, column=0, sticky="w", padx=10)
         holder = ttk.Frame(self.root)
