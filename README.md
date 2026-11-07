@@ -90,12 +90,12 @@ Stage 0 was independently accepted at `a24aca706740b7e02cc1f856baa194042785bbcb`
 
 ## Hierarchy foundation and remaining target
 
-The delivered A–F foundation provides flat Project → Task → Subtask → Sub-subtask,
-leaf-only new time and independent Individual/Cumulative values. The newly selected
-future target permits unlimited organizational project nesting, with direct tasks
-and child projects in the same container; Customer is a use of Project, not another
-entity. Projects own no time, each task contributes once, and the three-task-level
-limit is separate from project depth. This target is not implemented in schema 3.
+The historical task-hierarchy A–F foundation used flat schema-3 Project → Task →
+Subtask → Sub-subtask. The current ordinary fresh-schema-4 runtime implements
+unlimited organizational project nesting with direct tasks and child projects in
+the same container. Customer is a use of Project, not another entity. Projects own
+no time; each task contributes once. The three-task-level limit remains independent
+of project depth. Schema 3 is historical, not a supported ordinary fallback.
 See the [requirements](docs/TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks)
 and [separate workstreams](docs/ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
 
@@ -126,9 +126,11 @@ for ordinary admission and transaction completion; malformed/unknown/incomplete 
 Main/Archived Items, root/child creation, exact project/task movement and template
 destination reviews, complete Delete scope and preserved Mini/double-click behavior.
 Connected Tk acceptance requires an available display; source alone is not widget
-or native evidence. E ordinary fresh-v4 startup/backup/restore is implemented for
-independent review. F integrated/native acceptance remains outstanding. Schema 3
-refuses unchanged; no migration/import or second worker exists.
+or native evidence. E/E1 ordinary fresh-v4 operation and F1 production integration
+are independently accepted for continued development. F2a reconciles qualification
+metadata/runbook instructions for review; native F2/F3/F4 remain outstanding and
+F2b preparation is not authorized. Schema 3 refuses unchanged; no migration/import/
+conversion or second worker exists.
 
 There are exactly two primary lifecycle actions: reversible **Archive** (Unarchive
 reverses it) and irreversible **Delete** of unused complete selected branches.

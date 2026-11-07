@@ -439,18 +439,20 @@ replace the original with the private copy. Cold inspection/backup verification 
 not recover images. Native Windows/NTFS recovery remains separately unverified.
 
 The internal schema4-candidate presentation remains test-only; ordinary startup
-explicitly selects schema4 with verified semantic/ordinary readiness. Package E's
-implementation and execution evidence require independent review. Package F native
-qualification remains outstanding. Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
+explicitly selects schema4 with verified semantic/ordinary readiness. E/E1 and F1
+production integration are accepted for continued development. F2a metadata/runbook
+preparation does not authorize F2b or native F2/F3/F4 execution. Native qualification
+remains outstanding. Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
 See the [target boundary](docs/TIMESHEET_REQUIREMENTS.md#approved-hierarchy-target-and-fresh-data-boundary).
 
 ## Main hierarchy and Move / Reparent
 
-This describes the current flat-project/task-hierarchy implementation. Unlimited
-organizational project nesting with mixed direct tasks/child projects is
-[selected future work](docs/TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks),
-not available from the current launcher. Project depth will be independent of the
-unchanged three task levels. Double-click an eligible leaf to Start, Stop the
+The ordinary launcher opens the implemented fresh-schema-4 nested interface:
+projects may contain both child projects and direct task branches, with unlimited
+organizational project depth and the unchanged three task levels. The former flat
+schema-3 interface is historical; existing v3 datasets refuse without migration,
+import or conversion. See the [current requirements](docs/TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks).
+Double-click an eligible leaf to Start, Stop the
 same running task, or atomically Switch from a different task through the existing
 request path. The actual clicked UUID controls the action; group/parent/indicator,
 header/empty and stale/archived targets do not mutate time. Pending/unverified and
@@ -459,24 +461,35 @@ layout, a shortened name, small green/red cue, Individual Today, Start/Stop and
 Show Main. It omits routine status/banner text; concise genuine diagnostics lead
 to Main. Show Main permits read-only navigation during unresolved requests when
 modal ownership allows; mutation controls remain disabled. Keep Mini Open stays
-Off/session-local. These changes await independent review and native Windows UI
-acceptance. Continue `python run_chronicle.py`; no new arguments apply.
+Off/session-local. The implemented usability is accepted for continued development;
+native Windows UI acceptance remains outstanding. Continue `python run_chronicle.py`;
+no new arguments apply.
 
-Expand Project → Task → Subtask → Sub-subtask, or the identical virtual Unassigned
-levels. Empty active projects remain visible. Sort A-Z sorts siblings without
+Expand Root Project → Child Project → Further Project → Task → Subtask →
+Sub-subtask; project depth consumes no task level. Unassigned remains one virtual
+group with three task levels. Empty active projects remain visible. Sort A-Z sorts siblings without
 flattening membership; period, selection, expansion and meaningful scroll remain
-session-local. Individual is direct work, Cumulative includes descendants; group
-and application totals never count cumulative amounts twice. Archived descendants
+session-local. Task Individual is direct work; Task Cumulative adds its task
+branch once. Project Individual is —; backend Project Direct groups immediately
+assigned task Individual, while Project Cumulative includes descendant projects.
+Application Actual sums task Individual once, never all project Cumulative rows. Archived descendants
 stay in accounting while hidden from main navigation. Parents retain direct History
 but cannot Start/Switch into new time. Running ancestors indicate a descendant's
 timer, not ownership. Main/mini share one active entry and worker report.
 
-Select an active task, then **Move / Reparent**. Review the source full path/UUID,
+Use **New root project**, or select an eligible real project and **New child
+project**, to create reviewed organizational containers. Select a project for its
+owned Project Move modal: review complete subtree/source ancestry and selected
+project-or-Root destination ancestry. Unassigned is not a project parent. One
+project move preserves attached task memberships/work; it is not task reassignment.
+
+Select an eligible task, then **Move / Reparent** for the separate Task Move modal. Review the source full path/UUID,
 descendant count and destination full path/UUID. Select a project/Unassigned for
 root placement, or an eligible task for immediate-child placement. Reasons explain
 ineligible destinations; **Confirm Move** enables only after a valid review. A same-
 destination selection is explicitly unchanged. Cancel writes nothing. The complete
-subtree/version review stays frozen; stale rejection requires closing and opening
+subtree/version and source/destination project-ancestry review stays frozen;
+stale rejection requires closing and opening
 a fresh review. No rows move before authoritative completion. Success selects the
 moved UUID and opens its destination path. New Task similarly reveals its new UUID.
 An active leaf can move without Stop/restart when B2 permits; archived descendants

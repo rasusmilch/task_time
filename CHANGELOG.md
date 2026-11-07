@@ -6,6 +6,12 @@ receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
+- Reconcile F2a qualification metadata/runbook with ordinary schema 4: source-owned
+  required-version constant, complete selected ProfileProof and portable metadata/
+  real-SQLite runbook regressions. Update current nested-project/operator guidance
+  while preserving historical F2 evidence and all collector/native safety boundaries.
+  F2b/native execution remain separately unauthorized; no application or release change.
+
 - Add Package F1 production-schema-4 qualification tests without application changes:
   exact timer process/fault boundaries, deep project grouping and active/archive
   safety, Template Apply/Delete receipt retirement and restored survivor evidence,

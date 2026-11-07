@@ -24,6 +24,8 @@ from uuid import uuid4
 
 import qualification_pytest as q
 
+ORDINARY_SCHEMA_REQUIRED = 4
+
 
 class OwnedEvents:
     """F2-only preowned append/health descriptors, independent of test patches.
@@ -620,7 +622,7 @@ def run(repo, parent, expected, limits):
             try:runtime['dependencies'][name]=importlib.metadata.version(name)
             except importlib.metadata.PackageNotFoundError:
                 runtime['dependencies'][name]=None;runtime['errors'].append('Missing installed test dependency: '+name)
-        runtime['schema_required']=3
+        runtime['schema_required']=ORDINARY_SCHEMA_REQUIRED
         q.write_json(root/'environment.json',runtime)
         if runtime['errors'] or sys.version_info<(3,11) or sqlite_version()< (3,37,0) or runtime.get('tzdata')!='2026.5':
             raise RuntimeError('BLOCKED: runtime prerequisites incomplete: '+repr(runtime))

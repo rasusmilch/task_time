@@ -1,8 +1,11 @@
-# Stage 4 Windows qualification — schema 3
+# Stage 4 Windows qualification — current ordinary schema 4
 
 This covers unattended F2 automation and separate supervised F3/F4 procedures
-for the checked-out source, not a record that they ran. Package F delivers
-portable connected tests and this native preparation.
+for the checked-out ordinary fresh-schema-4 source, not a record that native gates
+ran. E/E1 provide the existing production runtime; F1 production integration is
+independently accepted for continued development. F2a reconciles metadata and this
+runbook only. F2b native-control preparation, native F2, supervised F3 and actual
+Sleep F4 require separate authorization. Native prerequisites remain unverified.
 Stage 4 remains **IN PROGRESS**, Stage 5 **NOT STARTED**. Hardware power loss,
 external POL-R redistribution/worked-zero policy and installation/cutover remain
 separate. Never enter data into an employer/customer POL-R system during this run.
@@ -11,8 +14,8 @@ separate. Never enter data into an employer/customer POL-R system during this ru
 
 | Gate | Required evidence | Development-host status |
 | --- | --- | --- |
-| F1 | Connected schema-3 worker/SQLite and real Tk workflows, focused and full regression | Portable execution recorded in the Package F receipt; independent review required |
-| F2 | Current-revision native Windows automated collection/events/JUnit/logs, inventory, cleanup and verified delivery | Original attempt EVIDENCE_INCOMPLETE; later supported run FAIL with legacy NOT RUN; corrections require review before repeat |
+| F1 | Production schema-4 SQLite/worker integration and separately executed real Tk workflows | Independently accepted for continued development at `5b2367fd59f2ef9c001f0a01815dda52a8379339`; portable/X11 evidence only |
+| F2 | Current-revision native Windows automated collection/events/JUnit/logs, inventory, cleanup and verified delivery | NOT RUN on the present F1/F2a source; historical attempts below remain EVIDENCE_INCOMPLETE/FAIL |
 | F3 | Actual supervised Windows controls, focus, dialogs, files and restored fresh session | NOT RUN |
 | F4 | Actual Windows Sleep/resume with preserved timer and validated recovery | NOT RUN |
 
@@ -20,7 +23,8 @@ Use PASS, FAIL, BLOCKED, NOT RUN or EVIDENCE_INCOMPLETE for each scenario. PASS
 requires its observations AND supporting evidence. A required FAIL makes its gate
 FAIL; missing, skipped, blocked, not-run or invalid required evidence prevents gate
 PASS. Tool exit zero alone is insufficient. Prior-revision results (including the
-earlier Extended 657 passes/22 skips) are context, not current schema-3 acceptance.
+earlier Extended 657 passes/22 skips) are context, not current schema-4 acceptance.
+F1 portable success does not establish F2, F3 or F4 success.
 Retain each original skip reason; do not convert those limitations to passes.
 
 Stop the affected path on a defect. Record source, steps, expected/actual result,
@@ -122,7 +126,9 @@ safety. No security changes, replacement filesystem tests or waivers are authori
 
 ## F2 — separate automated runs
 
-Only after independent approval of the wrapper, run the full source regression:
+The commands below are retained for a separately authorized native run, not F2a
+execution. Only after independent F2b preparation/adjudication and explicit F2
+authorization, run the full source regression against the exact reviewed SHA:
 
 ```powershell
 & .\scripts\qualify_stage4_windows.ps1 -Repo $Repo -ExpectedRevision $Expected -OutputParent $Parent -Python $Py
@@ -132,10 +138,18 @@ Write-Host "Full wrapper exit: $FullExit"
 
 The wrapper immediately prints its NEW absolute evidence directory. `collection/`
 retains the complete original inventory. `partitions.json` assigns every node
-exactly once: SUPPORTED_RUNTIME is `tests/rewrite/` plus the supported root-launcher
-bridge `tests/test_root_launcher.py`; RETAINED_LEGACY is the finite reviewed list of
+exactly once: SUPPORTED_RUNTIME is direct `tests/rewrite/*.py` sources plus the
+approved root-launcher bridge `tests/test_root_launcher.py`; RETAINED_LEGACY is the finite reviewed list of
 other top-level Task Time modules in `stage4_qualification.py`. Unknown/new/shared
 sources remain UNCLASSIFIED and block supported qualification. No test disappears.
+The partition contains ordinary schema-4 production, candidate schema-4, explicit
+historical schema-3, pure/shared domain, collector/tooling and platform-specific
+tests. Source membership alone does not establish production schema-4 execution.
+`environment.json` records integer `schema_required: 4`, the ordinary application
+requirement, not the version of every test. Future native F2 must verify that actual
+record. A successful collector does not qualify every product/platform requirement;
+F2b must adjudicate the current-runtime native focus set, missing filesystem/recovery
+evidence and original 29-node ledger. The frozen bounded allowlists stay unchanged.
 
 `supported-runtime/` and `retained-legacy/` are separate owned sessions, each with
 its own selected inventory, command/pytest arguments, fresh basetemp, manifest,
@@ -166,6 +180,14 @@ source/fixture metadata rules, never reason-text substring waivers. Recognized P
 mechanisms on Windows are inapplicable with native replacement gates still required.
 Unknown skips, module collection skips, xfail/xpass or unavailable required desktop/
 filesystem capability prevent supported PASS. No blanket symlink/privilege waiver.
+All original 29 filesystem skips remain unwaived; their individual source-bound
+ledger is required, never reconstructed from counts. F1's 505 portable skips are
+not that ledger. APPLICABLE must execute; INAPPLICABLE requires an identified
+replacement; BLOCKED_REQUIRED lacks a required capability; UNRESOLVED lacks a
+reviewed disposition. F2a assigns no new classifications. The POSIX-only runtime4
+journal-unlink fixture remains POSIX evidence. No Windows replacement is authorized
+here. Actual NTFS identity, sharing, hard links/reparse points, private recovery
+and cleanup require F2b/F2 evidence; Linux execution cannot close those gates.
 
 For the focused native reproductions, use a NEW task-owned temporary path and retain
 raw output/JUnit before the full wrapper. Use an already active, unlocked Windows 11
@@ -189,8 +211,12 @@ No production selection/rendering or focus behavior is changed.
 
 ### Unattended native focus characterization
 
-Only after review, use the approved interpreter/source and the existing disposable
-`$Q`; this does not execute or qualify complete F2/F3. Record `$Expected`, runtime,
+These six authorized cases are historical schema-3 native controls. They do not
+automatically qualify the ordinary schema-4 GUI. A current-schema-4 native focus
+set requires separate F2b approval of exact nodes; F2a adds no node or authorization.
+
+Only after separate execution review, use the approved interpreter/source and
+the existing disposable `$Q`; this does not execute or qualify complete F2/F3. Record `$Expected`, runtime,
 console command, UTC action times and the resulting console transcript/JUnit. Run
 the six cases serially together with the focused controls, without manual activation.
 The test-only `win32_focus.py` driver is registered by the existing root fixture
@@ -210,8 +236,8 @@ $CaseExit = $LASTEXITCODE
 ```
 
 Confirm exact nodes against focused `--collect-only` output. The driver verifies live
-Tk/native identities, owned window markers against HWND reuse, PID/GUI thread,
-active/unlocked session and normal input desktop, visibility/enabled/cloaking,
+Tk/native identities, owned window markers against HWND reuse, exact process/thread
+and Job membership, active/unlocked session and normal input desktop, visibility/enabled/cloaking,
 mouse/modifier/capture/menu state and an unobstructed non-client caption point.
 Caption hit testing runs on a separate GUI-free observation thread: same-input-queue
 `SendMessageTimeout` does not enforce its timeout. Tk keeps pumping within the
@@ -302,6 +328,9 @@ the operator's ordinary app or infer power-loss safety from process termination.
 ## F3 — first-run and source setup
 
 Each numbered row below needs its own worksheet entry and timestamp. Use only $Q.
+These are future supervised ordinary schema-4 scenarios, not F2a observations.
+Keep one Tk root, one production worker/store and DatasetLock exclusion. Creation
+is fresh only: no migration/import, schema selector or incompatible-data repair.
 
 1. Reserve `$LauncherProfile = Join-Path $Q 'isolated launcher profile'` as a new directory.
    Confirm it contains no Chronicle selection/data. Temporarily set LOCALAPPDATA
@@ -348,7 +377,15 @@ $Engineering = Join-Path $Q 'engineering source dataset'
    refusal before restore reservation. No operator may select an old PERSONAL
    dataset for this test. If separate manual v1/v2 images are not supplied as
    qualification-owned fixtures, record the manual case NOT RUN, citing automated
-   source-backed evidence separately. No conversion or replacement is allowed.
+   source-backed evidence separately. Also use a CLEAN disposable schema-3 image
+   supplied only by separately authorized test infrastructure, never a personal or
+   production dataset. With isolated remembered selection pointing to it, ordinary
+   schema-4 Open must refuse; compare original database bytes/identity/metadata and
+   remembered selection before/after. No replacement dataset or migration/import
+   offer may appear. If no authorized image is supplied, record this required case
+   BLOCKED/NOT RUN; do not create it by editing schema markers. A hot schema-3
+   original requires separate approved native fixture/F2 evidence. Never manufacture
+   or edit a rollback journal. Refusal is expected protection, not an error to repair.
 
 ## F3 — connected main, templates and recording
 
@@ -356,21 +393,39 @@ Use $Data throughout; launch with `& $Py -B .\run_chronicle.py --data-dir "$Data
 Use actual mouse/keyboard for all UI claims. Record generated UUIDs from review/
 History fields or the cold evidence snapshot below. Names are never identity.
 
-1. **Create project**: create Alpha, Beta and Empty. Select Alpha, **New Task**: Design.
-   Select Design, **Add date-only work**: keep the form's actual dataset-local
-   date (record it), 0:10, comment parent-before-child. This permits today's main
-   Individual/Cumulative observation without changing the machine clock.
-   Save. Select Design, **New Task**: Circuit; select Circuit, **New Task**: Routing.
-   The destination review must show each immediate parent path. A fourth level is
-   disabled/explained. Create another root named Routing in Beta and an Unassigned
-   root General (select Unassigned before New Task). Select Empty, **Rename project**
-   to Empty renamed; select Beta's Routing, **Rename task** to Routing reference.
-   Both retain UUIDs; the renamed empty project stays visible.
-2. Expand/collapse all three levels, choose **Sort A-Z**, toggle **Today / This Week**.
-   Retain selected UUID and open state; no flicker/row reconstruction on unchanged
-   minute refresh. Parent Individual includes its own prior 00:10 for Today; Cumulative adds
-   descendants once. Historical October dates appear in the corresponding History/
-   Custom report, not falsely in today's total. Groups are organizational placeholders.
+1. Use **New root project** for Alpha, Beta and Empty. Select Alpha and use
+   **New child project** for Assembly; beneath it create Board, then Validation.
+   Review each full parent ancestry, UUID and version before accepting the name.
+   The structure is Alpha → Assembly → Board → Validation (four project levels),
+   plus separate roots Beta and Empty. Select Alpha, **New Task**: Design. Record
+   0:10 date-only work on the form's actual dataset-local date (record that date),
+   comment parent-before-child. Select Validation and create a separate direct leaf
+   with 0:20 on that same local date. No host-clock change. Projects own no time.
+   Select Design, **New Task**: Circuit; select Circuit, **New Task**: Routing.
+   Full UUID paths distinguish organizational ancestry from these three task levels;
+   a fourth task level must refuse. Create another Routing root task in Beta and
+   General under virtual Unassigned; duplicate names are distinct UUIDs, never a
+   lookup key. Empty remains visible. Rename it Empty renamed, and Beta's Routing
+   to Routing reference without changing either UUID. Customer grouping is an
+   ordinary Project use, not another entity.
+2. Expand/collapse both project and task depths, choose **Sort A-Z**, toggle
+   **Today / This Week**. Sorting stays among siblings; selected UUID, expansion
+   and meaningful scroll survive refresh. Task Individual is its direct work;
+   Task Cumulative includes its task descendants once. Project Individual is **—**,
+   not project-owned work. Backend Project Direct sums Individual contributions
+   immediately assigned to that project; Project Cumulative includes descendant
+   projects without duplication. Application Actual sums task Individual once,
+   never all project Cumulative rows. Collapsing a branch changes no totals.
+   Before other work below, independently verify Design10 + deep leaf20 =30 minutes
+   application contribution; Alpha Direct10/Cumulative30; Validation Direct20;
+   Beta Cumulative0. Preserve complete task-owned facts/UUIDs/work/revisions.
+   Select the Assembly PROJECT and **Move / Reparent** to Beta, reviewing its whole
+   subtree and both complete ancestries. This is one project-subtree Request,
+   not repeated task reassignment. After completion: Alpha Cumulative10, Beta20;
+   task Individual, Project Direct, application30 and work/revisions unchanged.
+   Record this isolated comparison before later worksheet work changes totals.
+   Active-path expansion includes all project/task ancestors; historical October
+   work belongs in its matching History/Custom report, not fabricated Today values.
 3. Select Routing leaf under Circuit: **Start**, select General: **Switch**, then
    **Stop** after a short observed interval. There is exactly one active entry.
    Parent cannot Start/Switch into new work; Stop with a project selected still
@@ -390,24 +445,44 @@ History fields or the cold evidence snapshot below. Names are never identity.
    that child beneath Documentation, and reorder the two roots with Up/Down. Keep
    maximum template depth two. Cancel once and verify no definition version change;
    repeat and Save the real edit. **Duplicate** as Board copy; node UUIDs independent.
-   Select Alpha; apply Board, reviewing full destination and mapping; apply again
+   Select the deep Validation PROJECT (now under Beta/Assembly/Board); Apply Board,
+   reviewing full destination ancestry/versions, template/version/definition and
+   ordered fresh node-to-task mapping; apply again
    under General (level one plus this depth-two blueprint fits level three).
    Fresh task UUIDs, no copied time, no parent bump.
    Later editing the definition leaves instances unchanged. Active name collision
    trim/casefold refuses; duplicate task names remain valid.
-7. In the Alpha instance add 0:01 date-only work today to Validation. Select its
-   Documentation parent: **Move / Reparent**, review source UUID/path/descendant
-   count, choose Beta root, **Confirm Move**. UUID/direct work unchanged, grouping
-   and Cumulative change once; selection follows moved identity. Cancel another
-   review without movement. Self/descendant/depth-overflow/running-parent destinations
-   refuse. Move a running leaf only while it stays a leaf; identity/start cannot change.
-8. On a nonrunning applied branch, **Archive** its Validation child first (record
-   its own timestamp), then Archive its root. Main hides descendants; accounting retains them.
-   **Archived Items** expands original tree; exercise four sort choices, select
-   direct **Work History**, **Unarchive** explicit parent. Independently archived
-   child remains archived. Unarchive that child separately. Archiving a
-   running-containing branch refuses without Stop.
-9. **Delete** a new unused branch: inspect complete counts/dependencies, Cancel first,
+7. Keep Project Move and Task Move separate. The Assembly PROJECT move in step 2
+   uses the owned project modal: complete selected project/task scope and source
+   ancestry, permitted destination project or Root and complete destination ancestry,
+   then one Request. Attached task UUIDs/work remain; only approved organizational
+   relationships change. Self/descendant/cycle, stale or archived targets refuse;
+   a fully valid same-parent no-op has no receipt. Unassigned is not a project parent.
+   For TASK Move, add 0:01 today to the applied Validation TASK, select its
+   Documentation task parent and **Move / Reparent**. The existing task modal reviews
+   the exact task branch, UUIDs/versions and source/destination project ancestries.
+   Choose Beta project root; Confirm Move. Identity/direct work remain, grouping
+   changes once and selection follows the UUID. Cancel a second review without writes.
+   Task self/descendant/depth-overflow/running-parent/archived destinations refuse;
+   a permitted active-leaf move preserves entry UUID/start. Neither operation copies
+   work or creates another recording authority. Cite automated stale-review evidence
+   where modal exclusion prevents an interactive stale setup; never bypass that guard.
+   Retain D1a authoritative result settlement and Close protections after completion,
+   including presentation errors; accepted/unverified work remains app-owned.
+8. On a nonrunning applied branch, Archive its Validation task first, then its
+   root. Also Archive a qualification-owned nested project. Only the selected
+   explicit flag/accepted timestamp changes; descendants inherit effective state,
+   not rewritten flags. Active descendants block ancestor Archive without implicit
+   Stop/Switch. Main hides archived branches; historical accounting remains.
+   **Archived Items** retains original project/task ancestry and read-only context
+   rows. Identify the nearest explicit archive source UUID/date in dataset timezone
+   with actual offset. Exercise Name—A to Z, Name—Z to A, Date Archived—Newest first
+   (default), Date Archived—Oldest first, among siblings. Context/inherited-only
+   rows cannot clear an ancestor. Unarchive explicit ancestor; an independently
+   archived child stays archived until separately unarchived. Direct task History
+   stays available; no archived recording control is introduced.
+9. **Delete** a qualification-owned unused nested project/task branch: inspect the
+   entire descendant project/task closure, counts and dependency/retirement review, Cancel first,
    then typed DELETE on that SAME disposable branch. It disappears irreversibly,
    no Trash/Restore. Protected Design/work/applied partial-batch Delete must refuse.
    Create a new Batch only project and Apply Board there, without work. Delete of
@@ -415,7 +490,11 @@ History fields or the cold evidence snapshot below. Names are never identity.
    Delete of the whole otherwise-unused Batch only project may commit after full
    review. Retain the protected instance. Template definition Delete after Apply must preserve instances
    and frozen Apply/Duplicate snapshots. No Delete retry on uncertain outcome: inspect
-   current presence, record historical UNVERIFIED, explicitly exit/reopen.
+   current presence only (not historical outcome proof), record historical UNVERIFIED,
+   explicitly exit/reopen and obtain a fresh review/typed confirmation. Delete stores
+   no receipt. Work, retained/deleted revisions, frozen export/project references,
+   confirmations including zero and whole-Apply dependencies block unsafe removal.
+   No soft Delete, Trash, tombstone or erased-history recovery promise exists.
 
 ## F3 — History, frozen reports and POL-R
 
@@ -425,7 +504,11 @@ History fields or the cold evidence snapshot below. Names are never identity.
    Work History must show real endpoints vs endpoint-free declared work. Set **All**
    when current week excludes these dates. Edit timed end to 09:30; Details retains
    both revisions. Delete a disposable closed entry, confirm, inspect retained deleted
-   revision. Parent History lists direct work only, not child entries.
+   revision. Parent History lists direct work only, not child entries. Check full
+   date/time direction: newest date/latest UTC segment first or oldest/earliest
+   first, deterministic UUID ties, date-only after timed without invented clocks.
+   Multi-day portions retain one entry/revision identity; repeated DST clocks use
+   UTC endpoints and existing offset text, not HH:MM string sorting.
 2. **Week starts** Monday. **Timesheet / POL-R** → Custom October 19–25, All tasks,
    **Preview**. Exact task/day Actual vs decimal hundredths vs suggested quarters
    remain distinct. Quarter example Monday/Tuesday suggestions 0.25/0.00, Actual
@@ -439,6 +522,11 @@ History fields or the cold evidence snapshot below. Names are never identity.
    ordinary Save/Retry must not overwrite. **Overwrite** defaults No. Only explicitly
    approve replacement of that disposable sentinel; original registered evidence stays
    fixed. Record native chooser and confirmation observations, not just file existence.
+   Frozen task scope, full seven-day basis and saved labels/bytes never expand by
+   project ancestry. After closing the modal, an otherwise eligible later project
+   Move may change live grouping; reload and verify the original report bytes and
+   TaskLabel project UUID/name remain unchanged. Registration and external Save are
+   distinct; no automatic replacement or rewritten frozen path is allowed.
 4. **Review POL-R Confirmation**: positives selected by default; choose only Quarter
    example Monday and explicitly check its Tuesday zero. Leave Unknown unchecked.
    **Confirm checked** records absolute 0.25 and 0.00; unchecked work remains Unknown.
@@ -458,6 +546,14 @@ History fields or the cold evidence snapshot below. Names are never identity.
    mismatches never become complete coverage just because weekly sums agree. Stale
    confirmation review requires fresh prior review and individual stale acknowledgement.
    **Defer / Review later** does not confirm. Read-only views create no work.
+   Keep independent C–G controls (Monday/Tuesday Actual → quarter counts; adjustment):
+   C 1:08/1:07 →5/4,0min; D 1:08/1:08 →5/5,+14min;
+   E 1:10/0:20 →5/1,0min; F 0:03/0:03 →1/0,+9min;
+   G 0:15/0:30 →1/2,0min. Do not derive these expectations from displayed decimals.
+   For a separate 1:15/0:45 task, confirm4/4 quarters: suggested gaps+1/−1 remain
+   MISMATCH/MISMATCH despite equal weekly eight-quarter totals. Explicit zero has
+   a batch/current reference; Unknown is not a numeric zero. Existing arithmetic,
+   precision, formatting and external-policy limits are unchanged.
 7. Reminders check previous week on a used day and current week Monday/Friday. With
    outstanding work in one applicable period, observe banner, **Open Timesheet** and
    **Dismiss for today**; opening/saving alone must not dismiss. Dismiss writes only
@@ -468,20 +564,28 @@ History fields or the cold evidence snapshot below. Names are never identity.
 
 ## F3 — modal worksheet and backup/fresh session
 
-For New Task name, Move/Reparent, History correction/calendar, Timesheet preview,
-source/manual confirmation, backup chooser, Delete, template editor/Apply/Delete:
+For New Task name, frozen New child project destination/name, Project Move review,
+Task Move review, full nested Delete, deep-project Template Apply, History
+correction/calendar, Timesheet preview, source/manual confirmation, backup chooser
+and template editor/definition Delete:
 open with pointer/keyboard, type, verify blocked main/mini mutation, Escape/Cancel
 where supported, ordinary close/reopen, no double acceptance, focus return to LIVE
 origin, no stuck local grab. Archived Items/Templates are MODELESS; their operations
 may open owned modals. Record per-window actual outcomes, unexpected dialogs and
-OS focus/topmost behavior. Never answer an unknown security/file dialog automatically.
+OS focus/topmost behavior. Keep compact Mini controls/size and the existing
+topmost policy; one root, worker, modal owner and accepted Request remain. Pending/
+unverified guards prevent unrelated mutation and double submission. Never answer
+an unknown security/file dialog automatically.
 
 1. Start a legitimate leaf timer and record its UUID/start. **Backup Chronicle** →
    **Choose destination** $Backup → **Create Backup**. Require verified completion,
    responsive GUI, same active identity, no fabricated Stop. Canceling chooser does
-   nothing; existing backup target refuses. Close dialog and app normally.
+   nothing; existing backup target refuses. This uses the existing worker-owned
+   consistent SQLite backup, never a direct copy of a live main file. Close dialog
+   and original app/worker normally before the restored session.
 2. Cold commands; no Tk/worker should start during verify/restore. $Restored MUST
-   not exist; cold inspect only after closing all owners:
+   not exist; use the current schema-4 image validator; cold inspect only after
+   closing all owners. Protected paths and non-overwriting publication remain:
 
 ```powershell
 & $Py -B .\run_chronicle.py --inspect-dataset "$Data"
@@ -533,29 +637,37 @@ alone. The inspector supplies complete Chronicle validation. Synchronous/FK are
 connection-local: read-only PRAGMA defaults do not prove Chronicle's runtime profile.
 F2 schema/worker tests verify DELETE/3/1 on the actual owning production connection.
 For an additional operator profile proof after closing the UI, run the production
-owner on this disposable directory, record it, then close; never open alongside UI:
+owner on this operator-reviewed disposable directory, record it, then close.
+All GUI/worker owners of that directory MUST be closed first. ProfileProof opens
+and closes one new task-owned production profile session; never run it alongside
+the app or on personal data. It supplements, never replaces, native F2/F3 evidence:
 
 ```powershell
 $ProfileProof = @'
-import sys
+import sys,json
 sys.path.insert(0,'src')
 from chronicle.sqlite_store import SQLiteStore
-s=SQLiteStore(sys.argv[1])
+s=SQLiteStore(sys.argv[1],schema_version=4)
 try:
- print(s.dataset_id,s.timezone,s.info)
- for pragma in ('journal_mode','synchronous','foreign_keys','user_version','application_id'):
-  print(pragma,s.connection.execute('pragma '+pragma).fetchone()[0])
- s._verify_complete(s.connection)
+ if s.schema_version!=4:raise ValueError('Profile proof requires ordinary schema 4')
+ profile={pragma:s.connection.execute('pragma '+pragma).fetchone()[0]
+          for pragma in ('application_id','user_version','journal_mode','synchronous','foreign_keys')}
+ required=dict(application_id=0x4348524E,user_version=4,journal_mode='delete',synchronous=3,foreign_keys=1)
+ if profile!=required:raise ValueError('Profile mismatch: '+repr(profile))
+ s._verify_selected(s.connection)
+ print(json.dumps(dict(dataset_id=s.dataset_id,timezone=s.timezone,schema_version=s.schema_version,
+                       profile=profile,runtime=s.info,complete_verified=True)))
 finally:s.close()
 '@
 & $Py -B -c $ProfileProof "$Data"
+if ($LASTEXITCODE -ne 0) { throw 'ProfileProof refused or failed; preserve diagnostics' }
 ```
 
 ## F4 — actual Windows Sleep/resume (separate gate)
 
 1. Record policy permission, machine/VM sleep capability and source. Use a NEW
    `$SleepData = Join-Path $Q 'actual sleep dataset'`, explicit create command with
-   America/Chicago. Create one leaf Sleep test. Start it normally. Record wall clock,
+   America/Chicago, fresh schema 4. Create one leaf Sleep test. Start it normally. Record wall clock,
    displayed task and accepted entry UUID/start from read-only active facts while
    idle (never read the actively locked lock byte). No second writable owner.
 2. Initiate normal **Windows Start → Power → Sleep manually**. Do not run a sleep,
@@ -593,7 +705,7 @@ only synthetic names. A checked box or a ZIP filename alone proves no integrity.
 
 | Section | Scenario inventory | Result before execution |
 | --- | --- | --- |
-| F2 | Runtime/source, full inventory/partitioned regression, MetadataProbe and authorized bounded scopes, hot journal, NTFS/locks/files, v1/v2 refusal | Original attempt EVIDENCE_INCOMPLETE; later F2 FAIL / legacy NOT RUN; corrective repeat pending review |
+| F2 | Exact current source/inventory/partitions, native prerequisites, approved focus, NTFS/locks/files, private hot recovery and incompatible-data preservation | Current F1/F2a source NOT RUN; historical attempt EVIDENCE_INCOMPLETE and later FAIL remain unchanged; F2b required before execution |
 | F3 | First-run 1–4; main/templates/recording 1–9; History/report/POL-R 1–7; each modal; backup/fresh session 1–3 | NOT RUN |
 | F4 | Real Sleep/resume 1–5, exact stopped work and reopen | NOT RUN |
 

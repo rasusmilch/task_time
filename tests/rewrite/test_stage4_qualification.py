@@ -713,3 +713,117 @@ def test_real_inventory_order_only_difference_does_not_refuse_execution(tmp_path
     evidence=f.q.validate_test_evidence(root,0,0)
     assert evidence['status']=='COMPLETE' and evidence['counts']==dict(passed=2)
     assert not (root/'inventory-mismatch.json').exists()
+
+
+def test_ordinary_schema_metadata_uses_actual_run_write_path_without_windows_execution(tmp_path):
+    """Execute only run's real metadata statements, never its native entrypoint."""
+    import ast
+    from copy import deepcopy
+    from datetime import datetime,timezone
+    source=(SCRIPTS/'stage4_qualification.py').read_text()
+    tree=ast.parse(source)
+    run=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='run')
+    constant=next(n for n in tree.body if isinstance(n,ast.Assign)
+        and any(isinstance(t,ast.Name) and t.id=='ORDINARY_SCHEMA_REQUIRED' for t in n.targets))
+    assert type(ast.literal_eval(constant.value)) is int and ast.literal_eval(constant.value)==4
+    assert type(f.ORDINARY_SCHEMA_REQUIRED) is int and f.ORDINARY_SCHEMA_REQUIRED==4
+    assignments=[n for n in ast.walk(run) if isinstance(n,ast.Assign) and any(
+        isinstance(t,ast.Subscript) and isinstance(t.value,ast.Name) and t.value.id=='runtime'
+        and isinstance(t.slice,ast.Constant) and t.slice.value=='schema_required' for t in n.targets)]
+    assert len(assignments)==1
+    assignment=assignments[0]
+    assert isinstance(assignment.value,ast.Name) and assignment.value.id=='ORDINARY_SCHEMA_REQUIRED'
+    writes=[n for n in ast.walk(run) if isinstance(n,ast.Expr) and isinstance(n.value,ast.Call)
+        and isinstance(n.value.func,ast.Attribute) and ast.unparse(n.value.func)=='q.write_json'
+        and len(n.value.args)==2 and ast.unparse(n.value.args[0])=="root / 'environment.json'"]
+    assert len(writes)==1 and ast.unparse(writes[0].value.args[1])=='runtime'
+    assert assignment.lineno<writes[0].lineno
+    raw_statement=next(n for n in run.body if isinstance(n,ast.Assign)
+        and any(isinstance(t,ast.Name) and t.id=='raw' for t in n.targets))
+    repo=SCRIPTS.parent
+    # This authentic historical node stays in its existing source partition.
+    historical=repo/'tests/rewrite/test_package_f_integration.py'
+    historical_tree=ast.parse(historical.read_text())
+    assert any(isinstance(n,ast.keyword) and n.arg=='schema_version'
+        and isinstance(n.value,ast.Constant) and n.value.value==3 for n in ast.walk(historical_tree))
+    inventory=[dict(nodeid='tests/rewrite/test_package_f_integration.py::test_complete_hierarchy_template_record_report_confirm_correct_backup_restore',
+                    source_path=str(historical))]
+    partitions=f.partition_inventory(inventory,repo);before_partitions=deepcopy(partitions)
+    assert len(partitions['SUPPORTED_RUNTIME'])==1 and not partitions['UNCLASSIFIED']
+    runtime=dict(python='portable observation sentinel',sqlite='preserved',errors=[],dependencies={'pytest':'unchanged'})
+    original=deepcopy(runtime)
+    namespace=dict(runtime=runtime,root=tmp_path,ORDINARY_SCHEMA_REQUIRED=f.ORDINARY_SCHEMA_REQUIRED,
+                   q=f.q,expected='a'*40,datetime=datetime,timezone=timezone)
+    exec(compile(ast.Module(body=[raw_statement],type_ignores=[]),'<actual run status initialization>','exec'),namespace)
+    raw=deepcopy(namespace['raw'])
+    exec(compile(ast.Module(body=[assignment,writes[0]],type_ignores=[]),'<actual run metadata write>','exec'),namespace)
+    written=json.loads((tmp_path/'environment.json').read_text())
+    assert written==dict(original,schema_required=4) and type(written['schema_required']) is int
+    assert namespace['raw']==raw and raw['automated_status']=='BLOCKED'
+    assert raw['F2']==raw['F3']==raw['F4']=='NOT RUN'
+    assert f.partition_inventory(inventory,repo)==before_partitions
+    # A fresh collector import cannot consult a store/worker, even dynamically.
+    code='''import importlib.abc,sys
+class Forbidden(importlib.abc.MetaPathFinder):
+ def find_spec(self,fullname,*args):
+  if fullname.split('.')[0]=='chronicle':raise AssertionError('Collector attempted a production import: '+fullname)
+sys.meta_path.insert(0,Forbidden());sys.path.insert(0,sys.argv[1])
+import stage4_qualification as collector
+assert type(collector.ORDINARY_SCHEMA_REQUIRED) is int
+assert collector.ORDINARY_SCHEMA_REQUIRED==4
+print('metadata-only collector import; no production module')
+'''
+    from test_qualification_collector import capture_process
+    capture=tmp_path/'collector-import';capture.mkdir()
+    result=capture_process([sys.executable,'-B','-c',code,str(SCRIPTS)],capture,cwd=repo)
+    assert result.returncode==0,result.stderr
+    assert 'metadata-only collector import' in result.stdout
+
+
+@pytest.mark.parametrize('schema_version',[4,3])
+def test_runbook_profile_proof_executes_actual_selected_verifier_and_preserves_source(tmp_path,schema_version):
+    """Portable Python/SQLite behavior, not PowerShell or native NTFS evidence."""
+    import ast
+    import hashlib
+    from chronicle.sqlite_store import SQLiteStore
+    from chronicle.timesheet_files import metadata
+    from runtime4_cases import Runtime
+    from test_qualification_collector import capture_process
+    repo=SCRIPTS.parent
+    runbook=(repo/'docs/WINDOWS_OPERATOR_QUALIFICATION.md').read_text()
+    opener="$ProfileProof = @'\n"
+    assert runbook.count(opener)==1
+    code=runbook.split(opener,1)[1].split("\n'@",1)[0]
+    compile(code,'<extracted runbook ProfileProof>','exec')
+    tree=ast.parse(code)
+    stores=[n for n in ast.walk(tree) if isinstance(n,ast.Call) and isinstance(n.func,ast.Name) and n.func.id=='SQLiteStore']
+    assert len(stores)==1
+    assert any(k.arg=='schema_version' and isinstance(k.value,ast.Constant) and type(k.value.value) is int
+               and k.value.value==4 for k in stores[0].keywords)
+    selected=[n for n in ast.walk(tree) if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and n.func.attr=='_verify_selected']
+    assert len(selected)==1 and ast.unparse(selected[0])=='s._verify_selected(s.connection)'
+    assert not any(isinstance(n,ast.Attribute) and n.attr=='_verify_complete' for n in ast.walk(tree))
+    directory=tmp_path/'disposable dataset'
+    store=SQLiteStore(directory,create=True,timezone='America/Chicago',schema_version=schema_version)
+    identity=store.dataset_id
+    try:
+        if schema_version==4:Runtime(store).project(name='Complete retained creation receipt')
+    finally:store.close()
+    path=directory/'chronicle.sqlite3'
+    def observed():return {p.name:dict(bytes_hex=p.read_bytes().hex(),metadata=metadata(p.stat())) for p in directory.iterdir()}
+    before=observed();script=tmp_path/'actual ProfileProof.py';script.write_text(code)
+    capture=tmp_path/'capture';capture.mkdir()
+    result=capture_process([sys.executable,'-B',str(script),str(directory)],capture,cwd=repo)
+    if schema_version==4:
+        assert result.returncode==0,result.stderr
+        report=json.loads(result.stdout)
+        assert report['dataset_id']==identity and report['schema_version']==4 and report['complete_verified'] is True
+        assert report['profile']==dict(application_id=0x4348524E,user_version=4,journal_mode='delete',synchronous=3,foreign_keys=1)
+    else:
+        assert result.returncode!=0 and 'require schema 4' in result.stderr
+        assert '"complete_verified": true' not in result.stdout
+    assert observed()==before and path.is_file()
+    assert sorted(p.name for p in tmp_path.iterdir())==['actual ProfileProof.py','capture','disposable dataset']
+    (tmp_path/'profile-proof.json').write_text(json.dumps(dict(schema=schema_version,command=result.args,
+        exit_code=result.returncode,stdout=result.stdout,stderr=result.stderr,source_sha256=hashlib.sha256(code.encode()).hexdigest(),
+        before=before,after=observed(),portable_python_only=True),indent=2)+'\n')

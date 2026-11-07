@@ -27,11 +27,13 @@ development (schema 1 at that acceptance). Stage 4 remains IN PROGRESS; native
 qualification is incomplete and Stage 5 is not started. Earlier
 Qt/PySide6 and nested correction/global pending-retry plans are superseded, not fallback implementation instructions.
 
-The accepted A/B1/B2/C1/C2/D foundation is retained. Package E implements fresh
-schema 3 and reusable templates, independently reviewed under the F GO, with application ID
-0x4348524E unchanged. Versions 1/2 are incompatible and never migrated, replaced or
-adopted through a compatibility mode. F adds qualification evidence and tooling;
-native qualification remains separate.
+The accepted historical task-hierarchy A/B1/B2/C1/C2/D foundation is retained.
+That earlier Package E implemented fresh schema 3 and reusable templates,
+independently reviewed under its F GO, with application ID 0x4348524E unchanged.
+The separate project-nesting Package E/E1 now supplies ordinary fresh schema 4
+through the same production owners. Versions 1/2/3 refuse ordinary use without
+migration, replacement or fallback. F1 portable integration is accepted for continued
+development; F2a qualification reconciliation does not establish native acceptance.
 
 Package F tests connect the existing authorities on one disposable dataset:
 worker recording/template/hierarchy → frozen registration/protected publication →
@@ -213,9 +215,10 @@ power-loss, hostile-filesystem or concurrent-writer guarantee.
 New databases start in DELETE mode. A rollback journal may exist during a write;
 orderly DELETE commit removes it. Never delete journals/sidecars as application
 cleanup. Development datasets are disposable, but incompatible/damaged/unknown
-files are refused, not recreated, repaired or converted. No production SQLite
-datasets exist; no migration or old-schema compatibility is provided. The executing
-schema is now exactly 2. Schema-1 files/backups refuse and remain protected.
+files are refused, not recreated, repaired or converted. The current ordinary
+runtime requires exact fresh schema 4; versions 1/2/3 datasets/backups refuse and
+remain protected. Earlier task-hierarchy schema-2/3 delivery is historical, not a
+current compatibility mode. No migration/import/conversion is provided.
 Cold compatibility inspection below is diagnostic only, not a conversion route.
 
 Stage 4A implements online consistent backup on the existing worker-owned source

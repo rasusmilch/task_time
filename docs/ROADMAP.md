@@ -274,7 +274,7 @@ usability implementation grants no project-schema or qualification approval:
 | Workstream | Bounded scope and dependencies |
 | --- | --- |
 | A — Immediate pilot usability | Implemented for independent review: clicked-leaf Start/Stop/one atomic Switch through existing request paths, and compact Mini with a small state indicator and typed actionable diagnostics. ChatGPT resolves the former different-active-task decision as atomic Switch. Normal layout targets about 280x125, accommodating fonts/DPI and diagnostic height. Modal, uncertainty and duplicate-input protection remain. Native Windows layout/input acceptance is outstanding; no project schema change is implied. |
-| B — Unlimited organizational projects | Fresh schema 4 selected. A/B/C1/C2 and D/E/E1, including D1/D1a/D1b, are accepted for continued development. F1 adds production integration qualification for independent review; F2a preparation and native F2/F3/F4 remain separately unauthorized. Ordinary runtime stayed v3 during A/B/C1/C2 and now selects fresh v4. No migration/import, Customer entity, project-owned work or task-depth change. |
+| B — Unlimited organizational projects | Fresh schema 4 selected. A/B/C1/C2 and D/E/E1, including D1/D1a/D1b, are accepted for continued development. F1 production integration is independently accepted for continued development; F2a metadata/runbook reconciliation is the approved current preparation task. F2b and native F2/F3/F4 remain separately unauthorized/unexecuted. Ordinary runtime stayed v3 during A/B/C1/C2 and now selects fresh v4. No migration/import, Customer entity, project-owned work or task-depth change. |
 
 Complete structural project nesting before a longer pilot that depends on
 organizing real customer work. Do not discard, overwrite, convert or recreate
@@ -293,12 +293,13 @@ The revised project-nesting packages are separate from historical A–F above:
 | C2 | Implemented candidate backend for independent review: complete semantic/protected/frozen/POL-R/configuration/template evidence verification, ancestry-reviewed task/template operations, nested unused-only Delete with finite retirement and no-retry uncertainty, complete surviving history and coordinated backend read projections. No ordinary v4 worker/startup, GUI or backup/restore activation. |
 | D | Candidate graphical source implemented for independent review: same ChronicleApp/root, explicit internal profile, iterative nested Main/Archived Items, exact creation/movement/template destination reviews and full Delete presentation. Test-owned C2 Message bridge only; connected Tk requires an available display. No ordinary v4 activation. |
 | E | Implemented for independent review: fresh v4 activation through the existing worker/store/StartupWindow, production readiness, full semantic admission, owned private paired-journal preflight, exact reconciliation, backup/cold verification/restore and shutdown. Incompatible originals remain untouched. No conversion workflow. Native qualification is not claimed. |
-| F | F1 production schema-4 integrated qualification tests implemented for independent review: four timer interruption/fault families, deep grouping/lifecycle, Template Apply/Delete survivor evidence, temporal restart, independent C–G and reconciliation/reminders, ordinary fresh-root GUI backup/restore and protected setup refusal. Execution receipts own actual results and limitations. F2a collector/runbook reconciliation, automated native F2, supervised F3 and actual Sleep F4 remain separate subsequent gates. |
+| F | F1 production schema-4 integrated qualification independently accepted for continued development at `5b2367fd59f2ef9c001f0a01815dda52a8379339`: four timer interruption/fault families, deep grouping/lifecycle, Template Apply/Delete survivor evidence, temporal restart, independent C–G and reconciliation/reminders, ordinary fresh-root GUI backup/restore and protected setup refusal. Execution receipts own actual results and limitations. F2a is the current approved metadata/runbook preparation only; F2b native-node/filesystem/ledger preparation requires separate approval. Automated native F2, supervised F3 and actual Sleep F4 remain NOT RUN on current source. |
 
 A did not activate a partial v4 application. Accepted B–D feed E's ordinary production
-integration and E1's unresolved-request isolation. F1 executes only the approved
-production integration contracts without program changes. Its published source and
-evidence require independent review before F2a preparation can be authorized.
+integration and E1's unresolved-request isolation. F1's published production
+integration source/evidence is independently accepted for continued development.
+F2a corrects only qualification metadata, runbook verification and identified
+current-status text; independent review precedes any separate F2b authorization.
 F supplies distinct integrated/native gates; portable candidate tests cannot close
 ordinary-runtime, Windows or operator/Sleep gates by substitution.
 Outstanding native qualification remains a separate gate; this documentation does

@@ -156,8 +156,9 @@ preserved, and X11 execution does not establish native Windows acceptance.
 Tk callbacks and XTest controls remain distinct from native
 Windows qualification. Demonstrable D1 fixture corrections (UUID shadowing and
 waiting before initial Timesheet dispatch) retain their behavioral assertions.
-Package E/E1 and D1/D1a/D1b are accepted for continued development. Package F1
-authorizes production integration tests only; F2/F3/F4 remain separate gates. History's
+Package E/E1, D1/D1a/D1b and F1 production integration are accepted for continued
+development. F2a authorizes metadata/runbook reconciliation only; F2b preparation
+and F2/F3/F4 execution require separate approval. History's
 accepted complete date/time sorting correction remains unchanged, as do backend
 calculations, work, receipts and frozen evidence.
 Explicit legacy v3
@@ -216,8 +217,9 @@ Their DDL, requests, receipts and behavioral assertions remain version-specific;
 ordinary source/CLI launch tests follow the approved v4 behavior instead. No public
 schema selector or fallback is added. Full portable regression and applicable legacy
 connected UI regression are required for shared transaction/read/GUI changes; all
-29 unresolved filesystem skips remain unwaived. F2 collector/runbook preparation,
-native F2, supervised F3 and actual Sleep F4 require separate authorization.
+29 unresolved filesystem skips remain unwaived. F2a metadata/runbook preparation
+is authorized; F2b native-control preparation, native F2, supervised F3 and actual
+Sleep F4 require separate authorization.
 Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
 
 ### Package F1 production schema-4 integrated qualification
@@ -266,8 +268,44 @@ overlap and are not additive. Preserve initial fixture failures and their correc
 setup evidence. Real-display tests require a verified window manager where relevant;
 headless skips cannot pass the connected gate. Portable/X11 success establishes no
 native Windows/NTFS, supervised operator or actual suspend/resume acceptance.
-The original schema-3 Package F modules remain unchanged. F1 source/evidence requires
-independent review before F2a metadata/runbook reconciliation is authorized.
+The original schema-3 Package F modules remain unchanged. F1 source/evidence at
+`5b2367fd59f2ef9c001f0a01815dda52a8379339` is independently accepted for continued
+development. Its portable run reports 2,498 passed/505 skipped; separate real-display
+selections pass without skips, including all 34 original candidate Package D nodes.
+These are prior F1 results, not F2a execution or native acceptance.
+
+### Package F2a metadata and current Windows runbook
+
+The full-source collector declares source-owned integer `ORDINARY_SCHEMA_REQUIRED=4`
+and writes it under the existing `environment.json` key `schema_required`. This
+states the ordinary application requirement, not each collected test's version.
+The source partition still contains production-v4, candidate-v4, explicit historical
+v3, shared/pure, tooling and platform roles. Direct `tests/rewrite/*.py` and the
+approved root-launcher bridge remain SUPPORTED_RUNTIME; the finite RETAINED_LEGACY
+partition remains independently reported; UNCLASSIFIED blocks. All original nodes
+must be conserved. No frozen bounded allowlist or collector safety rule changes.
+
+The portable metadata regression executes the actual run() assignment/write AST
+statements against the real JSON writer and checks unrelated environment/status/
+partition preservation. It does not spoof the OS or execute the native entrypoint.
+A production-import refusal control proves collector metadata needs no worker/store.
+The runbook regression compiles and executes the actual extracted ProfileProof Python
+against closed-owner genuine v4/v3 SQLite datasets: complete selected v4 validation
+and preserved v3 refusal. This is not Windows PowerShell or native NTFS execution.
+ProfileProof explicitly selects4, checks application/version/profile and invokes
+`_verify_selected` with complete verification enabled by default, after all GUI/worker
+owners close. It opens/closes one disposable production proof session, never a
+candidate verifier, concurrent writer or personal dataset.
+
+F2a leaves the six native focus authorizations unchanged as historical schema-3
+controls. Current-v4 native nodes require separate F2b exact-set approval. The
+original individual 29-node ledger remains unavailable/required for adjudication;
+F1's 505 skips cannot replace it. The existing runtime4 POSIX journal-unlink fixture
+has no newly authorized Windows replacement. Native NTFS identity/sharing, hard
+links/reparse safety, private recovery and cleanup remain F2b/F2 dependencies.
+No applicability classification, timeout, Job/input, event/JUnit or archive/delivery
+rule is relaxed. Native F2, supervised F3 and actual Sleep F4 remain NOT RUN on the
+present source. F2a publication requires independent review before F2b is authorized.
 
 | Guarantee (ordinary project nesting and usability) | Required behavior coverage |
 | --- | --- |
