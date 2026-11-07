@@ -203,3 +203,164 @@ def test_explicit_relative_source_path_remains_supported_and_constructor_failure
     assert captured[0][1]['schema_version']==4 and captured[0][1]['remember_selection'] is False
     with pytest.raises(tk.TclError):root.winfo_exists()
     assert not (tmp_path/'fresh').exists()
+
+
+def test_ordinary_schema4_backup_restore_fresh_root_worker(ordinary,tmp_path,monkeypatch):
+    """Sequential real app sessions; backup/restore never substitutes a bridge."""
+    from datetime import timedelta
+    from chronicle import backup_restore as br
+    from chronicle.dataset_lock import DatasetLock
+    from test_app import Clock
+    from test_chronicle_timesheet_ui import open_sheet,refresh
+    from test_timesheet_save_ui import choose,exit_settled
+    from test_polr_confirmation_ui import reviewed
+    from test_backup_ui import open_backup,wait_backup
+    from test_package_f_runtime4 import record
+    app,worker,places=ordinary;clock=Clock();app.now_utc=clock
+    monkeypatch.setattr('chronicle.app.simpledialog.askstring',lambda *a,**k:'F1 duplicate name')
+    assert app.create_project();settled(app)
+    parent=app.state['projects'][0]['project_id'];select(app,ui.project_row(parent))
+    assert app.create_child_project();settled(app)
+    child=next(p['project_id'] for p in app.state['projects'] if p['parent_project_id']==parent)
+    select(app,ui.project_row(child));assert app.create_task();settled(app)
+    key=app.selected_task_id();assert key and app.tree.parent(ui.task_row(key))==ui.project_row(child)
+    submit(app,'add_date_only_work',task_id=key,entry_id=uid(),work_date='2026-10-19',duration_text='0:15',comment='F1 GUI work')
+    select(app,ui.task_row(key));assert app.open_history()
+    pump(app.root,lambda:app.history.current)
+    assert len(app.history.rows)==1 and app.history.close()
+    sheet=open_sheet(app);candidate=refresh(app,sheet);report_path=tmp_path/'frozen.txt'
+    choose(monkeypatch,sheet,str(report_path));assert sheet.save();settled(app)
+    saved=app._timesheet_attempt.candidate
+    assert report_path.read_bytes()==candidate.report_utf8==saved.report_utf8
+    assert sheet.review_polr();reviewed(app,sheet)
+    assert sheet.confirm_polr();reviewed(app,sheet)
+    batch=app._polr_submission.outcome.result['batch_id']
+    assert app._polr_submission.outcome.status=='committed' and sheet.close()
+    select(app,ui.task_row(key));assert app.start();settled(app)
+    active=app.state['active'].copy();assert active['task_id']==key
+    backup=tmp_path/'gui-backup.sqlite3';dialog=open_backup(app);dialog.destination.set(str(backup))
+    assert dialog.create();assert wait_backup(app).verified and dialog.close()
+    facts=logical(places.folder/'chronicle.sqlite3');identity=app.dataset_id
+    timezone,week_start=app.state['timezone'],app.state['week_start']
+    assert logical(backup)==facts and not app.root.test_errors
+    app.request_close();exit_settled(app);worker.join(15)
+    assert not worker.is_alive() and app._worker_stopped
+    with pytest.raises(tk.TclError):app.root.winfo_exists()
+    lock=DatasetLock(places.folder)
+    try:lock.acquire()
+    finally:lock.close()
+    source_bytes=(places.folder/'chronicle.sqlite3').read_bytes();backup_bytes=backup.read_bytes()
+    assert br.validate_image(backup).dataset_id==identity
+    restored=tmp_path/'restored';assert not restored.exists()
+    assert br.restore_image(backup,restored).verified
+    assert br.inspect_dataset(restored).ordinary_startup_permitted
+    assert logical(restored/'chronicle.sqlite3')==facts
+    fresh_root=tk.Tk();errors=[];fresh_root.test_errors=errors
+    fresh_root.report_callback_exception=lambda *args:errors.append(args)
+    fresh=None
+    try:
+        restored_places=ls.Locations(restored,tmp_path/'restored-profile'/'selection.json')
+        def application(root,worker,**kwargs):
+            return ChronicleApp(root,worker,now_utc=clock,**kwargs)
+        flow=StartupWindow(fresh_root,app_factory=application,worker_factory=DatabaseWorker,locations=restored_places)
+        pump(fresh_root,lambda:flow.app is not None and flow.app.state.get('report') is not None)
+        fresh=flow.app;fresh_worker=flow.worker
+        assert fresh_root is not app.root and fresh_worker is not worker and type(fresh_worker) is DatabaseWorker
+        assert fresh.presentation_profile=='schema4' and not fresh.candidate_presentation
+        assert fresh.dataset_id==identity and fresh.state['timezone']==timezone and fresh.state['week_start']==week_start
+        assert fresh.state['active']==active and logical(restored/'chronicle.sqlite3')==facts
+        assert fresh.pending is None and fresh.editor is None and fresh.history is None and fresh.timesheet is None
+        assert fresh_root.grab_current() is None and not errors
+        # Read through the fresh app owner; never compete for its result queue.
+        from test_timesheet_save_ui import saved_reports
+        sheet=open_sheet(fresh);saved_reports(fresh,sheet,saved.export_id)
+        assert sheet.candidate.report_utf8==saved.report_utf8
+        assert sheet.confirmation_history();reviewed(fresh,sheet)
+        assert batch in sheet.polr_tree.get_children()
+        assert sheet.close() and logical(restored/'chronicle.sqlite3')==facts
+        clock.value+=timedelta(minutes=2)
+        assert fresh.stop();settled(fresh)
+        assert fresh.state['active'] is None
+        select(fresh,ui.task_row(key));assert fresh.open_history()
+        pump(fresh_root,lambda:fresh.history.current)
+        timed=[r for r in fresh.history.rows if r['entry_id']==active['entry_id']]
+        assert len(timed)==1 and timed[0]['duration_us']==120_000_000
+        assert fresh.history.close()
+        after=logical(restored/'chronicle.sqlite3')
+        assert len([r for r in after['work_revisions'] if r[0]==active['entry_id']])==1
+        assert after['timesheet_exports']==facts['timesheet_exports']
+        assert after['polr_confirmation_cells']==facts['polr_confirmation_cells']
+        assert (places.folder/'chronicle.sqlite3').read_bytes()==source_bytes and backup.read_bytes()==backup_bytes
+        assert not errors
+        fresh.request_close();exit_settled(fresh);fresh_worker.join(15)
+        assert not fresh_worker.is_alive() and fresh._worker_stopped
+        lock=DatasetLock(restored)
+        try:lock.acquire()
+        finally:lock.close()
+        record(tmp_path/'gui-restore-evidence.json',dataset_id=identity,task_id=key,active=active,
+               report_id=saved.export_id,confirmation_batch=batch,before=facts,after=after,
+               original_worker_stopped=not worker.is_alive(),restored_worker_stopped=not fresh_worker.is_alive())
+    finally:
+        if fresh is not None and fresh.alive:fresh_root.destroy()
+        else:
+            try:fresh_root.destroy()
+            except tk.TclError:pass
+        if 'flow' in locals() and flow.worker is not None:
+            if flow.worker.is_alive():flow.worker.requests.put(Message('shutdown'))
+            flow.worker.join(15);assert not flow.worker.is_alive()
+
+
+def test_ordinary_schema4_cancel_and_incompatible_startup_preserve_sources(root,tmp_path):
+    from chronicle.timesheet_files import metadata
+    from test_timesheet_save_ui import exit_settled
+    from test_package_f_runtime4 import record
+    workers=[]
+    def factory(*args,**kwargs):
+        worker=DatabaseWorker(*args,**kwargs);workers.append(worker);return worker
+    places=ls.Locations(tmp_path/'fresh',tmp_path/'profile'/'selection.json')
+    canceled=StartupWindow(root,app_factory=ChronicleApp,worker_factory=factory,locations=places)
+    pump(root,lambda:canceled.discover_id is None)
+    canceled.cancel()
+    assert not workers and not places.folder.exists() and not places.record.exists()
+    with pytest.raises(tk.TclError):root.winfo_exists()
+    created_root=tk.Tk();errors=[];created_root.test_errors=errors
+    created_root.report_callback_exception=lambda *args:errors.append(args)
+    flow=None
+    try:
+        flow=StartupWindow(created_root,app_factory=ChronicleApp,worker_factory=factory,locations=places)
+        pump(created_root,lambda:flow.discover_id is None)
+        flow.begin(places.folder,create=True,timezone='America/Chicago')
+        pump(created_root,lambda:flow.app is not None and flow.app.state.get('report') is not None)
+        assert flow.app.presentation_profile=='schema4' and flow.app.state['semantic_verified']
+        assert len(workers)==1 and workers[0].is_alive() and not errors
+        flow.app.request_close();exit_settled(flow.app);workers[0].join(15)
+        assert not workers[0].is_alive()
+    finally:
+        try:created_root.destroy()
+        except tk.TclError:pass
+        for worker in workers:
+            if worker.is_alive():worker.requests.put(Message('shutdown'));worker.join(15)
+    legacy=tmp_path/'legacy';store=SQLiteStore(legacy,create=True,timezone='Etc/UTC',schema_version=3)
+    path=store.path;store.close();raw=path.read_bytes();identity=metadata(path.stat())
+    bad_places=ls.Locations(tmp_path/'never-created',tmp_path/'legacy-profile'/'selection.json')
+    ls.remember(bad_places.record,legacy,None);selection_bytes=bad_places.record.read_bytes()
+    refused_root=tk.Tk();refused_errors=[];refused_root.test_errors=refused_errors
+    refused_root.report_callback_exception=lambda *args:refused_errors.append(args)
+    refused=None
+    try:
+        refused=StartupWindow(refused_root,app_factory=ChronicleApp,worker_factory=factory,locations=bad_places)
+        pump(refused_root,lambda:refused.failure is not None and refused.worker is None)
+        assert refused.app is None and 'require schema 4' in str(refused.failure)
+        assert len(workers)==2 and all(not w.is_alive() for w in workers)
+        assert path.read_bytes()==raw and metadata(path.stat())==identity
+        assert bad_places.record.read_bytes()==selection_bytes and not bad_places.folder.exists()
+        assert refused_root.grab_current() is None and not refused_errors
+        record(tmp_path/'startup-evidence.json',cancel_created_nothing=True,workers=[dict(name=w.name,alive=w.is_alive()) for w in workers],
+               incompatible_error=str(refused.failure),schema3_metadata=identity)
+        refused.cancel()
+    finally:
+        try:refused_root.destroy()
+        except tk.TclError:pass
+        for worker in workers:
+            if worker.is_alive():worker.requests.put(Message('shutdown'));worker.join(15)
+        assert all(not w.is_alive() for w in workers)

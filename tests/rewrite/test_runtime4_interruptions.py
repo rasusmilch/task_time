@@ -1,9 +1,10 @@
 """Real production transaction faults and killed-child recovery, not power loss."""
 import sqlite3
+import json
 import pytest
 from chronicle.sqlite_store import SQLiteStore
 from chronicle.schema4_runtime_service import Schema4RuntimeService
-from chronicle.records import Request
+from chronicle.records import Request,canonical
 from chronicle import project_ui as ui
 from chronicle.movement import snapshot
 from runtime4_cases import Runtime,runtime,uid,NOW
@@ -11,7 +12,12 @@ from test_interruptions import TRANSACTION_CHILD,paused_child,frozen_json
 from test_backup_restore import logical
 from test_templates import nodes
 
-FAMILIES=('project','task','project move','task move','work','lifecycle','template','configuration')
+TIMER_FAMILIES=('start_timer','stop_timer','switch_timer','correct_active_start')
+FAMILIES=('project','task','project move','task move','work','lifecycle','template','configuration',*TIMER_FAMILIES)
+DOMAIN_WRITES=('INSERT INTO projects','INSERT INTO tasks','UPDATE projects','UPDATE tasks',
+    'INSERT INTO work_entries','INSERT INTO work_revisions','UPDATE work_entries',
+    'INSERT INTO active_timer','DELETE FROM active_timer','UPDATE active_timer',
+    'INSERT INTO active_start_corrections','INSERT INTO template_','UPDATE dataset_meta')
 
 
 def prepare(h,family):
@@ -23,38 +29,113 @@ def prepare(h,family):
     elif family=='work':op,args='add_date_only_work',dict(task_id=key,entry_id=uid(),work_date='2026-10-19',duration_text='0:15',comment='Protected')
     elif family=='lifecycle':op,args='archive_project',dict(project_id=p,expected_version=1)
     elif family=='template':op,args='create_template',dict(template_id=uid(),name='Blueprint',nodes=nodes(2))
-    else:op,args='set_week_start',dict(week_start=0,expected_week_start=6)
+    elif family=='configuration':op,args='set_week_start',dict(week_start=0,expected_week_start=6)
+    elif family in TIMER_FAMILIES:
+        op=family;entry=uid()
+        if family!='start_timer':
+            h.send('start_timer',task_id=key,entry_id=entry,expected_task_version=1)
+        if family=='start_timer':args=dict(task_id=key,entry_id=entry,expected_task_version=1)
+        elif family=='stop_timer':args=dict(entry_id=entry,expected_version=1)
+        elif family=='switch_timer':args=dict(expected_active_entry_id=entry,expected_active_version=1,
+            next_task_id=h.task(q),next_entry_id=uid(),expected_task_version=1)
+        else:args=dict(entry_id=entry,expected_version=1,date_text='2026-10-19',time_text='09:59',
+                       occurrence=None,comment='F1 reviewed earlier minute')
+    else:raise AssertionError('Unapproved interruption family: '+family)
     return Request.make(uid(),h.store.dataset_id,op,h.now+1000000,**args)
+
+
+def transaction_child():
+    code=TRANSACTION_CHILD.replace('from chronicle.services import TimerService','from chronicle.schema4_runtime_service import Schema4RuntimeService as TimerService').replace('SQLiteStore(path, schema_version=3)','SQLiteStore(path)')
+    original="facts = sql.startswith(('INSERT INTO work_', 'INSERT INTO active_', 'UPDATE active_', 'DELETE FROM active_'))"
+    assert code.count(original)==1
+    return code.replace(original,'facts = sql.startswith('+repr(DOMAIN_WRITES)+')')
+
+
+def timer_committed(c,r,before,path,expected_result):
+    """Independent installed facts, not another timer transition calculator."""
+    a=r.args();after=logical(path)
+    assert len(after['committed_requests'])==len(before['committed_requests'])+1
+    receipt=c.execute('SELECT * FROM committed_requests WHERE request_id=?',(r.request_id,)).fetchall()
+    assert len(receipt)==1 and receipt[0]['request_bytes']==r.content()
+    assert receipt[0]['operation']==r.operation and receipt[0]['action_utc_us']==r.action_utc_us
+    assert receipt[0]['receipt_class']=='protected'
+    assert receipt[0]['result_bytes']==canonical(expected_result)
+    for table in before.keys()-{'work_entries','work_revisions','active_timer','active_start_corrections','committed_requests','sqlite_sequence'}:
+        assert after[table]==before[table],table
+    assert all(row in after['committed_requests'] for row in before['committed_requests'])
+    active=[dict(row) for row in c.execute('SELECT * FROM active_timer')]
+    entry=a.get('entry_id',a.get('expected_active_entry_id'))
+    revisions=[dict(row) for row in c.execute('SELECT * FROM work_revisions WHERE entry_id=?',(entry,))]
+    if r.operation=='start_timer':
+        assert active==[dict(singleton=1,entry_id=entry,task_id=a['task_id'],start_utc_us=r.action_utc_us,version=1)]
+        assert not revisions and after['work_revisions']==before['work_revisions']
+        assert len(after['work_entries'])==len(before['work_entries'])+1
+    elif r.operation in ('stop_timer','switch_timer'):
+        old=before['active_timer'][0]
+        assert len(revisions)==1 and revisions[0]['revision']==1
+        assert (revisions[0]['start_utc_us'],revisions[0]['stop_utc_us'])==(old[3],r.action_utc_us)
+        assert revisions[0]['request_id']==r.request_id and not revisions[0]['is_deleted']
+        assert r.action_utc_us-old[3]>0
+        if r.operation=='stop_timer':
+            assert active==[] and after['work_entries'][0][0]==entry
+            assert len(after['work_entries'])==len(before['work_entries'])
+        else:
+            assert active==[dict(singleton=1,entry_id=a['next_entry_id'],task_id=a['next_task_id'],start_utc_us=r.action_utc_us,version=1)]
+            assert len(after['work_entries'])==len(before['work_entries'])+1
+            assert not list(c.execute('SELECT * FROM work_revisions WHERE entry_id=?',(a['next_entry_id'],)))
+        assert len(after['work_revisions'])==len(before['work_revisions'])+1
+    else:
+        # 09:59 CDT on October 19 is 14:59 UTC, exactly one minute before NOW.
+        old=before['active_timer'][0]
+        assert active==[dict(singleton=1,entry_id=entry,task_id=old[2],start_utc_us=NOW-60_000_000,version=2)]
+        corrections=[dict(row) for row in c.execute('SELECT * FROM active_start_corrections WHERE entry_id=?',(entry,))]
+        assert len(corrections)==1
+        assert corrections[0]['request_id']==r.request_id
+        assert corrections[0]['prior_start_utc_us']==old[3]
+        assert corrections[0]['corrected_start_utc_us']==NOW-60_000_000
+        assert corrections[0]['audit_utc_us']==r.action_utc_us and corrections[0]['version']==2
+        assert after['work_entries']==before['work_entries'] and after['work_revisions']==before['work_revisions']
+    if r.operation!='correct_active_start':assert after['active_start_corrections']==before['active_start_corrections']
+
+
+def record_evidence(path,**value):
+    path.write_text(json.dumps(value,indent=2,default=lambda v:dict(bytes_hex=v.hex()))+'\n')
 
 
 @pytest.mark.parametrize('family',FAMILIES)
 @pytest.mark.parametrize('phase',['before','begin','facts','receipt','commit_ready','committed'])
-def test_process_death_exact_atomic_result_and_reconciliation(runtime,family,phase):
+def test_process_death_exact_atomic_result_and_reconciliation(runtime,family,phase,tmp_path):
     h=runtime;r=prepare(h,family);before=h.facts();directory=h.store.directory;h.store.close()
-    code=TRANSACTION_CHILD.replace('from chronicle.services import TimerService','from chronicle.schema4_runtime_service import Schema4RuntimeService as TimerService').replace('SQLiteStore(path, schema_version=3)','SQLiteStore(path)')
-    code=code.replace("facts = sql.startswith(('INSERT INTO work_', 'INSERT INTO active_', 'UPDATE active_', 'DELETE FROM active_'))", "facts = sql.startswith(('INSERT INTO projects','INSERT INTO tasks','UPDATE projects','UPDATE tasks','INSERT INTO work_','INSERT INTO template_','UPDATE dataset_meta'))")
-    with paused_child(code,directory,phase,frozen_json(r)):pass
+    code=transaction_child()
+    with paused_child(code,directory,phase,frozen_json(r)) as child:
+        record_evidence(tmp_path/'process.json',command=child.args,pid=child.pid,barrier='BARRIER',phase=phase,
+                 request=r.content().decode(),before=before)
+    record_evidence(tmp_path/'termination.json',pid=child.pid,exit_code=child.returncode,reaped=child.poll() is not None)
     reopened=SQLiteStore(directory)
     try:
         service=Schema4RuntimeService(reopened);committed=phase=='committed'
         found=service.reconcile_request(r);assert found.status==('committed' if committed else 'absent')
         if not committed:assert logical(reopened.path)==before
         result=service.execute(r);assert result.status=='committed',result
+        if committed:assert found.result==result.result
         after=logical(reopened.path)
         assert service.execute(r).result==result.result and logical(reopened.path)==after
         assert len(after['committed_requests'])==len(before['committed_requests'])+1
+        if family in TIMER_FAMILIES:timer_committed(reopened.connection,r,before,reopened.path,result.result)
+        record_evidence(tmp_path/'readback.json',request=r.content().decode(),before=before,after=after,
+                 result=result.result,reconciled=found.status)
     finally:reopened.close()
 
 
 @pytest.mark.parametrize('family',FAMILIES)
 @pytest.mark.parametrize('fault',['domain write','receipt','final verification','commit before','commit after'])
-def test_sql_faults_roll_back_or_reconcile_the_original_request(runtime,monkeypatch,family,fault):
+def test_sql_faults_roll_back_or_reconcile_the_original_request(runtime,monkeypatch,family,fault,tmp_path):
     h=runtime;r=prepare(h,family);before=h.facts();failure=OSError('Original '+fault);fired=[]
     inner=h.store.connection
     class Fault:
         def __getattr__(self,k):return getattr(inner,k)
         def execute(self,sql,*args):
-            matches=(fault=='domain write' and sql.startswith(('INSERT INTO projects','INSERT INTO tasks','UPDATE projects','UPDATE tasks','INSERT INTO work_','INSERT INTO template_','UPDATE dataset_meta'))
+            matches=(fault=='domain write' and sql.startswith(DOMAIN_WRITES)
                      or fault=='receipt' and sql.startswith('INSERT INTO committed_requests')
                      or fault.startswith('commit') and sql=='COMMIT')
             if matches and not fired:
@@ -77,6 +158,14 @@ def test_sql_faults_roll_back_or_reconcile_the_original_request(runtime,monkeypa
     retained=h.facts();evidence=h.service.reconcile_request(r)
     assert evidence.status==('committed' if fault=='commit after' else 'absent')
     if fault=='commit after':assert h.service.execute(r).result==result.result and h.facts()==retained
+    if family in TIMER_FAMILIES:
+        completed=h.service.execute(r);assert completed.status=='committed'
+        timer_committed(h.store.connection,r,before,h.store.path,completed.result)
+        after=h.facts();assert h.service.execute(r).result==completed.result and h.facts()==after
+        row=h.store.connection.execute('SELECT result_bytes FROM committed_requests WHERE request_id=?',(r.request_id,)).fetchone()
+        assert row[0]==canonical(completed.result)
+    record_evidence(tmp_path/'fault.json',request=r.content().decode(),fault=fault,status=result.status,
+             primary=repr(result.error),before=before,after=h.facts(),reconciled=evidence.status)
 
 
 @pytest.mark.parametrize('phase',['facts','commit_ready','committed'])

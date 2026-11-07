@@ -60,7 +60,7 @@ qualification remain distinct.
 
 ## Project hierarchy and pilot usability acceptance
 
-Project nesting remains future ordinary behavior under the selected
+Project nesting is ordinary fresh-schema-4 behavior under the selected
 [requirements](TIMESHEET_REQUIREMENTS.md#selected--independent-projects-and-tasks),
 [architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability) and
 [workstreams](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
@@ -129,8 +129,9 @@ Connected cases exercise the same app/root with project/task controls, owned
 modals, stale reviews, destroyed dialogs, authoritative completion, Template Apply,
 Archive/Delete presentation and Mini/double-click. They require real widgets and
 remain explicitly skipped/unverified when no display exists. Neither portable
-controls nor generated widget events establish native Windows input/focus. E/F
-remain outstanding; all 29 unresolved filesystem skips remain unwaived.
+controls nor generated widget events establish native Windows input/focus. E now
+supplies the ordinary runtime path; F qualification remains separate. All 29
+unresolved filesystem skips remain unwaived.
 D1 exposed a committed Move dialog stranded in its executing phase after a
 presentation exception, plus two Mini topmost failures under bare Xvfb. D1a
 separates owner-settled Move phase/outcome from rendering, preserving the original
@@ -155,7 +156,8 @@ preserved, and X11 execution does not establish native Windows acceptance.
 Tk callbacks and XTest controls remain distinct from native
 Windows qualification. Demonstrable D1 fixture corrections (UUID shadowing and
 waiting before initial Timesheet dispatch) retain their behavioral assertions.
-Package E activation implementation is now authorized for execution and independent review; Package F remains unauthorized. History's
+Package E/E1 and D1/D1a/D1b are accepted for continued development. Package F1
+authorizes production integration tests only; F2/F3/F4 remain separate gates. History's
 accepted complete date/time sorting correction remains unchanged, as do backend
 calculations, work, receipts and frozen evidence.
 Explicit legacy v3
@@ -214,10 +216,60 @@ Their DDL, requests, receipts and behavioral assertions remain version-specific;
 ordinary source/CLI launch tests follow the approved v4 behavior instead. No public
 schema selector or fallback is added. Full portable regression and applicable legacy
 connected UI regression are required for shared transaction/read/GUI changes; all
-29 unresolved filesystem skips remain unwaived. Package F/F2/F3/F4 execution requires
-separate authorization. Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
+29 unresolved filesystem skips remain unwaived. F2 collector/runbook preparation,
+native F2, supervised F3 and actual Sleep F4 require separate authorization.
+Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
 
-| Guarantee (project nesting future; usability implemented) | Required behavior coverage |
+### Package F1 production schema-4 integrated qualification
+
+[test_package_f_runtime4.py](../tests/rewrite/test_package_f_runtime4.py) uses the
+existing production worker session/Client, canonical Requests and independent
+logical SQLite snapshots. It introduces no transaction adapter or runtime owner.
+The explicitly specified integration contracts cover:
+
+- Five project levels with mixed Direct/Cumulative grouping, source-only project
+  movement, stale/no-op reviews, active-descendant archive refusal, independent
+  archive flags and the separate three-task-level limit.
+- Two-root/one-child Template Apply, protected/partial/stale/incorrect-confirmation
+  Delete refusal, whole-Apply administrative retirement and unchanged sequence high
+  water. Definition Edit/Duplicate/Archive/Unarchive/Delete preserves surviving
+  tasks, work and self-contained receipts through backup/restore/reopen.
+- Four fixed midnight/DST/long-gap timer restart examples with read purity and
+  exact UTC/local-day durations. The thirteen-hour gap is simulated, not Sleep.
+- Five independent C–G quarter distributions, full-week basis and exact adjustment
+  through selected frozen registration, backup and restored production readback.
+- Unknown versus confirmed zero, opposing daily mismatch despite equal weekly
+  totals, signed A/B corrections, immutable frozen evidence and reminder dismissal
+  across same-day restart and the later approved evaluation day.
+
+[test_runtime4_interruptions.py](../tests/rewrite/test_runtime4_interruptions.py)
+retains its eight original families and adds Start, Stop, atomic Switch and active
+start correction: 24 additional killed-child and 20 additional SQL-fault cases.
+The original six/five boundaries and deadlines remain. Actual SQL statements must
+reach the barrier; each case retains Request, process/barrier/termination or fault
+diagnostics and complete independent facts. Exact original receipts/results and
+one-time timer effects are checked after recovery/retry. Process death is not
+physical power-loss evidence.
+
+[test_runtime4_ui.py](../tests/rewrite/test_runtime4_ui.py) adds sequential real
+StartupWindow/ChronicleApp/production-worker sessions around ordinary GUI History,
+frozen Save, absolute confirmation, active backup, cold restore and a fresh root.
+Original callbacks/worker are shut down before the restored session. Full logical
+equality precedes new restored work; explicit Stop changes neither original nor
+backup bytes. Separate production setup controls prove Cancel creates nothing,
+fresh v4 readiness and unchanged remembered clean-v3 refusal. No CandidateBridge
+or synthetic readiness supplies these results.
+
+Execution receipts must distinguish production SQLite/worker, connected Tk callback,
+XTest server input, candidate regression and historical schema-3 selections; counts
+overlap and are not additive. Preserve initial fixture failures and their corrected
+setup evidence. Real-display tests require a verified window manager where relevant;
+headless skips cannot pass the connected gate. Portable/X11 success establishes no
+native Windows/NTFS, supervised operator or actual suspend/resume acceptance.
+The original schema-3 Package F modules remain unchanged. F1 source/evidence requires
+independent review before F2a metadata/runbook reconciliation is authorized.
+
+| Guarantee (ordinary project nesting and usability) | Required behavior coverage |
 | --- | --- |
 | Project organization | Multiple project depths, including beyond three, child creation beneath arbitrary valid projects, roots and containers with both direct tasks and child projects; duplicate names remain distinct UUIDs. Engineering resource refusal is explicit, never truncation or a small product depth rule. |
 | Task boundary | Three task levels independently of project depth; leaf-only new work, retained former-leaf Individual work, unchanged immediate project membership under project movement and exactly one timer. |

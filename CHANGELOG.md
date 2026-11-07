@@ -6,6 +6,14 @@ receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
+- Add Package F1 production-schema-4 qualification tests without application changes:
+  exact timer process/fault boundaries, deep project grouping and active/archive
+  safety, Template Apply/Delete receipt retirement and restored survivor evidence,
+  fixed temporal/C–G expectations, Unknown/zero and signed reconciliation, reminder
+  persistence, ordinary GUI backup/fresh-session restore and protected setup refusal.
+  Retain legacy schema-3 tests and separate portable, real-Tk and native evidence.
+  Independent review remains required; F2a/F2/F3/F4 and pilot readiness are not granted.
+
 - Repair schema-4 worker unresolved-request isolation: retain the original frozen
   Request object, block all mutate dispatch during uncertainty and permit only
   exact-original explicit reconciliation. Blocked attempts preserve their incoming
