@@ -6,11 +6,20 @@ receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
+- Add F2b-Focus's six ordinary schema-4 History/Timesheet subjects alongside the
+  six historical native authorizations. Bind both fixed History control subjects
+  to exact source/JUnit identity and production readiness, with portable protocol
+  and real-Tk fact-purity checks. Retain the adjudicated exact global-grab refusal
+  diagnostic and subsequent fallback; application and native driver behavior are
+  unchanged. Native execution, Windows Case C and the original filesystem ledger
+  remain outstanding, without skip waivers or Stage 4 closure.
+
 - Reconcile F2a qualification metadata/runbook with ordinary schema 4: source-owned
   required-version constant, complete selected ProfileProof and portable metadata/
   real-SQLite runbook regressions. Update current nested-project/operator guidance
   while preserving historical F2 evidence and all collector/native safety boundaries.
-  F2b/native execution remain separately unauthorized; no application or release change.
+  At F2a delivery F2b/native execution remained separately unauthorized; no
+  application or release change.
 
 - Add Package F1 production-schema-4 qualification tests without application changes:
   exact timer process/fault boundaries, deep project grouping and active/archive

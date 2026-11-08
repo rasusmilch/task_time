@@ -16,6 +16,7 @@ from uuid import uuid4
 
 HISTORY = 'tests/rewrite/test_chronicle_history_modal.py'
 TIMESHEET = 'tests/rewrite/test_chronicle_timesheet_ui.py'
+RUNTIME4_FOCUS = 'tests/rewrite/test_runtime4_native_focus.py'
 NODES = {
     **{HISTORY + '::test_real_tk_history_parent_grab_focus_return_identity_and_guard[' + mode + ']':
        ('PRECONDITION History origin focus', 'History actual return focus')
@@ -23,6 +24,13 @@ NODES = {
     TIMESHEET + '::test_real_tk_timesheet_origin_return_competing_grab_destroy_and_reentry':
         ('PRECONDITION Timesheet origin focus', 'Timesheet actual return focus'),
     TIMESHEET + '::test_real_tk_global_grab_and_deleted_focus_origin_are_not_replaced':
+        ('PRECONDITION Timesheet destroyed origin', 'Timesheet root fallback focus'),
+    **{RUNTIME4_FOCUS + '::test_ordinary_schema4_history_parent_grab_focus_return_identity_and_guard[' + mode + ']':
+       ('PRECONDITION History origin focus', 'History actual return focus')
+       for mode in ('local', 'none', 'missing', 'reused')},
+    RUNTIME4_FOCUS + '::test_ordinary_schema4_timesheet_origin_return_competing_grab_destroy_and_reentry':
+        ('PRECONDITION Timesheet origin focus', 'Timesheet actual return focus'),
+    RUNTIME4_FOCUS + '::test_ordinary_schema4_global_grab_and_deleted_focus_origin_are_not_replaced':
         ('PRECONDITION Timesheet destroyed origin', 'Timesheet root fallback focus'),
 }
 REPO = Path(__file__).resolve().parents[2]

@@ -4,7 +4,9 @@ This covers unattended F2 automation and separate supervised F3/F4 procedures
 for the checked-out ordinary fresh-schema-4 source, not a record that native gates
 ran. E/E1 provide the existing production runtime; F1 production integration is
 independently accepted for continued development. F2a reconciles metadata and this
-runbook only. F2b native-control preparation, native F2, supervised F3 and actual
+runbook only. The separately approved F2b-Focus implementation adds six production
+subjects and bounded control identity/evidence checks; native execution remains
+unauthorized. Filesystem/skip-ledger preparation, native F2, supervised F3 and actual
 Sleep F4 require separate authorization. Native prerequisites remain unverified.
 Stage 4 remains **IN PROGRESS**, Stage 5 **NOT STARTED**. Hardware power loss,
 external POL-R redistribution/worked-zero policy and installation/cutover remain
@@ -15,7 +17,7 @@ separate. Never enter data into an employer/customer POL-R system during this ru
 | Gate | Required evidence | Development-host status |
 | --- | --- | --- |
 | F1 | Production schema-4 SQLite/worker integration and separately executed real Tk workflows | Independently accepted for continued development at `5b2367fd59f2ef9c001f0a01815dda52a8379339`; portable/X11 evidence only |
-| F2 | Current-revision native Windows automated collection/events/JUnit/logs, inventory, cleanup and verified delivery | NOT RUN on the present F1/F2a source; historical attempts below remain EVIDENCE_INCOMPLETE/FAIL |
+| F2 | Current-revision native Windows automated collection/events/JUnit/logs, inventory, cleanup and verified delivery | NOT RUN on the present source; F2b-Focus implementation/portable evidence is separate; historical attempts below remain EVIDENCE_INCOMPLETE/FAIL |
 | F3 | Actual supervised Windows controls, focus, dialogs, files and restored fresh session | NOT RUN |
 | F4 | Actual Windows Sleep/resume with preserved timer and validated recovery | NOT RUN |
 
@@ -148,8 +150,10 @@ tests. Source membership alone does not establish production schema-4 execution.
 `environment.json` records integer `schema_required: 4`, the ordinary application
 requirement, not the version of every test. Future native F2 must verify that actual
 record. A successful collector does not qualify every product/platform requirement;
-F2b must adjudicate the current-runtime native focus set, missing filesystem/recovery
-evidence and original 29-node ledger. The frozen bounded allowlists stay unchanged.
+F2b-Focus implements the approved current-runtime native focus set for review;
+native execution remains unauthorized. Separate adjudication must address missing
+filesystem/recovery evidence and original 29-node ledger. The frozen bounded
+allowlists stay unchanged.
 
 `supported-runtime/` and `retained-legacy/` are separate owned sessions, each with
 its own selected inventory, command/pytest arguments, fresh basetemp, manifest,
@@ -211,16 +215,39 @@ No production selection/rendering or focus behavior is changed.
 
 ### Unattended native focus characterization
 
-These six authorized cases are historical schema-3 native controls. They do not
-automatically qualify the ordinary schema-4 GUI. A current-schema-4 native focus
-set requires separate F2b approval of exact nodes; F2a adds no node or authorization.
+The original six cases below remain historical schema-3 native controls. They do
+not automatically qualify the ordinary schema-4 GUI. F2b-Focus adds exactly six
+production schema-4 node/source authorizations, for twelve total; it authorizes no
+native execution. The existing root fixture attaches the same unchanged driver
+before StartupWindow hands that root to the ordinary application and sole worker.
+
+The new exact source is `tests/rewrite/test_runtime4_native_focus.py`. Its subjects
+are `test_ordinary_schema4_history_parent_grab_focus_return_identity_and_guard`
+with exactly `[local]`, `[none]`, `[missing]`, `[reused]`,
+`test_ordinary_schema4_timesheet_origin_return_competing_grab_destroy_and_reentry`,
+and `test_ordinary_schema4_global_grab_and_deleted_focus_origin_are_not_replaced`.
+Their phase pairs remain respectively `PRECONDITION History origin focus` /
+`History actual return focus`, `PRECONDITION Timesheet origin focus` /
+`Timesheet actual return focus`, and `PRECONDITION Timesheet destroyed origin` /
+`Timesheet root fallback focus`. Exact collected nodes and fixture identities must
+match the reviewed source before any separately authorized native execution.
+
+The global-grab subject deliberately attempts one refused opening: no Timesheet
+owner, unchanged competing global grab/facts and exactly one actual ValueError,
+`Timesheet cannot replace an unrelated or global grab`. The diagnostic is retained;
+destroying the competitor and completing the valid destroyed-origin/root fallback
+must add no diagnostic. The other Timesheet subject preserves its historical
+competing-local-grab follow-up and exact intentional refusal. Other callback
+exceptions fail. Portable real-Tk evidence does not establish native focus success.
 
 Only after separate execution review, use the approved interpreter/source and
 the existing disposable `$Q`; this does not execute or qualify complete F2/F3. Record `$Expected`, runtime,
 console command, UTC action times and the resulting console transcript/JUnit. Run
 the six cases serially together with the focused controls, without manual activation.
 The test-only `win32_focus.py` driver is registered by the existing root fixture
-only for these six exact node/source identities. Collection performs no activation.
+only for the twelve exact reviewed node/source identities. The historical command
+below retains its original six-subject list; it is not the new production list.
+Collection performs no activation.
 
 ```powershell
 $History = 'tests/rewrite/test_chronicle_history_modal.py::test_real_tk_history_parent_grab_focus_return_identity_and_guard'
@@ -259,13 +286,22 @@ Outstanding state must be safely resolved outside qualification before another r
 Desktop observations and input insertion are not atomic; this is no concurrent-user
 or hostile-desktop guarantee. Existing Job containment/watchdogs/cleanup remain intact.
 
-Portable injected faults are not native acceptance. The native controls run an
-original authorized node with a normally presented, disposable foreign control
-window and require real caption activation. A second control deliberately directs
+Portable injected faults are not native acceptance. The native-control launcher
+has exactly two fixed complete subject identities: historical schema-3 History
+`[none]` and production schema-4 History `[none]`, each with positive/negative
+return, for four native-only control executions. It runs the selected authorized
+node with a normally presented, disposable foreign control
+window and requires real caption activation. A second control deliberately directs
 ordinary return focus to the wrong widget after valid setup and requires a RESULT
 failure, with zero subsequent driver input. Inability to establish the real control
-is a failure, never a mocked PASS. Preserve all six original grab/identity/purity
-assertions. F3 operator and F4 actual Sleep remain NOT RUN through this automation.
+is a failure, never a mocked PASS. Config, command, native observations, JUnit,
+source hashes and status must all identify that exact selected subject. The subject
+module's hash accompanies the existing driver/control hashes. Production RESULT
+must retain actual dataset UUID, schema 4, semantic/ordinary readiness, schema4
+presentation, non-candidate status and the live DatabaseWorker identity; missing or
+inconsistent readiness refuses qualification. Preserve all six original historical
+grab/identity/purity assertions. No native control has run under F2b-Focus; F3
+operator and F4 actual Sleep remain NOT RUN through this automation.
 
 For the eight PowerShell fixture failures, first run the independent known-output
 control and then the unchanged fixtures in ordinary PowerShell 5.1:
@@ -705,7 +741,7 @@ only synthetic names. A checked box or a ZIP filename alone proves no integrity.
 
 | Section | Scenario inventory | Result before execution |
 | --- | --- | --- |
-| F2 | Exact current source/inventory/partitions, native prerequisites, approved focus, NTFS/locks/files, private hot recovery and incompatible-data preservation | Current F1/F2a source NOT RUN; historical attempt EVIDENCE_INCOMPLETE and later FAIL remain unchanged; F2b required before execution |
+| F2 | Exact current source/inventory/partitions, native prerequisites, approved focus, NTFS/locks/files, private hot recovery and incompatible-data preservation | Current source NOT RUN; F2b-Focus portable implementation is separate; historical EVIDENCE_INCOMPLETE/FAIL, Windows Case C and original 29-node ledger remain outstanding; review and explicit execution authorization required |
 | F3 | First-run 1–4; main/templates/recording 1–9; History/report/POL-R 1–7; each modal; backup/fresh session 1–3 | NOT RUN |
 | F4 | Real Sleep/resume 1–5, exact stopped work and reopen | NOT RUN |
 

@@ -157,8 +157,9 @@ Tk callbacks and XTest controls remain distinct from native
 Windows qualification. Demonstrable D1 fixture corrections (UUID shadowing and
 waiting before initial Timesheet dispatch) retain their behavioral assertions.
 Package E/E1, D1/D1a/D1b and F1 production integration are accepted for continued
-development. F2a authorizes metadata/runbook reconciliation only; F2b preparation
-and F2/F3/F4 execution require separate approval. History's
+development. F2a reconciles metadata/runbook only; the separately approved
+F2b-Focus implementation adds bounded test subjects/control evidence for review.
+Filesystem/ledger preparation and F2/F3/F4 execution require separate approval. History's
 accepted complete date/time sorting correction remains unchanged, as do backend
 calculations, work, receipts and frozen evidence.
 Explicit legacy v3
@@ -217,9 +218,9 @@ Their DDL, requests, receipts and behavioral assertions remain version-specific;
 ordinary source/CLI launch tests follow the approved v4 behavior instead. No public
 schema selector or fallback is added. Full portable regression and applicable legacy
 connected UI regression are required for shared transaction/read/GUI changes; all
-29 unresolved filesystem skips remain unwaived. F2a metadata/runbook preparation
-is authorized; F2b native-control preparation, native F2, supervised F3 and actual
-Sleep F4 require separate authorization.
+29 unresolved filesystem skips remain unwaived. F2b-Focus implementation follows
+F2a metadata/runbook preparation; native execution, filesystem/ledger changes,
+supervised F3 and actual Sleep F4 require separate authorization.
 Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
 
 ### Package F1 production schema-4 integrated qualification
@@ -297,15 +298,53 @@ ProfileProof explicitly selects4, checks application/version/profile and invokes
 owners close. It opens/closes one disposable production proof session, never a
 candidate verifier, concurrent writer or personal dataset.
 
-F2a leaves the six native focus authorizations unchanged as historical schema-3
-controls. Current-v4 native nodes require separate F2b exact-set approval. The
+At F2a delivery the six native focus authorizations remained historical schema-3
+controls. The separately approved F2b-Focus implementation below adds the exact
+production-v4 subjects, without authorizing native execution. The
 original individual 29-node ledger remains unavailable/required for adjudication;
 F1's 505 skips cannot replace it. The existing runtime4 POSIX journal-unlink fixture
 has no newly authorized Windows replacement. Native NTFS identity/sharing, hard
 links/reparse safety, private recovery and cleanup remain F2b/F2 dependencies.
 No applicability classification, timeout, Job/input, event/JUnit or archive/delivery
 rule is relaxed. Native F2, supervised F3 and actual Sleep F4 remain NOT RUN on the
-present source. F2a publication requires independent review before F2b is authorized.
+present source. Filesystem fixtures and skip-ledger dispositions still require
+independent adjudication.
+
+### F2b-Focus implementation and portable evidence boundary
+
+[test_runtime4_native_focus.py](../tests/rewrite/test_runtime4_native_focus.py)
+adds exactly four History modes (`local`, `none`, `missing`, `reused`) and two
+Timesheet subjects. They reuse the ordinary StartupWindow handoff, the existing
+root fixture and sole production DatabaseWorker/SQLiteStore/Schema4RuntimeService.
+Actual readiness must establish schema4 presentation, complete semantic admission
+and ordinary startup permission. Complete read-only logical SQLite snapshots
+before/after focus handling must agree, including setup receipts. Reused Tk paths
+cannot revive a destroyed origin; reentry, competing grabs and root fallback keep
+their existing contracts. The global-grab refusal must record exactly one actual
+ValueError with message `Timesheet cannot replace an unrelated or global grab`;
+it remains recorded through successful fallback with no additional diagnostic.
+The original Timesheet competing-local-grab follow-up likewise retains its exact
+intentional refusal diagnostic; every other callback diagnostic fails the subjects.
+
+The test-only driver now recognizes exactly twelve node/source/phase tuples:
+six historical schema-3 and six production schema-4. Its input implementation is
+unchanged. The independent native-control launcher supports only the historical
+and production History `[none]` subjects, each with normal and deliberate wrong
+return: four native-only executions. Config, command, JUnit, source hashes and
+final status must bind to the same complete selected node. Production controls
+also require detached readiness captured from the actual app/worker at setup and
+retained in RESULT; synthetic readiness only tests refusal/validation logic.
+
+Portable regressions check the exact authorization set, actual collected six-node
+inventory/fixture sources and unchanged SUPPORTED_RUNTIME partition, both control
+protocols, source/JUnit identity, readiness refusals, one-shot input, terminal
+disarming and cleanup. Real Tk/X11 subjects exercise current production ownership
+and persisted facts; neither these nor synthetic protocols establish native Win32
+acceptance. The original eight-second driver deadline, two-second control budget,
+one-second wrong-focus setup budget, Job containment and read-only RESULT remain
+unchanged. Native controls, F2/F3/F4, Windows Case C and the original unresolved
+29-node filesystem ledger remain separate outstanding gates. Independent review
+of implementation and portable evidence precedes any native execution approval.
 
 | Guarantee (ordinary project nesting and usability) | Required behavior coverage |
 | --- | --- |

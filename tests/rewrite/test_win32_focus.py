@@ -11,6 +11,48 @@ import pytest
 import win32_focus as f
 
 
+# Independent reviewed identities, never derived from the authorization under test.
+EXPECTED_AUTHORIZATIONS = {
+    **{'tests/rewrite/test_chronicle_history_modal.py::test_real_tk_history_parent_grab_focus_return_identity_and_guard['+mode+']':
+       ('PRECONDITION History origin focus', 'History actual return focus')
+       for mode in ('local', 'none', 'missing', 'reused')},
+    'tests/rewrite/test_chronicle_timesheet_ui.py::test_real_tk_timesheet_origin_return_competing_grab_destroy_and_reentry':
+        ('PRECONDITION Timesheet origin focus', 'Timesheet actual return focus'),
+    'tests/rewrite/test_chronicle_timesheet_ui.py::test_real_tk_global_grab_and_deleted_focus_origin_are_not_replaced':
+        ('PRECONDITION Timesheet destroyed origin', 'Timesheet root fallback focus'),
+    **{'tests/rewrite/test_runtime4_native_focus.py::test_ordinary_schema4_history_parent_grab_focus_return_identity_and_guard['+mode+']':
+       ('PRECONDITION History origin focus', 'History actual return focus')
+       for mode in ('local', 'none', 'missing', 'reused')},
+    'tests/rewrite/test_runtime4_native_focus.py::test_ordinary_schema4_timesheet_origin_return_competing_grab_destroy_and_reentry':
+        ('PRECONDITION Timesheet origin focus', 'Timesheet actual return focus'),
+    'tests/rewrite/test_runtime4_native_focus.py::test_ordinary_schema4_global_grab_and_deleted_focus_origin_are_not_replaced':
+        ('PRECONDITION Timesheet destroyed origin', 'Timesheet root fallback focus'),
+}
+CONTROL_SUBJECTS = {
+    'historical-schema3': 'tests/rewrite/test_chronicle_history_modal.py::test_real_tk_history_parent_grab_focus_return_identity_and_guard[none]',
+    'production-schema4': 'tests/rewrite/test_runtime4_native_focus.py::test_ordinary_schema4_history_parent_grab_focus_return_identity_and_guard[none]',
+}
+
+
+def _subject_files(subject_node=None):
+    from pathlib import Path
+    paths = (Path(__file__).resolve(), Path(f.__file__).resolve())
+    if subject_node is not None:
+        f.require(subject_node in CONTROL_SUBJECTS.values(), 'Unapproved native-control subject')
+        paths += ((f.REPO/subject_node.split('::', 1)[0]).resolve(),)
+    return paths
+
+
+def _control_source(subject_node):
+    import hashlib
+    import subprocess
+    paths = _subject_files(subject_node)
+    return dict(revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=f.REPO,text=True).strip(),
+        branch=subprocess.check_output(['git','branch','--show-current'],cwd=f.REPO,text=True).strip(),
+        status=subprocess.check_output(['git','status','--porcelain=v1'],cwd=f.REPO,text=True),
+        files={str(p.relative_to(f.REPO)):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths})
+
+
 class Widget:
     def __init__(self, root=None, name='.'):
         self.root = root or self
@@ -77,13 +119,17 @@ def run(value, widget, *, deadline=None):
         time.sleep(.001)
 
 
-@pytest.mark.parametrize('node', list(f.NODES))
-def test_exact_six_nodes_and_source_authorization(node):
-    assert len(f.NODES) == 6
+@pytest.mark.parametrize('node', list(EXPECTED_AUTHORIZATIONS))
+def test_exact_twelve_nodes_and_source_authorization(node):
+    assert f.NODES == EXPECTED_AUTHORIZATIONS and len(f.NODES) == 12
     assert f.FocusPreconditionDriver.for_node(item(node), platform='win32', api=API()).node == node
     with pytest.raises(f.FocusBlocked, match='source'):
         f.FocusPreconditionDriver.for_node(item(node, f.REPO/'wrong.py'), platform='win32', api=API())
     assert f.FocusPreconditionDriver.for_node(item(node+'extra'), platform='win32', api=API()) is None
+    module = node.split('::', 1)[0]
+    assert f.FocusPreconditionDriver.for_node(item(module+'::test_unapproved'), platform='win32', api=API()) is None
+    bad_parameter = (node.rsplit('[', 1)[0]+'[unreviewed]') if '[' in node else node+'[unreviewed]'
+    assert f.FocusPreconditionDriver.for_node(item(bad_parameter), platform='win32', api=API()) is None
     assert f.FocusPreconditionDriver.for_node(item(node), platform='linux', api=API()) is None
     with pytest.raises(f.FocusBlocked, match='Unapproved'):
         f.FocusPreconditionDriver(node+'extra', f.REPO/node.split('::')[0], API())
@@ -513,7 +559,7 @@ def _runtime_dependencies():
     return result
 
 
-def _runtime_observation(api, deadline, node):
+def _runtime_observation(api, deadline, node, subject_node=None):
     from pathlib import Path
     import hashlib
     import subprocess
@@ -525,7 +571,7 @@ def _runtime_observation(api, deadline, node):
         ('revision', lambda:subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=f.REPO, text=True,
             timeout=max(.001, deadline-time.monotonic())).strip()),
         ('files', lambda:{str(p.relative_to(f.REPO)):hashlib.sha256(p.read_bytes()).hexdigest()
-                         for p in (Path(__file__).resolve(), Path(f.__file__).resolve())})):
+                         for p in _subject_files(subject_node)})):
         try:
             f.require(time.monotonic() < deadline, 'Runtime probe deadline exhausted')
             observed[key] = read()
@@ -564,7 +610,7 @@ def _runtime_probe(directory, role, api, config, deadline, node):
     record = dict(nonce=config['nonce'], role=role, verified=False, observed=None, utc=_utc())
     primary = None
     try:
-        record['observed'] = _runtime_observation(api, deadline, node)
+        record['observed'] = _runtime_observation(api, deadline, node, config.get('node'))
         _verify_runtime(record['observed'], config['runtime'], node=node)
         f.require(time.monotonic() < deadline, 'Runtime probe exceeded original deadline')
         record['verified'] = True
@@ -956,7 +1002,9 @@ def _native_report(item, call):
         _control_write(context['directory'], 'result', dict(nonce=context['nonce'], failed=primary is not None,
             primary=repr(primary), notes=getattr(primary, '__notes__', []), unsafe_input=getattr(primary, 'unsafe_input', False),
             native=native, logical_origin=root.focus_get() is driver.widget,
-            snapshot=state, driver=driver.evidence(), monotonic=time.monotonic()))
+            snapshot=state, driver=driver.evidence(), monotonic=time.monotonic(),
+            **({'production_readiness':dict(context['production_readiness'])}
+               if 'production_readiness' in context else {})))
     except BaseException as exc:
         context['diagnostic_errors'].append('RESULT observation: '+repr(exc))
         if primary is not None:primary.add_note('Control RESULT diagnostic also failed: '+repr(exc))
@@ -1008,7 +1056,9 @@ def _controlled_origin(root, monkeypatch, request):
             f.require(driver.state == 'DISARMED' and driver.verified and native['foreground'] == driver.target['top']
                       and native['focus_inside'] and root.focus_get() is widget, 'Subject focus precondition not verified')
             _control_write(directory, 'subject-ready', dict(nonce=nonce, driver=driver.evidence(), native=native,
-                logical_origin=True, monotonic=time.monotonic()))
+                logical_origin=True, monotonic=time.monotonic(),
+                **({'production_readiness':dict(context['production_readiness'])}
+                   if 'production_readiness' in context else {})))
             f.require(time.monotonic() < deadline, 'Subject evidence exhausted original precondition budget')
         return ready
     monkeypatch.setattr(driver.api, 'inspect', inspect)
@@ -1078,8 +1128,28 @@ def _controlled_origin(root, monkeypatch, request):
             else:raise RuntimeError('Control evidence incomplete: '+repr(errors+extra))
 
 
-def _validate_control_result(directory, nonce, code, failed_return):
+def _validate_control_result(directory, nonce, code, failed_return,
+                             subject_node=CONTROL_SUBJECTS['historical-schema3']):
     from xml.etree import ElementTree
+    from uuid import UUID
+    # Independently bind config, actual current source, command and final readback.
+    # No arbitrary node or historical-module hash can stand in for this subject.
+    current = _control_source(subject_node)
+    config = _control_read(directory, 'config')
+    command = _control_read(directory, 'command')
+    outer = _control_read(directory, 'outer-final')
+    for value in (config, outer):
+        f.require(value is not None and value.get('nonce') == nonce, 'Missing/mismatched control source evidence')
+    f.require(config.get('node') == subject_node and config.get('source') == current
+              and outer.get('source_after') == current, 'Control source/node identity changed or stale')
+    f.require(command is not None and command.get('cwd') == str(f.REPO)
+              and isinstance(command.get('command'), list)
+              and [v for v in command['command'] if isinstance(v,str) and '::' in v] == [subject_node],
+              'Wrong exact native command subject')
+    f.require(type(outer.get('code')) is int and outer['code'] == code and outer.get('errors') == []
+              and type(outer.get('cleanup',{}).get('active_count')) is int
+              and outer['cleanup']['active_count'] == 0,
+              'Incomplete outer Job/stream cleanup')
     foreign = _control_read(directory, 'foreign-ready'); subject = _control_read(directory, 'subject-ready')
     result = _control_read(directory, 'result'); final = _control_read(directory, 'inner-final')
     job = _control_read(directory, 'job-verified')
@@ -1093,8 +1163,10 @@ def _validate_control_result(directory, nonce, code, failed_return):
     inputs = [e for e in bootstrap['events'] if e['event'] == 'SendInput']
     f.require(len(inputs) <= 1 and all(e['inserted'] == 3 for e in inputs), 'Invalid bootstrap input evidence')
     before, after = subject['driver'], result['driver']
-    expected_node = f.HISTORY+'::test_real_tk_history_parent_grab_focus_return_identity_and_guard[none]'
-    f.require(before.get('node') == after.get('node') == expected_node, 'Wrong subject node evidence')
+    expected_node = subject_node
+    expected_source = str((f.REPO/expected_node.split('::',1)[0]).resolve())
+    f.require(all(value.get('node') == expected_node and value.get('source') == expected_source
+                  for value in (before,after,final['driver'])), 'Wrong subject node/source evidence')
     f.require(before['precondition_verified'] and before['state'] == after['state'] == 'DISARMED', 'Subject was not ready/disarmed')
     inputs = [e for e in before['events'] if e['event'] == 'SendInput']
     f.require(len(inputs) == 1 and inputs[0]['inserted'] == 3, 'No genuine one-shot subject activation')
@@ -1105,8 +1177,23 @@ def _validate_control_result(directory, nonce, code, failed_return):
     xml = ElementTree.parse(__import__('pathlib').Path(directory)/'native.xml').getroot()
     cases = list(xml.iter('testcase'))
     f.require(len(cases) == 1 and not list(xml.iter('error')) and not list(xml.iter('skipped')), 'Native JUnit incomplete or setup/cleanup failed')
-    expected_class = f.HISTORY[:-3].replace('/', '.')
+    expected_class = expected_node.split('::',1)[0][:-3].replace('/', '.')
     f.require((cases[0].get('classname'), cases[0].get('name')) == (expected_class, expected_node.split('::')[1]), 'Wrong native JUnit identity')
+    if subject_node == CONTROL_SUBJECTS['production-schema4']:
+        ready = result.get('production_readiness')
+        required = dict(schema_version=4, semantic_verified=True, ordinary_startup_permitted=True,
+            presentation_profile='schema4', candidate_presentation=False,
+            worker_type='DatabaseWorker', worker_alive=True)
+        f.require(type(ready) is dict and set(ready) == set(required)|{'dataset_id'},
+                  'Missing/incorrect production readiness fields')
+        f.require(all(type(ready[k]) is type(v) and ready[k] == v for k,v in required.items()),
+                  'Unverified production app/worker readiness')
+        identity = ready['dataset_id']
+        f.require(type(identity) is str, 'Missing production dataset identity')
+        try:valid = str(UUID(identity)) == identity
+        except ValueError:valid = False
+        f.require(valid and subject.get('production_readiness') == ready,
+                  'Production dataset/readiness changed between precondition and RESULT')
     if failed_return:
         fault = _control_read(directory, 'return-fault')
         f.require(code == 1 and result['failed'] and fault is not None and fault['applied']
@@ -1124,8 +1211,9 @@ def _validate_control_result(directory, nonce, code, failed_return):
 
 
 @pytest.mark.skipif(sys.platform != 'win32', reason='Native Windows foreground/return controls NOT RUN')
+@pytest.mark.parametrize('subject_node', list(CONTROL_SUBJECTS.values()), ids=list(CONTROL_SUBJECTS))
 @pytest.mark.parametrize('failed_return', [False, True])
-def test_native_ordinary_activation_and_independent_modal_return_control(tmp_path, failed_return, request):
+def test_native_ordinary_activation_and_independent_modal_return_control(tmp_path, failed_return, subject_node, request):
     from pathlib import Path
     import hashlib
     import platform
@@ -1134,7 +1222,8 @@ def test_native_ordinary_activation_and_independent_modal_return_control(tmp_pat
     from uuid import uuid4
     sys.path.insert(0, str(f.REPO/'scripts'))
     import qualification_pytest as q
-    node = f.HISTORY+'::test_real_tk_history_parent_grab_focus_return_identity_and_guard[none]'
+    f.require(subject_node in CONTROL_SUBJECTS.values(), 'Unapproved native-control subject')
+    node = subject_node
     nonce = uuid4().hex; directory = tmp_path/('inert-'+nonce); directory.mkdir()
     plugin = tmp_path/'native_focus_control.py'
     plugin.write_text('''import pytest
@@ -1145,11 +1234,7 @@ def controlled_origin(root, monkeypatch, request):
     yield from _controlled_origin(root, monkeypatch, request)
 ''', encoding='utf-8')
     def source():
-        return dict(revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=f.REPO,text=True).strip(),
-            branch=subprocess.check_output(['git','branch','--show-current'],cwd=f.REPO,text=True).strip(),
-            status=subprocess.check_output(['git','status','--porcelain=v1'],cwd=f.REPO,text=True),
-            files={str(p.relative_to(f.REPO)):hashlib.sha256(p.read_bytes()).hexdigest()
-                   for p in (Path(__file__).resolve(), Path(f.__file__).resolve())})
+        return _control_source(subject_node)
     original_source = source()
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',
         PYTHONPATH=os.pathsep.join([str(tmp_path),str(f.REPO/'src'),str(f.REPO/'tests/rewrite')]), F2_CONTROL_DIR=str(directory))
@@ -1257,7 +1342,7 @@ def controlled_origin(root, monkeypatch, request):
         if extra:errors.extend(extra)
     assert not errors and cleanup_state.get('active_count')==0
     assert source()==original_source,'Source changed during native control'
-    _validate_control_result(directory,nonce,code,failed_return)
+    _validate_control_result(directory,nonce,code,failed_return,subject_node)
 
 
 @pytest.mark.parametrize('platform', ['linux', 'win32'])
@@ -1439,13 +1524,19 @@ def test_cleanup_runs_all_actions_and_retains_primary_on_diagnostic_failure():
     assert 'closed again' in called
 
 
-def _synthetic_result_records(tmp_path,damage=None,failed_return=False):
+def _synthetic_result_records(tmp_path,damage=None,failed_return=False,
+                              subject_node=CONTROL_SUBJECTS['historical-schema3']):
     import copy
     from xml.etree import ElementTree as E
-    node=f.HISTORY+'::test_real_tk_history_parent_grab_focus_return_identity_and_guard[none]'
+    node=subject_node;source=_control_source(node)
     events=[dict(event='SendInput',inserted=3),dict(event='ordinary_Tk_focus_set'),dict(event='disarmed')]
-    evidence=dict(node=node,target=dict(top=20),precondition_verified=True,state='DISARMED',events=events)
+    evidence=dict(node=node,source=str((f.REPO/node.split('::',1)[0]).resolve()),
+                  target=dict(top=20),precondition_verified=True,state='DISARMED',events=events)
     records={
+        'config':dict(nonce='n',node=node,source=copy.deepcopy(source)),
+        'command':dict(command=[sys.executable,'-B','-m','pytest',node],cwd=str(f.REPO)),
+        'outer-final':dict(nonce='n',code=int(failed_return),source_after=copy.deepcopy(source),
+                           errors=[],cleanup=dict(active_count=0)),
         'job-verified':dict(nonce='n',pid=42,target=dict(pid=42),exact_job=True),
         'foreign-ready':dict(nonce='n',target=dict(pid=42),bootstrap=dict(verified=True,state='DISARMED',events=[])),
         'subject-ready':dict(nonce='n',driver=copy.deepcopy(evidence),native=dict(foreground=20,focus_inside=True),logical_origin=True,monotonic=1),
@@ -1455,6 +1546,13 @@ def _synthetic_result_records(tmp_path,damage=None,failed_return=False):
         'return-fault':dict(nonce='n',applied=True,monotonic=2,wrong_focus='.wrong',origin='.origin',
                             mapped=True,focus_requests=1,native=dict(foreground=20,focus_inside=True)),
     }
+    if node==CONTROL_SUBJECTS['production-schema4']:
+        ready=dict(dataset_id='01234567-89ab-4cde-8fab-0123456789ab',schema_version=4,
+                   semantic_verified=True,ordinary_startup_permitted=True,presentation_profile='schema4',
+                   candidate_presentation=False,worker_type='DatabaseWorker',worker_alive=True)
+        # Synthetic protocol inputs only: never described as actual app readiness.
+        records['subject-ready']['production_readiness']=copy.deepcopy(ready)
+        records['result']['production_readiness']=copy.deepcopy(ready)
     if damage=='subject input':records['subject-ready']['driver']['events'][0]['inserted']=2
     if damage=='stale foreground':records['subject-ready']['native']['foreground']=99
     if damage=='after disarming':records['result']['driver']['events'].append(dict(event='SendInput',inserted=3))
@@ -1467,12 +1565,37 @@ def _synthetic_result_records(tmp_path,damage=None,failed_return=False):
     if damage=='fault same origin':records['return-fault']['wrong_focus']='.origin'
     if damage=='fault wrong foreground':records['return-fault']['native']['foreground']=99
     if damage=='fault repeated':records['return-fault']['focus_requests']=2
-    suite=E.Element('testsuite');case=E.SubElement(suite,'testcase',classname=f.HISTORY[:-3].replace('/','.'),name=node.split('::')[1])
+    if damage=='wrong node':records['result']['driver']['node']=node+'extra'
+    if damage=='wrong source':records['result']['driver']['source']=str(f.REPO/'wrong.py')
+    if damage=='config node':records['config']['node']=node+'extra'
+    if damage=='command node':records['command']['command'][-1]=node+'extra'
+    if damage=='missing source hash':del records['config']['source']['files'][node.split('::',1)[0]]
+    if damage=='stale source':records['config']['source']['revision']='0'*40
+    if damage=='changed source':records['outer-final']['source_after']['files'][node.split('::',1)[0]]='0'*64
+    if damage=='outer cleanup':records['outer-final']['cleanup']['active_count']=1
+    if damage=='missing cleanup':del records['outer-final']['cleanup']
+    if damage=='missing production readiness':records['result'].pop('production_readiness',None)
+    if damage=='missing precondition readiness':records['subject-ready'].pop('production_readiness',None)
+    changes={
+        'production schema':('schema_version',3),'production schema type':('schema_version',4.0),
+        'production semantic':('semantic_verified',False),'production admission':('ordinary_startup_permitted',False),
+        'production candidate':('candidate_presentation',True),'production profile':('presentation_profile','schema4-candidate'),
+        'production worker':('worker_type','CandidateBridge'),'production liveness':('worker_alive',False),
+        'production liveness type':('worker_alive',1),'production dataset mismatch':('dataset_id','12345678-1234-4234-8234-123456789abc'),
+        'production dataset malformed':('dataset_id','not-a-uuid'),'production extra field':('candidate_verified',True)}
+    if damage in changes:
+        key,value=changes[damage];records['result']['production_readiness'][key]=value
+    suite=E.Element('testsuite');case=E.SubElement(suite,'testcase',classname=node.split('::',1)[0][:-3].replace('/','.'),name=node.split('::')[1])
+    if damage=='JUnit class':case.set('classname','wrong.module')
+    if damage=='JUnit node':case.set('name',node.split('::')[1]+'extra')
+    if damage=='JUnit additional':E.SubElement(suite,'testcase',classname='wrong.module',name='test_extra')
     if damage=='setup':E.SubElement(case,'error',message='setup failure')
     elif failed_return:E.SubElement(case,'failure',message='controlled return failure')
     E.ElementTree(suite).write(tmp_path/'native.xml',encoding='utf-8')
     for name,value in records.items():
-        if damage=='missing result' and name=='result':continue
+        if (damage=='missing result' and name=='result'
+                or damage=='missing outer' and name=='outer-final'
+                or damage=='missing fault' and name=='return-fault'):continue
         _control_write(tmp_path,name,value)
 
 
@@ -1682,6 +1805,111 @@ def test_missing_result_record_cannot_qualify(tmp_path,failed_return):
 def test_negative_control_requires_verified_distinct_one_shot_fault(tmp_path,damage):
     _synthetic_result_records(tmp_path,damage,failed_return=True)
     with pytest.raises(f.FocusBlocked):_validate_control_result(tmp_path,'n',1,True)
+
+
+@pytest.mark.parametrize('subject_node', list(CONTROL_SUBJECTS.values()), ids=list(CONTROL_SUBJECTS))
+@pytest.mark.parametrize('failed_return', [False, True])
+def test_both_reviewed_subject_protocols_require_complete_result(tmp_path,subject_node,failed_return):
+    _synthetic_result_records(tmp_path,failed_return=failed_return,subject_node=subject_node)
+    _validate_control_result(tmp_path,'n',int(failed_return),failed_return,subject_node)
+    assert set(_control_read(tmp_path,'config')['source']['files']) == {
+        'tests/rewrite/test_win32_focus.py','tests/rewrite/win32_focus.py',subject_node.split('::',1)[0]}
+    ready=_control_read(tmp_path,'result').get('production_readiness')
+    assert (ready is not None)==(subject_node==CONTROL_SUBJECTS['production-schema4'])
+
+
+@pytest.mark.parametrize('subject_node', list(CONTROL_SUBJECTS.values()), ids=list(CONTROL_SUBJECTS))
+@pytest.mark.parametrize('damage', [
+    'wrong node','wrong source','config node','command node','JUnit class','JUnit node','JUnit additional',
+    'missing source hash','stale source','changed source','missing outer','outer cleanup','missing cleanup',
+    'subject input','stale foreground','after disarming','cleanup input','cleanup','Job','setup','native focus'])
+def test_both_reviewed_subjects_reject_incomplete_or_different_protocol(tmp_path,subject_node,damage):
+    _synthetic_result_records(tmp_path,damage,subject_node=subject_node)
+    with pytest.raises(f.FocusBlocked):_validate_control_result(tmp_path,'n',0,False,subject_node)
+
+
+@pytest.mark.parametrize('subject_node', list(CONTROL_SUBJECTS.values()), ids=list(CONTROL_SUBJECTS))
+@pytest.mark.parametrize('damage', ['missing fault','fault not applied','fault same origin',
+                                   'fault wrong foreground','fault repeated','wrong phase'])
+def test_both_subject_negative_controls_need_verified_result_fault(tmp_path,subject_node,damage):
+    _synthetic_result_records(tmp_path,damage,failed_return=True,subject_node=subject_node)
+    with pytest.raises(f.FocusBlocked):_validate_control_result(tmp_path,'n',1,True,subject_node)
+
+
+@pytest.mark.parametrize('damage', ['missing production readiness','missing precondition readiness',
+    'production schema','production schema type','production semantic','production admission',
+    'production candidate','production profile','production worker','production liveness',
+    'production liveness type','production dataset mismatch','production dataset malformed','production extra field'])
+def test_production_protocol_refuses_missing_or_inconsistent_actual_readiness(tmp_path,damage):
+    node=CONTROL_SUBJECTS['production-schema4']
+    _synthetic_result_records(tmp_path,damage,subject_node=node)
+    with pytest.raises(f.FocusBlocked):_validate_control_result(tmp_path,'n',0,False,node)
+
+
+def test_control_subjects_are_exact_and_cannot_authorize_another_node(tmp_path):
+    assert CONTROL_SUBJECTS == {
+        'historical-schema3':'tests/rewrite/test_chronicle_history_modal.py::test_real_tk_history_parent_grab_focus_return_identity_and_guard[none]',
+        'production-schema4':'tests/rewrite/test_runtime4_native_focus.py::test_ordinary_schema4_history_parent_grab_focus_return_identity_and_guard[none]'}
+    unknown=CONTROL_SUBJECTS['production-schema4'].replace('[none]','[local]')
+    for action in (lambda:_subject_files(unknown),lambda:_control_source(unknown),
+                   lambda:_synthetic_result_records(tmp_path,subject_node=unknown),
+                   lambda:_validate_control_result(tmp_path,'n',0,False,unknown)):
+        with pytest.raises(f.FocusBlocked,match='Unapproved'):action()
+    assert not list(tmp_path.iterdir())
+
+
+def test_actual_production_subject_collection_exact_nodes_fixtures_and_partition(tmp_path):
+    """Reuse the full collector's portable collection child, never its native run."""
+    from pathlib import Path
+    from test_stage4_qualification import f as collector
+    from test_qualification_collector import capture_process
+    subject=Path('tests/rewrite/test_runtime4_native_focus.py')
+    output=tmp_path/'collection';output.mkdir()
+    code='''import os,sys
+from pathlib import Path
+os.environ['PYTHONDONTWRITEBYTECODE']='1'
+os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD']='1'
+os.environ.pop('PYTEST_ADDOPTS',None);os.environ.pop('PYTEST_PLUGINS',None)
+os.environ['PYTHONPATH']=str(Path(sys.argv[1])/'src')
+sys.path.insert(0,str(Path(sys.argv[1])/'src'))
+sys.path.insert(0,str(Path(sys.argv[1])/'scripts'))
+import stage4_qualification as collector
+raise SystemExit(collector.pytest_child(Path(sys.argv[2]),True,
+    arguments=[sys.argv[3],'--junitxml',str(Path(sys.argv[2])/'collection.xml')]))
+'''
+    compile(code,'portable existing collector child','exec')
+    result=capture_process([sys.executable,'-B','-c',code,str(f.REPO),str(output),str(subject)],
+                           output,cwd=f.REPO)
+    assert result.returncode==0,result.stderr
+    manifest=json.loads((output/'manifest.json').read_text())
+    expected={node for node in EXPECTED_AUTHORIZATIONS if node.startswith(str(subject)+'::')}
+    assert len(manifest)==6 and {row['nodeid'] for row in manifest}==expected
+    assert all(row['selected'] and row['source_path']==str(f.REPO/subject) for row in manifest)
+    for row in manifest:
+        assert row['fixtures'].count('root')==row['fixtures'].count('ordinary')==1
+        assert not {'connected','connected_candidate','adapter'} & set(row['fixtures'])
+        assert row['fixture_sources']['root']==str(f.REPO/'tests/rewrite/test_app.py')
+        assert row['fixture_sources']['ordinary']==str(f.REPO/'tests/rewrite/test_runtime4_ui.py')
+    partitions=collector.partition_inventory(manifest,f.REPO)
+    assert partitions['SUPPORTED_RUNTIME']==[dict(row,partition='SUPPORTED_RUNTIME') for row in manifest]
+    assert not partitions['RETAINED_LEGACY'] and not partitions['UNCLASSIFIED']
+    observed=[json.loads(line) for line in (output/'events.jsonl').read_text().splitlines()]
+    assert not any(e['event']=='node_start' for e in observed)
+
+
+def test_native_result_carries_detached_production_readiness_without_claiming_native_execution(tmp_path,monkeypatch):
+    import tk_observation as observation
+    value,root,widget=driver(node=CONTROL_SUBJECTS['production-schema4']);run(value,widget)
+    ready=dict(dataset_id='01234567-89ab-4cde-8fab-0123456789ab',schema_version=4,
+               semantic_verified=True,ordinary_startup_permitted=True,presentation_profile='schema4',
+               candidate_presentation=False,worker_type='DatabaseWorker',worker_alive=True)
+    monkeypatch.setattr(observation,'snapshot',lambda *args:dict(observation_errors=[]))
+    context=dict(directory=tmp_path,nonce='n',driver=value,root=root,diagnostic_errors=[],production_readiness=ready)
+    _native_report(SimpleNamespace(_f2_control_context=context),SimpleNamespace(when='call',excinfo=None))
+    assert _control_read(tmp_path,'result')['production_readiness']==ready
+    assert not context['diagnostic_errors']
+    ready['worker_alive']=False
+    assert _control_read(tmp_path,'result')['production_readiness']['worker_alive'] is True
 
 
 if __name__ == '__main__' and len(sys.argv) == 3 and sys.argv[1] == '--inert-control':
