@@ -311,6 +311,12 @@ admission, existing containment/evidence mechanisms and verified delivery. Porta
 runner tests do not establish native acceptance. After independent runner acceptance
 the operator runs the reviewed script once and returns its ZIP for adjudication;
 full F2 filesystem, Case C/29-node ledger reconciliation and F3/F4 stay separate.
+The approved corrective package makes runner evidence/Git decoding explicitly
+strict UTF-8, including raw NUL-delimited tracked filenames and PowerShell summary
+bytes. It corrects the stale restore/source-launch success test to genuine schema 4
+and adds explicit unchanged schema-3 refusal. Portable locale/integrity and managed
+Tk regression evidence requires independent review; production behavior, native
+input, collector safety and qualification applicability remain unchanged.
 F supplies distinct integrated/native gates; portable candidate tests cannot close
 ordinary-runtime, Windows or operator/Sleep gates by substitution.
 Outstanding native qualification remains a separate gate; this documentation does

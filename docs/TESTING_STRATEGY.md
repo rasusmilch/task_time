@@ -356,6 +356,16 @@ nor skip policy changes. The only selection is the reviewed twelve subjects and
 four exact enclosing control instances; original collection/fixture identities must
 match execution before any fixture runs. Controls gate subjects; there is no retry.
 
+Authoritative runner records use strict UTF-8 without a BOM, matching the existing
+collector writer. Python record/native-log reads and archive JSON readbacks use
+explicit strict decoding; PowerShell 5.1 decodes summary bytes with a throwing
+UTF8Encoding before JSON parsing. Git text uses strict UTF-8, while tracked filenames
+are captured as raw NUL-delimited bytes and decoded individually without pathname
+normalization. Malformed bytes prevent PASS and remain available as raw evidence.
+Locale-adversarial regressions round-trip genuine collector inventories containing
+Unicode repository/source/fixture/evidence paths and reject corrupt authoritative
+records. Portable checks do not establish native PowerShell or NTFS behavior.
+
 [test_f2b_focus_runner.py](../tests/rewrite/test_f2b_focus_runner.py) combines actual
 portable source collection and collector event/JUnit/archive execution with explicit
 Windows-interface and orchestration doubles. It checks exact selection, dirty/drifted
@@ -367,14 +377,20 @@ accepted runner commit may be supplied as the operator's full expected SHA. Nati
 execution/result acceptance, NTFS/recovery Case C, the original unavailable 29-node
 ledger, F3 and F4 remain outstanding; no portable result waives them.
 
-The additional connected legacy control
+The connected source-launcher control
 `test_backup_startup.py::test_real_tk_cold_restore_then_normal_source_launcher_new_owner_and_worker`
-still obtains a schema-3 image from `conftest.store` but expects ordinary restore
-to succeed. Current ordinary schema 4 refuses it, as required and separately
-asserted by `test_backup_restore.py::test_cli_verify_restore_no_display_source_unchanged_reopen`.
-The runner task preserves this failed legacy expectation and its reproduction;
-neither that test nor production admission is changed or waived. Receipts report
-it separately from focused-runner acceptance and portable headless skips.
+now creates genuine schema-4 facts through SQLiteStore and Schema4RuntimeService.
+It verifies backup/cold CLI restore, then a fresh source-launch process with the
+real StartupWindow/root/app/worker/store, preserved active timer and retained work,
+one new canonical Request/effect and orderly shutdown. Complete logical facts and
+source/backup bytes are compared. The earlier runner receipt's failed schema-3
+success expectation and reproduction remain historical diagnostics, not waived
+failures or evidence of a product defect. The separate
+`test_historical_schema3_backup_restore_refuses_current_cli_without_mutating_source`
+requires ordinary CLI refusal, no target creation and unchanged historical source
+and backup. Connected execution requires a managed real Tk display; headless skips
+do not substitute for it. Production admission and schema-3 historical tests remain
+unchanged.
 
 | Guarantee (ordinary project nesting and usability) | Required behavior coverage |
 | --- | --- |

@@ -247,6 +247,22 @@ exact reviewed clean branch/SHA, remote agreement, current source hashes and imp
 Chronicle identity. Actual Python/SQLite/Tcl/Tk/tzdata/pytest/dependency, interpreter
 image/venv, desktop and Job-containment observations remain required.
 
+The corrective runner uses strict UTF-8 without a BOM for authoritative collector
+records, native observation text and archive JSON readback. PowerShell 5.1 reads
+summary bytes through an explicit throwing UTF8Encoding before ConvertFrom-Json;
+invalid encoding prevents PASS. Git text is decoded strictly as UTF-8 and tracked
+filenames are split on raw NUL bytes before individual UTF-8 decoding, preserving
+Unicode pathname identity. There is no ANSI fallback, replacement decoding or
+automatic BOM conversion. Locale-adversarial portable tests exercise the actual
+collector writer and corrected reader; native Windows verification remains pending.
+
+The corrected source-launcher regression independently uses a genuine schema-4
+backup, cold CLI restore and fresh ordinary GUI/worker session, preserving timer,
+work and source/backup bytes while accepting one new Request. A separate historical
+schema-3 backup must refuse ordinary CLI restore without creating a target or
+changing either input. The earlier failed legacy success expectation is retained
+in historical diagnostic evidence; no compatibility fallback or migration is added.
+
 The fixed collection is exactly **six historical subjects, six production subjects
 and four independent native controls**. Exact full IDs, source/fixture closure and
 schema roles are checked before input and again against the original manifest at

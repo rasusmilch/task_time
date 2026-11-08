@@ -14,6 +14,7 @@ $CollectionSeconds = 90
 $PhaseSeconds = 900
 $ErrorActionPreference = 'Stop'
 $Utf8 = [Text.UTF8Encoding]::new($false)
+$StrictUtf8 = [Text.UTF8Encoding]::new($false,$true)
 $Child = $null
 $Evidence = $null
 $ExitCode = 4
@@ -136,7 +137,10 @@ try {
     $FinalStatus = $ControllerStatus
     if ($ExitCode -eq 0) {
         if (-not $Evidence -or $ControllerStatus -ne 'PASS') { throw 'EVIDENCE_INCOMPLETE: controller exit/status disagreement' }
-        $Summary = Get-Content -LiteralPath (Join-Path $Evidence 'summary.json') -Raw | ConvertFrom-Json
+        $SummaryBytes = [IO.File]::ReadAllBytes((Join-Path $Evidence 'summary.json'))
+        $SummaryText = $StrictUtf8.GetString($SummaryBytes)
+        if ($SummaryText.Length -gt 0 -and [int][char]$SummaryText[0] -eq 0xFEFF) { throw 'EVIDENCE_INCOMPLETE: UTF-8 summary must not have a BOM' }
+        $Summary = $SummaryText | ConvertFrom-Json
         if ($Summary.status -ne 'PASS' -or $Summary.archive_status -ne 'VERIFIED' -or $Summary.completed -ne 16) { throw 'EVIDENCE_INCOMPLETE: final evidence status disagrees' }
     } elseif ($ControllerStatus -eq 'PASS') { throw 'EVIDENCE_INCOMPLETE: nonzero controller claimed PASS' }
     $Finished = $true

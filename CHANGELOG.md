@@ -6,6 +6,12 @@ receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
+- Correct qualification-runner evidence and Git decoding to strict UTF-8, including
+  raw NUL-delimited filenames and PowerShell summary bytes; add Unicode round-trip
+  and malformed-evidence refusal regressions. Correct the source-launcher restore
+  control to genuine schema 4 and independently verify unchanged schema-3 refusal.
+  Production behavior and native qualification status remain unchanged.
+
 - Add a one-command Windows F2b-Focus runner with exactly four independent native
   controls before twelve subjects, strict source/environment/output admission,
   existing collector containment/watchdogs/evidence/archive mechanisms and portable

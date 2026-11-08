@@ -53,15 +53,24 @@ def require(condition, message):
         raise ValueError(message)
 
 
-def git(repo, *args):
+def _read_utf8(path):
+    """Collector evidence is UTF-8 without conversion or locale fallback."""
     try:
-        return subprocess.run(['git', '-C', str(repo), *args], capture_output=True,
-                              text=True, timeout=15, check=True, stdin=subprocess.DEVNULL,
-                              env=dict(os.environ,GIT_TERMINAL_PROMPT='0',GCM_INTERACTIVE='Never',
-                                       SSH_ASKPASS_REQUIRE='never')).stdout.strip()
+        return Path(path).read_text(encoding='utf-8', errors='strict')
+    except UnicodeDecodeError as exc:
+        raise ValueError('Invalid UTF-8 evidence: '+str(path)) from exc
+
+
+def git(repo, *args, raw=False):
+    try:
+        result = subprocess.run(['git', '-C', str(repo), *args], capture_output=True,
+                                timeout=15, check=True, stdin=subprocess.DEVNULL,
+                                env=dict(os.environ,GIT_TERMINAL_PROMPT='0',GCM_INTERACTIVE='Never',
+                                         SSH_ASKPASS_REQUIRE='never'))
     except subprocess.CalledProcessError as exc:
         raise RuntimeError('Git admission failed: '+repr(args)+'; exit '+str(exc.returncode)
-                           +'; stdout '+exc.stdout+'; stderr '+exc.stderr) from exc
+                           +'; stdout '+repr(exc.stdout)+'; stderr '+repr(exc.stderr)) from exc
+    return result.stdout if raw else result.stdout.decode('utf-8', errors='strict').strip()
 
 
 def source_admission(repo, expected, original=None):
@@ -78,11 +87,15 @@ def source_admission(repo, expected, original=None):
     remote = git(repo, 'ls-remote', 'origin', 'refs/heads/feature/chronicle-rewrite').split()
     require(remote == [source['revision'], 'refs/heads/feature/chronicle-rewrite'],
             'Local/remote source disagreement')
-    paths = git(repo, 'ls-files', '-z').split('\0')
+    filenames = git(repo, 'ls-files', '-z', raw=True)
+    require(type(filenames) is bytes and filenames.endswith(b'\0'), 'Incomplete raw Git filename inventory')
+    paths = [value.decode('utf-8', errors='strict') for value in filenames.split(b'\0')[:-1]]
+    require(all(paths) and len(paths)==len(set(paths)), 'Invalid raw Git filename inventory')
     hashes = {}
-    for name in filter(None, paths):
+    for name in paths:
         path = repo/name
-        require(path.is_file() and not path.is_symlink()
+        require(not Path(name).is_absolute() and '..' not in Path(name).parts
+                and path.resolve().is_relative_to(repo) and path.is_file() and not path.is_symlink()
                 and not getattr(path.lstat(), 'st_file_attributes', 0) & 0x400,
                 'Unsuitable source file: '+name)
         hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -206,9 +219,9 @@ def pytest_collection_modifyitems(session, config, items):
     yield
     phase = Path(os.environ['CHRONICLE_FOCUS_PHASE'])
     original_path = phase/'selected-inventory.json'
-    original = json.loads(original_path.read_text()) if original_path.exists() else None
+    original = json.loads(_read_utf8(original_path)) if original_path.exists() else None
     nodes = tuple(r['nodeid'] for r in original) if original is not None else NODES
-    validate_inventory(json.loads((phase/'manifest.json').read_text()), REPO, nodes, original)
+    validate_inventory(json.loads(_read_utf8(phase/'manifest.json')), REPO, nodes, original)
 
 
 def pytest_runtest_makereport(item, call):
@@ -227,13 +240,13 @@ def child(root, phase):
     import pytest
     import qualify_f2b_focus as plugin
     expected = os.environ['CHRONICLE_FOCUS_EXPECTED']
-    source_admission(REPO,expected,json.loads((root.parent/'source.json').read_text()))
-    require(json.loads((root.parent/'owner.json').read_text())['kind']=='Chronicle F2b Focus',
+    source_admission(REPO,expected,json.loads(_read_utf8(root.parent/'source.json')))
+    require(json.loads(_read_utf8(root.parent/'owner.json'))['kind']=='Chronicle F2b Focus',
             'Missing focus output ownership')
     # Hooks are local to this fixed child. Do not alter existing collector code.
     pytest.hookimpl(hookwrapper=True, tryfirst=True)(plugin.pytest_collection_modifyitems)
     os.environ['CHRONICLE_FOCUS_PHASE'] = str(root)
-    inventory = json.loads((root/'selected-inventory.json').read_text()) if phase != 'collection' else None
+    inventory = json.loads(_read_utf8(root/'selected-inventory.json')) if phase != 'collection' else None
     nodes = CONTROLS if phase == 'controls' else SUBJECTS if phase == 'subjects' else NODES
     return s.pytest_child(root, phase == 'collection',
         arguments=[*nodes, '-p', 'qualify_f2b_focus', '--maxfail=1'], inventory=inventory)
@@ -256,7 +269,7 @@ def execute_phase(repo, root, label, executable, env, original=None):
         require(not any(e['event']=='collection_report' and e['outcome']!='passed' for e in events),
                 'Collection failed or skipped')
         return inventory
-    rows = json.loads((phase/'manifest.json').read_text())
+    rows = json.loads(_read_utf8(phase/'manifest.json'))
     validate_inventory(rows,repo,tuple(r['nodeid'] for r in original),original)
     value = qualify_phase(original,raw)
     value['raw'] = raw
@@ -278,7 +291,7 @@ def control_proof(root):
     found = {}
     for path in regular_files(root/'controls'/'pytest-temp'):
         if path.name != 'config.json' or not path.parent.name.startswith('inert-'):continue
-        config = json.loads(path.read_text())
+        config = json.loads(_read_utf8(path))
         key = (config['node'],config['failed_return'])
         require(type(key[1]) is bool and key in CONTROL_BINDINGS.values() and key not in found,
                 'Wrong or duplicate control identity')
@@ -293,7 +306,7 @@ def control_proof(root):
 def subject_proof(root):
     import win32_focus as focus
     records = []
-    for line in (root/'subjects'/'stdout.log').read_text(encoding='utf-8').splitlines():
+    for line in _read_utf8(root/'subjects'/'stdout.log').splitlines():
         if line.startswith('CHRONICLE_TK_OBSERVATION '):
             records.append(json.loads(line[len('CHRONICLE_TK_OBSERVATION '):]))
     for node in SUBJECTS:
@@ -357,11 +370,11 @@ def deliver(root, raw):
                             delivery_requires_successful_controller_acknowledgement=True)
             destination = s.archive(root,complete)
             with zipfile.ZipFile(destination) as archive:
-                members = json.loads(archive.read('archive-members.json'))
+                members = json.loads(archive.read('archive-members.json').decode('utf-8', errors='strict'))
                 require(len(archive.namelist())==len(set(archive.namelist()))
                         and set(archive.namelist())==set(members['files']) and archive.testzip() is None,
                         'Archive members/CRC differ')
-                require(json.loads(archive.read('summary.json'))==complete, 'Archive/source status disagreement')
+                require(json.loads(archive.read('summary.json').decode('utf-8', errors='strict'))==complete, 'Archive/source status disagreement')
                 for name,h in hashes.items():
                     require(hashlib.sha256(archive.read(name)).hexdigest()==h, 'Archive member hash differs: '+name)
             record.write(complete)
