@@ -215,6 +215,71 @@ No production selection/rendering or focus behavior is changed.
 
 ### Unattended native focus characterization
 
+#### One-command focused runner
+
+F2b-Focus's subject/control implementation is independently accepted at
+`8bd0ecac8c7ca4b9f63868928cbd9b5aaeaf7647`. The bounded runner is implemented
+for independent review; Codex has not executed native qualification. After runner
+acceptance, the Windows operator starts **only** this script once, from the reviewed
+checkout in Windows PowerShell 5.1, supplying the full published runner SHA from its
+execution receipt:
+
+```powershell
+& .\scripts\qualify_f2b_focus_windows.ps1 -ExpectedRevision FULL_REVIEWED_40_CHARACTER_SHA
+```
+
+Optional `-OutputParent` and `-Python` select an existing trusted evidence location
+and installed interpreter. The default evidence parent is
+`LOCALAPPDATA\Chronicle Qualification\F2b Focus`, separate from ordinary data;
+missing dedicated parent directories are created only after their existing ancestor
+passes admission. The repository comes from the script location. Interpreter
+selection prefers `.venv\Scripts\python.exe`, then the existing installed `python`;
+Store aliases refuse. No package/environment installation, execution-policy change,
+elevation, security change or manual GUI action is part of this procedure. An absent
+required SHA refuses without prompting. A blocked policy or prerequisite remains
+BLOCKED; the script never chooses another disk or unlocks the desktop.
+
+Reserve an exclusive, connected, unlocked Windows 11 client desktop and leave it
+undisturbed. Output must be fixed local NTFS, canonical and outside repositories,
+datasets, cloud/network paths and existing evidence runs. Each invocation reserves
+one new GUID directory and preserves earlier output. Source admission requires the
+exact reviewed clean branch/SHA, remote agreement, current source hashes and imported
+Chronicle identity. Actual Python/SQLite/Tcl/Tk/tzdata/pytest/dependency, interpreter
+image/venv, desktop and Job-containment observations remain required.
+
+The fixed collection is exactly **six historical subjects, six production subjects
+and four independent native controls**. Exact full IDs, source/fixture closure and
+schema roles are checked before input and again against the original manifest at
+execution collection. Four controls run serially first: each fixed History `[none]`
+subject's normal and deliberately wrong-return control. Their existing validator
+must distinguish a genuine negative RESULT failure from setup failure. Any failed
+or incomplete control stops before the twelve subjects; no scope widening or retry
+occurs. All sixteen enclosing tests must pass without skips, xfail/xpass, deselection
+or omission. Native driver code, input count and every existing deadline are unchanged.
+
+The script prints source, phase, completed/expected counts, heartbeat, final status
+and evidence paths. PASS requires exact inventories/source agreement, complete
+events/JUnit/native/control evidence, owned cleanup and verified archive delivery.
+FAIL retains a demonstrated assertion failure. BLOCKED denotes a prerequisite
+refusal before the affected phase; EVIDENCE_INCOMPLETE retains execution/evidence/
+cleanup/delivery uncertainty. A demonstrated failure is retained even alongside
+independent incompleteness. Exit zero is reserved for verified PASS. Archive summary
+bytes are proposed completion records until successful controller acknowledgement;
+an unverified ZIP candidate is never proof of PASS.
+
+Return the printed evidence ZIP for independent review. The directory retains raw
+commands, source/environment records, manifests, event health, stdout/stderr, JUnit,
+native PRECONDITION/RESULT, four control directories, production readiness, SQLite
+fact comparisons, watchdog/Job/cleanup records and source rechecks. Existing archive
+machinery records omitted links and verifies exact membership/CRC; the runner also
+checks available member hashes and final-summary readback. Preserve the directory
+and any unverified candidate after delivery failure; do not rerun to continue a failed
+attempt. This focused run does not execute the full Stage 4 collector, filesystem
+qualification, supervised F3 or Sleep F4. Case C and the original 29-node ledger remain
+unresolved and unwaived.
+
+#### Retained subject/control protocol and historical diagnostic command
+
 The original six cases below remain historical schema-3 native controls. They do
 not automatically qualify the ordinary schema-4 GUI. F2b-Focus adds exactly six
 production schema-4 node/source authorizations, for twelve total; it authorizes no
@@ -240,7 +305,8 @@ must add no diagnostic. The other Timesheet subject preserves its historical
 competing-local-grab follow-up and exact intentional refusal. Other callback
 exceptions fail. Portable real-Tk evidence does not establish native focus success.
 
-Only after separate execution review, use the approved interpreter/source and
+The diagnostic command below is retained for provenance, not an additional operator
+step or the new sixteen-instance runner. Only after separate execution review, use the approved interpreter/source and
 the existing disposable `$Q`; this does not execute or qualify complete F2/F3. Record `$Expected`, runtime,
 console command, UTC action times and the resulting console transcript/JUnit. Run
 the six cases serially together with the focused controls, without manual activation.

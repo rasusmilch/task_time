@@ -6,6 +6,12 @@ receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
+- Add a one-command Windows F2b-Focus runner with exactly four independent native
+  controls before twelve subjects, strict source/environment/output admission,
+  existing collector containment/watchdogs/evidence/archive mechanisms and portable
+  refusal regressions. No native qualification is performed by this implementation;
+  application, native driver, collectors and skip policy remain unchanged.
+
 - Add F2b-Focus's six ordinary schema-4 History/Timesheet subjects alongside the
   six historical native authorizations. Bind both fixed History control subjects
   to exact source/JUnit identity and production readiness, with portable protocol

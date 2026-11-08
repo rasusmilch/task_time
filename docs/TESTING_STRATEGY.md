@@ -346,6 +346,36 @@ unchanged. Native controls, F2/F3/F4, Windows Case C and the original unresolved
 29-node filesystem ledger remain separate outstanding gates. Independent review
 of implementation and portable evidence precedes any native execution approval.
 
+The separately approved focused runner consists of
+[qualify_f2b_focus_windows.ps1](../scripts/qualify_f2b_focus_windows.ps1) and internal
+[qualify_f2b_focus.py](../scripts/qualify_f2b_focus.py). It reuses the existing full
+collector's source-aware child/plugin, event health, phase monitor and archive,
+and the bounded collector's source checks, WindowsChild Job containment, watchdogs
+and event/JUnit reconciliation. Neither collector, frozen selection, native driver
+nor skip policy changes. The only selection is the reviewed twelve subjects and
+four exact enclosing control instances; original collection/fixture identities must
+match execution before any fixture runs. Controls gate subjects; there is no retry.
+
+[test_f2b_focus_runner.py](../tests/rewrite/test_f2b_focus_runner.py) combines actual
+portable source collection and collector event/JUnit/archive execution with explicit
+Windows-interface and orchestration doubles. It checks exact selection, dirty/drifted
+source refusal, unsuitable destinations, fixture changes, prerequisite/control gates,
+unexpected outcomes, missing/incomplete evidence, cleanup and archive failure and
+status/exit mapping. These are portable implementation tests, not Win32 input or
+PowerShell 5.1 evidence. Real Tk/X11 regression remains separate. Only an independently
+accepted runner commit may be supplied as the operator's full expected SHA. Native
+execution/result acceptance, NTFS/recovery Case C, the original unavailable 29-node
+ledger, F3 and F4 remain outstanding; no portable result waives them.
+
+The additional connected legacy control
+`test_backup_startup.py::test_real_tk_cold_restore_then_normal_source_launcher_new_owner_and_worker`
+still obtains a schema-3 image from `conftest.store` but expects ordinary restore
+to succeed. Current ordinary schema 4 refuses it, as required and separately
+asserted by `test_backup_restore.py::test_cli_verify_restore_no_display_source_unchanged_reopen`.
+The runner task preserves this failed legacy expectation and its reproduction;
+neither that test nor production admission is changed or waived. Receipts report
+it separately from focused-runner acceptance and portable headless skips.
+
 | Guarantee (ordinary project nesting and usability) | Required behavior coverage |
 | --- | --- |
 | Project organization | Multiple project depths, including beyond three, child creation beneath arbitrary valid projects, roots and containers with both direct tasks and child projects; duplicate names remain distinct UUIDs. Engineering resource refusal is explicit, never truncation or a small product depth rule. |
