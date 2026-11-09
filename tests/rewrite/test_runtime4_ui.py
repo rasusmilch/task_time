@@ -275,6 +275,9 @@ def test_ordinary_schema4_backup_restore_fresh_root_worker(ordinary,tmp_path,mon
         from test_timesheet_save_ui import saved_reports
         sheet=open_sheet(fresh);saved_reports(fresh,sheet,saved.export_id)
         assert sheet.candidate.report_utf8==saved.report_utf8
+        assert sheet.mode=='preview' and not sheet.current and not sheet.saved_panel.winfo_ismapped()
+        assert sheet.review_polr();reviewed(fresh,sheet)
+        assert sheet.defer_polr() and sheet.mode=='preview'
         assert sheet.confirmation_history();reviewed(fresh,sheet)
         assert batch in sheet.polr_tree.get_children()
         assert sheet.close() and logical(restored/'chronicle.sqlite3')==facts

@@ -618,7 +618,9 @@ History before using main/mini.
 
 ## Timesheet / POL-R Preview, Save and Saved Reports
 
-Close History or another work form, then choose Timesheet / POL-R. Fresh openings
+Close History or another work form, then choose Timesheet / POL-R. The persistent
+sections are **Timesheet**, **Reconciliation**, **Saved Reports** and **Confirmation
+History**, with one growing content area and a permanent Close footer. Fresh openings
 start This week/All tasks and require Preview. Last week uses the committed week
 convention; Custom accepts inclusive dates or draft-only inline calendar choices.
 Selected tasks uses explicit UUID rows (Ctrl/Shift selection), not names or
@@ -637,7 +639,11 @@ regular-file content conflict, names the exact path and defaults to No. It permi
 one replacement call. Active dataset paths/aliases are always protected.
 
 Saved Reports lists frozen UUID/date/cutoff/scope/label context and loads exact stored
-text, including after restart. Check File Status explicitly inspects the selected
+text, including after restart or a missing external copy. Load registered report
+returns to Timesheet showing a registered frozen report; choose Review POL-R
+Confirmation directly without another Save. Section navigation retains the current
+save attempt; replacing it or choosing New Preview retains abandonment safeguards.
+Check File Status explicitly inspects the selected
 path; READY is only that observation. A missing copy can be restored with Retry Save;
 Save Copy As chooses a new destination without changing the original preferred path.
 New Preview deliberately starts another identity. No automatic retry occurs.
@@ -659,7 +665,11 @@ including equal values; zero is initially unchecked. Click Select cells or Selec
 all positive suggestions, then Confirm checked. Empty selection is an error.
 Each selected newer-differing conflict requires its own unchecked acknowledgement;
 review the exact task/date, old identity/value and frozen proposal before choosing it.
-Refresh review discards old consent. Defer / Review later writes nothing.
+Refresh review discards old consent. Defer / Review later writes nothing. While
+reviewing, use explicit Defer/Cancel/Return before another section or unrelated
+review. Close, the window X and Escape do not discard editable review. After a
+successful confirmation its batch UUID remains visible; Return is explicit and a
+second confirmation requires explicit Refresh review.
 
 Manual POL-R Confirmation requires no report: choose a retained task UUID, type a
 civil date, Review current, then enter absolute decimal hours in exact 0.25 increments
@@ -668,6 +678,8 @@ not add a Delta. Unknown is not zero. Invalid input retains the draft. A changed
 reviewed prior requires explicit Refresh review; an unverified commit locks the
 submitted inputs and offers Retry/Reconcile or default-No exceptional application
 exit. A new explicit equal-value confirmation still records new immutable evidence.
+Cancel/Return entered from Reconciliation returns there; entry from Timesheet returns
+to Timesheet. A follow-up status-read error does not undo or hide known commitment.
 
 Confirmation History reads complete immutable selected cells by batch UUID. Immediate
 task/day feedback separates Actual, current Suggested, Confirmed, Daily Delta,
@@ -695,7 +707,10 @@ a complete-week review. Equal weekly sums cannot hide opposing daily mismatches;
 an explained nonzero Delta may still match the suggestion. Compare loaded report
 with current reconciliation preserves the historical report, shows frozen/current
 week conventions and source differences. Review saved report, source confirmation
-and manual absolute confirmation use the existing interfaces. No read confirms work.
+and manual absolute confirmation use the existing interfaces. Return refreshes the
+last applied scope, preserves unapplied controls and restores the selected task/date
+if present. Apply / Refresh is still required to apply drafts. A failed refresh is
+unavailable or old-as-of, never falsely current. No read confirms work.
 
 The main banner checks previous week on every application-used local date and
 current week on local Monday/Friday, independently of the selected week start.

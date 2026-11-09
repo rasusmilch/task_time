@@ -964,6 +964,28 @@ running worker or silently killing it. Root/view destruction and later results
 must neither hang nor install stale state. Tests cannot choose still-Open abnormal
 clock/restart or dataset-timezone-change behavior.
 
+## Timesheet navigation and mapped layout repair
+
+[test_timesheet_navigation_layout.py](../tests/rewrite/test_timesheet_navigation_layout.py)
+uses the ordinary StartupWindow/DatabaseWorker/schema-4 fixture and genuine temporary
+SQLite facts. It covers independent entry, explicit review exits, committed-result
+visibility, repeated-Confirm refusal, real COMMIT/probe uncertainty, applied-versus-
+draft reconciliation, UUID/date selection, missing-file restart recovery, obsolete
+reads and navigation purity. Existing source/manual stale-prior, zero, exact-retry,
+file, modal and timer suites remain regression controls; historical schema-3 fixtures
+retain their evidence role. Production backup/fresh-worker coverage also revisits
+recovered source review and immutable History without re-saving.
+
+Mapped tests use a verified window manager at 980x740 and 800x620 with short/long
+Unicode/duplicate task lists, source rows and individual stale acknowledgements.
+Measure client/content/table/action/footer bounds, positive viewports, exclusive
+mapping, resize growth, scrolling and scrollbar alignment. The normal-scale managed
+Tk adjacency bound is four pixels; do not enlarge it after failure. Configured
+heights, headless doubles or bare Xvfb are insufficient. Record Tk/Tcl/scaling, WM,
+DISPLAY, commands, JUnit, diagnostics and owned-process cleanup. Native Windows and
+alternate scaling require independently observed equivalent alignment; Linux/X11
+passes are not native acceptance. F2/F3/F4 and filesystem skip limits are unchanged.
+
 ## Frozen exports and core POL-R workflow
 
 Stage 3A allocation/candidate/registration/preview and Stage 3B protected

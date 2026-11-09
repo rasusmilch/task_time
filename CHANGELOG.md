@@ -6,6 +6,14 @@ receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
+- Repair Timesheet / POL-R with four persistent sections, exclusive expanding
+  content, adjacent scrollbars and a permanent Close footer at unchanged minimum
+  geometry. Recover frozen reports without re-saving; preserve applied reconciliation
+  scope/drafts and semantic selection across explicit review returns. Guard editable
+  Close/navigation and accidental repeated confirmation while retaining committed
+  results and existing exact-request/evidence semantics. No backend or native
+  qualification change.
+
 - Correct qualification-runner evidence and Git decoding to strict UTF-8, including
   raw NUL-delimited filenames and PowerShell summary bytes; add Unicode round-trip
   and malformed-evidence refusal regressions. Correct the source-launcher restore

@@ -63,14 +63,15 @@ def test_real_tk_server_actual_export_confirm_correct_reconcile_reminder(connect
     for key in tuple(sheet.polr_selected):
         if key!=(task,'2026-10-12'):select_cell(root,sheet,key,click)
     click(sheet.polr_confirm_button);reviewed(app,sheet)
-    click(sheet.reconciliation_button);reconciled(app,sheet)
+    click(sheet.polr_defer_button);click(sheet.reconciliation_button);reconciled(app,sheet)
     select_reconciliation(root,sheet,task,'2026-10-12',click);click(sheet.reconciliation_manual)
     reviewed(app,sheet);type_hours(root,sheet.polr_hours_control,'2.00',click,keyboard)
     click(sheet.polr_confirm_button);reviewed(app,sheet)
-    click(sheet.reconciliation_button);sheet.reconciliation_period.set('Last week');click(sheet.reconciliation_apply);r=reconciled(app,sheet)
+    click(sheet.polr_defer_button);sheet.reconciliation_period.set('Last week');click(sheet.reconciliation_apply);r=reconciled(app,sheet)
     assert row(sheet,task,'2026-10-12')[1]['classification']=='MISMATCH'
     select_reconciliation(root,sheet,task,'2026-10-12',click);click(sheet.reconciliation_confirm);reviewed(app,sheet)
     assert sheet.mode=='confirmation_history' and '2.00' in sheet.polr_detail.get('1.0','end')
+    click(sheet.polr_defer_button);reconciled(app,sheet)
     click(sheet.compare_reconciliation_button);r=reconciled(app,sheet)
     assert r['source_comparison']['export_id']==candidate.export_id
     assert any('NEWER_DIFFERING_CONFIRMATION' in c['flags'] for c in r['source_comparison']['cells'])

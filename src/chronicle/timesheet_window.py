@@ -6,6 +6,7 @@ from copy import deepcopy
 from uuid import uuid4
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from tkinter import font as tkfont
 
 from .history_window import widget_live
 from .records import Outcome
@@ -16,6 +17,7 @@ from .timesheet import validate
 class TimesheetWindow:
     def __init__(self, owner):
         self.owner = owner
+        self.dataset_id = owner.dataset_id
         self.window = None
         self.disposed = self.presented = self._constructed = False
         self._disposal_primary = None
@@ -33,7 +35,10 @@ class TimesheetWindow:
         self.polr_selected = set()
         self.polr_acks = {}
         self.polr_stale = False
-        self.polr_return_mode = 'preview'
+        self.return_context = None
+        self._polr_completed = False
+        self._review_batch_id = None
+        self._read_contexts = {}
         self._dialog_busy = False
         self.saved_token = None
         self.saved_kind = None
@@ -47,7 +52,7 @@ class TimesheetWindow:
             self.window.geometry('980x740')
             self.window.minsize(800,620)
             self.window.columnconfigure(0,weight=1)
-            self.window.rowconfigure(3,weight=1)
+            self.window.rowconfigure(1,weight=1)
             self._build()
             self.window.protocol('WM_DELETE_WINDOW',self.close)
             self.window.bind('<Escape>',self._escape)
@@ -60,7 +65,15 @@ class TimesheetWindow:
             raise
 
     def _build(self):
-        bar = ttk.Frame(self.window)
+        self.navigation = ttk.Frame(self.window)
+        self.navigation.grid(row=0,column=0,sticky='ew',padx=8,pady=5)
+        self.content_host = ttk.Frame(self.window)
+        self.content_host.grid(row=1,column=0,sticky='nsew',padx=8)
+        self.content_host.columnconfigure(0,weight=1);self.content_host.rowconfigure(0,weight=1)
+        self.timesheet_panel = ttk.Frame(self.content_host)
+        self.timesheet_panel.columnconfigure(0,weight=1);self.timesheet_panel.rowconfigure(3,weight=1)
+        self.timesheet_panel.grid(row=0,column=0,sticky='nsew')
+        bar = ttk.Frame(self.timesheet_panel)
         self.preview_bar=bar
         bar.grid(row=0,column=0,sticky='ew',padx=8,pady=6)
         self.period = tk.StringVar(bar,'This week')
@@ -82,7 +95,7 @@ class TimesheetWindow:
         self.preview_button.grid(row=1,column=1,columnspan=2)
         self.calendar_area = ttk.Frame(bar)
         self.calendar_area.grid(row=2,column=0,columnspan=7,sticky='w')
-        holder = ttk.LabelFrame(self.window,text='Independent task UUIDs (Ctrl/Shift selection; no descendant expansion)')
+        holder = ttk.LabelFrame(self.timesheet_panel,text='Independent task UUIDs (Ctrl/Shift selection; no descendant expansion)')
         holder.grid(row=1,column=0,sticky='ew',padx=8)
         holder.columnconfigure(0,weight=1)
         self.tasks = ttk.Treeview(holder,columns=('task','project','status'),show='headings',height=4,selectmode='extended')
@@ -94,9 +107,9 @@ class TimesheetWindow:
         horizontal = ttk.Scrollbar(holder,orient='horizontal',command=self.tasks.xview)
         horizontal.grid(row=1,column=0,sticky='ew'); self.tasks.configure(xscrollcommand=horizontal.set)
         self.tasks.bind('<<TreeviewSelect>>',lambda event:self.selection_changed())
-        self.context = ttk.Label(self.window,text='Not previewed. Preview only; no file is saved and no POL-R value is confirmed.',wraplength=740)
+        self.context = ttk.Label(self.timesheet_panel,text='Not previewed. Preview only; no file is saved and no POL-R value is confirmed.',wraplength=740)
         self.context.grid(row=2,column=0,sticky='ew',padx=8,pady=4)
-        report = ttk.Frame(self.window)
+        report = ttk.Frame(self.timesheet_panel)
         report.grid(row=3,column=0,sticky='nsew',padx=8)
         report.columnconfigure(0,weight=1); report.rowconfigure(0,weight=1)
         self.report = tk.Text(report,wrap='none',state='disabled',height=12)
@@ -105,41 +118,95 @@ class TimesheetWindow:
             scroll = ttk.Scrollbar(report,orient=orient,command=command)
             scroll.grid(row=row,column=column,sticky='ns' if orient=='vertical' else 'ew')
             self.report.configure(**{('yscrollcommand' if orient=='vertical' else 'xscrollcommand'):scroll.set})
-        self.status = ttk.Label(self.window,text='',wraplength=740)
+        self.status = ttk.Label(self.timesheet_panel,text='',wraplength=740)
         self.status.grid(row=4,column=0,sticky='ew',padx=8,pady=4)
-        self.save_bar = ttk.Frame(self.window)
+        self.save_bar = ttk.Frame(self.timesheet_panel)
         self.save_bar.grid(row=5,column=0,sticky='w',padx=8,pady=5)
         self.save_button = ttk.Button(self.save_bar,text='Save Timesheet',command=self.save)
         self.retry_save_button = ttk.Button(self.save_bar,text='Retry Save',command=self.retry_save)
         self.copy_button = ttk.Button(self.save_bar,text='Save Copy As',command=self.save_copy_as)
         self.check_button = ttk.Button(self.save_bar,text='Check File Status',command=self.check_file_status)
         self.overwrite_button = ttk.Button(self.save_bar,text='Overwrite',command=self.overwrite)
-        self.saved_button = ttk.Button(self.save_bar,text='Saved Reports',command=self.saved_reports)
+        self.saved_button = ttk.Button(self.navigation,text='Saved Reports',command=self.saved_reports)
         self.new_button = ttk.Button(self.save_bar,text='New Preview',command=self.new_preview)
         for col,button in enumerate((self.save_button,self.retry_save_button,self.copy_button,self.check_button,
-                                     self.overwrite_button,self.saved_button,self.new_button)):
+                                     self.overwrite_button,self.new_button)):
             button.grid(row=col//4,column=col%4,padx=2,pady=2)
-        self.saved_panel = ttk.Frame(self.window)
-        self.saved_panel.grid(row=1,column=0,sticky='nsew',padx=8)
-        self.saved_panel.columnconfigure(0,weight=1)
+        self.saved_panel = ttk.Frame(self.content_host)
+        self.saved_panel.grid(row=0,column=0,sticky='nsew',padx=8)
+        self.saved_panel.columnconfigure(0,weight=1);self.saved_panel.rowconfigure(0,weight=1)
         self.saved_list = ttk.Treeview(self.saved_panel,columns=('report',),show='headings',height=4,selectmode='browse')
         self.saved_list.heading('report',text='Registered report UUID / dates / cutoff / scope / historical labels')
         self.saved_list.column('report',width=850,minwidth=200)
-        self.saved_list.grid(row=0,column=0,sticky='ew')
+        self.saved_list.grid(row=0,column=0,sticky='nsew')
         scroll = ttk.Scrollbar(self.saved_panel,orient='horizontal',command=self.saved_list.xview)
         scroll.grid(row=1,column=0,sticky='ew'); self.saved_list.configure(xscrollcommand=scroll.set)
         scroll_y = ttk.Scrollbar(self.saved_panel,orient='vertical',command=self.saved_list.yview)
         scroll_y.grid(row=0,column=1,sticky='ns'); self.saved_list.configure(yscrollcommand=scroll_y.set)
         self.load_saved_button = ttk.Button(self.saved_panel,text='Load registered report',command=self.load_saved)
         self.load_saved_button.grid(row=2,column=0,sticky='w')
+        self.saved_status=ttk.Label(self.saved_panel,text='Registered SQLite evidence; file status is separate.',wraplength=740)
+        self.saved_status.grid(row=3,column=0,sticky='ew')
         self.saved_panel.grid_remove()
         self._build_polr()
         self._build_reconciliation()
-        self.close_button = ttk.Button(self.window,text='Close',command=self.close)
-        self.close_button.grid(row=6,column=0,sticky='e',padx=8,pady=6)
+        self.footer = ttk.Frame(self.window)
+        self.footer.grid(row=2,column=0,sticky='ew',padx=8,pady=5)
+        self.footer.columnconfigure(0,weight=1)
+        self.close_button = ttk.Button(self.footer,text='Close',command=self.close)
+        self.close_button.grid(row=0,column=1,sticky='e')
+        self.timesheet_button = ttk.Button(self.navigation,text='Timesheet',command=self.show_timesheet)
+        self.primary_buttons=(self.timesheet_button,self.reconciliation_button,self.saved_button,self.polr_history_button)
+        for col,button in enumerate(self.primary_buttons):button.grid(row=0,column=col,padx=3)
+        self.window.bind('<Configure>',self._wrap_status,add='+')
         for var in (self.period,self.start,self.end,self.scope):
             var.trace_add('write',lambda *args:self.draft_changed())
         self.controls()
+
+    def _review_active(self):
+        return self.mode in ('confirmation_source','confirmation_manual')
+
+    def _can_transition(self):
+        return not self.disposed and not self.is_busy() and self.can_leave_attempt() and not self._review_active()
+
+    def _row_key(self):
+        selected=self.reconciliation_tree.selection()
+        row=self.reconciliation_mapping.get(selected[0]) if selected else None
+        return (row['task_id'],row['work_date']) if row else None
+
+    def _capture_return(self):
+        return dict(mode=self.mode,dataset_id=self.owner.dataset_id,
+                    report_id=self.candidate.export_id if self.candidate else None,
+                    applied=deepcopy(self.reconciliation_applied),selected=self._row_key())
+
+    def _transition(self,mode,*,returning=False):
+        if mode not in ('preview','saved','reconciliation','confirmation_history','confirmation_source','confirmation_manual'):
+            raise ValueError('Unsupported Timesheet view')
+        if self.disposed or self.is_busy() or not self.can_leave_attempt():return False
+        if self._review_active() and not returning:return False
+        self.preview_token=self.saved_token=self.reconciliation_token=None
+        self.polr_tokens.clear();self.polr_ready=False;self._read_contexts.clear();self.close_picker()
+        for panel in (self.timesheet_panel,self.saved_panel,self.polr_panel,self.reconciliation_panel):panel.grid_remove()
+        self.mode=mode
+        panel={'preview':self.timesheet_panel,'saved':self.saved_panel,
+               'reconciliation':self.reconciliation_panel}.get(mode,self.polr_panel)
+        panel.grid(row=0,column=0,sticky='nsew')
+        if mode=='preview':
+            frozen=self.owner._timesheet_attempt is not None
+            for widget in (self.preview_bar,self.tasks.master):
+                widget.grid_remove() if frozen else widget.grid()
+        self.controls();return True
+
+    def show_timesheet(self):
+        if not self._can_transition():return False
+        self.return_context=None
+        return self._transition('preview')
+
+    def _wrap_status(self,event):
+        if event.widget is not self.window:return
+        width=max(100,event.width-36)
+        for label in (self.context,self.status,self.saved_status,self.polr_explanation,self.polr_status,self.reconciliation_context,self.reconciliation_status):
+            label.configure(wraplength=width)
 
     def controls(self):
         if self.disposed: return
@@ -155,21 +222,23 @@ class TimesheetWindow:
         busy = self.is_busy()
         from .timesheet_files import FileState
         registered = attempt is not None and attempt.registration=='committed'
-        active = not busy and self.saved_token is None and not self.mode.startswith('confirmation_') and self.mode!='reconciliation'
+        active = not busy and self.saved_token is None and self.mode=='preview'
         for button,allowed in ((self.save_button,active and not locked and self.current),
                                (self.retry_save_button,active and attempt is not None and (attempt.saved_path is None or (attempt.inspection is not None and attempt.inspection.state!=FileState.READY))),
                                (self.copy_button,active and registered), (self.check_button,active and registered),
-                               (self.saved_button,active and self.can_leave_attempt()),
+                               (self.saved_button,self._can_transition()),
                                (self.new_button,active and self.can_leave_attempt())):
             button.configure(state='normal' if allowed else 'disabled')
         eligible = registered and attempt.inspection is not None and attempt.inspection.state==FileState.CONFLICT and attempt.inspection.conflict is not None
         self.overwrite_button.configure(state='normal' if active and eligible else 'disabled')
         if eligible: self.overwrite_button.grid()
         else: self.overwrite_button.grid_remove()
-        self.load_saved_button.configure(state='normal' if active and self.mode=='saved' else 'disabled')
+        self.load_saved_button.configure(state='normal' if self.mode=='saved' and not busy and self.saved_token is None and self.can_leave_attempt() else 'disabled')
         if not custom: self.close_picker()
         self.polr_controls()
         self.reconciliation_controls()
+        for button in self.primary_buttons:button.configure(state='normal' if self._can_transition() else 'disabled')
+        self.close_button.configure(state='disabled' if busy or not self.can_leave_attempt() or self._review_active() and not self._polr_completed else 'normal')
 
     def selection_changed(self):
         selected = tuple(sorted(self.tasks.selection()))
@@ -212,14 +281,14 @@ class TimesheetWindow:
             return self.failure(exc)
 
     def receive_preview(self,token,value):
-        if self.disposed or token != self.preview_token:
+        if self.disposed or self.owner.timesheet is not self or self.mode!='preview' or token != self.preview_token:
             return
         self.preview_token = None
         if isinstance(value,Outcome):
             return self.failure(value.error or ValueError('Preview unavailable'))
         try:
             candidate = validate(value)
-            if (candidate.dataset_id != self.owner.dataset_id or self.attempt is None
+            if (self.owner.dataset_id!=self.dataset_id or candidate.dataset_id != self.owner.dataset_id or self.attempt is None
                     or candidate.export_id != self.attempt['export_id']
                     or candidate.cutoff_utc_us != self.attempt['cutoff_utc_us']):
                 raise ValueError('Preview identity/observation does not match this request')
@@ -251,7 +320,7 @@ class TimesheetWindow:
         self.controls()
 
     def receive_choices(self,token,value):
-        if self.disposed or token != self.choices_token: return
+        if self.disposed or self.owner.timesheet is not self or self.owner.dataset_id!=self.dataset_id or token != self.choices_token: return
         self.choices_token = None
         if isinstance(value,Outcome): return self.failure(value.error or ValueError('Task choices unavailable'))
         try:
@@ -274,6 +343,7 @@ class TimesheetWindow:
                 rows = [(t['task_id'],(f"{t['name']} / {t['task_id']}",path_label(choices,'project',t['project_id']) if t['project_id'] else 'Unassigned',
                     'Archived' if t['effective_archived'] else 'Active')) for t in value['tasks']]
             for key,values in rows: self.tasks.insert('', 'end',iid=key,values=values)
+            self._fit_columns(self.tasks)
             self._reconciliation_choices()
         except Exception as exc: self.failure(exc)
 
@@ -291,7 +361,7 @@ class TimesheetWindow:
     def mutation_allowed(self):
         attempt = self.owner._timesheet_attempt
         if self.mode in ('confirmation_source','confirmation_manual'):
-            return self.polr_ready and not self.polr_stale and not self._dialog_busy
+            return self.polr_ready and not self.polr_stale and not self._dialog_busy and not self._polr_completed and not self._known_confirmation()
         return (not self.disposed and not self._dialog_busy and self.mode=='preview' and self.current
                 and (attempt is None or attempt.registration=='not attempted'))
 
@@ -302,6 +372,7 @@ class TimesheetWindow:
         return self._dialog_busy or self.mode!='preview' or self.owner._timesheet_attempt is not None
 
     def can_leave_attempt(self):
+        if self.owner.pending is not None:return False
         submission=getattr(self.owner,'_polr_submission',None)
         if submission is not None and submission.request is self.owner.pending:return False
         a = self.owner._timesheet_attempt
@@ -410,7 +481,9 @@ class TimesheetWindow:
         except Exception as exc: return self.save_failure(exc)
 
     def save_failure(self,exc):
-        try: self.status.configure(text=f'Timesheet operation did not complete: {exc}')
+        try:
+            target=self.saved_status if self.mode=='saved' else self.status
+            target.configure(text=f'Timesheet operation did not complete: {exc}')
         except Exception as secondary: exc.add_note(f'Timesheet diagnostic failed: {secondary!r}')
         self.owner._diagnose(exc)
         return False
@@ -446,23 +519,13 @@ class TimesheetWindow:
             parent=self.window,default=messagebox.NO)))
 
     def saved_reports(self):
-        if self.mode=='reconciliation' and not self.leave_reconciliation():return False
-        if self.is_busy() or not self.can_leave_attempt(): return False
+        if not self._can_transition():return False
         try:
-            if not self.confirm_leave(): return False
-            self.owner._timesheet_detach()
-            self.preview_token = None
-            self.current = False
-            self._hide_polr()
-            self.mode = 'saved'
-            self.close_picker()
-            self.saved_panel.grid()
-            self.saved_token,_ = self.owner._timesheet_read(self,'timesheet_exports',None)
-            self.saved_kind = 'timesheet_exports'
-            self.context.configure(text='Loading registered reports; no file is assumed verified.')
-            self.controls()
-            return True
-        except Exception as exc: return self.save_failure(exc)
+            self.return_context=None
+            if not self._transition('saved'):return False
+            self.saved_token,_=self.owner._timesheet_read(self,'timesheet_exports',None)
+            self.saved_kind='timesheet_exports';self.controls();return True
+        except Exception as exc:return self.save_failure(exc)
 
     def load_saved(self):
         if self.is_busy() or self.saved_token is not None or self.mode!='saved': return False
@@ -479,7 +542,7 @@ class TimesheetWindow:
         except Exception as exc: return self.save_failure(exc)
 
     def receive_saved(self,kind,token,value):
-        if self.disposed or self.saved_token!=token or self.saved_kind!=kind or self.mode!='saved': return
+        if self.disposed or self.owner.timesheet is not self or self.owner.dataset_id!=self.dataset_id or self.saved_token!=token or self.saved_kind!=kind or self.mode!='saved': return
         self.saved_token = None
         try:
             if isinstance(value,Outcome): raise value.error or ValueError('Registered reports unavailable')
@@ -489,10 +552,11 @@ class TimesheetWindow:
                          f"{r['scope_kind']} | "+'; '.join(t.name for t in r['tasks'])) for r in value]
                 self.saved_list.delete(*self.saved_list.get_children())
                 for key,text in rows: self.saved_list.insert('','end',iid=key,values=(text,))
-                self.context.configure(text='Registered exports (SQLite evidence). Select and load one; file status requires explicit inspection.')
+                self._fit_columns(self.saved_list)
+                self.saved_status.configure(text='Registered exports (SQLite evidence). Select and load one; file status requires explicit inspection.')
             else:
                 candidate = validate(value,check_render=False)
-                if candidate.export_id != self.saved_identity: raise ValueError('Recovered export identity changed')
+                if candidate.dataset_id != self.owner.dataset_id or candidate.export_id != self.saved_identity: raise ValueError('Recovered export identity changed')
                 self.report.configure(state='normal');self.report.delete('1.0','end');self.report.insert('1.0',candidate.report_text)
                 self.report.configure(state='disabled');self.report.grid()
                 self.context.configure(text=f'Registered export: {candidate.export_id}; {candidate.start_date} to {candidate.end_date}; '
@@ -501,6 +565,10 @@ class TimesheetWindow:
                 if not self.owner._timesheet_recover(candidate):
                     raise RuntimeError('Registered report could not be installed for this view')
                 self.candidate,self.current = candidate,False
+                if self.reconciliation_applied is not None and self.reconciliation_applied['source_export_id']!=candidate.export_id:
+                    self.reconciliation_applied['source_export_id']=None
+                    self.reconciliation_source=None;self.reconciliation_current=False
+                self._transition('preview')
                 self.save_changed()
             self.controls()
         except Exception as exc:
@@ -511,15 +579,16 @@ class TimesheetWindow:
             self.save_failure(exc)
 
     def new_preview(self):
-        if self.mode=='reconciliation' and not self.leave_reconciliation():return False
-        if self.is_busy() or not self.can_leave_attempt(): return False
+        if not self._can_transition():return False
         try:
             if not self.confirm_leave(): return False
             self.owner._timesheet_detach()
             self.saved_token = self.preview_token = None
-            self._hide_polr()
-            self.mode = 'preview'
+            self.return_context=None
+            self._transition('preview')
             self.candidate,self.current = None,False
+            self.reconciliation_source=None;self.reconciliation_current=False
+            if self.reconciliation_applied is not None:self.reconciliation_applied['source_export_id']=None
             self.period.set('This week');self.scope.set('All tasks');self.start.set('');self.end.set('')
             self.tasks.selection_remove(*self.tasks.selection())
             self.saved_panel.grid_remove()
@@ -530,16 +599,16 @@ class TimesheetWindow:
         except Exception as exc: return self.save_failure(exc)
 
     def _build_polr(self):
-        bar=ttk.Frame(self.window);bar.grid(row=6,column=0,sticky='w',padx=8)
+        bar=self.save_bar
         self.review_polr_button=ttk.Button(bar,text='Review POL-R Confirmation',command=self.review_polr)
         self.manual_polr_button=ttk.Button(bar,text='Manual POL-R Confirmation',command=self.manual_polr)
-        self.polr_history_button=ttk.Button(bar,text='Confirmation History',command=self.confirmation_history)
-        self.reconciliation_button=ttk.Button(bar,text='Reconciliation',command=self.open_reconciliation)
-        self.compare_reconciliation_button=ttk.Button(bar,text='Compare loaded report with current reconciliation',command=lambda:self.open_reconciliation(compare=True))
-        for i,b in enumerate((self.review_polr_button,self.manual_polr_button,self.polr_history_button,self.reconciliation_button,self.compare_reconciliation_button)):b.grid(row=i//3,column=i%3,padx=2)
-        self.polr_panel=ttk.Frame(self.window);self.polr_panel.grid(row=3,column=0,sticky='nsew',padx=8)
+        self.polr_history_button=ttk.Button(self.navigation,text='Confirmation History',command=self.confirmation_history)
+        self.reconciliation_button=ttk.Button(self.navigation,text='Reconciliation',command=self.open_reconciliation)
+        for i,b in enumerate((self.review_polr_button,self.manual_polr_button)):b.grid(row=2,column=i,padx=2,pady=2)
+        self.polr_panel=ttk.Frame(self.content_host);self.polr_panel.grid(row=0,column=0,sticky='nsew',padx=8)
         self.polr_panel.columnconfigure(0,weight=1);self.polr_panel.rowconfigure(2,weight=1)
-        ttk.Label(self.polr_panel,text='Confirmation records your entered POL-R values; it does not query or verify POL-R.',wraplength=750).grid(row=0,column=0,sticky='w')
+        self.polr_explanation=ttk.Label(self.polr_panel,text='Confirmation records your entered POL-R values; it does not query or verify POL-R.',wraplength=750)
+        self.polr_explanation.grid(row=0,column=0,sticky='w')
         self.polr_manual=ttk.Frame(self.polr_panel);self.polr_manual.grid(row=1,column=0,sticky='ew')
         self.polr_task=tk.StringVar(self.window,'');self.polr_date=tk.StringVar(self.window,'');self.polr_hours=tk.StringVar(self.window,'')
         self.polr_task_choices=[]
@@ -552,7 +621,7 @@ class TimesheetWindow:
         self.polr_context_button.grid(row=3,column=0,sticky='w')
         self.polr_task.trace_add('write',lambda *a:self._manual_polr_dirty())
         self.polr_date.trace_add('write',lambda *a:self._manual_polr_dirty())
-        holder=ttk.Frame(self.polr_panel);holder.grid(row=2,column=0,sticky='nsew');holder.columnconfigure(0,weight=1);holder.rowconfigure(0,weight=1)
+        holder=ttk.Frame(self.polr_panel);self.polr_table_holder=holder;holder.grid(row=2,column=0,sticky='nsew');holder.columnconfigure(0,weight=1);holder.rowconfigure(0,weight=1)
         self.polr_tree=ttk.Treeview(holder,show='headings',height=5,selectmode='browse')
         self.polr_tree.grid(row=0,column=0,sticky='nsew')
         for orient,row,col,command in (('vertical',0,1,self.polr_tree.yview),('horizontal',1,0,self.polr_tree.xview)):
@@ -561,16 +630,17 @@ class TimesheetWindow:
         self.polr_tree.bind('<Button-1>',self._polr_click,add='+')
         ack_holder=ttk.Frame(self.polr_panel);ack_holder.grid(row=3,column=0,sticky='ew');ack_holder.columnconfigure(0,weight=1)
         self.polr_ack_holder=ack_holder
-        ack_canvas=tk.Canvas(ack_holder,height=85,highlightthickness=0);ack_canvas.grid(row=0,column=0,sticky='ew')
+        ack_canvas=tk.Canvas(ack_holder,height=65,highlightthickness=0);ack_canvas.grid(row=0,column=0,sticky='ew')
         self.polr_ack_frame=ttk.Frame(ack_canvas);ack_canvas.create_window(0,0,window=self.polr_ack_frame,anchor='nw')
         self.polr_ack_frame.bind('<Configure>',lambda event:ack_canvas.configure(scrollregion=ack_canvas.bbox('all')))
         for orient,row,col,command in (('vertical',0,1,ack_canvas.yview),('horizontal',1,0,ack_canvas.xview)):
             scroll=ttk.Scrollbar(ack_holder,orient=orient,command=command);scroll.grid(row=row,column=col,sticky='ns' if orient=='vertical' else 'ew')
             ack_canvas.configure(**{('yscrollcommand' if orient=='vertical' else 'xscrollcommand'):scroll.set})
-        detail=ttk.Frame(self.polr_panel);detail.grid(row=4,column=0,sticky='ew');detail.columnconfigure(0,weight=1)
-        self.polr_detail=tk.Text(detail,wrap='word',height=4,state='disabled');self.polr_detail.grid(row=0,column=0,sticky='ew')
+        detail=ttk.Frame(self.polr_panel);self.polr_detail_holder=detail;detail.grid(row=4,column=0,sticky='nsew');detail.columnconfigure(0,weight=1);detail.rowconfigure(0,weight=1)
+        self.polr_detail=tk.Text(detail,wrap='none',height=3,state='disabled');self.polr_detail.grid(row=0,column=0,sticky='nsew')
         detail_scroll=ttk.Scrollbar(detail,orient='vertical',command=self.polr_detail.yview);detail_scroll.grid(row=0,column=1,sticky='ns')
         self.polr_detail.configure(yscrollcommand=detail_scroll.set)
+        detail_x=ttk.Scrollbar(detail,orient='horizontal',command=self.polr_detail.xview);detail_x.grid(row=1,column=0,sticky='ew');self.polr_detail.configure(xscrollcommand=detail_x.set)
         self.polr_status=ttk.Label(self.polr_panel,text='',wraplength=750);self.polr_status.grid(row=5,column=0,sticky='ew')
         self.polr_actions=ttk.Frame(self.polr_panel);self.polr_actions.grid(row=6,column=0,sticky='w')
         self.polr_positive_button=ttk.Button(self.polr_actions,text='Select all positive suggestions',command=self.polr_positive)
@@ -587,37 +657,66 @@ class TimesheetWindow:
         s=getattr(self.owner,'_polr_submission',None)
         return s is not None and s.request is self.owner.pending
 
+    def _known_confirmation(self):
+        submission=getattr(self.owner,'_polr_submission',None)
+        return (self._review_active() and self._review_batch_id is not None and submission is not None
+                and submission.origin is self and submission.outcome is not None
+                and submission.outcome.status=='committed'
+                and submission.outcome.result['batch_id']==self._review_batch_id)
+
+    def _committed_caption(self,result):
+        source=f' Frozen source {self.polr_source_id}.' if self.mode=='confirmation_source' else ''
+        return f"Committed confirmation {result.result['batch_id']}.{source} This records your statement, not independent POL-R verification. Return explicitly; Refresh review starts a subsequent reviewed action."
+
     def polr_controls(self):
         if self.disposed:return
+        if self._known_confirmation():
+            self._polr_completed=True
+            self.polr_explanation.configure(text=self._committed_caption(self.owner._polr_submission.outcome))
         pending=self._polr_pending();active=not self.is_busy() and self.can_leave_attempt()
         a=self.owner._timesheet_attempt
-        for b,allowed in ((self.review_polr_button,active and a is not None and a.registration=='committed'),
-                          (self.manual_polr_button,active),(self.polr_history_button,active),(self.reconciliation_button,active),
-                          (self.compare_reconciliation_button,active and a is not None and a.registration=='committed')):
+        for b,allowed in ((self.review_polr_button,self.mode=='preview' and active and a is not None and a.registration=='committed'),
+                          (self.manual_polr_button,self.mode=='preview' and active),
+                          (self.compare_reconciliation_button,self.mode=='reconciliation' and active and a is not None and a.registration=='committed')):
             b.configure(state='normal' if allowed else 'disabled')
         source=self.mode=='confirmation_source';manual=self.mode=='confirmation_manual';history=self.mode=='confirmation_history'
-        for b,allowed in ((self.polr_positive_button,active and source and self.polr_ready),
-                          (self.polr_confirm_button,active and (source or manual) and self.polr_ready and not self.polr_stale),
-                          (self.polr_refresh_button,active and (source or manual)),(self.polr_defer_button,active),
-                          (self.polr_retry_button,not self.is_busy() and pending),(self.polr_load_button,active and history)):
+        editable=active and not self._polr_completed
+        for b,allowed,visible in ((self.polr_positive_button,editable and self.polr_ready,source),
+                          (self.polr_confirm_button,editable and self.polr_ready and not self.polr_stale,source or manual),
+                          (self.polr_refresh_button,active,source or manual),
+                          (self.polr_defer_button,active,self._review_active() or self.return_context is not None),
+                          (self.polr_retry_button,not self.is_busy() and pending,pending),
+                          (self.polr_load_button,active,history)):
             b.configure(state='normal' if allowed else 'disabled')
-        self.polr_task_control.configure(state='readonly' if active else 'disabled')
-        for field in (self.polr_date_control,self.polr_hours_control):field.configure(state='normal' if active else 'disabled')
-        self.polr_context_button.configure(state='normal' if active else 'disabled')
-        for var,button in self.polr_acks.values():button.configure(state='normal' if active else 'disabled')
+            b.grid() if visible else b.grid_remove()
+        if self.return_context is not None:
+            origin='Reconciliation' if self.return_context['mode']=='reconciliation' else 'Timesheet'
+            self.polr_defer_button.configure(text='Return to '+origin if self._polr_completed or history else ('Cancel' if manual else 'Defer / Review later'))
+        self.polr_task_control.configure(state='readonly' if editable else 'disabled')
+        for field in (self.polr_date_control,self.polr_hours_control):field.configure(state='normal' if editable else 'disabled')
+        self.polr_context_button.configure(state='normal' if editable else 'disabled')
+        for var,button in self.polr_acks.values():button.configure(state='normal' if editable else 'disabled')
 
     def _show_polr(self,mode):
-        if self.is_busy() or not self.can_leave_attempt():return False
-        if self.mode=='reconciliation':self.leave_reconciliation()
-        if not self.mode.startswith('confirmation_'):self.polr_return_mode=self.mode
-        self.polr_tokens.clear();self.polr_ready=False;self.polr_stale=False
-        self.saved_token=self.preview_token=None  # Abandon earlier view reads, never their worker operations.
+        if not self._can_transition():return False
+        context=self._capture_return()
+        self._review_batch_id=None;self._polr_completed=False
+        if not self._transition(mode):return False
+        self.return_context=context if mode!='confirmation_history' or context['mode']=='reconciliation' else None
+        self.polr_ready=False;self.polr_stale=False;self._polr_completed=False
         self.polr_proposal=self.polr_context=None
-        self.mode=mode;self.close_picker();self.report.master.grid_remove();self.polr_panel.grid()
-        self.polr_confirm_button.configure(text='Confirm absolute amount' if mode=='confirmation_manual' else 'Confirm checked')
-        self.polr_defer_button.configure(text='Cancel' if mode=='confirmation_manual' else 'Defer / Review later')
-        self.polr_manual.grid() if mode=='confirmation_manual' else self.polr_manual.grid_remove()
+        self.polr_explanation.configure(text='Confirmation records your entered POL-R values; it does not query or verify POL-R.')
+        manual=mode=='confirmation_manual';history=mode=='confirmation_history'
+        if manual:
+            self.polr_explanation.configure(text='Manual absolute POL-R hours replace the task/day total; they are not an amount to add. Review the current prior, enter exact 0.25 increments, then Confirm. No external POL-R verification occurs.')
+        elif history:
+            self.polr_explanation.configure(text='Read-only immutable confirmation history. Select a batch to inspect its source, absolute values, reviewed priors and acknowledgements.')
+        self.polr_confirm_button.configure(text='Confirm absolute amount' if manual else 'Confirm checked')
+        self.polr_manual.grid() if manual else self.polr_manual.grid_remove()
+        self.polr_table_holder.grid_remove() if manual else self.polr_table_holder.grid()
         self.polr_ack_holder.grid() if mode=='confirmation_source' else self.polr_ack_holder.grid_remove()
+        self.polr_panel.rowconfigure(2,weight=0 if manual else 3)
+        self.polr_panel.rowconfigure(4,weight=3 if manual else 1 if history else 0)
         self.polr_detail.configure(state='normal');self.polr_detail.delete('1.0','end');self.polr_detail.configure(state='disabled')
         self.polr_status.configure(text='Read-only review; nothing confirmed.')
         self.polr_tree.delete(*self.polr_tree.get_children());self.polr_mapping={};self._draw_polr_acks()
@@ -625,16 +724,17 @@ class TimesheetWindow:
 
     def _hide_polr(self):
         self.polr_tokens.clear();self.polr_ready=False
-        self.polr_panel.grid_remove();self.report.master.grid()
+        self.polr_panel.grid_remove()
 
     def review_polr(self):
         a=self.owner._timesheet_attempt
-        if a is None or a.registration!='committed' or not self._show_polr('confirmation_source'):return False
+        if self.mode!='preview' or a is None or a.registration!='committed' or not self._show_polr('confirmation_source'):return False
         self.polr_source_id=a.candidate.export_id
+        self.polr_explanation.configure(text=f'Frozen registered report {self.polr_source_id}. Confirm checked records the frozen suggestions, not current recalculation or independent POL-R verification.')
         return self.refresh_polr()
 
     def manual_polr(self):
-        if not self._show_polr('confirmation_manual'):return False
+        if self.mode not in ('preview','reconciliation') or not self._show_polr('confirmation_manual'):return False
         self.polr_task_choices=list(self.tasks.get_children())
         labels=[str(self.tasks.item(k,'values')[0])+(' [Deleted]' if self.tasks.item(k,'values')[2]=='Deleted' else '') for k in self.polr_task_choices]
         self.polr_task_control.configure(values=labels)
@@ -650,11 +750,21 @@ class TimesheetWindow:
     def _polr_columns(self,columns,labels):
         self.polr_tree.configure(columns=columns)
         for column,label in zip(columns,labels):
-            self.polr_tree.heading(column,text=label);self.polr_tree.column(column,width=180 if column!='task' else 320,minwidth=60,stretch=False)
+            self.polr_tree.heading(column,text=label);self.polr_tree.column(column,width=180 if column!='task' else 320,minwidth=60,stretch=column in ('task','source','batch'))
+
+    def _fit_columns(self,tree):
+        """Keep complete identity text reachable; flexible columns fill spare space."""
+        font=tkfont.Font(root=self.window,font=ttk.Style(self.window).lookup('Treeview','font') or 'TkDefaultFont')
+        heading_font=tkfont.Font(root=self.window,font=ttk.Style(self.window).lookup('Treeview.Heading','font') or 'TkDefaultFont')
+        for index,column in enumerate(tree['columns']):
+            texts=[str(tree.item(k,'values')[index]) for k in tree.get_children()]
+            width=max(65,max([heading_font.measure(str(tree.heading(column,'text')))]+[font.measure(t) for t in texts])+20)
+            tree.column(column,width=width,minwidth=width,stretch=column in ('task','report','source','batch'))
 
     def _read_polr(self,kind,value):
         try:
-            token,_=self.owner._timesheet_read(self,kind,value);self.polr_tokens[kind]=token
+            token,expected=self.owner._timesheet_read(self,kind,value);self.polr_tokens[kind]=token
+            self._read_contexts[kind]=(self.mode,self.owner.dataset_id,deepcopy(expected))
             if kind=='polr_day':self.polr_day_key=(value['task_id'],value['work_date'])
             return True
         except Exception as exc:return self.polr_failure(exc)
@@ -665,8 +775,9 @@ class TimesheetWindow:
             self.polr_status.configure(text='Task/date changed; Review current before confirming.')
             self.polr_controls()
 
-    def refresh_polr(self):
+    def refresh_polr(self,*,after_commit=False):
         if self.is_busy() or not self.can_leave_attempt():return False
+        if not after_commit:self._polr_completed=False;self._review_batch_id=None
         self.polr_ready=False;self.polr_stale=False
         self.polr_selected.clear();self._draw_polr_acks()
         if self.mode=='confirmation_manual':self.polr_confirm_button.configure(text='Confirm absolute amount')
@@ -684,12 +795,16 @@ class TimesheetWindow:
         return False
 
     def receive_polr(self,kind,token,value):
-        if self.disposed or self.polr_tokens.get(kind)!=token:return
+        if self.disposed or self.owner.timesheet is not self or self.owner.dataset_id!=self.dataset_id or self.polr_tokens.get(kind)!=token:return
         self.polr_tokens.pop(kind)
+        context=self._read_contexts.pop(kind,None)
+        if context is not None and context[:2]!=(self.mode,self.owner.dataset_id):return
         try:
             if isinstance(value,Outcome):raise value.error or ValueError('Confirmation read unavailable')
+            if kind in ('polr_manual','polr_day') and context is not None and value['cutoff_utc_us']!=context[2]['cutoff_utc_us']:
+                raise ValueError('Confirmation observation changed')
             if kind=='polr_proposal':
-                if self.mode!='confirmation_source' or value['source_metadata']['export_id']!=self.polr_source_id:raise ValueError('Confirmation review source changed')
+                if self.mode!='confirmation_source' or value['source_metadata']['dataset_id']!=self.owner.dataset_id or value['source_metadata']['export_id']!=self.polr_source_id:raise ValueError('Confirmation review source changed')
                 self.polr_proposal=deepcopy(value)
                 self.polr_mapping={f'p{i}':r for i,r in enumerate(value['reviewed_rows'])}
                 self.polr_selected={(r['task_id'],r['work_date']) for r in value['selected_keys']}
@@ -709,11 +824,19 @@ class TimesheetWindow:
             elif kind=='polr_batch':
                 if self.mode!='confirmation_history' or value['batch_id']!=self.polr_batch_id:return
                 from .polr_allocation import quarter_text
-                lines=[f"Batch {value['batch_id']} | request {value['created_request_id']} | committed sequence {value['commit_seq']}"]
+                lines=[f"Audit UTC {from_us(value['audit_utc_us']).isoformat()} | Source {value['source_export_id'] or 'Manual'}",f"Batch {value['batch_id']} | request {value['created_request_id']} | committed sequence {value['commit_seq']}"]
                 for r in value['cells']:lines.append(f"{r['task_id']} / {r['work_date']}: {quarter_text(r['confirmed_quarters'])}; prior {r['expected_prior_batch_id']} / {r['expected_prior_quarters']}; stale acknowledgement {bool(r['stale_export_acknowledged'])}")
                 self.polr_detail.configure(state='normal');self.polr_detail.delete('1.0','end');self.polr_detail.insert('1.0','\n'.join(lines));self.polr_detail.configure(state='disabled')
+            if self.mode!='confirmation_manual':
+                self._fit_columns(self.polr_tree);self.polr_table_holder.grid()
+            self.polr_detail_holder.grid()
+            if self._polr_completed:
+                result=self.owner._polr_submission.outcome
+                self.polr_status.configure(text=f"Committed confirmation {result.result['batch_id']}. Explicit Return or Refresh review; no independent POL-R verification.")
             self.controls()
-        except Exception as exc:self.polr_failure(exc)
+        except Exception as exc:
+            self.polr_table_holder.grid_remove();self.polr_detail_holder.grid_remove()
+            self.polr_failure(exc)
 
     def _render_polr_rows(self):
         from .polr_allocation import quarter_text
@@ -726,23 +849,29 @@ class TimesheetWindow:
                 'Unknown' if r['prior_quarters'] is None else quarter_text(r['prior_quarters'])+' (confirmed)',r['prior_batch_id'] or 'Unknown',
                 'Yes' if r['requires_stale_acknowledgement'] else 'No'))
 
+        self._fit_columns(self.polr_tree)
+
     def _polr_click(self,event):
-        if self.mode!='confirmation_source' or self.is_busy() or not self.polr_ready or not self.can_leave_attempt():return
+        if self.mode!='confirmation_source' or self.is_busy() or not self.polr_ready or not self.can_leave_attempt() or self._polr_completed:return
         if self.polr_tree.identify_column(event.x)!='#1':return
         row=self.polr_mapping.get(self.polr_tree.identify_row(event.y))
         if row:self.toggle_polr_cell((row['task_id'],row['work_date']));return 'break'
 
     def toggle_polr_cell(self,key):
-        if self.is_busy() or not self.can_leave_attempt() or not self.polr_ready:return False
+        if self.is_busy() or not self.can_leave_attempt() or not self.polr_ready or self._polr_completed:return False
         if not any((r['task_id'],r['work_date'])==key for r in self.polr_mapping.values()):return False
         if key in self.polr_selected:self.polr_selected.remove(key)
         else:self.polr_selected.add(key)
-        self._render_polr_rows();self._draw_polr_acks();return True
+        try:self._render_polr_rows();self._draw_polr_acks();return True
+        except Exception as exc:
+            self.polr_table_holder.grid_remove();return self.polr_failure(exc)
 
     def polr_positive(self):
-        if self.mode!='confirmation_source' or not self.polr_ready or self.is_busy() or not self.can_leave_attempt():return False
+        if self.mode!='confirmation_source' or not self.polr_ready or self.is_busy() or not self.can_leave_attempt() or self._polr_completed:return False
         self.polr_selected={(r['task_id'],r['work_date']) for r in self.polr_mapping.values() if r['suggested_quarters']>0}
-        self._render_polr_rows();self._draw_polr_acks();return True
+        try:self._render_polr_rows();self._draw_polr_acks();return True
+        except Exception as exc:
+            self.polr_table_holder.grid_remove();return self.polr_failure(exc)
 
     def _draw_polr_acks(self):
         if not hasattr(self,'polr_ack_frame'):return
@@ -758,7 +887,7 @@ class TimesheetWindow:
             b.grid(sticky='w');self.polr_acks[k]=(var,b)
 
     def confirm_polr(self):
-        if self.is_busy() or not self.can_leave_attempt() or not self.polr_ready or self.polr_stale:return False
+        if self.is_busy() or not self.can_leave_attempt() or not self.polr_ready or self.polr_stale or self._polr_completed or self._known_confirmation():return False
         from .polr_confirmation import parse_hours
         try:
             args=dict(batch_id=str(uuid4()),mode='source',source_export_id=None,source_metadata=None,reviewed_rows=[],selected_keys=[],manual_cells=[],acknowledgements=[])
@@ -774,19 +903,24 @@ class TimesheetWindow:
                 c=self.polr_context
                 args.update(mode='manual',manual_cells=[dict(task_id=c['task_id'],work_date=c['work_date'],confirmed_quarters=parse_hours(self.polr_hours.get()),prior_batch_id=c['current_batch_id'],prior_quarters=c['confirmed_quarters'])])
             else:return False
-            return self.owner._polr_submit(self,args)
+            submitted=self.owner._polr_submit(self,args)
+            if submitted:self._review_batch_id=args['batch_id']
+            return submitted
         except Exception as exc:return self.polr_failure(exc,retain_review=True)
 
     def polr_result(self,result):
         from .records import StaleState
         if result.status=='committed':
+            self._polr_completed=True
+            self.polr_explanation.configure(text=self._committed_caption(result))
             self.polr_status.configure(text=f"Committed confirmation {result.result['batch_id']}. This records your statement, not independent POL-R verification.")
             if self.mode in ('confirmation_source','confirmation_manual'):
                 submitted=self.owner._polr_submission.request.args()
                 keys=[(r['task_id'],r['work_date']) for r in (submitted['selected_keys'] if submitted['mode']=='source' else submitted['manual_cells'])]
-                self.refresh_polr()
+                self.refresh_polr(after_commit=True)
                 if keys:
                     t,d=keys[0];self._read_polr('polr_day',dict(task_id=t,work_date=d,cutoff_utc_us=to_us(self.owner.now_utc())))
+                self.polr_status.configure(text=f"Committed confirmation {result.result['batch_id']}. Explicit Return or Refresh review; no independent POL-R verification.")
         else:
             self.polr_stale=isinstance(result.error,StaleState)
             self.polr_status.configure(text=f"Confirmation {result.status}: {result.error or ''}. "+('Explicit Refresh review is required.' if self.polr_stale else 'Reviewed inputs retained; no success is claimed.'))
@@ -817,11 +951,26 @@ class TimesheetWindow:
         if self.mode!='confirmation_history' or self.is_busy() or not self.can_leave_attempt():return False
         selected=self.polr_tree.selection()
         if not selected:return False
-        self.polr_batch_id=selected[0];return self._read_polr('polr_batch',self.polr_batch_id)
+        self.polr_batch_id=selected[0]
+        self.polr_detail.configure(state='normal');self.polr_detail.delete('1.0','end')
+        self.polr_detail.insert('1.0','Loading batch '+self.polr_batch_id);self.polr_detail.configure(state='disabled')
+        return self._read_polr('polr_batch',self.polr_batch_id)
 
     def defer_polr(self):
-        if self.is_busy() or not self.can_leave_attempt():return False
-        self._hide_polr();self.mode=self.polr_return_mode;self.controls();return True
+        if self.is_busy() or not self.can_leave_attempt() or self.return_context is None:return False
+        context=self.return_context
+        if context['dataset_id']!=self.owner.dataset_id:return False
+        if context['report_id']!=(self.candidate.export_id if self.candidate else None):return False
+        if not self._transition(context['mode'],returning=True):return False
+        self.return_context=None
+        if self.mode=='reconciliation':
+            self._reconciliation_restore_key=context['selected']
+            if context['applied'] is None:
+                self.reconciliation_current=False
+                self.reconciliation_status.configure(text='No applied reconciliation. Apply / Refresh is required.')
+                return True
+            return self.refresh_reconciliation(applied=context['applied'])
+        return True
 
     def polr_failure(self,exc,*,retain_review=False):
         if not retain_review:self.polr_ready=False
@@ -836,12 +985,14 @@ class TimesheetWindow:
         self.reconciliation_result=None
         self.reconciliation_current=False
         self.reconciliation_source=None
-        self.reconciliation_return_mode='preview'
+        self.reconciliation_applied=None
+        self._reconciliation_restore_key=None
+        self._reconciliation_applied_only=False
         self.reconciliation_mapping={}
-        self.reconciliation_panel=ttk.Frame(self.window)
+        self.reconciliation_panel=ttk.Frame(self.content_host)
         panel=self.reconciliation_panel
-        panel.grid(row=0,column=0,rowspan=5,sticky='nsew',padx=8)
-        panel.columnconfigure(0,weight=1);panel.rowconfigure(4,weight=1);panel.rowconfigure(5,weight=1)
+        panel.grid(row=0,column=0,sticky='nsew',padx=8)
+        panel.columnconfigure(0,weight=1);panel.rowconfigure(4,weight=3);panel.rowconfigure(5,weight=1)
         bar=ttk.Frame(panel);bar.grid(row=0,column=0,sticky='w')
         ttk.Label(bar,text='Reconciliation').grid(row=0,column=0,sticky='w')
         self.reconciliation_period=tk.StringVar(panel,'This week')
@@ -864,6 +1015,8 @@ class TimesheetWindow:
         self.reconciliation_tasks.grid(row=0,column=0,sticky='ew')
         scroll=ttk.Scrollbar(tasks,orient='vertical',command=self.reconciliation_tasks.yview);scroll.grid(row=0,column=1,sticky='ns')
         self.reconciliation_tasks.configure(yscrollcommand=scroll.set)
+        scroll_x=ttk.Scrollbar(tasks,orient='horizontal',command=self.reconciliation_tasks.xview);scroll_x.grid(row=1,column=0,sticky='ew')
+        self.reconciliation_tasks.configure(xscrollcommand=scroll_x.set)
         self.reconciliation_tasks.bind('<<TreeviewSelect>>',lambda e:self._reconciliation_selection())
         self._reconciliation_selected=()
         self.reconciliation_context=ttk.Label(panel,text='Current reconciliation only.',wraplength=740)
@@ -876,7 +1029,7 @@ class TimesheetWindow:
             scroll=ttk.Scrollbar(holder,orient=orient,command=command);scroll.grid(row=row,column=col,sticky='ns' if orient=='vertical' else 'ew')
             self.reconciliation_tree.configure(**{('yscrollcommand' if orient=='vertical' else 'xscrollcommand'):scroll.set})
         holder=ttk.Frame(panel);holder.grid(row=5,column=0,sticky='nsew');holder.columnconfigure(0,weight=1);holder.rowconfigure(0,weight=1)
-        self.reconciliation_summary=tk.Text(holder,state='disabled',height=6,wrap='none')
+        self.reconciliation_summary=tk.Text(holder,state='disabled',height=2,wrap='none')
         self.reconciliation_summary.grid(row=0,column=0,sticky='nsew')
         for orient,row,col,command in (('vertical',0,1,self.reconciliation_summary.yview),('horizontal',1,0,self.reconciliation_summary.xview)):
             scroll=ttk.Scrollbar(holder,orient=orient,command=command);scroll.grid(row=row,column=col,sticky='ns' if orient=='vertical' else 'ew')
@@ -888,10 +1041,12 @@ class TimesheetWindow:
         self.reconciliation_saved=ttk.Button(actions,text='Review saved report',command=self.saved_reports)
         self.reconciliation_confirm=ttk.Button(actions,text='Review current POL-R confirmation',command=self.review_current_confirmation)
         self.reconciliation_manual=ttk.Button(actions,text='Manual POL-R confirmation',command=self.reconciliation_manual_action)
+        self.compare_reconciliation_button=ttk.Button(actions,text='Compare loaded report with current reconciliation',command=lambda:self.open_reconciliation(compare=True))
         self.reconciliation_return=ttk.Button(actions,text='Return to Timesheet',command=self.leave_reconciliation)
         for i,b in enumerate((self.reconciliation_apply,self.reconciliation_copy,self.reconciliation_saved,
-                               self.reconciliation_confirm,self.reconciliation_manual,self.reconciliation_return)):
+                               self.reconciliation_confirm,self.reconciliation_manual,self.reconciliation_return,self.compare_reconciliation_button)):
             b.grid(row=i//3,column=i%3,padx=2,pady=2)
+        self.compare_reconciliation_button.grid(columnspan=3,sticky='w')
         for var in (self.reconciliation_period,self.reconciliation_scope,self.reconciliation_start,self.reconciliation_end):
             var.trace_add('write',lambda *a:self.reconciliation_dirty())
         panel.grid_remove()
@@ -922,36 +1077,42 @@ class TimesheetWindow:
         self.reconciliation_copy.configure(state='normal' if active and self.reconciliation_current else 'disabled')
 
     def open_reconciliation(self, *, period=None, compare=False):
-        if self.disposed or not self.presented or self.is_busy() or not self.can_leave_attempt():return False
-        if self.mode!='reconciliation':self.reconciliation_return_mode=self.mode if not self.mode.startswith('confirmation_') else self.polr_return_mode
+        if not self.presented or not self._can_transition():return False
+        if self.mode=='reconciliation' and period is None and not compare:return True
         a=self.owner._timesheet_attempt
         if compare and (a is None or a.registration!='committed'):return False
-        self.reconciliation_source=a.candidate.export_id if compare else None
-        self.saved_token=self.preview_token=None
-        self._hide_polr();self.mode='reconciliation';self.close_picker()
-        for w in (self.preview_bar,self.tasks.master,self.saved_panel,self.context,self.report.master,self.status):w.grid_remove()
-        self.reconciliation_panel.grid()
-        if period is not None:self.reconciliation_period.set(period)
+        previous=self.mode;self.return_context=None
+        if not self._transition('reconciliation'):return False
         self._reconciliation_choices()
-        self.controls()
-        return self.refresh_reconciliation()
+        if period is not None:self.reconciliation_period.set(period)
+        if compare:
+            self.reconciliation_source=a.candidate.export_id
+            applied=deepcopy(self.reconciliation_applied)
+            if applied is not None:applied['source_export_id']=self.reconciliation_source
+        else:applied=self.reconciliation_applied if previous!='reconciliation' and period is None else None
+        self.controls();return self.refresh_reconciliation(applied=applied)
 
     def _reconciliation_choices(self):
         for key in self.tasks.get_children():
             values=self.tasks.item(key,'values')
             if not self.reconciliation_tasks.exists(key):
                 self.reconciliation_tasks.insert('','end',iid=key,values=(f'{values[0]} / {values[1]} / {values[2]}',))
+        self._fit_columns(self.reconciliation_tasks)
 
-    def refresh_reconciliation(self):
+    def refresh_reconciliation(self,*,applied=None):
         if self.disposed or self.mode!='reconciliation' or self.is_busy() or not self.can_leave_attempt():return False
+        if self._reconciliation_restore_key is None:self._reconciliation_restore_key=self._row_key()
         self._reconciliation_selection();self.reconciliation_current=False;self.reconciliation_token=None
         try:
-            period={'This week':'this_week','Last week':'last_week','Custom':'custom'}[self.reconciliation_period.get()]
-            scope={'All tasks':'all','Selected tasks':'selected'}[self.reconciliation_scope.get()]
-            selected=tuple(sorted(self.reconciliation_tasks.selection())) if scope=='selected' else ()
-            if scope=='selected' and not selected:raise ValueError('Select at least one task UUID')
-            args=dict(period=period,scope_kind=scope,task_ids=selected,source_export_id=self.reconciliation_source)
-            if period=='custom':args.update(start_date=self.reconciliation_start.get(),end_date=self.reconciliation_end.get())
+            if applied is None:
+                period={'This week':'this_week','Last week':'last_week','Custom':'custom'}[self.reconciliation_period.get()]
+                scope={'All tasks':'all','Selected tasks':'selected'}[self.reconciliation_scope.get()]
+                selected=tuple(sorted(self.reconciliation_tasks.selection())) if scope=='selected' else ()
+                if scope=='selected' and not selected:raise ValueError('Select at least one task UUID')
+                args=dict(period=period,scope_kind=scope,task_ids=selected,source_export_id=self.reconciliation_source)
+                if period=='custom':args.update(start_date=self.reconciliation_start.get(),end_date=self.reconciliation_end.get())
+            else:args={k:deepcopy(v) for k,v in applied.items() if k!='cutoff_utc_us'}
+            self._reconciliation_applied_only=applied is not None
             self.reconciliation_token,self.reconciliation_request=self.owner._timesheet_read(self,'polr_reconciliation',args)
             self.reconciliation_status.configure(text='Loading current reconciliation; any previous display retains its old as-of observation.')
             self.controls();return True
@@ -962,7 +1123,7 @@ class TimesheetWindow:
         return 'Unknown' if value is None else ('+' if value>0 else '-' if value<0 else '')+f'{abs(value)//100}.{abs(value)%100:02d}'
 
     def receive_reconciliation(self,token,value):
-        if self.disposed or self.mode!='reconciliation' or token!=self.reconciliation_token:return
+        if self.disposed or self.owner.timesheet is not self or self.owner.dataset_id!=self.dataset_id or self.mode!='reconciliation' or token!=self.reconciliation_token:return
         self.reconciliation_token=None
         try:
             if isinstance(value,Outcome):raise value.error or ValueError('Reconciliation unavailable')
@@ -1005,6 +1166,7 @@ class TimesheetWindow:
             tree.configure(columns=columns);tree.delete(*tree.get_children())
             for key,label in zip(columns,headings):tree.heading(key,text=label);tree.column(key,width=180 if key=='task' else 120,minwidth=80)
             for handle,data in rows:tree.insert('','end',iid=handle,values=data)
+            self._fit_columns(tree)
             self.reconciliation_summary.configure(state='normal');self.reconciliation_summary.delete('1.0','end');self.reconciliation_summary.insert('1.0','\n\n'.join(lines));self.reconciliation_summary.configure(state='disabled')
             self.reconciliation_context.configure(text=context)
             self.reconciliation_status.configure(text=f"Current coverage: {value['coverage']['applicable']} applicable; {value['coverage']['UNKNOWN']} Unknown; {value['coverage']['MISMATCH']} mismatching. Explicit confirmation is separate; copying is not submission.")
@@ -1014,6 +1176,13 @@ class TimesheetWindow:
             except Exception as secondary:primary.add_note(f'Unable to hide untrusted reconciliation: {secondary!r}')
             return self.reconciliation_failure(primary)
         self.reconciliation_result=deepcopy(value);self.reconciliation_mapping=mapping;self.reconciliation_current=True
+        self.reconciliation_applied=deepcopy(request)
+        restore=self._reconciliation_restore_key;self._reconciliation_restore_key=None
+        self.reconciliation_tree.selection_remove(*self.reconciliation_tree.selection())
+        for handle,row in mapping.items():
+            if (row['task_id'],row['work_date'])==restore:self.reconciliation_tree.selection_set(handle);break
+        if self._reconciliation_applied_only:
+            self.reconciliation_context.configure(text=context+' Draft controls are retained; Apply / Refresh applies drafts.')
         self.controls()
 
     def reconciliation_failure(self,exc):
@@ -1036,11 +1205,8 @@ class TimesheetWindow:
         except Exception as exc:return self.reconciliation_failure(exc)
 
     def leave_reconciliation(self):
-        if self.mode!='reconciliation' or self.is_busy() or not self.can_leave_attempt():return False
-        self.reconciliation_token=None;self.reconciliation_panel.grid_remove();self.mode=self.reconciliation_return_mode
-        self.preview_bar.grid();self.context.grid();self.report.master.grid();self.status.grid()
-        (self.saved_panel if self.mode=='saved' else self.tasks.master).grid()
-        self.controls();return True
+        if self.mode!='reconciliation':return False
+        return self.show_timesheet()
 
     def review_current_confirmation(self):
         if self.mode!='reconciliation' or not self.reconciliation_current or self.is_busy() or not self.can_leave_attempt():return False
@@ -1144,7 +1310,7 @@ class TimesheetWindow:
     def close(self,*,primary=None,force=False):
         if self.disposed or self.window is None: return True
         if not force:
-            if self.is_busy(): return False
+            if self.is_busy() or self._review_active() and not self._polr_completed: return False
             attempt = self.owner._timesheet_attempt
             if attempt is not None and attempt.registration=='unverified':
                 self.status.configure(text='Registration unverified; Retry/Reconcile or explicitly exit the application.')
@@ -1167,5 +1333,6 @@ class TimesheetWindow:
             self.disposed,self.presented,self.current = True,False,False
             self.picker = None
             self.preview_token = self.choices_token = None
-            self.polr_tokens.clear()
+            self.polr_tokens.clear();self._read_contexts.clear();self.return_context=None
+            self.saved_token=self.reconciliation_token=None
             if self._constructed: self.owner._timesheet_disposed(self,self._disposal_primary)

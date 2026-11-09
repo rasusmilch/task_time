@@ -26,14 +26,21 @@ Stage 2B connects Work History for the selected task: Current week/Custom/All,
 draft-only inline calendars, session date direction, complete-entry inline editing,
 confirmed deletion and immutable revision/deleted-entry details. One modal owner
 blocks main/mini input while timers and worker delivery continue.
-Timesheet / POL-R opens one modal preview/save workflow: This week/Last week/Custom,
+Timesheet / POL-R opens one modal window with persistent Timesheet, Reconciliation,
+Saved Reports and Confirmation History navigation, an expanding exclusive content
+area and permanent Close. Normal fresh opening remains Timesheet with explicit
+Preview; Reconciliation and Manual confirmation need no saved report. Preview uses: This week/Last week/Custom,
 All or explicit task UUIDs (including archived tasks), draft-only calendars and
 explicit Preview/Refresh. Actual HH:MM/decimal and suggested quarter-hour amounts
 are separate, with complete-week target/adjustment context for partial views.
 Preview writes no evidence or files. Save freezes the chosen original destination,
 registers the reviewed candidate, then publishes and verifies its exact bytes.
 Retry Save, Save Copy As, Check File Status and Saved Reports reuse registered
-evidence. Conflicting regular files require separate default-No Overwrite consent;
+evidence. Loading an old report returns to its frozen Timesheet view and enables
+source review without re-saving, even when the external copy is missing. Explicit
+Cancel/Defer/Return protects editable reviews; successful confirmation stays visible
+and requires explicit Refresh review before a subsequent confirmation. Reconciliation
+Return refreshes applied scope without applying separate drafts. Conflicting regular files require separate default-No Overwrite consent;
 ordinary Save never overwrites. The same modal window provides Review POL-R
 Confirmation, Manual POL-R Confirmation and Confirmation History. Explicit checked
 source cells use frozen suggestions, positive-only defaults include already-equal

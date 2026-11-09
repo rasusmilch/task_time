@@ -323,6 +323,17 @@ Outstanding native qualification remains a separate gate; this documentation doe
 not reclassify F2 evidence, legacy outcomes, 29 unresolved skips or F3/F4 status.
 Stage 4 remains IN PROGRESS; Stage 5 is NOT STARTED.
 
+### Bounded Timesheet / POL-R usability repair
+
+The separately approved repair supplies four visible sections in one modal shell,
+exclusive expanding views, registered-report recovery without re-save, explicit
+source/manual review exits and successful-result visibility. Reconciliation Return
+refreshes applied scope while retaining unapplied drafts and semantic selection.
+Existing worker-owned read transactions remain permitted; no schema, service,
+accounting, evidence or native-input change is authorized. Implementation and
+portable/managed-Tk evidence require independent review. Native F2/F3/F4 remain
+separate. Stage 4 stays IN PROGRESS; Stage 5 remains NOT STARTED.
+
 ## Stage 5 — Complete core pilot
 
 **Selected / not started.** Use a deliberately fresh dataset for daily main/mini

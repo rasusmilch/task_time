@@ -83,7 +83,7 @@ def workflow(app, worker, clock, tmp_path, monkeypatch, activate):
     assert report.read_bytes()==candidate.report_utf8
     activate(sheet.review_polr_button);reviewed(app,sheet)
     activate(sheet.polr_confirm_button);reviewed(app,sheet)
-    activate(sheet.reconciliation_button);reconciliation=reconciled(app,sheet)
+    activate(sheet.polr_defer_button);activate(sheet.reconciliation_button);reconciliation=reconciled(app,sheet)
     assert any(c['task_id']==leaf and c['confirmed_quarters'] is not None for c in reconciliation['daily_cells'])
     activate(sheet.close_button);pump(app.root,lambda:app.timesheet is None)
     # Recover the same report without the discarded preview widget.

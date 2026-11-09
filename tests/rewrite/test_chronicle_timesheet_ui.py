@@ -55,7 +55,12 @@ def test_real_tk_preview_defaults_no_open_clock_read_only_exact_and_dirty(connec
     c2=refresh(app,sheet)
     assert c2.export_id!=c.export_id and c.content()==old
     assert evidence(worker)==before
-    assert not any(child.cget('text') in ('Save','Export','Confirm') for child in sheet.window.winfo_children() if isinstance(child,tk.ttk.Button))
+    def descendants(parent):
+        for child in parent.winfo_children():
+            yield child;yield from descendants(child)
+    buttons=[w for w in descendants(sheet.window) if isinstance(w,tk.ttk.Button)]
+    assert sheet.save_button in buttons and sheet.close_button in buttons
+    assert not any(w.cget('text') in ('Save','Export','Confirm') for w in buttons)
     sheet.close();assert app.timesheet is None
     assert app.open_timesheet();fresh=app.timesheet
     pump(root,lambda:fresh.choices_token is None and fresh.presented)

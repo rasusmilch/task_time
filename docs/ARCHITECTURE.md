@@ -1798,6 +1798,38 @@ No Save/open/status operation confirms POL-R, stops/resets timers or dismisses a
 reminder. Stage 3C confirmation and Stage 3D reconciliation/reminders are described
 below; Save remains independent of both.
 
+### Timesheet shell and bounded view transitions
+
+TimesheetWindow owns a grid shell: navigation row 0, growing content host row 1,
+and Close footer row 2. Only one Timesheet, Saved Reports, Reconciliation or shared
+POL-R content frame is mapped. The latter configures source/manual/history regions
+without creating another Toplevel. Manual hides the unused table; History gives
+both list and detail growth. Identity text remains reachable through horizontal
+scrolling, with vertical scrollbars adjacent to their tables. Source acknowledgement
+controls occupy a bounded two-axis scrollable canvas. Geometry remains 980x740 /
+minimum 800x620; resize changes presentation only.
+
+One mode and one volatile return-context record belong to that same window. A
+central transition method invalidates obsolete presentation tokens, never accepted
+worker operations. Context captures the originating section, dataset/report identity,
+applied reconciliation scope and selected task/date; existing hidden draft controls
+remain intact. Applied snapshots and unapplied drafts are separate. Return reads
+refresh the last applied scope and restore semantic selection only if present.
+
+All reads still pass through ChronicleApp._timesheet_read and the existing worker
+and read transactions. Existing tokens and expected dataset/view/report/task/date/
+batch/cutoff identities reject obsolete replies. Stage strings/rows before rendering;
+hide partial output on failure. No new Message fields, cache authority, transaction
+owner or request coordinator exists.
+
+Registered attempts survive ordinary section changes. Load validates exact frozen
+SQLite evidence, recovers through _timesheet_recover and enters Timesheet without
+re-registration or automatic file inspection. Source/manual review blocks conflicting
+navigation and editable Close/X/Escape until explicit Cancel/Defer. Known commitment
+remains owned by _PolrSubmission before presentation; a window-local completion flag
+prevents accidental repeated Confirm until explicit Refresh review. Return never
+creates a confirmation. Exact Retry/Reconcile and exceptional-exit policy are unchanged.
+
 ### Connected Stage 3C absolute confirmation
 
 `polr_confirmation` owns pure strict field/type/canonical-order validation, exact

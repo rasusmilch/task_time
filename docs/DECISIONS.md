@@ -1708,3 +1708,20 @@ original recovery. No migration/import/converted-copy activation is selected.
 E implementation and execution evidence require independent review; Package F
 integrated/native qualification and Stage 5 remain separately unauthorized.
 This records the new execution decision without changing earlier A–F provenance.
+
+### Timesheet usability navigation and explicit review return
+
+**Status:** selected in the later explicit user execution instruction for the
+Timesheet / POL-R usability repair, following independent review of its read-only
+plan. This supersedes the implementation/test expectation that Manual Cancel from
+Reconciliation returns to Preview; it does not rewrite earlier stage acceptance.
+
+Select four primary sections, one modal content owner and a permanent Close footer
+at unchanged geometry. Source/manual reviews require explicit Cancel/Defer/Return;
+Close/X/Escape and unrelated navigation cannot abandon editable review. Known
+commitment remains visible until Return and repeated Confirm cannot silently issue
+another batch. Explicit Refresh review renews a subsequent action. Return to
+Reconciliation refreshes last applied scope while preserving unapplied drafts and
+UUID/date selection, clearing a missing row. Existing worker-owned read transactions
+are explicitly permitted; no new writer, mutation mechanism, persisted navigation,
+allocation or immutable-evidence change is selected.

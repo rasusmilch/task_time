@@ -50,6 +50,7 @@ def test_real_tk_server_frozen_source_checked_zero_manual_stale_ack_history_moda
     select_cell(root,sheet,(task,'2026-10-20'),click) # Explicit checked zero; never default-selected.
     click(sheet.polr_confirm_button);reviewed(app,sheet)
     assert app._polr_submission.outcome.status=='committed' and app._polr_submission.outcome.result['cell_count']==2
+    click(sheet.polr_defer_button)
     click(sheet.manual_polr_button)
     choose_combo(root,sheet.polr_task_control,sheet.polr_task_choices.index(task),click,keyboard)
     click(sheet.polr_context_button);reviewed(app,sheet)
@@ -60,6 +61,7 @@ def test_real_tk_server_frozen_source_checked_zero_manual_stale_ack_history_moda
     assert isinstance(root.test_errors[-1][1],ValueError);root.test_errors.clear()
     type_hours(root,sheet.polr_hours_control,'5.00',click,keyboard);click(sheet.polr_confirm_button);reviewed(app,sheet)
     assert sheet.polr_context['confirmed_quarters']==20
+    click(sheet.polr_defer_button)
     click(sheet.review_polr_button);reviewed(app,sheet)
     key=(task,DAY);assert key in sheet.polr_acks and not sheet.polr_acks[key][0].get()
     assert (other,DAY) in sheet.polr_selected # Positive default remains, even untouched Unknown or equal.
@@ -70,6 +72,7 @@ def test_real_tk_server_frozen_source_checked_zero_manual_stale_ack_history_moda
     click(sheet.polr_confirm_button);reviewed(app,sheet)
     batch=app._polr_submission.outcome.result['batch_id']
     assert app._polr_submission.outcome.status=='committed' and not sheet.polr_acks
+    click(sheet.polr_defer_button)
     click(sheet.polr_history_button);reviewed(app,sheet)
     sheet.polr_tree.see(batch);pump(root,lambda:bool(sheet.polr_tree.bbox(batch)))
     x,y,w,h=sheet.polr_tree.bbox(batch);click(sheet.polr_tree,(x+40,y+h//2));click(sheet.polr_load_button);reviewed(app,sheet)

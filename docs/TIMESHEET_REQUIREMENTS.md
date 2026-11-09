@@ -861,6 +861,40 @@ recover. Exit warns before losing volatile context without implying evidence/fil
 are removed. No hidden retained window, persisted recovery state or automatic retry
 is selected. Overwrite permission is one-call only, never a frozen field.
 
+### Selected Timesheet navigation and review ownership
+
+One TimesheetWindow has persistent **Timesheet**, **Reconciliation**, **Saved
+Reports** and **Confirmation History** sections, one exclusive growing content
+region and a permanent Close footer. Default geometry remains 980x740 and minimum
+800x620. Tables, adjacent scrollbars, actions and status must remain usable there.
+Normal fresh opening remains This week/All tasks with explicit Preview; the reminder
+retains its distinct direct Reconciliation entry. Navigation may use existing
+worker-owned read snapshots but creates no mutation Request or independent writer.
+
+Reconciliation and independent Manual confirmation require no Preview or saved
+report. Saved Reports loads exact SQLite evidence, including after restart or when
+its external copy is missing, into an exclusive registered-report Timesheet view.
+It does not recalculate, register, resave or assume file availability. Navigating
+between sections retains an existing legitimate save attempt. Replacement Load,
+New Preview and Close retain their existing abandonment protections.
+
+Source/manual reviews have explicit Defer/Cancel or context-specific Return.
+Conflicting primary navigation and direct calls refuse while a review is active.
+Close, window-manager close and Escape cannot discard an editable uncommitted
+review; Cancel/Defer is required. No additional navigation confirmation dialog is
+introduced. Known successful confirmation stays visible with its batch UUID until
+Return, including after follow-up read/render failure. Repeated Confirm cannot
+create another batch; a subsequent confirmation requires explicit Refresh review.
+Pending/unverified requests retain their stricter exact-request protections.
+
+Manual Cancel/Return and read-only current-batch inspection entered from
+Reconciliation return to Reconciliation. Preserve its last applied scope and the
+operator's separate unapplied drafts. Refresh the applied scope, never implicitly
+apply those drafts, and mark current only after validated successful rendering.
+Restore selection by task UUID/date; explicitly clear an absent row. Timesheet
+reviews return to Timesheet. Primary History entry clears obsolete temporary
+return context. No navigation state is persisted or restored on restart.
+
 ## SELECTED — Explicit POL-R confirmation workflow
 
 Offer whole applicable saved-export, checked task/day, defer/later review and

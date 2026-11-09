@@ -72,7 +72,7 @@ def test_real_tk_saved_comparison_manual_navigation_and_confirmation_refresh(con
     k,_=row(sheet,task);sheet.reconciliation_tree.selection_set(k)
     assert sheet.reconciliation_manual_action();reviewed(app,sheet)
     sheet.polr_hours.set('2.50');assert sheet.confirm_polr();reviewed(app,sheet)
-    assert sheet.open_reconciliation(compare=True);r=reconciled(app,sheet)
+    assert sheet.defer_polr();r=reconciled(app,sheet)
     v=next(v for v in r['daily_cells'] if (v['task_id'],v['work_date'])==(task,DAY))
     assert v['confirmed_quarters']==10 and v['daily_delta_hundredths']==50 and v['classification']=='MISMATCH'
     assert 'NEWER_DIFFERING_CONFIRMATION' in r['source_comparison']['cells'][1]['flags']
@@ -286,10 +286,12 @@ def test_real_tk_manual_cancel_after_reconciliation_restores_valid_timesheet_vie
     assert sheet.open_reconciliation();reconciled(app,sheet)
     before=evidence(worker)
     assert sheet.reconciliation_manual_action() and sheet.mode=='confirmation_manual'
-    assert sheet.defer_polr() and sheet.mode=='preview'
-    pump(root,lambda:sheet.report.master.winfo_ismapped())
-    assert sheet.report.master.winfo_ismapped() and not sheet.reconciliation_panel.winfo_ismapped()
-    assert sheet.open_reconciliation();reconciled(app,sheet)
+    applied=sheet.return_context['applied'].copy()
+    assert sheet.defer_polr() and sheet.mode=='reconciliation'
+    reconciled(app,sheet)
+    assert sheet.reconciliation_applied['period']==applied['period']
+    assert sheet.reconciliation_applied['task_ids']==applied['task_ids']
+    assert not sheet.report.master.winfo_ismapped() and sheet.reconciliation_panel.winfo_ismapped()
     assert evidence(worker)==before and root.grab_current() is sheet.window and not root.test_errors
 
 
@@ -342,7 +344,7 @@ def test_real_tk_review_known_zero_current_batch_without_source_export(connected
     app,worker,clock=connected;task=selected_task(app);sheet=open_sheet(app)
     manual_review(app,sheet,task);sheet.polr_hours.set('0.00');assert sheet.confirm_polr();reviewed(app,sheet)
     batch=app._polr_submission.outcome.result['batch_id']
-    assert app._timesheet_attempt is None and sheet.open_reconciliation();reconciled(app,sheet)
+    assert sheet.defer_polr() and app._timesheet_attempt is None and sheet.open_reconciliation();reconciled(app,sheet)
     handle,value=row(sheet,task);assert value['current_batch_id']==batch and value['confirmed_quarters']==0
     before=evidence(worker);sheet.reconciliation_tree.selection_set(handle)
     pump(root,lambda:sheet.reconciliation_confirm.instate(['!disabled']))

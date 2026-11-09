@@ -51,6 +51,9 @@ def saved_reports(app,sheet,export_id):
     sheet.saved_list.selection_set(export_id)
     assert sheet.load_saved();pump(app.root,lambda:sheet.saved_token is None)
     assert app._timesheet_attempt.candidate.export_id==export_id
+    app.root.update_idletasks()
+    assert sheet.mode=='preview' and not sheet.current and not sheet.saved_panel.winfo_ismapped()
+    assert sheet.timesheet_panel.winfo_ismapped() and sheet.report.winfo_ismapped()
 
 
 def test_real_tk_exact_registration_before_publish_controls_and_completion(connected,root,tmp_path,monkeypatch):

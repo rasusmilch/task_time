@@ -34,6 +34,9 @@ def saved(app,tmp_path,monkeypatch,*,duration='3:00',tuesday_duration=None):
 
 
 def manual_review(app,sheet,task,day=DAY):
+    if sheet.mode in ('confirmation_source','confirmation_manual'):
+        assert sheet.defer_polr()  # Explicit Return/Defer; never abandon a review through navigation.
+    if sheet.mode not in ('preview','reconciliation'):assert sheet.show_timesheet()
     assert sheet.manual_polr()
     sheet.polr_task_control.current(sheet.polr_task_choices.index(task));sheet.polr_date.set(day)
     assert sheet.refresh_polr();reviewed(app,sheet)
@@ -60,7 +63,7 @@ def test_real_tk_source_subset_manual_history_exact_frozen_work_and_restart(conn
     assert evidence(worker)['work_revisions']==before['work_revisions'] and app.state['active']==active and dest.read_bytes()==c.report_utf8
     manual_review(app,sheet,task);sheet.polr_hours.set('5.00');assert sheet.confirm_polr();reviewed(app,sheet)
     assert 'Daily Delta: 0.00' in sheet.polr_detail.get('1.0','end')
-    assert sheet.confirmation_history();reviewed(app,sheet)
+    assert sheet.defer_polr();assert sheet.confirmation_history();reviewed(app,sheet)
     assert len(sheet.polr_tree.get_children())==2
     sheet.polr_tree.selection_set(batch);assert sheet.load_polr_batch();reviewed(app,sheet)
     assert '3.00' in sheet.polr_detail.get('1.0','end') and str(sheet.polr_detail.cget('state'))=='disabled'
@@ -97,6 +100,7 @@ def test_real_tk_case_F_zero_default_defer_and_manual_invalid_draft(connected,ro
     assert sheet.polr_context['confirmed_quarters']==0 and '0.00 (confirmed)' in sheet.polr_detail.get('1.0','end')
     before=evidence(worker);sheet.polr_hours.set('2.30');assert not sheet.confirm_polr()
     assert sheet.polr_hours.get()=='2.30' and sheet.polr_ready and evidence(worker)==before
+    assert sheet.refresh_polr();reviewed(app,sheet)
     sheet.polr_hours.set('2.50');assert sheet.confirm_polr();reviewed(app,sheet)
     assert sheet.polr_context['confirmed_quarters']==10
 
@@ -105,6 +109,7 @@ def test_real_tk_case_F_zero_default_defer_and_manual_invalid_draft(connected,ro
 def test_real_tk_stale_selected_prior_requires_explicit_refresh_no_retarget(connected,root,tmp_path,monkeypatch,same):
     app,worker,clock=connected;task,sheet,c,dest=saved(app,tmp_path,monkeypatch)
     manual_review(app,sheet,task);sheet.polr_hours.set('0.00');assert sheet.confirm_polr();reviewed(app,sheet)
+    assert sheet.refresh_polr();reviewed(app,sheet)  # A new explicit reviewed action.
     reviewed_id=sheet.polr_context['current_batch_id'];sheet.polr_hours.set('4.00')
     original=TimerService.execute;injected=[]
     def advance(self,r):
@@ -124,7 +129,7 @@ def test_real_tk_stale_selected_prior_requires_explicit_refresh_no_retarget(conn
 def test_real_tk_individual_acknowledgement_refresh_clears_consent(connected,root,tmp_path,monkeypatch):
     app,worker,clock=connected;task,sheet,c,dest=saved(app,tmp_path,monkeypatch)
     manual_review(app,sheet,task);sheet.polr_hours.set('5.00');assert sheet.confirm_polr();reviewed(app,sheet)
-    assert sheet.review_polr();reviewed(app,sheet);k=(task,DAY)
+    assert sheet.defer_polr();assert sheet.review_polr();reviewed(app,sheet);k=(task,DAY)
     assert sheet.polr_acks[k][0].get() is False and not sheet.confirm_polr()
     sheet.polr_acks[k][0].set(True);sheet.toggle_polr_cell(k);assert not sheet.polr_acks
     sheet.toggle_polr_cell(k);assert not sheet.polr_acks[k][0].get()
@@ -223,8 +228,9 @@ def test_real_tk_known_commit_survives_result_widget_failure(connected,root,tmp_
     monkeypatch.setattr(sheet,'polr_result',lambda *a:(_ for _ in ()).throw(fault))
     assert sheet.confirm_polr();settled(app)
     assert app._polr_submission.outcome.status=='committed' and root.test_errors[-1][1] is fault
-    assert sheet.manual_polr_button.instate(['!disabled']) and sheet.manual_polr()
-    assert sheet.close() and dest.read_bytes()==c.report_utf8
+    assert sheet.manual_polr_button.instate(['disabled']) and not sheet.manual_polr()
+    assert sheet.defer_polr() and sheet.manual_polr()
+    assert sheet.defer_polr() and sheet.close() and dest.read_bytes()==c.report_utf8
 
 
 def test_real_tk_unverified_confirmation_confirmed_exceptional_exit_preserves_evidence(connected,root,tmp_path,monkeypatch):
@@ -268,7 +274,7 @@ def test_real_tk_manual_without_preview_or_export_and_cancel_has_no_effect(conne
     sheet.polr_hours.set('1.25');assert sheet.defer_polr() and evidence(worker)==before
     manual_review(app,sheet,task);sheet.polr_hours.set('1.25');assert sheet.confirm_polr();reviewed(app,sheet)
     assert sheet.polr_context['confirmed_quarters']==5 and sheet.candidate is None and app._timesheet_attempt is None
-    assert sheet.saved_reports();pump(root,lambda:sheet.saved_token is None)
+    assert sheet.defer_polr();assert sheet.saved_reports();pump(root,lambda:sheet.saved_token is None)
     assert not sheet.saved_list.get_children()
 
 
@@ -279,7 +285,7 @@ def test_real_tk_changing_inline_mode_abandons_saved_read_without_stranding_cont
     with monkeypatch.context() as m:
         m.setattr(TimerService,'list_registered_timesheet_exports',slow)
         assert sheet.saved_reports();pump(root,entered.is_set);old=sheet.saved_token
-        assert old is not None and sheet.manual_polr() and sheet.saved_token is None
+        assert old is not None and sheet.show_timesheet() and sheet.manual_polr() and sheet.saved_token is None
         gate.set();assert sheet.refresh_polr();reviewed(app,sheet)
     assert sheet.polr_ready and sheet.defer_polr()
     assert sheet.saved_button.instate(['!disabled']) and sheet.saved_reports()
