@@ -1210,6 +1210,20 @@ def _validate_control_result(directory, nonce, code, failed_return,
                   and result['native']['focus_inside'], 'Normal modal return failed')
 
 
+def _native_control_plugin(subject_role):
+    """Keep native preparation after the real production startup handoff."""
+    f.require(type(subject_role) is str and subject_role in CONTROL_SUBJECTS,
+              'Unapproved native-control subject role')
+    dependency = ', ordinary' if subject_role == 'production-schema4' else ''
+    return '''import pytest
+from test_win32_focus import _controlled_origin, _native_report
+pytest_runtest_makereport = pytest.hookimpl(tryfirst=True)(_native_report)
+@pytest.fixture(autouse=True)
+def controlled_origin(root, monkeypatch, request%s):
+    yield from _controlled_origin(root, monkeypatch, request)
+''' % dependency
+
+
 @pytest.mark.skipif(sys.platform != 'win32', reason='Native Windows foreground/return controls NOT RUN')
 @pytest.mark.parametrize('subject_node', list(CONTROL_SUBJECTS.values()), ids=list(CONTROL_SUBJECTS))
 @pytest.mark.parametrize('failed_return', [False, True])
@@ -1226,13 +1240,8 @@ def test_native_ordinary_activation_and_independent_modal_return_control(tmp_pat
     node = subject_node
     nonce = uuid4().hex; directory = tmp_path/('inert-'+nonce); directory.mkdir()
     plugin = tmp_path/'native_focus_control.py'
-    plugin.write_text('''import pytest
-from test_win32_focus import _controlled_origin, _native_report
-pytest_runtest_makereport = pytest.hookimpl(tryfirst=True)(_native_report)
-@pytest.fixture(autouse=True)
-def controlled_origin(root, monkeypatch, request):
-    yield from _controlled_origin(root, monkeypatch, request)
-''', encoding='utf-8')
+    subject_role = next(role for role, subject in CONTROL_SUBJECTS.items() if subject == subject_node)
+    plugin.write_text(_native_control_plugin(subject_role), encoding='utf-8')
     def source():
         return _control_source(subject_node)
     original_source = source()

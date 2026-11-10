@@ -335,6 +335,26 @@ final status must bind to the same complete selected node. Production controls
 also require detached readiness captured from the actual app/worker at setup and
 retained in RESULT; synthetic readiness only tests refusal/validation logic.
 
+The generated production autouse control fixture explicitly depends on `ordinary`
+before delegating native preparation. This corrects a fixture-ordering defect:
+gridding `f2_wrong_return` before StartupWindow packed its frame caused a shared-root
+geometry conflict. No production defect was demonstrated. Historical controls keep
+their original three-argument fixture without `ordinary`; production normal and
+negative controls both use the four-argument dependency. The actual generated UTF-8
+plugin remains source/hash bound. Wrong-return placement, one-shot focus fault,
+PRECONDITION/RESULT validation and all native safeguards remain unchanged.
+
+[test_f2b_focus_fixture_lifecycle.py](../tests/rewrite/test_f2b_focus_fixture_lifecycle.py)
+compiles and checks both exact generated signatures and unknown-role refusal. Its
+disposable pytest children load that same generator output, replacing only native
+preparation with a harmless test-owned body probe. Real managed Tk, StartupWindow,
+ChronicleApp and the sole production schema-4 worker prove completed handoff before
+wrong-target mapping, root identity, semantic readiness and orderly shutdown.
+Historical children separately prove that no ordinary schema-4 fixture starts.
+These portable lifecycle observations are not genuine native focus RESULT evidence;
+the existing positive/negative protocol tests and separate Windows execution remain
+required. Independent acceptance of the correction precedes execution authorization.
+
 Portable regressions check the exact authorization set, actual collected six-node
 inventory/fixture sources and unchanged SUPPORTED_RUNTIME partition, both control
 protocols, source/JUnit identity, readiness refusals, one-shot input, terminal
@@ -372,8 +392,9 @@ Windows-interface and orchestration doubles. It checks exact selection, dirty/dr
 source refusal, unsuitable destinations, fixture changes, prerequisite/control gates,
 unexpected outcomes, missing/incomplete evidence, cleanup and archive failure and
 status/exit mapping. These are portable implementation tests, not Win32 input or
-PowerShell 5.1 evidence. Real Tk/X11 regression remains separate. Only an independently
-accepted runner commit may be supplied as the operator's full expected SHA. Native
+PowerShell 5.1 evidence. Real Tk/X11 regression remains separate. The operator's full
+expected SHA identifies the independently approved complete checkout, including its
+accepted runner and control implementation, rather than a historical runner-only SHA. Native
 execution/result acceptance, NTFS/recovery Case C, the original unavailable 29-node
 ledger, F3 and F4 remain outstanding; no portable result waives them.
 

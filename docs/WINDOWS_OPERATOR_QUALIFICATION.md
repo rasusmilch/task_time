@@ -221,12 +221,28 @@ F2b-Focus's subject/control implementation is independently accepted at
 `8bd0ecac8c7ca4b9f63868928cbd9b5aaeaf7647`. The bounded runner is implemented
 for independent review; Codex has not executed native qualification. After runner
 acceptance, the Windows operator starts **only** this script once, from the reviewed
-checkout in Windows PowerShell 5.1, supplying the full published runner SHA from its
-execution receipt:
+checkout in Windows PowerShell 5.1, supplying the full independently approved
+complete-checkout revision from its execution receipt. `-ExpectedRevision` binds
+the entire current source, not necessarily the historical runner-development commit:
 
 ```powershell
 & .\scripts\qualify_f2b_focus_windows.ps1 -ExpectedRevision FULL_REVIEWED_40_CHARACTER_SHA
 ```
+
+The generated native-control fixture has a bounded ordering correction: production
+`controlled_origin(root, monkeypatch, request, ordinary)` explicitly waits for the
+actual StartupWindow/schema-4 worker handoff before control preparation grids the
+wrong-return Entry. Previously the autouse fixture could grid that Entry before
+StartupWindow packed its frame into the same root, causing a setup conflict. This
+was a test-harness defect; no production defect was demonstrated. Historical
+controls retain `controlled_origin(root, monkeypatch, request)` and their connected
+schema-3 runtime. Both production normal/negative controls use the same dependency.
+The wrong-focus operation, native PRECONDITION/RESULT validation, deadlines, input,
+Job and cleanup contracts are unchanged. A disposable portable body probe verifies
+real Tk/worker lifecycle ordering; it is not native Windows control evidence. The
+corrected source and portable evidence require independent acceptance before any
+separately authorized one-command Windows execution. F2b/F2/F3/F4 are not thereby
+passed; original failed/incomplete attempts and the 29-node ledger remain unchanged.
 
 Optional `-OutputParent` and `-Python` select an existing trusted evidence location
 and installed interpreter. The default evidence parent is
