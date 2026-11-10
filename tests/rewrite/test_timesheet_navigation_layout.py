@@ -302,3 +302,112 @@ def test_ordinary_restart_recovers_missing_file_without_preview_or_resave(ordina
     finally:
         if flow is not None and flow.app is not None and flow.app.alive:fresh_root.destroy()
         if flow is not None and flow.worker is not None:flow.worker.join(15);assert not flow.worker.is_alive()
+
+
+@pytest.mark.parametrize('registered',[False,True],ids=['preview','registered'])
+def test_ordinary_saved_listing_read_failure_preserves_timesheet(ordinary,tmp_path,monkeypatch,registered):
+    import threading
+    from chronicle.schema4_runtime_service import Schema4RuntimeService
+    app,worker,places,keys,clock=seed(ordinary);sheet=open_sheet(app)
+    if registered:register(app,sheet,monkeypatch,tmp_path)
+    else:refresh(app,sheet)
+    candidate=sheet.candidate;attempt=app._timesheet_attempt;current=sheet.current
+    text=sheet.report.get('1.0','end-1c');before=facts(places)
+    file_bytes=(tmp_path/'report.txt').read_bytes() if registered else None
+    save_ready=sheet.save_button.instate(['!disabled'])
+    # A prior successful list must not remain loadable after a failed explicit refresh.
+    assert sheet.saved_reports();pump(app.root,lambda:sheet.saved_token is None)
+    assert sheet.show_timesheet() and not app.root.test_errors
+    fault=OSError('authoritative registered-report listing unavailable');calls=[]
+    def fail(service):
+        assert type(service) is Schema4RuntimeService
+        calls.append(threading.get_ident());raise fault
+    with monkeypatch.context() as m:
+        m.setattr(Schema4RuntimeService,'list_registered_timesheet_exports',fail)
+        assert sheet.saved_reports();pump(app.root,lambda:sheet.saved_token is None)
+    assert calls==[worker.ident] and app.root.test_errors==[(type(fault),fault,fault.__traceback__)]
+    assert sheet.candidate is candidate and sheet.current is current
+    assert sheet.report.winfo_manager()=='grid' and sheet.report.get('1.0','end-1c')==text
+    assert str(fault) in sheet.saved_status.cget('text') and not sheet.saved_ready
+    assert sheet.load_saved_button.instate(['disabled']) and not sheet.load_saved()
+    assert sheet.show_timesheet();exclusive(sheet)
+    assert sheet.candidate is candidate and sheet.current is current
+    assert sheet.report.winfo_ismapped() and sheet.report.get('1.0','end-1c')==text
+    assert app._timesheet_attempt is attempt and sheet.save_button.instate(['!disabled'])==save_ready
+    assert facts(places)==before
+    if registered:
+        assert (tmp_path/'report.txt').read_bytes()==file_bytes==candidate.report_utf8
+        assert sheet.review_polr_button.instate(['!disabled']) and sheet.review_polr()
+        reviewed(app,sheet);assert sheet.polr_source_id==candidate.export_id and sheet.defer_polr()
+    else:assert sheet.get_prepared_export() is candidate
+    assert sheet.close() and facts(places)==before
+
+
+@pytest.mark.parametrize('stage',['insert','columns'])
+def test_ordinary_partial_saved_list_refuses_load_and_explicit_retry_recovers(ordinary,tmp_path,monkeypatch,stage):
+    app,worker,places,keys,clock=seed(ordinary);sheet=open_sheet(app);exports=set();files={}
+    for index in range(3):
+        if index:assert sheet.new_preview()
+        candidate=refresh(app,sheet);path=tmp_path/f'report-{index}.txt'
+        choose(monkeypatch,sheet,str(path));assert sheet.save();settled(app)
+        exports.add(candidate.export_id);files[path]=path.read_bytes()
+    candidate=sheet.candidate;attempt=app._timesheet_attempt;current=sheet.current
+    text=sheet.report.get('1.0','end-1c');before=facts(places)
+    fault=RuntimeError('partial registered-report list presentation failed');inserted=[]
+    insert=sheet.saved_list.insert;fit=sheet._fit_columns
+    def populate(*args,**kw):
+        result=insert(*args,**kw);inserted.append(result)
+        if stage=='insert' and len(inserted)==2:raise fault
+        return result
+    def columns(tree):
+        if tree is sheet.saved_list:raise fault
+        return fit(tree)
+    with monkeypatch.context() as m:
+        m.setattr(sheet.saved_list,'insert',populate);m.setattr(sheet,'_fit_columns',columns)
+        assert sheet.saved_reports();pump(app.root,lambda:sheet.saved_token is None)
+    assert len(inserted)==(2 if stage=='insert' else 3)
+    assert app.root.test_errors[-1][1] is fault and len(app.root.test_errors)==1
+    assert str(fault) in sheet.saved_status.cget('text')
+    assert not sheet.saved_ready and sheet.load_saved_button.instate(['disabled'])
+    assert not sheet.load_saved() and not sheet.saved_list.winfo_ismapped()
+    assert sheet.show_timesheet();exclusive(sheet)
+    assert sheet.candidate is candidate and sheet.current is current and app._timesheet_attempt is attempt
+    assert sheet.report.winfo_ismapped() and sheet.report.get('1.0','end-1c')==text
+    assert facts(places)==before and all(path.read_bytes()==data for path,data in files.items())
+    # Recovery is one new explicit worker read, never an automatic retry or Save.
+    assert sheet.saved_reports();pump(app.root,lambda:sheet.saved_token is None)
+    app.root.update_idletasks()
+    assert sheet.saved_ready and sheet.saved_list.winfo_ismapped()
+    assert set(sheet.saved_list.get_children())==exports and sheet.load_saved_button.instate(['!disabled'])
+    sheet.saved_list.selection_set(sorted(exports)[0]);assert sheet.load_saved()
+    pump(app.root,lambda:sheet.saved_token is None);exclusive(sheet)
+    assert sheet.candidate.export_id==sorted(exports)[0] and not sheet.current
+    assert app._timesheet_attempt.registration=='committed'
+    assert sheet.report.get('1.0','end-1c')==sheet.candidate.report_text
+    assert facts(places)==before and all(path.read_bytes()==data for path,data in files.items())
+    assert len(app.root.test_errors)==1 and sheet.close()
+
+
+@pytest.mark.parametrize('stage',['read','render'])
+def test_ordinary_selected_report_failure_is_not_successful_recovery(ordinary,tmp_path,monkeypatch,stage):
+    from chronicle.schema4_runtime_service import Schema4RuntimeService
+    app,worker,places,keys,clock=seed(ordinary);sheet=open_sheet(app)
+    register(app,sheet,monkeypatch,tmp_path);candidate=sheet.candidate;before=facts(places)
+    frozen=app._timesheet_attempt.candidate
+    original_bytes=(tmp_path/'report.txt').read_bytes()
+    assert sheet.saved_reports();pump(app.root,lambda:sheet.saved_token is None)
+    sheet.saved_list.selection_set(candidate.export_id)
+    fault=RuntimeError('selected registered-report recovery failed')
+    def fail(*args,**kw):raise fault
+    with monkeypatch.context() as m:
+        if stage=='read':m.setattr(Schema4RuntimeService,'read_registered_timesheet_export',fail)
+        else:m.setattr(sheet.report,'insert',fail)
+        assert sheet.load_saved();pump(app.root,lambda:sheet.saved_token is None)
+    assert sheet.mode=='saved' and app._timesheet_attempt is None and not sheet.current
+    assert not sheet.report.winfo_ismapped() and str(fault) in sheet.saved_status.cget('text')
+    assert app.root.test_errors[-1][1] is fault and not sheet.review_polr()
+    assert not sheet.retry_save() and not sheet.save_copy_as()
+    assert sheet.load_saved();pump(app.root,lambda:sheet.saved_token is None);exclusive(sheet)
+    assert sheet.candidate==frozen and app._timesheet_attempt.registration=='committed'
+    assert facts(places)==before and (tmp_path/'report.txt').read_bytes()==original_bytes
+    assert len(app.root.test_errors)==1

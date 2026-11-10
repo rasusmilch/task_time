@@ -43,6 +43,7 @@ class TimesheetWindow:
         self.saved_token = None
         self.saved_kind = None
         self.saved_identity = None
+        self.saved_ready = False
         self.load_state = 'Not previewed'
         try:
             self.window = tk.Toplevel(owner.root)
@@ -233,7 +234,7 @@ class TimesheetWindow:
         self.overwrite_button.configure(state='normal' if active and eligible else 'disabled')
         if eligible: self.overwrite_button.grid()
         else: self.overwrite_button.grid_remove()
-        self.load_saved_button.configure(state='normal' if self.mode=='saved' and not busy and self.saved_token is None and self.can_leave_attempt() else 'disabled')
+        self.load_saved_button.configure(state='normal' if self.mode=='saved' and self.saved_ready and not busy and self.saved_token is None and self.can_leave_attempt() else 'disabled')
         if not custom: self.close_picker()
         self.polr_controls()
         self.reconciliation_controls()
@@ -522,13 +523,14 @@ class TimesheetWindow:
         if not self._can_transition():return False
         try:
             self.return_context=None
+            self.saved_ready=False
             if not self._transition('saved'):return False
             self.saved_token,_=self.owner._timesheet_read(self,'timesheet_exports',None)
             self.saved_kind='timesheet_exports';self.controls();return True
         except Exception as exc:return self.save_failure(exc)
 
     def load_saved(self):
-        if self.is_busy() or self.saved_token is not None or self.mode!='saved': return False
+        if self.is_busy() or self.saved_token is not None or self.mode!='saved' or not self.saved_ready: return False
         selected = self.saved_list.selection()
         if not selected: return False
         try:
@@ -554,6 +556,8 @@ class TimesheetWindow:
                 for key,text in rows: self.saved_list.insert('','end',iid=key,values=(text,))
                 self._fit_columns(self.saved_list)
                 self.saved_status.configure(text='Registered exports (SQLite evidence). Select and load one; file status requires explicit inspection.')
+                self.saved_list.grid()
+                self.saved_ready=True
             else:
                 candidate = validate(value,check_render=False)
                 if candidate.dataset_id != self.owner.dataset_id or candidate.export_id != self.saved_identity: raise ValueError('Recovered export identity changed')
@@ -572,10 +576,19 @@ class TimesheetWindow:
                 self.save_changed()
             self.controls()
         except Exception as exc:
-            if kind=='timesheet_export': self.owner._timesheet_detach()
-            try: self.report.grid_remove();self.report.configure(state='disabled')
-            except Exception as secondary: exc.add_note(f'Recovery display invalidation failed: {secondary!r}')
-            self.current = False
+            if kind=='timesheet_exports':
+                self.saved_ready=False
+                try:
+                    self.saved_list.grid_remove()
+                    self.saved_list.delete(*self.saved_list.get_children())
+                except Exception as secondary:exc.add_note(f'Saved list invalidation failed: {secondary!r}')
+            else:
+                self.owner._timesheet_detach()
+                try: self.report.grid_remove();self.report.configure(state='disabled')
+                except Exception as secondary: exc.add_note(f'Recovery display invalidation failed: {secondary!r}')
+                self.current = False
+            try:self.controls()
+            except Exception as secondary:exc.add_note(f'Saved controls update failed: {secondary!r}')
             self.save_failure(exc)
 
     def new_preview(self):
