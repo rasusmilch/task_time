@@ -93,6 +93,46 @@ verified absent-target ZIP publication retain evidence on failure. See the
 [native runbook](WINDOWS_OPERATOR_QUALIFICATION.md). None of this changes application
 runtime, schema, receipts, frozen reporting or recovery authority.
 
+## Selected mandatory ownership — isolated schema-5 foundation
+
+The later approved mandatory-project decision selects fresh schema 5, application
+ID 0x4348524E, without migration/import/conversion/copy transition or old-schema
+fallback. It supersedes optional task ownership and Unassigned in the future
+ordinary runtime, not their historical schema-4 definition or evidence.
+
+[schema5_profiles.py](../src/chronicle/schema5_profiles.py) owns explicit version-5
+DDL. Relative to schema 4, only tasks.project_id and
+timesheet_export_tasks.project_id gain NOT NULL; both remain real-project foreign
+keys. All other statement definitions, receipt classes, work/evidence constraints,
+indexes and triggers retain the schema-4 semantics. Project parentage remains
+nullable with iterative unlimited-depth forest validation; task depth stays three
+within one immediate project. There is no default project or new membership table.
+
+Its create_candidate accepts a caller-owned new/empty file-backed SQLite
+connection, explicit dataset UUID and valid offline IANA timezone. Namespace and
+empty-identity checks precede profile changes; DELETE/EXTRA/foreign keys and the
+entire DDL/metadata/version install precede COMMIT. Construction failures attempt
+ROLLBACK and retain the primary diagnostic, including cleanup failure notes.
+It opens no dataset, takes no DatasetLock and registers no production policy.
+
+verify_schema checks exact application/version, SQL definitions and table/index/
+trigger inventory, STRICT flags, profile and unshadowed/unattached namespace.
+verify_structure adds integrity/FK, metadata, real task/frozen-task membership,
+forest/depth and active/archive structural checks. verify_candidate uses a bounded
+read snapshot and returns structural_verified only, with semantic_verified=False
+and ordinary_startup_permitted=False. Deferred unfilled references do not pass
+structural verification. Complete protected chronology remains a later dependency.
+
+Ordinary SQLiteStore/SchemaPolicy, DatabaseWorker, StartupWindow and ChronicleApp
+remain schema 4. No schema-5 service coordinator, worker, app, launcher option,
+backup/restore or recovery route exists. Reusing compatible pure helpers does not
+authorize unchecked v4-to-v5 dispatch. Later integration must connect complete
+semantics, E1 request ownership, Delete no-retry, old-data private recovery/refusal,
+all services and current GUI before ordinary activation. The selected owned New
+Task name/project dialog and removal of Unassigned are not implemented here.
+Accounting, allocation, immutable reports/confirmations and native qualification
+contracts are unchanged. See [selected behavior](TIMESHEET_REQUIREMENTS.md#selected-mandatory-ownership-and-isolated-schema-5-foundation).
+
 ## Small application and responsibility boundaries
 
 One local application operates one selected local-disk dataset with one serialized
@@ -126,7 +166,7 @@ complete behavioral slices follow the roadmap, not optional post-pilot bolt-ons:
 
 | Facts | Required relationships and invariants |
 | --- | --- |
-| Projects/tasks | Stable UUIDs, optional current membership and preserved archived identities/history. Target Delete removes only eligible unused structure under the administrative boundary below; B1 stores explicit archive metadata and no live soft-delete flag; C1 implements Archive/Unarchive; C2 implements guarded unused-only Delete. Projects own no work/timer. |
+| Projects/tasks | Stable UUIDs and preserved archived identities/history. Ordinary schema 4 retains optional membership; selected schema 5 requires one real project per task and matching child membership. Target Delete removes only eligible unused structure under the administrative boundary below; B1 stores explicit archive metadata and no live soft-delete flag; C1 implements Archive/Unarchive; C2 implements guarded unused-only Delete. Projects own no work/timer. |
 | Timed work | Stable entry UUID, task UUID, genuine UTC endpoints, current revision and deletion state. Closed spans positive; active timer represented explicitly without a fabricated stop. |
 | Date-only work | Stable entry UUID, task UUID, civil work date and integer duration; no synthetic endpoints. Distinct shape and constraints. |
 | Work revisions | Immutable typed prior/new revision facts, audit time, optional comment, ownership and deletion evidence. Current reference changes atomically with revision. |
@@ -135,7 +175,7 @@ complete behavioral slices follow the roadmap, not optional post-pilot bolt-ons:
 | Absolute confirmation batches/cells | Immutable batch identity/audit/source and selected task/day absolute integer quarter counts, reviewed prior identity and exact cell-specific acknowledgement. One batch is atomic. No arbitrary hundredth confirmations. |
 | Current confirmed references | Each known task/day points to its latest committed immutable confirmation cell/batch; absence means Unknown, an explicit zero row means known zero. No additive confirmed balance. |
 | Committed request receipts | Unique request identity, strictly comparable request content and committed result, atomically tied to the use case. Not file-availability state. |
-| Dataset metadata | Schema identity, explicit IANA timezone, selected week convention and one nullable canonical reminder-dismissed local date. No computed status/summary ledger or legacy import. Current supported runtime is exact fresh version 3; no old layout is accepted. |
+| Dataset metadata | Schema identity, explicit IANA timezone, selected week convention and one nullable canonical reminder-dismissed local date. No computed status/summary ledger or legacy import. Current ordinary runtime is exact fresh version 4; selected version 5 is isolated foundation only and no old layout is accepted as current. |
 
 Use enforced foreign keys and appropriate STRICT, CHECK and UNIQUE constraints;
 validate bounded integer/date ranges and shapes in services as well. Stage 1A SQL
@@ -1011,6 +1051,11 @@ its live origin. Existing owned modals block main/mini/archived actions. C1 supp
 C2 now adds the owned preview/confirmation below. D now connects movement and full nested active navigation; templates remain later.
 
 ### Relational shape and invariant ownership
+
+The B1–E details below describe retained historical/schema-4 implementation.
+For selected schema 5, [mandatory ownership](#selected-mandatory-ownership--isolated-schema-5-foundation)
+supersedes nullable task/export-task membership and Unassigned destinations;
+production service/UI integration is not delivered by the isolated foundation.
 
 Keep one SQLite authority, existing built-in driver/profile, one worker connection,
 BEGIN IMMEDIATE/COMMIT/ROLLBACK, immutable evidence and exact atomic receipts.

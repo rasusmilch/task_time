@@ -1725,3 +1725,30 @@ Reconciliation refreshes last applied scope while preserving unapplied drafts an
 UUID/date selection, clearing a missing row. Existing worker-owned read transactions
 are explicitly permitted; no new writer, mutation mechanism, persisted navigation,
 allocation or immutable-evidence change is selected.
+
+### Mandatory project ownership and isolated schema-5 foundation
+
+**Status:** selected by the later explicit user execution instruction following
+independent ChatGPT adjudication of the read-only dependency audit. The user
+rejected optional task ownership/virtual Unassigned and selected fresh data.
+This supersedes earlier no-selection Unassigned creation, nullable task ownership
+and projectless task Move/Template Apply as future product requirements; it does
+not rewrite their schema-3/4 implementation or acceptance chronology.
+
+Select schema 5/application ID 0x4348524E, one non-null real project per task and
+frozen export-task row, matching parent/child task membership, nullable real project
+parents, unlimited project nesting and unchanged three task levels. No default
+project, implicit assignment, migration/import/conversion/copy transition or public
+compatibility mode. Old files and frozen historical evidence remain protected.
+Select the owned explicit-project New Task workflow and real destinations for
+Move/Apply; no accounting, allocation or absolute confirmation change.
+
+The bounded execution authorizes only schema5_profiles.py, disposable SQL tests
+and status documentation: explicit DDL, fresh caller-owned file-backed candidate
+construction and structural verification. The ordinary schema-4 policy, store,
+worker, services, startup, GUI, backup/restore/recovery and native tooling remain
+unchanged. Structural proof never supplies complete semantic/ordinary readiness.
+Further integration requires separate approval and complete evidence dependencies;
+no partial schema-5 ordinary activation is permitted. Stage 4 stays IN PROGRESS;
+Stage 5 stays NOT STARTED. Prior native results and the separate unresolved Windows
+failure/Case C/29-ledger dependencies retain their evidence limits.

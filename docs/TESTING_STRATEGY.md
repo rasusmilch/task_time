@@ -58,6 +58,34 @@ a full regression. Levels D–F require evidence of interactions/platforms actua
 exercised, with material omissions explicit. Implementation tests and integrated
 qualification remain distinct.
 
+## Isolated schema-5 mandatory-ownership foundation
+
+The [selected target](TIMESHEET_REQUIREMENTS.md#selected-mandatory-ownership-and-isolated-schema-5-foundation)
+requires real task ownership; current ordinary runtime remains schema 4.
+[test_schema5_foundation.py](../tests/rewrite/test_schema5_foundation.py) uses
+genuine disposable file-backed SQLite for exact DDL/application/version/profile,
+NOT NULL/FK ownership, matching child membership, three task levels under arbitrarily
+deep projects, root project placement, frozen-task ownership and retained active/
+archive SQL guards. It checks altered layouts/markers/namespaces, fresh-only
+construction, rollback diagnostics, historical DDL preservation and refusal by
+unchanged production policy/worker defaults. No Tk or native input is needed for
+this foundation evidence.
+
+Relationship fixtures deliberately remain inside rolled-back transactions with
+unfilled deferred receipt/export associations; they prove SQL behavior, not valid
+administrative chronology, registered reports or production schema-5 service use.
+Structural verification does not ignore those missing references. Its detached
+result explicitly denies semantic verification and ordinary startup permission.
+The complete protected work/export/confirmation chronology remains later work.
+
+Retain historical schema-4 DDL/candidate/evidence tests and ordinary runtime4
+store/worker/backup/startup controls without relabeling them schema 5. Focused and
+broad portable results, exact selections and skip reasons belong in the execution
+receipt. Native schema-4 evidence remains historical for the selected v5 target;
+new native inventories and execution need separate review. The reported Windows
+F2b failure, Windows Case C and original 29 filesystem skips are not resolved or
+waived by SQL/portable success. Stage 4 IN PROGRESS; Stage 5 NOT STARTED.
+
 ## Project hierarchy and pilot usability acceptance
 
 Project nesting is ordinary fresh-schema-4 behavior under the selected

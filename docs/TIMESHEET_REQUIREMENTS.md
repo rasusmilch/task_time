@@ -84,9 +84,36 @@ and independent acceptance remain outstanding; Stage 4 remains IN PROGRESS.
 ## SELECTED — Independent projects and tasks
 
 Tasks have stable UUIDs and own independent work. Duplicate names are valid;
-POL-R uses names rather than invented external task numbers. A task has one
-immediate optional project membership or is Unassigned. Projects have stable
-independent UUIDs, names and optional descriptions but own no time or timer.
+POL-R uses names rather than invented external task numbers. The selected schema-5
+target requires every task to belong to exactly one real immediate project;
+children share their parent's project. No default project, implicit assignment or
+virtual Unassigned destination is selected. The ordinary schema-4 application still
+permits optional membership and Unassigned; it has not been activated as schema 5.
+Projects have stable independent UUIDs, names and optional descriptions but own
+no time or timer.
+
+### Selected mandatory ownership and isolated schema-5 foundation
+
+The later explicit execution approval selects fresh schema 5 with application ID
+0x4348524E. New tasks and frozen export-task records require non-null real project
+foreign keys. Project parents remain nullable; organizational depth is unlimited
+and does not consume the three task levels. Project/task accounting, exact work,
+frozen project UUID/name labels, report bytes and absolute POL-R semantics do not
+change. No Customer, mapping table or second ownership authority is selected.
+
+Only the [isolated SQL foundation](../src/chronicle/schema5_profiles.py) is
+implemented: explicit DDL, fresh caller-owned file-backed candidate construction
+and structural verification. It supplies neither complete semantic verification
+nor ordinary startup permission. Schema-5 service/replay, GUI, startup,
+backup/restore/recovery integration and qualification remain unimplemented.
+Ordinary defaults and SchemaPolicy remain schema 4; no user-visible version mode
+is added. Schema-4 DDL and historical evidence remain unchanged.
+
+Future ordinary schema 5 must start only in a new/genuinely empty directory and
+refuse schema 4 and earlier unchanged. No migration, import, conversion, copy
+transition, replacement or compatibility fallback is selected. Current schema-4
+admission/recovery remains unchanged until separately approved integration.
+See the [decision provenance](DECISIONS.md#mandatory-project-ownership-and-isolated-schema-5-foundation).
 
 The selected future organizational model permits each project to have zero or
 one parent project, zero or more child projects, and zero or more directly
@@ -130,16 +157,20 @@ E implements templates on fresh schema 3 for independent review. B1 supersedes t
 not the remaining package approvals or the no-migration boundary.
 
 The delivered structure is flat Project → Task → Subtask → Sub-subtask. In the
-selected project-nesting target, the task forest still has at most three task
-levels within its immediate project or Unassigned; project ancestry consumes none
+selected mandatory-ownership target, the task forest still has at most three task
+levels within its real immediate project; project ancestry consumes none
 of those levels. Each task has an independent UUID and optional parent task;
 task branches retain one consistent immediate project membership. Task names need
 not be globally unique. Cycles, duplicate identities, cross-dataset relationships
 and task-depth overflow reject. Branch moves preserve all task UUIDs and work;
 current project membership and project ancestry determine live organizational grouping.
-Unassigned is a virtual project group, not an additional persisted project or work
-owner. It has the same three-task-level limit as real projects: root Task,
-Subtask, Sub-subtask. Duplicate task names remain valid at every level.
+The ordinary schema-4 implementation retains virtual Unassigned with the same
+three task levels. That behavior is historical for the schema-5 target, which
+removes it from Main, Mini, Archived Items and every task destination selector.
+All real empty eligible projects remain accessible. With no real projects, show
+an explicit empty state and the existing Create Project route. An organizational
+root may position real root projects but cannot own tasks. Preserve sorting,
+selection, expansion, scrolling and duplicate-name UUID identity.
 
 Only leaf tasks may accept **new time**: Start, Switch destination, Add timed work
 and Add date-only work. A task becomes a parent when it gains children. Its
@@ -188,12 +219,23 @@ cross-dataset references, stale reviews and partial movement refuse. The worker
 transaction commits the entire reviewed move or none of it. These project
 parentage operations are not delivered by the current task-branch Move service.
 
-With no selection, New Task creates
-an Unassigned root. Otherwise it inserts immediately beneath the selected real or
-virtual project group or eligible task, with destination shown before submission.
+In the selected schema-5 workflow, New Task opens one owned name/project dialog
+with full destination ancestry/UUID, visible root/child context and Create/Cancel.
+A selected real project prefills an editable root-task destination; with no
+selection the destination starts empty, never first/recent/default. A selected
+eligible task creates its immediate child, inheriting its real project read-only.
+If no eligible project exists, refuse and explain that Create Project is required;
+never create one automatically. Cancel creates no Request, write or timer effect.
+Submission revalidates exact identities, versions, complete ancestry and eligibility.
+This dialog is not implemented by the isolated foundation; ordinary schema 4 still
+uses its existing name dialog and no-selection Unassigned root.
 Refuse a child beyond the depth bound. Rename preserves UUID/work. Move/reparent
 reviews source and destination, then atomically moves the entire subtree without
 cycles, cross-dataset references, identity changes or partial project reassignment.
+Schema-5 task Move/assignment requires a real project or eligible parent task in
+one; NULL is prohibited. Project Move remains distinct and may place a real
+project at organizational Root with parent_project_id=NULL. Preserve work,
+versions, receipts, exact retry and active/archive protections.
 Assigning/moving between projects uses this same branch invariant. A selected
 effectively archived branch cannot move until it is unarchived, including clearing
 inherited hiding through its ancestor path. An allowed move preserves independently
@@ -359,8 +401,10 @@ Unarchive collision refuses without automatic renaming. Nodes/tasks/projects ret
 duplicate-name support. Archive/Unarchive sets/clears only definition availability
 and current accepted UTC archive time; archived definitions may be edited/duplicated.
 
-Apply reviews the complete blueprint and explicit project/Unassigned/task destination,
-full path/UUID, node count and resulting depth. Freeze template/version/complete
+Selected schema-5 Apply reviews the complete blueprint and explicit real project
+or eligible task destination within one; it never creates an implicit project.
+Ordinary schema 4 still also permits Unassigned until later integration.
+Apply reviews full path/UUID, node count and resulting depth. Freeze template/version/complete
 reviewed definition, destination identities/versions and position-ordered node/task
 mapping before submission. Insert all fresh tasks parent-first in one transaction,
 one administrative creation receipt, without bumping destination parent version or
@@ -448,8 +492,9 @@ UUID once. Never sum ancestor project rollups or task Cumulative as additional
 contributions. Retained parent/archived work contributes where report scope allows;
 recording eligibility is not permission to omit retained Actual. A container can
 have no direct tasks yet a nonzero cumulative total. Zero requires available valid
-underlying reports; unavailable calculation is not zero. Unassigned remains a
-virtual grouping, with no persisted project/customer identity or project parentage.
+underlying reports; unavailable calculation is not zero. Ordinary schema 4 retains
+virtual Unassigned; the selected schema-5 presentation excludes it without hiding
+invalid data or introducing a persisted default project.
 
 Mini uses a compact name, small green/red indicator, Individual Today, one
 Start/Stop control and Show Main. Start/Stop text also distinguishes state without
@@ -590,7 +635,7 @@ member direct report facts over project descendants under the selected nesting m
 including applicable retained hidden task work. Groups have no Individual work;
 empty groups show zero only with a valid report. Both application totals remain
 visible and never add rollups twice. Mini retains Individual Today and Start/Stop.
-Existing-service New Task uses the selected project/group as root destination,
+The current schema-4 New Task uses the selected project/group as root destination,
 the selected eligible task as immediate parent, or Unassigned for no selection.
 The complete UUID/path and reviewed destination versions freeze before name entry.
 Move / Reparent uses the one B2 branch operation, not a second assignment policy.
@@ -997,7 +1042,7 @@ gates; no automatic external allocation verification is established.
 
 | Capability | Placement / boundary |
 | --- | --- |
-| Tasks, optional project grouping, Start/Stop/Switch, main/mini | Core Stage 1 foundation; not a complete MVP/pilot. |
+| Tasks, real-project ownership, Start/Stop/Switch, main/mini | Core; schema-5 mandatory ownership is selected, with isolated SQL foundation only. Ordinary schema 4 retains optional grouping pending integration; not a complete MVP/pilot. |
 | Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
 | Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
 | Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
@@ -1156,7 +1201,9 @@ GO. Native qualification and the remaining Stage 4 gate precede complete pilot.
 
 ## SELECTED — Schema compatibility and future upgrade safety
 
-Current supported fresh schema is version 3 with application ID 0x4348524E; versions 1/2 are incompatible and preserved.
+Current ordinary supported fresh schema is version 4 with application ID
+0x4348524E; versions 1/2/3 are incompatible and preserved. The selected schema-5
+target has only an isolated structural foundation and is not admitted ordinarily.
 A healthy complete current dataset permits ordinary work; older/newer markers,
 same-version differing schema, foreign identity, unsupported profile and damaged or
 unavailable inspection refuse without conversion, recreation or automatic repair.
@@ -1178,8 +1225,8 @@ transformation. No migration/backward compatibility obligation belongs to that
 plan; old files remain protected and incompatible data refuses. The current
 runtime supports only its exact version-4 schema; all version-1/2/3 datasets and
 backups refuse without conversion, replacement or clearing remembered selection.
-No data transition belongs to the new project-nesting implementation. The latest
-explicit user decision selects a fresh schema-4 database, retaining application
+No data transition belongs to the project-nesting implementation. Its earlier
+explicit user decision selected a fresh schema-4 database, retaining application
 ID 0x4348524E. No migration, import, schema-3 reader for conversion, transformed
 copy or activation marker is required or implemented. Current ordinary admission
 and native hot-journal recovery remained schema 3 during A/B/C1/C2. The candidate is not a

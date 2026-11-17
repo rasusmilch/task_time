@@ -276,11 +276,12 @@ usability implementation grants no project-schema or qualification approval:
 | A — Immediate pilot usability | Implemented for independent review: clicked-leaf Start/Stop/one atomic Switch through existing request paths, and compact Mini with a small state indicator and typed actionable diagnostics. ChatGPT resolves the former different-active-task decision as atomic Switch. Normal layout targets about 280x125, accommodating fonts/DPI and diagnostic height. Modal, uncertainty and duplicate-input protection remain. Native Windows layout/input acceptance is outstanding; no project schema change is implied. |
 | B — Unlimited organizational projects | Fresh schema 4 selected. A/B/C1/C2 and D/E/E1, including D1/D1a/D1b, are accepted for continued development. F1 production integration is independently accepted for continued development; F2a metadata/runbook reconciliation is published at `1468b7d16cc3d4ddaf8397a2ef9dca3651d253de`. F2b-Focus is independently accepted at `8bd0ecac8c7ca4b9f63868928cbd9b5aaeaf7647`; its separately approved one-command runner is implemented for independent review. Filesystem/ledger implementation and native F2/F3/F4 remain separately unauthorized/unexecuted. Ordinary runtime stayed v3 during A/B/C1/C2 and now selects fresh v4. No migration/import, Customer entity, project-owned work or task-depth change. |
 
-Complete structural project nesting before a longer pilot that depends on
-organizing real customer work. Do not discard, overwrite, convert or recreate
-existing schema-3/pilot data to meet that dependency. Use a fresh v4 dataset after
-activation approval; no migration/import engine or copy transition is selected.
-Current incompatible-schema refusal remains.
+Complete structural project nesting and the later selected mandatory ownership
+before a longer pilot that depends on organizing real customer work. Do not
+discard, overwrite, convert or recreate old data to meet that dependency. Schema 4
+remains ordinary; the selected future pilot dataset is fresh v5 only after complete
+integration/activation and qualification approval. No migration/import engine or
+copy transition is selected. Current incompatible-schema refusal remains.
 
 The revised project-nesting packages are separate from historical A–F above:
 
@@ -334,12 +335,33 @@ accounting, evidence or native-input change is authorized. Implementation and
 portable/managed-Tk evidence require independent review. Native F2/F3/F4 remain
 separate. Stage 4 stays IN PROGRESS; Stage 5 remains NOT STARTED.
 
+### Mandatory project ownership — selected schema 5
+
+The independently adjudicated follow-up selects one real project for every task,
+no Unassigned/default/implicit destination, an owned explicit-project New Task
+dialog, unchanged nested projects/three task levels and immutable accounting/POL-R
+contracts. Schema-4 data and DDL remain historical, never migrated or replaced.
+
+| Selected stage | Delivered status / dependencies |
+| --- | --- |
+| MVP | Only the isolated exact schema-5 SQL foundation is implemented for independent review: real-project NOT NULL/FK guards for tasks and frozen export tasks, fresh caller-owned construction and structural-only verification. Ordinary admission, service enforcement, owned New Task dialog and normal-tree changes remain unimplemented. |
+| Stabilization | Move/Apply enforcement, Archived/Mini, independent administrative/protected chronology, accounting/report evidence, backup/restore/recovery and connected production Tk remain required. Complete verifier/service routing and old-data recovery safeguards are prerequisites to activation, even though their full workflow qualification belongs here. No partial ordinary runtime is authorized. |
+| Pilot qualification | Separately reviewed schema-5 current-source/native inventories, Windows F2, supervised F3, actual F4 and operator evidence, then explicit pilot authorization. Historical v4 focus evidence cannot qualify v5. The separately reported Windows F2b failure, unestablished Windows Case C and original unavailable/unwaived 29-node ledger remain unresolved. |
+| Expansion | None authorized. |
+
+The foundation adds no runtime owner or production SchemaPolicy registration.
+Current ordinary version remains 4. Independent review and a separately bounded
+execution task are required before service/UI integration or version-5 activation.
+Stage 4 remains IN PROGRESS; Stage 5 remains NOT STARTED.
+
 ## Stage 5 — Complete core pilot
 
 **Selected / not started.** Use a deliberately fresh dataset for daily main/mini
 work in an explicitly new/empty location, never by replacing existing schema-3
-data. The new project target requires fresh v4 after E activation and F acceptance;
-no schema-3 migration or transformed-copy workflow is selected.
+data. The latest mandatory-ownership target requires fresh v5 after complete
+integration, activation and native qualification acceptance; ordinary v4 and the
+isolated v5 foundation do not authorize that pilot. No old-schema migration or
+transformed-copy workflow is selected.
 Exercise timing, manual work/corrections, frozen exports, whole/partial/zero/manual POL-R
 quarter-hour confirmation, Unknown, daily/weekly reconciliation, reminders and
 restore. Exercise full/partial-week reporting, provisional suggestions and their

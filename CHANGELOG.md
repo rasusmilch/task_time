@@ -6,6 +6,13 @@ receipts or commits. No release or production qualification is implied below.
 
 ## Unreleased
 
+- Add the isolated schema-5 mandatory-project SQL foundation: explicit versioned
+  DDL, non-null real task/frozen-task ownership, fresh caller-owned candidate
+  construction and exact structural-only validation with disposable SQL regression.
+  Preserve schema-4 DDL and ordinary runtime, all evidence/accounting semantics and
+  native qualification limits. Services, owned New Task UI, startup/recovery and
+  backup/restore integration remain later work; no migration or activation.
+
 - Repair Timesheet / POL-R with four persistent sections, exclusive expanding
   content, adjacent scrollbars and a permanent Close footer at unchanged minimum
   geometry. Recover frozen reports without re-saving; preserve applied reconciliation
