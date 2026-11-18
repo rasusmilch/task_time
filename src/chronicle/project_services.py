@@ -28,9 +28,29 @@ MOVE_FIELDS = frozenset((
 class CandidateProjectContext:
     """Explicit isolated candidate identity; never permission for ordinary startup."""
     dataset_id: str
+    schema_version: int = 4
 
     def __post_init__(self):
         uuid_text(self.dataset_id)
+        if type(self.schema_version) is not int or self.schema_version not in (4, 5):
+            raise ValueError('Explicit isolated schema 4 or 5 authority required')
+
+    @property
+    def authority(self):
+        from . import schema5_profiles
+        return {4: schema, 5: schema5_profiles}[self.schema_version]
+
+    @property
+    def mandatory_project(self):
+        return {4: False, 5: True}[self.schema_version]
+
+    def observations(self, tasks, projects):
+        return candidate_task_observations(tasks, projects, require_project=self.mandatory_project)
+
+    def verify(self, c):
+        from .schema4_evidence import verify_transaction as verify4
+        from .schema5_evidence import verify_transaction as verify5
+        return {4: verify4, 5: verify5}[self.schema_version](c)
 
 
 def _facts(c):
@@ -78,7 +98,7 @@ def apply_project_operation(c, request: Request, context: CandidateProjectContex
     request.content()
     if type(context) is not CandidateProjectContext or not c.in_transaction:
         raise ValueError('Explicit candidate context and owned transaction required')
-    schema.verify_structure(c)
+    context.authority.verify_structure(c)
     if (request.dataset_id != context.dataset_id or request.dataset_id !=
             c.execute('SELECT dataset_id FROM dataset_meta').fetchone()[0]):
         raise ValueError('Wrong candidate dataset')
@@ -91,7 +111,7 @@ def apply_project_operation(c, request: Request, context: CandidateProjectContex
     projects = {r['project_id']: dict(r) for r in before['projects']}
     tasks = before['tasks']
     forest = ProjectForest(list(projects.values()))
-    candidate_task_observations(tasks, list(projects.values()))
+    context.observations(tasks, list(projects.values()))
     a, now, op = request.args(), request.action_utc_us, request.operation
     if op in ('create_project', 'create_child_project'):
         fields = {'project_id', 'name'}
@@ -154,7 +174,7 @@ def apply_project_operation(c, request: Request, context: CandidateProjectContex
 
     # Validate the complete proposed forest/active eligibility before writing.
     ProjectForest(list(projects.values()))
-    observations = candidate_task_observations(tasks, list(projects.values()))
+    observations = context.observations(tasks, list(projects.values()))
     for task, in c.execute('SELECT task_id FROM active_timer'):
         if not observations[task]['is_leaf'] or observations[task]['effective_archived']:
             raise ValueError('Project operation would make active work ineligible')

@@ -1752,3 +1752,29 @@ Further integration requires separate approval and complete evidence dependencie
 no partial schema-5 ordinary activation is permitted. Stage 4 stays IN PROGRESS;
 Stage 5 stays NOT STARTED. Prior native results and the separate unresolved Windows
 failure/Case C/29-ledger dependencies retain their evidence limits.
+
+### Isolated schema-5 services and transaction-owner adjudication
+
+**Status:** selected by the later explicit service/semantic execution instruction,
+with its resume instruction independently adjudicating the reported BEGIN-mode
+ambiguity. This extends the accepted isolated SQL foundation without ordinary
+activation. It does not supersede task/project, accounting, evidence or Delete rules.
+
+The authoritative owner issues BEGIN IMMEDIATE and owns prior verification, exact
+receipt resolution, service invocation, canonical non-Delete receipt insertion,
+post-verification, commit/rollback, cleanup and uncertain-outcome inspection. In this
+package that owner is disposable test infrastructure only. Domain services require
+an active transaction, exact version/dataset/Request identity and operation rules;
+they do not prove the original BEGIN mode. A deferred BEGIN may satisfy the service
+precondition but not the mutation-owner contract. No transaction-mode attestation,
+custom wrapper architecture, private API, registry or auxiliary probe is selected.
+The earlier BLOCKED investigation is resolved by this explicit responsibility split.
+
+Select immutable default-v4/explicit-v5 service context and shared independent
+historical reconstruction with version-specific ownership policy. Reject historical
+projectless events at occurrence; valid current rows do not excuse them. Preserve
+canonical evidence, pure domain algorithms, protected work/report/confirmation
+semantics, finite Delete retirement and no-retry uncertainty. Complete v5 semantic
+proof remains separate from structural proof and denies ordinary startup permission.
+Production store/worker/startup, GUI, backup/recovery and native integration remain
+separately bounded work; no user-facing schema selector or migration is authorized.

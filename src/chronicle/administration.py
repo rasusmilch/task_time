@@ -216,6 +216,13 @@ def candidate_move_result(projects, tasks, arguments):
 
 
 def verify_schema4_history(actual_projects, actual_tasks, receipt_rows, dataset_id, *, facts=None):
+    """Preserved historical optional-project replay through the shared kernel."""
+    from .project_services import CandidateProjectContext
+    return verify_project_history(actual_projects, actual_tasks, receipt_rows, dataset_id,
+                                  facts=facts, policy=CandidateProjectContext(dataset_id, 4))
+
+
+def verify_project_history(actual_projects, actual_tasks, receipt_rows, dataset_id, *, facts=None, policy):
     """Independent native candidate reconstruction; never a schema-3 adapter.
 
     Complete C2 replay requires protected facts; detached administrative use
@@ -226,9 +233,12 @@ def verify_schema4_history(actual_projects, actual_tasks, receipt_rows, dataset_
     from .records import Request
     from .hierarchy import ProjectForest, candidate_task_observations
     uuid_text(dataset_id)
+    from .project_services import CandidateProjectContext
+    if type(policy) is not CandidateProjectContext or policy.dataset_id != dataset_id:
+        raise ValueError('Exact immutable history policy/dataset required')
     from . import templates as template_model
     from .schema4_tasks import effective_projects
-    from .schema_profiles import ADMINISTRATIVE_OPERATIONS as candidate_admin
+    candidate_admin = policy.authority.ADMINISTRATIVE_OPERATIONS
     from .schema4_evidence import WorkChronology
     from .recording_services import FIELDS as protected_operations
     templates, used = {}, {}
@@ -237,7 +247,7 @@ def verify_schema4_history(actual_projects, actual_tasks, receipt_rows, dataset_
     erased = {json.loads(r['request_bytes'])['arguments'].get('source_template_id',
               json.loads(r['request_bytes'])['arguments'].get('template_id'))
               for r in receipt_rows if r['operation'] in ('apply_template','duplicate_template')} - surviving_templates
-    chronology = WorkChronology(facts) if facts is not None else None
+    chronology = WorkChronology(facts, policy=policy) if facts is not None else None
     active = None
     projects, tasks, seen = {}, {}, set()
     sequences = [integer(r['commit_seq'], 'Commit sequence', 1, 2**63-1) for r in receipt_rows]
@@ -270,12 +280,13 @@ def verify_schema4_history(actual_projects, actual_tasks, receipt_rows, dataset_
         if op in template_model.OPERATIONS:
             a = dict(a)
             if op == 'apply_template':
+                if policy.mandatory_project: uuid_text(a.get('destination_project_id'))
                 if 'reviewed_destination_project_ancestry' not in a:raise ValueError('Missing Apply project ancestry')
                 _candidate_review(a.pop('reviewed_destination_project_ancestry'),
                     _candidate_ancestry(ProjectForest(list(projects.values())),projects,a['destination_project_id']),
                     ('project_id','expected_version','parent_project_id'))
             expected = template_model.effect(op,a,templates,tasks,
-                {p['project_id']:p for p in effective_projects(list(projects.values()))},active,used,request.request_id,now,erased)
+                {p['project_id']:p for p in effective_projects(list(projects.values()))},active,used,request.request_id,now,erased,require_project=policy.mandatory_project)
             if expected is None or canonical(expected)!=canonical(result):raise ValueError('Template chronology/result differs')
             continue
         if op not in SCHEMA4_HISTORY_OPERATIONS | {'assign_task_to_project','move_task_branch'}:
@@ -284,7 +295,7 @@ def verify_schema4_history(actual_projects, actual_tasks, receipt_rows, dataset_
             # Independent reconstruction: never call the service transition.
             # Active state comes from the independent protected chronology.
             ProjectForest(list(projects.values()))
-            candidate_task_observations(list(tasks.values()), list(projects.values()))
+            policy.observations(list(tasks.values()), list(projects.values()))
             entity = 'project' if op.endswith('_project') else 'task'
             rows, field = (projects if entity == 'project' else tasks), entity+'_id'
             if set(a) != {field, 'expected_version'}:
@@ -314,7 +325,7 @@ def verify_schema4_history(actual_projects, actual_tasks, receipt_rows, dataset_
                                 ('reviewed_destination_project_ancestry',a['destination_project_id'])):
                 _candidate_review(a[field],_candidate_ancestry(forest,projects,group),('project_id','expected_version','parent_project_id'))
             final,expected = plan(list(tasks.values()),effective_projects(list(projects.values())),active,
-                                  {k:v for k,v in a.items() if k not in extensions})
+                                  {k:v for k,v in a.items() if k not in extensions},require_project=policy.mandatory_project)
             if not expected['changed_tasks']:raise ValueError('Retained no-op task movement')
             tasks = {t['task_id']:t for t in final}
             for changed in expected['changed_tasks']:tasks[changed['task_id']]['updated_utc_us'] = now
@@ -324,11 +335,12 @@ def verify_schema4_history(actual_projects, actual_tasks, receipt_rows, dataset_
             key = uuid_text(a['task_id']);integer(a['expected_version'],'Assignment version',1,2**63-1)
             if key not in tasks or tasks[key]['version']!=a['expected_version']:raise ValueError('Assignment source changed')
             item=tasks[key];forest=ProjectForest(list(projects.values()));group=a['project_id']
+            if policy.mandatory_project:uuid_text(group)
             if group is not None:uuid_text(group)
             for field,parent in (('reviewed_source_project_ancestry',item['project_id']),('reviewed_destination_project_ancestry',group)):
                 _candidate_review(a[field],_candidate_ancestry(forest,projects,parent),('project_id','expected_version','parent_project_id'))
             if item['parent_task_id'] is not None or any(t['parent_task_id']==key for t in tasks.values()):raise ValueError('Assignment requires standalone task')
-            if candidate_task_observations(list(tasks.values()),list(projects.values()))[key]['effective_archived'] or group is not None and forest.effective_archived[group]:
+            if policy.observations(list(tasks.values()),list(projects.values()))[key]['effective_archived'] or group is not None and forest.effective_archived[group]:
                 raise ValueError('Archived assignment context')
             if group==item['project_id']:raise ValueError('Retained no-op assignment')
             item.update(project_id=group,version=integer(item['version']+1,'Assignment version',1,2**63-1),updated_utc_us=now)
@@ -378,6 +390,7 @@ def verify_schema4_history(actual_projects, actual_tasks, receipt_rows, dataset_
                     value['parent_project_id'] = parent
                 else:
                     parent, group = a.get('parent_task_id'), a.get('project_id')
+                    if policy.mandatory_project:uuid_text(group)
                     if parent is not None:
                         uuid_text(parent)
                         integer(a.get('expected_parent_version'), 'Task parent version', 1, 2**63-1)
@@ -408,7 +421,7 @@ def verify_schema4_history(actual_projects, actual_tasks, receipt_rows, dataset_
         if canonical(result) != canonical(expected):
             raise ValueError('Candidate administrative result differs')
         ProjectForest(list(projects.values()))
-        observations = candidate_task_observations(list(tasks.values()), list(projects.values()))
+        observations = policy.observations(list(tasks.values()), list(projects.values()))
         if active and not observations[active['task_id']]['eligible_for_new_work']:raise ValueError('Administrative history invalidates active task')
         if op == 'create_task' and observations[a['task_id']]['effective_archived']:
             raise ValueError('Candidate task was created under archived ancestry')

@@ -121,17 +121,59 @@ verify_structure adds integrity/FK, metadata, real task/frozen-task membership,
 forest/depth and active/archive structural checks. verify_candidate uses a bounded
 read snapshot and returns structural_verified only, with semantic_verified=False
 and ordinary_startup_permitted=False. Deferred unfilled references do not pass
-structural verification. Complete protected chronology remains a later dependency.
+structural verification. Complete protected chronology is supplied separately by
+the isolated service/semantic package below; this structural API remains unchanged.
 
 Ordinary SQLiteStore/SchemaPolicy, DatabaseWorker, StartupWindow and ChronicleApp
 remain schema 4. No schema-5 service coordinator, worker, app, launcher option,
 backup/restore or recovery route exists. Reusing compatible pure helpers does not
-authorize unchecked v4-to-v5 dispatch. Later integration must connect complete
-semantics, E1 request ownership, Delete no-retry, old-data private recovery/refusal,
-all services and current GUI before ordinary activation. The selected owned New
+authorize unchecked v4-to-v5 dispatch. Later integration must connect the isolated
+semantics/services to production E1 request ownership, Delete no-retry, old-data
+private recovery/refusal and current GUI before ordinary activation. The selected owned New
 Task name/project dialog and removal of Unassigned are not implemented here.
 Accounting, allocation, immutable reports/confirmations and native qualification
 contracts are unchanged. See [selected behavior](TIMESHEET_REQUIREMENTS.md#selected-mandatory-ownership-and-isolated-schema-5-foundation).
+
+### Isolated versioned services and complete semantic integrity
+
+[CandidateProjectContext](../src/chronicle/project_services.py) is immutable, with
+dataset UUID and explicit schema_version (default 4). Only the exact mappings
+4 → schema_profiles and 5 → schema5_profiles are supported; unknown versions and
+context/connection/dataset mismatches refuse. Historical schema-4 operations keep
+optional ownership. The explicit [schema5_services](../src/chronicle/schema5_services.py)
+entry requires version 5 and an active caller-owned transaction, validates complete
+prior state and dispatches shared project/task/lifecycle/template/recording logic.
+Task creation, standalone assignment, complete task Move and Template Apply enforce
+real project destinations. Frozen registration checks real task/project association
+at registration; later rename/movement never rewrites historical labels or bytes.
+
+The independently adjudicated transaction boundary resolves the earlier BLOCKED
+BEGIN-mode investigation: the owner issues BEGIN IMMEDIATE; services check only an
+active transaction and never BEGIN/COMMIT/ROLLBACK, open/close a connection or
+attest the original mode. No transaction tokens, connection-wrapper architecture,
+private SQLite calls, global ownership registry or auxiliary lock connection is
+introduced. [schema5_cases.py](../tests/rewrite/schema5_cases.py) is the disposable
+test-only owner, not a production service: prior verification/receipt resolution,
+service invocation, canonical receipt insertion, post-verification, commit/rollback,
+cleanup and independent committed-state inspection all belong there. Only explicit
+exact-original reconciliation may resolve uncertainty; it never executes a retry.
+
+[schema5_evidence](../src/chronicle/schema5_evidence.py) selects exact v5 structure
+and the shared complete evidence machinery. Independent administrative replay uses
+one reconstruction kernel with immutable version policy, never a mutation service.
+It rejects projectless creation/assignment/Move/Apply at their historical event,
+even if later assignments leave valid current rows. Protected chronology retains
+historical active/leaf/archive eligibility, work/revisions/corrections, week/reminder
+state and frozen registration ownership. Existing frozen-basis/byte, absolute POL-R,
+receipt, lifecycle and sequence validators remain authoritative. Complete semantics
+may be reported, but ordinary_startup_permitted remains False.
+
+Delete retains the separate shared nested unused-only proof and current reviewed
+scope: protected references, whole-Apply dependencies, finite administrative
+retirement, independent survivor history and sequence high-water preservation.
+It creates no receipt and uncertain attempted commitment never retries; presence
+is not proof of an old Delete. No schema-5 production policy, runtime facade,
+worker-ready message, GUI or backup route is registered by this package.
 
 ## Small application and responsibility boundaries
 

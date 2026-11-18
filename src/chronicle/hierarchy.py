@@ -137,12 +137,14 @@ class ProjectForest:
         return tuple(values)
 
 
-def candidate_task_observations(tasks, projects):
+def candidate_task_observations(tasks, projects, *, require_project=False):
     """Schema-4-only observations; task depth still counts task edges alone."""
     from .records import uuid_text, integer
     forest = ProjectForest(projects)
     for task in tasks:
         uuid_text(task['task_id'])
+        if require_project:
+            uuid_text(task['project_id'])
         integer(task['is_archived'], 'Task archive flag', 0, 1)
         for field in ('parent_task_id', 'project_id'):
             if task[field] is not None:

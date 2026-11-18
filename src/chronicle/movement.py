@@ -17,8 +17,11 @@ def snapshot(tasks, root):
                    for t in tasks if root in paths[t['task_id']]), key=lambda r:r['task_id'])
 
 
-def plan(tasks, projects, active, args):
+def plan(tasks, projects, active, args, *, require_project=False):
     if set(args)!=FIELDS: raise ValueError('Move requires exact frozen fields')
+    if require_project:
+        uuid_text(args['source_project_id']); uuid_text(args['destination_project_id'])
+        for task in tasks: uuid_text(task['project_id'])
     for key in ('task_id','source_parent_task_id','source_project_id','destination_parent_task_id','destination_project_id'):
         if args[key] is not None or key=='task_id': uuid_text(args[key])
     integer(args['expected_version'],'Root version',1,2**63-1)
@@ -27,6 +30,7 @@ def plan(tasks, projects, active, args):
     for row in reviewed:
         if type(row) is not dict or set(row)!=MEMBER_FIELDS: raise ValueError('Invalid subtree member')
         uuid_text(row['task_id']);integer(row['expected_version'],'Member version',1,2**63-1)
+        if require_project: uuid_text(row['project_id'])
         for key in ('parent_task_id','project_id'):
             if row[key] is not None:uuid_text(row[key])
     if [r['task_id'] for r in reviewed]!=sorted({r['task_id'] for r in reviewed}):

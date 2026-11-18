@@ -6,13 +6,13 @@ from .schema4_tasks import ancestry_review,effective_projects,check
 from .project_services import _facts
 
 
-def apply_effect(op,args,defs,tasks,projects,active,used,request_id,now,erased=frozenset()):
+def apply_effect(op,args,defs,tasks,projects,active,used,request_id,now,erased=frozenset(),*,require_project=False):
     a=deepcopy(args)
     if op=='apply_template':
         if 'reviewed_destination_project_ancestry' not in a:raise ValueError('Complete project ancestry review required')
         ancestry_review(projects,a['destination_project_id'],a.pop('reviewed_destination_project_ancestry'))
     return templates.effect(op,a,defs,tasks,{p['project_id']:p for p in effective_projects(list(projects.values()))},
-                            active,used,request_id,now,erased)
+                            active,used,request_id,now,erased,require_project=require_project)
 
 
 def apply_template_operation(c,request,context):
@@ -25,7 +25,7 @@ def apply_template_operation(c,request,context):
         if op in ('create_template','edit_template'):used.setdefault(a['template_id'],set()).update(n['node_id'] for n in a['nodes'])
         if op=='duplicate_template':used.setdefault(a['template_id'],set()).update(n['new_node_id'] for n in a['node_mapping'])
     result=apply_effect(request.operation,request.args(),defs,tasks,projects,facts['active_timer'][0] if facts['active_timer'] else None,
-                        used,request.request_id,request.action_utc_us)
+                        used,request.request_id,request.action_utc_us,require_project=context.mandatory_project)
     if result is None:return None
     result=templates.install(c,request,defs,tasks,before,result)
     after=_facts(c)

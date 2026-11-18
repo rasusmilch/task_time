@@ -2,7 +2,7 @@
 from . import schema_profiles as schema,templates
 from .schema4_evidence import verify_transaction
 from .schema4_tasks import check
-from .project_services import _facts,_ancestry
+from .project_services import _facts,_ancestry,CandidateProjectContext
 from .hierarchy import ProjectForest,task_paths,candidate_task_observations
 from .records import uuid_text,integer,canonical,StaleState
 from .deletion import protected_references,receipts
@@ -21,16 +21,19 @@ def survivors(facts,projects,tasks,retired,template=None):
         table in ('template_definitions','template_nodes') and r['template_id']==template)] for table,rows in facts.items()}
 
 
-def verify_survivors(facts):
-    from .administration import verify_schema4_history
-    verify_schema4_history(facts['projects'],facts['tasks'],facts['committed_requests'],facts['dataset_meta'][0]['dataset_id'],facts=facts)
+def verify_survivors(facts, *, context=None):
+    from .administration import verify_project_history
+    dataset = facts['dataset_meta'][0]['dataset_id']
+    policy = CandidateProjectContext(dataset) if context is None else context
+    verify_project_history(facts['projects'],facts['tasks'],facts['committed_requests'],dataset,
+                           facts=facts,policy=policy)
 
 
 def detached(row):
     return {k:(v.decode('utf-8') if type(v) is bytes else v) for k,v in row.items()}
 
 
-def review_facts(facts,entity,identity):
+def review_facts(facts,entity,identity,*,context=None):
     uuid_text(identity)
     forest=ProjectForest(facts['projects']);paths=task_paths(facts['tasks'])
     groups={r['project_id']:r for r in facts['projects']};known={r['task_id']:r for r in facts['tasks']}
@@ -87,7 +90,7 @@ def review_facts(facts,entity,identity):
             if relevant and not owned:block('Apply receipt spans surviving tasks: '+request.request_id)
         if owned:retired.append(detached(row))
     remaining=survivors(facts,projects,tasks,{r['request_id'] for r in retired},identity if entity=='template' else None)
-    try:verify_survivors(remaining)
+    try:verify_survivors(remaining,context=context)
     except (ValueError,KeyError,StopIteration) as exc:block('Surviving history requires retained dependencies: '+str(exc))
     effective=(bool(selected['is_archived']) if entity=='template' else forest.effective_archived[identity] if entity=='project'
                else candidate_task_observations(facts['tasks'],facts['projects'])[identity]['effective_archived'])
@@ -101,19 +104,19 @@ def review_facts(facts,entity,identity):
 
 
 def preview(c,context,entity,identity):
-    verify_transaction(c)
+    context.verify(c)
     if schema._rows(c,'dataset_meta')[0]['dataset_id']!=context.dataset_id:raise ValueError('Wrong candidate dataset')
-    return review_facts(_facts(c),entity,identity)
+    return review_facts(_facts(c),entity,identity,context=context)
 
 
 def apply_delete(c,request,context):
     check(c,request,context)
     if request.operation not in OPERATIONS:raise ValueError('Unknown candidate Delete operation')
-    verify_transaction(c);before=_facts(c)
+    context.verify(c);before=_facts(c)
     entity=request.operation.removeprefix('delete_');field=entity+'_id';a=request.args()
     if set(a)!={field,'expected_version','review','confirmed_text'}:raise ValueError('Delete requires exact identity/version/review/confirmation fields')
     key=uuid_text(a[field]);integer(a['expected_version'],'Delete version',1,2**63-1)
-    current=review_facts(before,entity,key)
+    current=review_facts(before,entity,key,context=context)
     if current['selected']['version']!=a['expected_version'] or canonical(current)!=canonical(a['review']):raise StaleState('Delete review changed; obtain fresh review and typed confirmation')
     if type(a['confirmed_text']) is not str or a['confirmed_text']!='DELETE':raise ValueError('Type exactly DELETE')
     if not current['eligible']:raise ValueError('Delete refused: '+'; '.join(current['reasons']))
@@ -128,6 +131,6 @@ def apply_delete(c,request,context):
             if identity in projects:c.execute('DELETE FROM projects WHERE project_id=?',(identity,))
     for identity in sorted(retired):c.execute("DELETE FROM committed_requests WHERE request_id=? AND receipt_class='administrative'",(identity,))
     expected=survivors(before,projects,tasks,retired,key if entity=='template' else None)
-    verify_transaction(c)
+    context.verify(c)
     if _facts(c)!=expected:raise ValueError('Delete changed unrelated/protected facts or sequence high water')
     return dict(entity_type=entity,entity_id=key,removed_projects=len(projects),removed_tasks=len(tasks),removed_administrative_receipts=len(retired))

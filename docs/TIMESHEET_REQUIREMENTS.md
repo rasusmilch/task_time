@@ -101,13 +101,26 @@ and does not consume the three task levels. Project/task accounting, exact work,
 frozen project UUID/name labels, report bytes and absolute POL-R semantics do not
 change. No Customer, mapping table or second ownership authority is selected.
 
-Only the [isolated SQL foundation](../src/chronicle/schema5_profiles.py) is
-implemented: explicit DDL, fresh caller-owned file-backed candidate construction
-and structural verification. It supplies neither complete semantic verification
-nor ordinary startup permission. Schema-5 service/replay, GUI, startup,
-backup/restore/recovery integration and qualification remain unimplemented.
-Ordinary defaults and SchemaPolicy remain schema 4; no user-visible version mode
-is added. Schema-4 DDL and historical evidence remain unchanged.
+The [isolated SQL foundation](../src/chronicle/schema5_profiles.py) supplies explicit
+DDL, fresh caller-owned file-backed construction and structural-only verification.
+The separate [isolated service](../src/chronicle/schema5_services.py) and
+[complete semantic verifier](../src/chronicle/schema5_evidence.py) now implement
+mandatory ownership, shared domain operations and independent retained history for
+disposable schema-5 use. Structural proof remains distinct from complete semantic
+proof; neither permits ordinary startup. Current GUI, worker/store/startup and
+backup/restore/recovery integration remain unimplemented for schema 5, as does
+native qualification. Ordinary defaults and SchemaPolicy remain schema 4; no
+user-visible version mode is added. Schema-4 DDL and optional-project historical
+behavior remain unchanged.
+
+For this isolated package, a test-only transaction owner issues BEGIN IMMEDIATE,
+verifies prior state/resolves exact receipts, invokes the service, records the
+canonical non-Delete receipt, verifies final semantics and commits or rolls back.
+Services require an active transaction and exact version/dataset/Request identity;
+they do not identify the original BEGIN mode or own transaction boundaries. This
+responsibility boundary is independently adjudicated, with no attestation tokens,
+private SQLite APIs or auxiliary lock probes. Unknown commitment never implies a
+retry; Delete remains separately handled, no-receipt and no-retry after uncertainty.
 
 Future ordinary schema 5 must start only in a new/genuinely empty directory and
 refuse schema 4 and earlier unchanged. No migration, import, conversion, copy

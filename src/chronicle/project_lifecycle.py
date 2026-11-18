@@ -47,7 +47,7 @@ def apply_lifecycle_operation(c, request: Request, context: CandidateProjectCont
     request.content()
     if type(context) is not CandidateProjectContext or not c.in_transaction:
         raise ValueError('Explicit candidate context and owned transaction required')
-    schema.verify_structure(c)
+    context.authority.verify_structure(c)
     if (request.dataset_id != context.dataset_id or request.dataset_id !=
             c.execute('SELECT dataset_id FROM dataset_meta').fetchone()[0]):
         raise ValueError('Wrong candidate dataset')
@@ -68,5 +68,5 @@ def apply_lifecycle_operation(c, request: Request, context: CandidateProjectCont
                         changed['updated_utc_us'], changed[field]))
     if cursor.rowcount != 1 or _facts(c) != expected:
         raise ValueError('Installed lifecycle differs from complete expected facts')
-    schema.verify_structure(c)
+    context.authority.verify_structure(c)
     return {field: changed[field], 'version': changed['version']}

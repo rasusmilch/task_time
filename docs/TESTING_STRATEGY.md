@@ -76,7 +76,31 @@ unfilled deferred receipt/export associations; they prove SQL behavior, not vali
 administrative chronology, registered reports or production schema-5 service use.
 Structural verification does not ignore those missing references. Its detached
 result explicitly denies semantic verification and ordinary startup permission.
-The complete protected work/export/confirmation chronology remains later work.
+The structural API remains unchanged; complete work/export/confirmation chronology
+is separately verified by the isolated service package below.
+
+The production-inactive [schema-5 test owner](../tests/rewrite/schema5_cases.py)
+uses genuine file-backed SQLite, explicit BEGIN IMMEDIATE, exact Requests and
+canonical receipts, complete prior/post verification and separate committed reads.
+The adjudicated owner/service tests record BEGIN IMMEDIATE before invocation and
+active state during it; no-transaction calls refuse, but services are not required
+to distinguish deferred BEGIN. Services issue no transaction boundaries or openers.
+Operation/cleanup/commit-ack faults retain diagnostics, never blindly retry, and
+uncertain Delete has no receipt or reconciliation shortcut.
+
+Focused coverage is in [services](../tests/rewrite/test_schema5_services.py),
+[independent history/evidence](../tests/rewrite/test_schema5_evidence.py),
+[Delete survivors](../tests/rewrite/test_schema5_delete.py) and
+[reporting](../tests/rewrite/test_schema5_reporting.py). Tests reject NULL/missing/
+stale/archived ownership, malformed complete-subtree reviews and invalid Apply;
+preserve actual task/project identities, versions, work and accounting; and compare
+canonical committed evidence. Tampered histories with valid final rows demonstrate
+that projectless events cannot be concealed by later assignments. Patched mutation
+entry points are forbidden during independent replay. Rich genuine recording,
+frozen bytes/basis, source/manual/zero confirmation, C–G allocations, signed Delta,
+reminders and finite receipt retirement exercise the shared algorithms on v5.
+Schema-4 regressions remain genuinely explicit v4, including optional ownership.
+Neither semantic_verified nor passing isolated tests permits ordinary v5 startup.
 
 Retain historical schema-4 DDL/candidate/evidence tests and ordinary runtime4
 store/worker/backup/startup controls without relabeling them schema 5. Focused and

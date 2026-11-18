@@ -9,13 +9,22 @@ from .records import StaleState
 from .timekeeping import load_zone,instant
 
 
-def recordable(c,task_id):
-    values=candidate_task_observations(schema._rows(c,'tasks'),schema._rows(c,'projects'))
+def recordable(c,task_id,*,context=None):
+    from .project_services import CandidateProjectContext
+    if context is None:
+        context=CandidateProjectContext(c.execute('SELECT dataset_id FROM dataset_meta').fetchone()[0])
+    values=context.observations(schema._rows(c,'tasks'),schema._rows(c,'projects'))
     if task_id not in values or not values[task_id]['eligible_for_new_work']:raise StaleState('New recording requires an effectively active leaf')
 
 
 def apply_operation(c,request,context):
     check(c,request,context)
+    if context.schema_version != 4:raise ValueError('Schema-4 entry requires version-4 context')
+    return _dispatch_operation(c,request,context)
+
+
+def _dispatch_operation(c,request,context):
+    """Shared operation dispatch after explicit version-specific entry admission."""
     from .recording_services import FIELDS,apply_common
     from .templates import OPERATIONS as TEMPLATE_OPERATIONS
     from .schema4_templates import apply_template_operation
@@ -25,7 +34,7 @@ def apply_operation(c,request,context):
     if request.operation in TEMPLATE_OPERATIONS:return apply_template_operation(Rows(c),request,context)
     if request.operation in FIELDS:
         zone=load_zone(c.execute('SELECT timezone FROM dataset_meta').fetchone()[0])
-        return apply_common(Rows(c),request,dataset_id=context.dataset_id,zone=zone,recordable=recordable)
+        return apply_common(Rows(c),request,dataset_id=context.dataset_id,zone=zone,recordable=lambda conn,key:recordable(conn,key,context=context))
     raise ValueError('Unknown candidate operation; Delete requires its no-receipt path')
 
 
@@ -34,11 +43,11 @@ def read_state(c,context,*,cutoff_utc_us):
     from .accounting import calculate
     from .project_accounting import project_report
     from .templates import read
-    instant(cutoff_utc_us);verify_transaction(c)
+    instant(cutoff_utc_us);context.verify(c)
     meta=schema._rows(c,'dataset_meta')[0]
     if meta['dataset_id']!=context.dataset_id:raise ValueError('Wrong candidate dataset')
     tasks=schema._rows(c,'tasks');projects=schema._rows(c,'projects')
-    observations=candidate_task_observations(tasks,projects);forest=ProjectForest(projects)
+    observations=context.observations(tasks,projects);forest=ProjectForest(projects)
     work=[dict(r) for r in Rows(c).execute('SELECT e.task_id,r.* FROM work_entries e JOIN work_revisions r ON r.entry_id=e.entry_id AND r.revision=e.current_revision WHERE r.is_deleted=0')]
     active_rows=schema._rows(c,'active_timer');active=active_rows[0] if active_rows else None
     try:
@@ -67,7 +76,7 @@ def reconciliation(c,context,*,cutoff_utc_us,**options):
 
 def history(c,context,task_id,*,cutoff_utc_us,**options):
     from .work_history import read_snapshot
-    verify_transaction(c)
+    context.verify(c)
     meta=schema._rows(c,'dataset_meta')[0]
     if meta['dataset_id']!=context.dataset_id:raise ValueError('Wrong candidate dataset')
     return read_snapshot(Rows(c),context.dataset_id,load_zone(meta['timezone']),task_id,cutoff_utc_us=cutoff_utc_us,**options)
@@ -75,7 +84,7 @@ def history(c,context,task_id,*,cutoff_utc_us,**options):
 
 def reminder(c,context,*,cutoff_utc_us):
     from .reconciliation import reminder_status,reminder_periods,reminder_context
-    verify_transaction(c)
+    context.verify(c)
     meta=schema._rows(c,'dataset_meta')[0];dismissed=meta['polr_reminder_dismissed_local_date']
     if meta['dataset_id']!=context.dataset_id:raise ValueError('Wrong candidate dataset')
     today,previous,end,first,last,checked=reminder_periods(cutoff_utc_us,load_zone(meta['timezone']),meta['week_start'])

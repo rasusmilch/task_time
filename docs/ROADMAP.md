@@ -344,14 +344,17 @@ contracts. Schema-4 data and DDL remain historical, never migrated or replaced.
 
 | Selected stage | Delivered status / dependencies |
 | --- | --- |
-| MVP | Only the isolated exact schema-5 SQL foundation is implemented for independent review: real-project NOT NULL/FK guards for tasks and frozen export tasks, fresh caller-owned construction and structural-only verification. Ordinary admission, service enforcement, owned New Task dialog and normal-tree changes remain unimplemented. |
-| Stabilization | Move/Apply enforcement, Archived/Mini, independent administrative/protected chronology, accounting/report evidence, backup/restore/recovery and connected production Tk remain required. Complete verifier/service routing and old-data recovery safeguards are prerequisites to activation, even though their full workflow qualification belongs here. No partial ordinary runtime is authorized. |
+| MVP | The isolated exact schema-5 SQL foundation is independently accepted for continued development. The isolated service/complete-semantic package now supplies mandatory service ownership and retained chronology for independent review. Ordinary admission, owned New Task dialog and normal-tree integration remain unimplemented. |
+| Stabilization | Shared isolated Move/Apply/lifecycle/Delete and complete administrative/protected verification are implemented for review, with real SQLite/reporting evidence. Production routing, Archived/Mini, backup/restore/recovery and connected schema-5 Tk remain required. Complete verifier/service routing and old-data recovery safeguards are prerequisites to activation, even though their full workflow qualification belongs here. No partial ordinary runtime is authorized. |
 | Pilot qualification | Separately reviewed schema-5 current-source/native inventories, Windows F2, supervised F3, actual F4 and operator evidence, then explicit pilot authorization. Historical v4 focus evidence cannot qualify v5. The separately reported Windows F2b failure, unestablished Windows Case C and original unavailable/unwaived 29-node ledger remain unresolved. |
 | Expansion | None authorized. |
 
-The foundation adds no runtime owner or production SchemaPolicy registration.
+The foundation/service package adds no runtime owner or production SchemaPolicy
+registration. The disposable test adapter owns BEGIN IMMEDIATE and full transaction
+settlement; services require only an active transaction under the independent
+ChatGPT adjudication resolving the earlier mode-introspection BLOCKED investigation.
 Current ordinary version remains 4. Independent review and a separately bounded
-execution task are required before service/UI integration or version-5 activation.
+execution task are required before production/UI integration or version-5 activation.
 Stage 4 remains IN PROGRESS; Stage 5 remains NOT STARTED.
 
 ## Stage 5 — Complete core pilot

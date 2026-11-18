@@ -75,11 +75,14 @@ def reviewed_source(a,defs,field,version_field,review_field,erased):
     return frozen
 
 
-def apply_effect(a,defs,tasks,projects,active,request_id,now,erased=frozenset()):
+def apply_effect(a,defs,tasks,projects,active,request_id,now,erased=frozenset(),*,require_project=False):
     fields(a,{'template_id','expected_template_version','reviewed_definition','destination_parent_task_id','destination_project_id','expected_destination_parent_version','expected_destination_project_version','node_mapping'})
     d=reviewed_source(a,defs,'template_id','expected_template_version','reviewed_definition',erased)
     if d['is_archived']:raise ValueError('Archived template cannot be applied')
     parent=a['destination_parent_task_id'];group=a['destination_project_id']
+    if require_project:
+        uuid_text(group)
+        for task in tasks.values(): uuid_text(task['project_id'])
     for key,v,rows in ((parent,a['expected_destination_parent_version'],tasks),(group,a['expected_destination_project_version'],projects)):
         if key is None:
             if v is not None:raise ValueError('Absent destination has no version')
@@ -108,8 +111,8 @@ def apply_effect(a,defs,tasks,projects,active,request_id,now,erased=frozenset())
     return dict(template_id=d['template_id'],created_tasks=created)
 
 
-def effect(op,a,defs,tasks,projects,active,used,request_id,now,erased=frozenset()):
-    if op=='apply_template':return apply_effect(a,defs,tasks,projects,active,request_id,now,erased)
+def effect(op,a,defs,tasks,projects,active,used,request_id,now,erased=frozenset(),*,require_project=False):
+    if op=='apply_template':return apply_effect(a,defs,tasks,projects,active,request_id,now,erased,require_project=require_project)
     key=uuid_text(a.get('template_id'))
     expected={'template_id','name','nodes'} if op=='create_template' else {'template_id','expected_version','name','nodes'} if op=='edit_template' else {'template_id','name','source_template_id','expected_source_version','reviewed_source','node_mapping'} if op=='duplicate_template' else {'template_id','expected_version'}
     fields(a,expected)

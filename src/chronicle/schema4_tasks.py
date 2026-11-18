@@ -18,21 +18,21 @@ def effective_projects(projects):
     return [dict(p,is_archived=int(forest.effective_archived[p['project_id']])) for p in projects]
 
 
-def task_move_plan(tasks,projects,active,args):
+def task_move_plan(tasks,projects,active,args,*,require_project=False):
     from .movement import plan,FIELDS
     extensions={'reviewed_source_project_ancestry','reviewed_destination_project_ancestry'}
     if set(args)!=FIELDS|extensions:raise ValueError('Exact schema-4 task movement fields required')
     groups={p['project_id']:p for p in projects}
     ancestry_review(groups,args['source_project_id'],args['reviewed_source_project_ancestry'])
     ancestry_review(groups,args['destination_project_id'],args['reviewed_destination_project_ancestry'])
-    return plan(tasks,effective_projects(projects),active,{k:v for k,v in args.items() if k not in extensions})
+    return plan(tasks,effective_projects(projects),active,{k:v for k,v in args.items() if k not in extensions},require_project=require_project)
 
 
 def check(c,request,context):
     request.content()
     if type(context) is not CandidateProjectContext or not c.in_transaction:
         raise ValueError('Explicit candidate context and owned transaction required')
-    schema.verify_structure(c)
+    context.authority.verify_structure(c)
     if request.dataset_id!=context.dataset_id or request.dataset_id!=c.execute('SELECT dataset_id FROM dataset_meta').fetchone()[0]:
         raise ValueError('Wrong candidate dataset')
     if c.execute('SELECT 1 FROM committed_requests WHERE request_id=?',(request.request_id,)).fetchone():
@@ -62,7 +62,7 @@ def apply_task_operation(c,request,context):
     active=before['active_timer'][0] if before['active_timer'] else None
     if op not in OPERATIONS:raise ValueError('Unknown schema-4 task management operation')
     if op=='move_task_branch':
-        final,result=task_move_plan(list(tasks.values()),list(projects.values()),active,a)
+        final,result=task_move_plan(list(tasks.values()),list(projects.values()),active,a,require_project=context.mandatory_project)
         if not result['changed_tasks']:return None
         changed={r['task_id'] for r in result['changed_tasks']}
         for t in final:
@@ -78,7 +78,8 @@ def apply_task_operation(c,request,context):
             if not required<=set(a) or not set(a)<=required|{'project_id','parent_task_id','expected_project_version','expected_parent_version'}:raise ValueError('Exact schema-4 task creation fields required')
             if key in tasks:raise ValueError('Duplicate task identity')
             parent=a.get('parent_task_id');group=a.get('project_id')
-            observations=candidate_task_observations(list(tasks.values()),list(projects.values()))
+            if context.mandatory_project: uuid_text(group)
+            observations=context.observations(list(tasks.values()),list(projects.values()))
             if parent is not None:
                 uuid_text(parent);integer(a.get('expected_parent_version'),'Parent version',1,2**63-1)
                 if parent not in tasks or tasks[parent]['version']!=a['expected_parent_version']:raise StaleState('Task parent changed')
@@ -107,6 +108,7 @@ def apply_task_operation(c,request,context):
             row=rows[key]
             if op=='assign_task_to_project':
                 group=a['project_id']
+                if context.mandatory_project: uuid_text(group)
                 if group is not None:uuid_text(group)
                 ancestry_review(projects,row['project_id'],a['reviewed_source_project_ancestry'])
                 ancestry_review(projects,group,a['reviewed_destination_project_ancestry'])

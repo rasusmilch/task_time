@@ -22,6 +22,7 @@ class Cursor:
 
 
 class Context:
+    authority=schema
     administrative_operations=schema.ADMINISTRATIVE_OPERATIONS
 
     @staticmethod
@@ -34,30 +35,36 @@ class Context:
 
 def verify_transaction(c):
     """Read-only full verification within an already owned SQLite transaction."""
+    verify_selected_transaction(c, Context)
+    return schema.CandidateVerification()
+
+
+def verify_selected_transaction(c, context):
+    """Shared integrity machinery; context supplies exact structural/history policy."""
     from .sqlite_store import SQLiteStore as S
+    selected = context.authority
     if not c.in_transaction:raise ValueError('Complete candidate verification requires an owned transaction')
-    schema.verify_structure(c)
+    selected.verify_structure(c)
     # SQLite's one declared AUTOINCREMENT table is the only extra table. Exact
     # candidate admission does not silently ignore internal-looking facts.
     import re
-    tables={re.match(r'CREATE TABLE (\w+)',s)[1] for s in schema.schema_statements() if s.startswith('CREATE TABLE ')}|{'sqlite_sequence'}
+    tables={re.match(r'CREATE TABLE (\w+)',s)[1] for s in selected.schema_statements() if s.startswith('CREATE TABLE ')}|{'sqlite_sequence'}
     if {name for name, in c.execute("SELECT name FROM sqlite_schema WHERE type='table'")}!=tables:
         raise ValueError('Unexpected candidate table coverage')
     named=Rows(c)
     meta=named.execute('SELECT * FROM dataset_meta').fetchone()
     load_zone(meta['timezone']);integer(meta['week_start'],'Week start',0,6)
     S.dismissed_date(named)
-    S.assert_lifecycle(named,structure=schema.verify_structure)
+    S.assert_lifecycle(named,structure=selected.verify_structure)
     for row in named.execute('SELECT export_id FROM timesheet_exports'):S.read_export(named,row[0])
     S.assert_confirmations(named)
-    S.verify_receipts(named,context=Context)
+    S.verify_receipts(named,context=context)
     # AUTOINCREMENT high water survives legitimate retired sequence gaps.
-    sequences=schema._rows(c,'sqlite_sequence')
+    sequences=selected._rows(c,'sqlite_sequence')
     if len(sequences)>1 or sequences and sequences[0]['name']!='committed_requests':raise ValueError('Invalid receipt sequence coverage')
     maximum=named.execute('SELECT COALESCE(max(commit_seq),0) FROM committed_requests').fetchone()[0]
     if maximum and not sequences:raise ValueError('Missing receipt sequence high water')
     if sequences and integer(sequences[0]['seq'],'Receipt sequence',0,2**63-1)<maximum:raise ValueError('Receipt high water is below retained chronology')
-    return schema.CandidateVerification()
 
 
 class WorkChronology:
@@ -66,7 +73,9 @@ class WorkChronology:
     Shared evidence checks prove immutable row/request contents; this traversal
     proves those effects were possible in their retained chronological context.
     """
-    def __init__(self,facts):
+    def __init__(self,facts,*,policy=None):
+        from .project_services import CandidateProjectContext
+        self.policy = policy if policy is not None else CandidateProjectContext(facts['dataset_meta'][0]['dataset_id'])
         self.facts=facts;self.zone=load_zone(facts['dataset_meta'][0]['timezone'])
         self.active=None;self.entries={};self.week_start=6;self.dismissed=None
         self.revisions={r['request_id']:r for r in facts['work_revisions']}
@@ -84,7 +93,7 @@ class WorkChronology:
             if version is not None:
                 integer(version,'Reviewed task version',1,2**63-1)
                 if tasks[identity]['version']!=version:raise ValueError('Historical recording task version differs')
-            if not candidate_task_observations(list(tasks.values()),list(projects.values()))[identity]['eligible_for_new_work']:
+            if not self.policy.observations(list(tasks.values()),list(projects.values()))[identity]['eligible_for_new_work']:
                 raise ValueError('Historical new work requires an effectively active leaf')
         def active(identity,version):
             integer(version,'Reviewed active version',1,2**63-1)
@@ -143,6 +152,14 @@ class WorkChronology:
         elif op=='register_timesheet_export':
             from .timesheet import from_content
             value=from_content(a['candidate'],check_render=False)
+            if self.policy.mandatory_project:
+                ids = {t.task_id for t in value.tasks}
+                if value.scope_kind == 'all' and ids != set(tasks):
+                    raise ValueError('Frozen All scope omits historical task identities')
+                for task in value.tasks:
+                    uuid_text(task.project_id)
+                    if task.task_id not in tasks or task.project_id != tasks[task.task_id]['project_id']:
+                        raise ValueError('Frozen task/project differs at registration')
             if any(t.task_id not in tasks or t.project_id is not None and t.project_id not in projects for t in value.tasks):
                 raise ValueError('Frozen identities were not present at registration')
         elif op=='confirm_polr_absolute':
