@@ -48,7 +48,7 @@ def project(*, dataset_id, cutoff_utc_us, timezone, week_start, tasks, projects,
     labels,_=scope_labels(tasks,projects,scope_kind,task_ids)
     for t in labels:
         uuid_text(t.task_id)
-        if t.project_id is not None:uuid_text(t.project_id)
+        uuid_text(t.project_id)
     requested={t.task_id for t in labels}
     union=requested | ({t.task_id for t in source.tasks} if source is not None else set())
     context_weeks=set(visible_weeks)

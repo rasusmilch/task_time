@@ -1,1 +1,0 @@
-"""Task timer package."""

@@ -1,1292 +1,156 @@
-# Chronicle replacement requirements
-
-## Authority and status
-
-Chronicle is a small local desktop application for recording task Actual **and
-explicit absolute POL-R reconciliation**. Both are core. Confirmation,
-reconciliation, daily/weekly summaries and reminders must be complete before
-core pilot signoff; allocations are optional expansion.
-
-This document owns user-selected behavior. [ARCHITECTURE.md](ARCHITECTURE.md)
-owns the selected Python + Tkinter/ttk + transactional SQLite design;
-[EXPORT_EVIDENCE_CONTRACT.md](EXPORT_EVIDENCE_CONTRACT.md) owns frozen export,
-displayed-Actual decimal, quarter-hour submission and confirmation semantics.
-[ROADMAP.md](ROADMAP.md) owns Stages 0–6.
-[DESIGN_NOTES.md](../DESIGN_NOTES.md) describes retained, unshipped JSONL source,
-not the replacement architecture. Source/tests establish implementation/evidence,
-not product choices. [DECISIONS.md](DECISIONS.md) preserves superseded approvals.
-The user and ChatGPT decide behavior and architecture; Codex implements approved
-outcomes and returns material unresolved choices for adjudication.
-
-Selected does not mean implemented. This documentation selects a clean Tkinter
-rewrite, not a Qt/PySide6 frontend and not incremental JSONL compatibility work.
-Stage 1A delivers the connected SQLite timer foundation. Stage 2A adds connected
-manual work, revision/read services, mixed accounting and week configuration.
-Stage 2B/complete Stage 2 recording and Stage 3A Preview/allocation/immutable export
-evidence, Stage 3B file Save/recovery and Stage 3C absolute confirmation are
-independently accepted for functional development. Stage 3D connects comprehensive
-reconciliation/reminders; this is not deployment/pilot readiness.
-The later explicit Stage 4A GO instruction records independent Stage 3
-functional acceptance. The later Stage 4B GO independently accepts backup/cold
-restore. The later Stage 4C GO independently accepts Stage 4B portable reliability.
-Stage 4C cold compatibility inspection, protected refusal and bounded owned
-SQLite-native rollback recovery are independently accepted for functional
-development. Stage 4 remains IN PROGRESS; native Windows qualification is incomplete
-and Stage 5 is NOT STARTED.
-
-## SELECTED — Replacement installation and data boundary
-
-One local desktop application operates one selected dataset with one serialized
-application writer. The replacement starts with fresh data. No historical import,
-migration, old schema/API support, automatic old-data discovery, dual-write or
-parallel legacy runtime is required. Direct Python source execution selects one runtime.
-Temporary old source during development creates no compatibility obligation.
-
-Existing files must remain protected during development. Absence of a release
-preservation obligation for the retired dataset does not authorize arbitrary
-startup deletion. Exact release paths, installation/cutover and cleanup remain
-Open. Protect new-runtime audit history. The delivered A–F task hierarchy started
-fresh. The latest project-nesting approval also selects fresh schema 4: existing
-schema-3 datasets are retained untouched, never migrated, imported, copied into a
-transformation, cleared or replaced to enter the new runtime.
-
-## SELECTED — Source-mode first-run and remembered startup
-
-Zero-argument `python run_chronicle.py` and the optional PowerShell source launcher
-show first-run setup or normally open the remembered dataset. Setup offers local
-folder choice, readable explicitly confirmed timezone, Advanced / Other IANA input,
-Create and Open, Open Existing Dataset and Cancel. Only exact approved Windows
-zone-key mappings may suggest a timezone; offsets, abbreviations and network
-inference are not timezone authority. Existing dataset timezones never change.
-
-Windows may suggest `%LOCALAPPDATA%\Chronicle\Data` for source-mode opt-in;
-non-Windows uses a suitable per-user local-data suggestion or requires selection.
-This does not settle Open installation/cutover paths. No creation occurs on setup
-display/cancel, and accepted creation keeps the existing exclusive worker/store
-checks for a new/empty folder, unknown contents, races and ownership.
-
-A separate bounded version-1 launcher record contains only the absolute dataset
-path. Remember only after readiness. Explicit CLI/recovery never changes it.
-Unreadable/corrupt/unsupported preferences and incompatible/missing/busy datasets
-produce diagnostics, never recreation or repair. Preserve unexpected preference
-objects; a remembering failure leaves a successfully opened dataset usable with a
-warning. Without a record, discover only the new suggested source-mode folder:
-apparent existing database opens normally, absent/empty shows setup, unknown or
-incomplete content requires explicit action. No legacy search/import occurs.
-
-One root/mainloop hands off to the ordinary app only after existing worker
-readiness; startup failure/cleanup cannot install a second authority. Cold
-inspection is not a prerequisite to ordinary recovery. E selects fresh schema 4
-with complete semantic admission and owned private paired-copy journal preflight;
-exact transactions/evidence and no-retry Delete contracts remain unchanged. Native first-run evidence
-and independent acceptance remain outstanding; Stage 4 remains IN PROGRESS.
-
-## SELECTED — Independent projects and tasks
-
-Tasks have stable UUIDs and own independent work. Duplicate names are valid;
-POL-R uses names rather than invented external task numbers. The selected schema-5
-target requires every task to belong to exactly one real immediate project;
-children share their parent's project. No default project, implicit assignment or
-virtual Unassigned destination is selected. The ordinary schema-4 application still
-permits optional membership and Unassigned; it has not been activated as schema 5.
-Projects have stable independent UUIDs, names and optional descriptions but own
-no time or timer.
-
-### Selected mandatory ownership and isolated schema-5 foundation
-
-The later explicit execution approval selects fresh schema 5 with application ID
-0x4348524E. New tasks and frozen export-task records require non-null real project
-foreign keys. Project parents remain nullable; organizational depth is unlimited
-and does not consume the three task levels. Project/task accounting, exact work,
-frozen project UUID/name labels, report bytes and absolute POL-R semantics do not
-change. No Customer, mapping table or second ownership authority is selected.
-
-The [isolated SQL foundation](../src/chronicle/schema5_profiles.py) supplies explicit
-DDL, fresh caller-owned file-backed construction and structural-only verification.
-The separate [isolated service](../src/chronicle/schema5_services.py) and
-[complete semantic verifier](../src/chronicle/schema5_evidence.py) now implement
-mandatory ownership, shared domain operations and independent retained history for
-disposable schema-5 use. Structural proof remains distinct from complete semantic
-proof; neither permits ordinary startup. Current GUI, worker/store/startup and
-backup/restore/recovery integration remain unimplemented for schema 5, as does
-native qualification. Ordinary defaults and SchemaPolicy remain schema 4; no
-user-visible version mode is added. Schema-4 DDL and optional-project historical
-behavior remain unchanged.
-
-For this isolated package, a test-only transaction owner issues BEGIN IMMEDIATE,
-verifies prior state/resolves exact receipts, invokes the service, records the
-canonical non-Delete receipt, verifies final semantics and commits or rolls back.
-Services require an active transaction and exact version/dataset/Request identity;
-they do not identify the original BEGIN mode or own transaction boundaries. This
-responsibility boundary is independently adjudicated, with no attestation tokens,
-private SQLite APIs or auxiliary lock probes. Unknown commitment never implies a
-retry; Delete remains separately handled, no-receipt and no-retry after uncertainty.
-
-Future ordinary schema 5 must start only in a new/genuinely empty directory and
-refuse schema 4 and earlier unchanged. No migration, import, conversion, copy
-transition, replacement or compatibility fallback is selected. Current schema-4
-admission/recovery remains unchanged until separately approved integration.
-See the [decision provenance](DECISIONS.md#mandatory-project-ownership-and-isolated-schema-5-foundation).
-
-The selected future organizational model permits each project to have zero or
-one parent project, zero or more child projects, and zero or more directly
-assigned tasks. Direct tasks and child projects may coexist in one container.
-Root projects have no parent. A project can represent a customer, program, major
-project, subproject, department or other container; no separate Customer entity
-or table is required. For example, Customer → Major customer project → Subproject
-→ Further subproject → Tasks uses projects for every organizational level.
-Independent projects may share display names; identity is UUID, never name/path.
-
-Project nesting has no fixed product-level depth limit. Practical traversal,
-resource and SQLite limits are engineering safeguards requiring explicit truthful
-refusal, never silent truncation or a small fixed business depth. Package E now connects this target to ordinary fresh schema 4. At its delivery, Package A added
-an isolated schema-4 candidate foundation. Package B adds candidate root/child
-creation and project movement services, accepted for continued development, with test-only
-transaction ownership. C1 adds candidate selected-only hierarchical lifecycle,
-inherited eligibility and derived project Direct/Cumulative accounting for review;
-C2 adds complete candidate evidence verification, reviewed task/template operations
-and nested unused-only Delete, accepted for continued development. D adds the
-candidate graphical source for independent review through an internal test-only
-presentation profile. E adds ordinary schema-4 admission through the existing
-store/worker/startup with production readiness distinct from the candidate. Connected
-widget evidence and native acceptance require their actual display/platform execution. See the
-[future architecture](ARCHITECTURE.md#selected-project-nesting-and-pilot-usability)
-and [separate workstreams](ROADMAP.md#selected-project-nesting-and-pilot-usability-workstreams).
-
-Moving or renaming a task preserves its identity/work. Reports group all its
-historical work by **current** project membership. Derived project subtotals are
-informational; never add them again to their tasks. Parent/descendant display
-must not turn another task's work into a task's own Actual.
-
-### Approved hierarchy target and fresh-data boundary
-
-The hierarchy foundation through B1/B2/C1/C2 is accepted for functional development:
-exact fresh schema 2, unchanged application ID 0x4348524E, parent adjacency and core
-recording/accounting. B2 implements transactional subtree movement. C1 implements
-Archive/Unarchive and full Archived Items navigation for independent review.
-C2 implements unused-only Delete. D implements the complete active hierarchy,
-context-sensitive child creation and reviewed Move / Reparent for independent review.
-E implements templates on fresh schema 3 for independent review. B1 supersedes the former proposed foundation/identity gate,
-not the remaining package approvals or the no-migration boundary.
-
-The delivered structure is flat Project → Task → Subtask → Sub-subtask. In the
-selected mandatory-ownership target, the task forest still has at most three task
-levels within its real immediate project; project ancestry consumes none
-of those levels. Each task has an independent UUID and optional parent task;
-task branches retain one consistent immediate project membership. Task names need
-not be globally unique. Cycles, duplicate identities, cross-dataset relationships
-and task-depth overflow reject. Branch moves preserve all task UUIDs and work;
-current project membership and project ancestry determine live organizational grouping.
-The ordinary schema-4 implementation retains virtual Unassigned with the same
-three task levels. That behavior is historical for the schema-5 target, which
-removes it from Main, Mini, Archived Items and every task destination selector.
-All real empty eligible projects remain accessible. With no real projects, show
-an explicit empty state and the existing Create Project route. An organizational
-root may position real root projects but cannot own tasks. Preserve sorting,
-selection, expansion, scrolling and duplicate-name UUID identity.
-
-Only leaf tasks may accept **new time**: Start, Switch destination, Add timed work
-and Add date-only work. A task becomes a parent when it gains children. Its
-previous direct work remains its Individual Actual, independently readable and
-correctable through its own Work History; it is not transferred to children,
-discarded or duplicated. Correcting/deleting existing work is not creating new
-work. A parent's History stays direct-task history, not an implicit descendant
-browser. Descendant work remains accessible by selecting each descendant UUID.
-
-A running task cannot become a parent or be moved into an ineligible state.
-Adding a child, reparenting or applying a template cannot bypass this rule.
-Archiving any branch containing the running task refuses until an explicit prior
-Stop/Switch; an active timer also blocks Delete's unused-only eligibility. No
-hierarchy operation silently stops, switches or restarts a timer. Archived or
-effectively archived leaves accept no new time; their history remains retained.
-
-The current runtime requires fresh schema-4 data: no version-1/2/3 migration,
-backward-compatible mode, conversion engine, compatibility shim, JSONL import or
-old-runtime fallback. Its schema must identify itself distinctly so an old dataset
-cannot be mistaken for supported new data. Incompatible datasets may refuse.
-Creation still requires exclusive ownership and a new/empty destination; never
-delete, truncate, replace or reuse an old database automatically. Retention of old
-filesystem objects is protection, not a requirement to make them compatible.
-Persisted project parentage selects schema 4 with application ID 0x4348524E.
-Use a new or genuinely empty destination under exclusive creation; no schema-3
-migration, import, copy transition, conversion reader, pending-conversion marker
-or converted-copy activation flow is authorized. The v4 runtime refuses
-v3 without altering it. During A/B/C1/C2 the ordinary runtime remained schema 3;
-only isolated candidate construction, caller-owned backend services,
-complete candidate evidence validation and pure
-project rollups existed. E now preserves supported hot-journal recovery and refuses incompatible
-originals without modifying them; raw uncommitted headers are not committed
-identity. Version-aware private recovery preflight is the implemented
-architecture, not implemented by A. See [schema safety](#selected--schema-compatibility-and-future-upgrade-safety).
-
-### Project/task management and branch lifecycle
-
-Provide discoverable project and task management entry points in the main UI,
-including a visible project-management route rather than only an unrelated
-dropdown. Future project operations include Create root, Create child beneath a
-selected project, Rename and Move / Reparent a complete project subtree. Review
-full source/destination ancestry and UUIDs. Project moves preserve identities,
-immediate task memberships and all direct work; they change organizational ancestry.
-Self-parenting, movement beneath any descendant, cycles, missing parents,
-cross-dataset references, stale reviews and partial movement refuse. The worker
-transaction commits the entire reviewed move or none of it. These project
-parentage operations are not delivered by the current task-branch Move service.
-
-In the selected schema-5 workflow, New Task opens one owned name/project dialog
-with full destination ancestry/UUID, visible root/child context and Create/Cancel.
-A selected real project prefills an editable root-task destination; with no
-selection the destination starts empty, never first/recent/default. A selected
-eligible task creates its immediate child, inheriting its real project read-only.
-If no eligible project exists, refuse and explain that Create Project is required;
-never create one automatically. Cancel creates no Request, write or timer effect.
-Submission revalidates exact identities, versions, complete ancestry and eligibility.
-This dialog is not implemented by the isolated foundation; ordinary schema 4 still
-uses its existing name dialog and no-selection Unassigned root.
-Refuse a child beyond the depth bound. Rename preserves UUID/work. Move/reparent
-reviews source and destination, then atomically moves the entire subtree without
-cycles, cross-dataset references, identity changes or partial project reassignment.
-Schema-5 task Move/assignment requires a real project or eligible parent task in
-one; NULL is prohibited. Project Move remains distinct and may place a real
-project at organizational Root with parent_project_id=NULL. Preserve work,
-versions, receipts, exact retry and active/archive protections.
-Assigning/moving between projects uses this same branch invariant. A selected
-effectively archived branch cannot move until it is unarchived, including clearing
-inherited hiding through its ancestor path. An allowed move preserves independently
-archived descendant states; it must not clear flags to make a move possible.
-
-Exactly two primary lifecycle actions exist: **Archive**, reversible preservation,
-and **Delete**, irreversible removal of unused structure. Unarchive reverses Archive;
-it is not a deletion tier. No user-facing soft deletion, Deleted Items manager,
-separate Permanent Delete, Trash or recoverable Delete belongs to this target.
-
-Archive changes only the selected project/task's explicit archived state and
-stores its exact accepted UTC action instant as the current archive timestamp.
-Descendants become effectively archived by inheritance; do not rewrite their
-independent flags. Preserve identities, relationships, work, history, current
-project grouping, frozen reports and POL-R evidence. A running descendant blocks
-Archive; never perform an implicit Stop/Switch. Unarchive clears only the selected
-node's flag and current archived-at value, preserving independent child flags.
-An archived ancestor still hides an unarchived descendant. Unarchive does not
-move, rename, restore, recreate or change work. Archiving again later establishes
-a new current timestamp; no historical archive-date journal is required merely
-to view/sort abandoned unused items.
-For nested projects this inheritance spans both project ancestors and task
-ancestors: archiving a container effectively archives its whole organizational
-subtree without clearing or rewriting independent child flags. Active-task
-protection applies anywhere in that subtree. Project Delete likewise reviews the
-complete project-and-task closure under the unchanged unused-only protections below.
-
-Project/task management offers Create, Rename, Move, Archive/Unarchive, Delete and
-task-only direct Work History using reviewed UUIDs/versions, cancellation without writes,
-stale diagnostics and authoritative completion. B1 implements creation/rename,
-explicit child creation and existing standalone-root project assignment. B2 adds explicit service-level subtree movement; C1 adds Archive/Unarchive and
-Archived Items. C2 implements reviewed unused-only project/task Delete; D connects
-full nested active navigation, immediate-child creation and reviewed Move / Reparent.
-
-### Unused-only Delete
-
-Delete physically removes selected project/task rows and their complete selected
-subtrees from the logical database. It is irreversible and available from
-appropriate management surfaces, including Archived Items. Archive is **not** a
-prerequisite. It never means deleting a dataset file or deleting work history.
-
-Evaluate the full scope and typed dependency closure. Refuse if any affected entity
-has timed work, date-only work, any work revision including deleted work, an active
-timer or active-start correction, any frozen Timesheet reference (even zero-valued
-scope/basis/task/project references), any POL-R confirmation including confirmed
-zero, any current/retained reporting dependency, any protected relationship to
-surviving evidence, any unresolved administrative dependency, or an ineligible
-descendant. Current Actual = 00:00 is not evidence of unused status. One protected
-descendant blocks a whole project deletion. Do not prune protected descendants,
-expand the confirmed scope or rewrite history to manufacture eligibility.
-A separately selected unused child may be eligible despite its parent's work,
-only when its complete dependency closure is independently removable.
-
-Before Delete show the exact scope, affected project/task counts and an explicit
-cannot-be-undone warning. Require **typed DELETE for every Delete**, followed by
-final transactional validation against the reviewed scope.
-Reject stale/racing decisions and require fresh review. Remove all or none of the
-eligible entity rows, parent-child relationships, exclusively owned administrative
-facts and safely proven exclusively associated administrative request records.
-Preserve unrelated survivors and every protected work/report/confirmation record.
-Do not retain a recoverable identity, names/notes in tombstones, an anti-replay
-registry or a permanent unused-project audit/purge-proof ledger.
-
-Projects/tasks have UUID identity, not name identity. A new item may use the name
-of an existing, archived or deleted item, but normal creation always generates a
-fresh UUID. Duplicate names never authorize reuse, restoration, merging or
-overwriting. Active-template name uniqueness does not apply to projects/tasks.
-
-There is no automatic, age-based, scheduled or background deletion. Existing
-backups and filesystem copies remain unchanged. SQLite logical deletion does not
-promise secure physical erasure of old pages or external copies.
-
-Surviving requests and all protected evidence retain normal exact committed-request
-behavior. **Fully erased administrative requests no longer promise exact historical
-retry/result recovery.** Without persistent identity records, a later resubmission
-of an erased old request cannot necessarily be recognized or prevented from
-reintroducing its old UUID. Normal creation uses fresh IDs; stale queued/concurrent
-operations must still pass final transactional dependency checks. Do not claim
-permanent replay protection or silently reinstate a registry.
-
-Delete deliberately stores no receipt. If COMMIT was attempted and acknowledgement
-was lost, present existence checks can establish current state, not prove that request's
-historical outcome. Report failure/uncertainty truthfully; do not automatically
-reexecute or invent a retained deletion journal to conceal this limit. The
-[implemented deletion/receipt boundary](ARCHITECTURE.md#unused-entity-deletion-and-receipt-boundary)
-uses C2's exact finite allowlist, complete scope/typed closure, strict survivor-history
-proof and deepest-first transaction on unchanged schema 2. Unsafe/unprovable scopes
-refuse. No ordinary Delete retry or reconcile-absent execution is available; current
-presence inspection does not resolve history. Block mutation until explicit exit
-and reopen; another Delete requires fresh review and typed confirmation.
-B1 classifies retained receipts as administrative or protected. All UPDATEs and
-protected DELETEs remain SQL-prohibited. Only C2 may retire the proven exclusively
-owned administrative set; complete validation still requires every surviving
-entity's creation receipt and all version effects.
-
-A task/project with protected history must be archived instead of deleted. Its
-retained history stays available to History, Timesheet and POL-R/reconciliation.
-The existing work-entry History Delete remains a separate use case: it appends
-retained deleted-revision evidence and removes effective work from current Actual;
-it does not physically delete the task/work identity.
-
-### Archived Items tree, archive dates and sorting
-
-Provide a discoverable Archived Items window/view with archived projects,
-independently archived task branches and descendants hidden by archived ancestors.
-Preserve project ancestry and the separate three-level task relationships, and support full
-expand/collapse at every available level, historical Individual/Cumulative values,
-direct-task Work History, selected explicit-node Unarchive and eligible-branch
-Delete through C2's separate owned full-preview/typed-confirmation workflow. C1
-provides Unarchive and direct History; C2 adds the Delete command. Explain ineligible Delete/Unarchive. The view is read-only for recording:
-no Start, Switch into archived tasks or new manual work beneath archived parents.
-Selection, sorting and expansion never make an archived leaf eligible for time.
-
-An independently archived child with active ancestors is an archived entry with
-sufficient project/parent context, not a reparented task. An ancestry-hidden child
-appears under its archived parent when expanded. Do not flatten relationships or
-present one UUID as multiple independent archived records. Unarchive can only
-clear an explicit flag; explain inherited hiding without clearing an ancestor.
-
-Display current archive timestamps in the dataset IANA timezone using real DST/
-timezone conversion, never creation/modification time or a fixed offset. An
-independently archived child has its own accepted timestamp; a descendant hidden
-only through ancestry displays its nearest effective archived ancestor's timestamp.
-B1 schema 2 already stores explicit flags/current archive timestamps. C1 uses
-those unchanged fields; no additional archive-date journal or DDL is introduced.
-
-Offer exactly four primary sorting choices:
-
-- Name — A to Z.
-- Name — Z to A.
-- Date Archived — Newest first (default).
-- Date Archived — Oldest first.
-
-Sort among siblings and top-level archived entries while keeping the tree intact.
-Use a deterministic stable secondary order such as UUID for equal names/timestamps.
-Preserve expansion/collapse throughout the open view, including sorting and normal
-refresh; preserve selected identity where still visible. Sort state may initially
-be session-local. Do not persist settings without approval, change authoritative
-accounting order/UUIDs/membership/work, or unnecessarily rebuild unchanged rows.
-Archive/Unarchive trigger targeted structural refresh in main and archived views;
-shared exact totals and main/mini observation remain unchanged by visibility.
-
-### Reusable nested templates
-
-Package E implements reusable relational template definitions/nodes on fresh schema 3
-for independent review. Templates contain structure, never copied work, timers,
-revisions, reports, confirmations or existing task identities. Applied instances are
-ordinary independent tasks; later template Edit/Archive/Delete changes none of them.
-
-Templates... opens one modeless manager with name/UUID/version/state/count and an
-expandable full graph. Create/Edit use an owned draft editor: name, root/child nodes,
-rename, subtree removal, reparent and sibling reorder. Retained node UUIDs stay fixed;
-new nodes get fresh IDs; removed IDs cannot be reused within retained definition
-history. Save atomically replaces the complete graph after version/depth validation;
-Cancel writes nothing. Nodes follow canonical contiguous preorder with at least one
-root and at most three task levels. Project nesting consumes none of these task
-levels. Duplicate freezes the source/version and UUID-sorted
-fresh node mapping, creating a separately named independent active definition.
-
-Names use Python strip/casefold. Every actual Create/Edit/Duplicate/Unarchive
-transaction checks all current active definitions. Archived names may collide;
-Unarchive collision refuses without automatic renaming. Nodes/tasks/projects retain
-duplicate-name support. Archive/Unarchive sets/clears only definition availability
-and current accepted UTC archive time; archived definitions may be edited/duplicated.
-
-Selected schema-5 Apply reviews the complete blueprint and explicit real project
-or eligible task destination within one; it never creates an implicit project.
-Ordinary schema 4 still also permits Unassigned until later integration.
-Apply reviews full path/UUID, node count and resulting depth. Freeze template/version/complete
-reviewed definition, destination identities/versions and position-ordered node/task
-mapping before submission. Insert all fresh tasks parent-first in one transaction,
-one administrative creation receipt, without bumping destination parent version or
-copying work/evidence. Reject archived/running/stale/overflow destinations; never
-flatten/drop nodes or implicitly Stop/Switch. Success reveals the inserted hierarchy
-and selects its first root. Ordinary exact retry retains the same mapping/Request.
-
-Template Delete is irreversible definition removal, without an Archive prerequisite,
-including after Apply. The worker previews its complete current graph, version,
-retained application context and exact finite management-receipt retirement set.
-Require typed DELETE and final transactional equality/recheck. Remove only this
-definition/current nodes and its owned create_template/edit_template/duplicate_template/
-archive_template/unarchive_template receipts. Surviving Apply/Duplicate requests remain
-byte-identical and self-contained; all surviving task/definition histories and protected
-facts must verify. No Delete receipt, tombstone, identity registry or proof ledger.
-Uncertainty follows C2: no retry, readonly current presence, blocked mutation and
-explicit exit/reopen. Current absence does not prove historical success.
-
-Historical uniqueness is verified over retained reconstructible administrative
-history. When source history remains, Apply/Duplicate frozen sources must match it
-at their commit position. After legitimate physical source deletion, validate the
-canonical frozen graph/mapping/result and every surviving entity/version effect,
-without asserting erased name/archive intervals. Erased intervals are historically
-unverifiable; a snapshot does not prove earlier name occupancy. Missing history for
-a surviving definition, incomplete retirement, orphaned operations or contradictions
-within retained evidence refuse. Current active uniqueness always remains complete.
-
-An Apply receipt may retire under task/project Delete only if its entire created
-set is in the reviewed unused scope and every surviving dependency still verifies.
-Partial batches refuse without splitting receipts or expanding scope. Definition
-management receipts never retire through project/task Delete. Template operations
-introduce no recurrence, synchronization or external task creation.
-
-### Target main and mini presentation
-
-Restore a practical tree layout with distinct project and task rows, expandable
-branches, preserved project/task selection and expansion by UUID, and clear
-running/stopped indicators. Main retains green Running and red Stopped with
-text/symbols so color is not the sole cue. A project expands to
-show both child projects and directly assigned task branches at arbitrary project
-depths. Do not flatten hierarchy, merge duplicate names or imply a timer action
-when navigating or expanding a project folder.
-Ancestors indicate a running descendant without claiming their own timer; expand
-the active task's ancestors automatically. Collapse never excludes descendant
-work from totals. Sort A-Z must preserve parentage and identity, not flatten or
-merge equal names. Sort A-Z is initially session-local. Navigation provides
-context-sensitive New Task, task History and metadata editing, visible
-project/task management and Archived Items. Starting a project or nonleaf is
-unavailable; Stop still targets the sole actual timer, and Switch requires an
-eligible distinct leaf. Existing modal and uncertain-request blocking applies to
-main and mini actions alike. Create, Rename, Move, Archive/Unarchive and Delete
-remain discoverable for the applicable project/task selection; destination reviews
-show full project ancestry, not an ambiguous leaf name.
-
-Double-click an eligible stopped leaf when no timer is active to Start it;
-double-click the running task to Stop it; double-click a different eligible leaf
-to atomically Switch through one existing `switch_timer` request, never Stop then
-Start. This resolves the former Open case by the new ChatGPT usability
-[adjudication](DECISIONS.md#pilot-usability-implementation-adjudication), not a claim
-about legacy Switch behavior. Use the actual clicked UUID and synchronize selection
-before dispatch through the existing Start/Stop/Switch methods. Preserve exactly one
-action-time observation, one active timer, pending/unverified exclusion and modal,
-archived/nonleaf and repeated-input guards. Project/group/parent rows, expansion
-indicators, headings, empty space and stale identities perform no timer mutation;
-normal Treeview navigation/expansion remains available. Legacy Enter/Space evidence
-remains in [Design Notes](../DESIGN_NOTES.md); those bindings are not added here.
-
-Main task columns are **Individual** and **Cumulative**, controlled together by
-**Today / This Week**. Individual is exact-task work for that period; Cumulative
-is that Individual plus every task descendant's Individual exactly once. A parent
-with older direct work displays it
-in Individual and includes it once in Cumulative; its History opens only that
-direct work. Application totals sum underlying task Actual once, never both
-columns or project subtotals. Archived history and retained effective work continue
-to contribute where applicable even when navigation hides its rows. Main/mini/report daily
-facts share the existing exact accounting and one coordinated cutoff.
-
-Project rows show derived Cumulative, not project-owned time. Direct task Actual
-is the underlying effective work owned by one task UUID; Task Individual is its
-period Actual, and Task Cumulative includes its task descendants' Individual once.
-Direct project grouping sums Individual for every task whose immediate project is
-that project, including all task levels. Cumulative project grouping sums those
-same direct task facts over the project and every descendant project, each task
-UUID once. Never sum ancestor project rollups or task Cumulative as additional
-contributions. Retained parent/archived work contributes where report scope allows;
-recording eligibility is not permission to omit retained Actual. A container can
-have no direct tasks yet a nonzero cumulative total. Zero requires available valid
-underlying reports; unavailable calculation is not zero. Ordinary schema 4 retains
-virtual Unassigned; the selected schema-5 presentation excludes it without hiding
-invalid data or introducing a persisted default project.
-
-Mini uses a compact name, small green/red indicator, Individual Today, one
-Start/Stop control and Show Main. Start/Stop text also distinguishes state without
-color. Prioritize active task, otherwise eligible selected task. Normal layout
-targets about 280x125 Tk pixels and approximately 300x150 or less at default fonts;
-allow extra space for OS fonts/DPI and exceptional diagnostics rather than clipping
-controls. Long names shorten deterministically for presentation only; full names
-remain accessible in Main. There is no prominent state bar, routine running warning
-or copied ordinary status line. It is never a second timer or cumulative POL-R
-source. Genuine errors, unavailable time and unresolved mutations
-must stay visible through a concise actionable Mini diagnostic/indicator; Show Main
-must expose the full existing diagnostic and retry/resolution path when modal
-ownership permits, including read-only navigation during an unresolved request.
-Mutation controls remain disabled and request/recovery identity remains unchanged.
-Derive warnings from authoritative state, never arbitrary status text; clear them
-when that state resolves. Do not silently hide errors or change safety-disabled controls.
-Keep Mini Open defaults Off and is session-local. Show Main leaves mini visible
-only when that option is On. Mini must not steal focus or grabs from owned modals;
-topmost behavior must respect that existing modal owner.
-
-Use minute-boundary presentation updates and immediate post-operation refresh,
-updating changed row values/structure rather than rebuilding unchanged rows.
-No continuously changing started-at timestamp is required in main. Redraw cadence
-is separate from observation: clock movement, date rollover and unavailable
-calculations must still be detected accurately, and actions keep exact accepted
-instants. No per-minute persistence, rounded work or sleeping UI loop is selected.
-
-These display rollups do not alter reporting scope: POL-R and frozen Timesheets
-remain independent task/day identities with existing exact allocation, Unknown/
-confirmed-zero, immutable labels and evidence. Parent Cumulative values are never
-additional Actual or confirmation cells. Selecting a parent UUID in Timesheet
-still selects only that task, not descendants.
-
-## SELECTED — Recording and timer operation
-
-Provide Start, Stop and Switch. Only one task is active. Switch atomically stops
-the old task and starts the new task at one accepted action time. Persist the
-active timer; reopening must not silently lose it. Rendering observes time and
-never records work, guesses missing stops or persists a tick counter.
-
-Unknown POL-R values, external unavailability or exhausted/unknown allocations
-never block Actual recording. Start/Stop/Switch capture one aware wall-UTC action
-instant before queueing; worker delay never moves it. Derive running elapsed from
-the persisted effective start and explicit observation, not ticks. Sleep and
-normal exit do not stop a timer. Normal restart/crash restores the same committed
-entry UUID/start without a new Start or fabricated Stop. Forward clock movement
-is not automatically rewritten; impossible/nonpositive Stop/Switch rejects and
-preserves the timer. An observation before its start shows unavailable values and
-a clock/start warning, never zero or negative work.
-
-Correct active start is explicit recovery, not historical editing. The operator
-supplies a date/minute in the dataset IANA zone; gaps reject and repeats require
-first/second choice. Preserve unchanged microsecond precision. Changed start must
-not exceed the accepted correction observation. Require current active UUID and
-version; preserve original, prior and corrected starts, audit observation, optional
-comment and request identity immutably in the same transaction as the receipt.
-An unchanged correction writes nothing. No automatic recovery, timer deletion,
-idle detection or sleep subtraction is selected.
-
-Queue acceptance is not correction completion. Keep the modal active-start draft
-until a matching authoritative result: committed/unchanged closes it; validation,
-known rollback and pre-execution unavailability retain editable values. A stale
-UUID/version retains the reviewed draft without retargeting; close and reopen for
-fresh review. Executing requests lock fields and ordinary Close. Unverified
-requests remain frozen with editor-local exact Retry/Reconcile and the existing
-default-cancel exceptional exit, never a second correction identity. Unexpected
-view destruction does not erase the application owner's pending request. A later
-report failure cannot reclassify a verified correction.
-
-Normal shutdown rejects new submissions, lets accepted operations finish and
-reconciles them without joining a live worker on Tk. When work has finished but
-storage truth remains unverified, offer Retry/Reconcile or Exit despite unresolved
-save, with default-cancel confirmation. Explain possible prior commitment and loss
-of volatile retry inputs. Do not interrupt executing I/O, create a new request,
-rollback evidence or claim an unknown outcome is failed/successful. Finite SQLite
-busy timeouts do not promise recovery from an indefinitely hung OS call.
-
-Mini represents the active task, otherwise the main selected task, otherwise no
-task. It consumes the owner's status/report and cannot create independent Actual.
-
-## SELECTED — Actual-time records
-
-Actual combines two distinct shapes, assigned to local work dates:
-
-- Genuine timed intervals with real start/stop instants and UTC elapsed duration,
-  split correctly at local midnight, week boundaries and daylight-saving changes.
-- Date-only manual amounts with task UUID, civil date and duration, without
-  fabricated endpoints. A 14-hour Saturday amount stays entirely Saturday.
-
-Manual date-only entry uses a genuine YYYY-MM-DD date and strictly positive
-H:MM duration (two minute digits 00–59, unbounded hours within integer-microsecond
-limits). Trim surrounding whitespace; reject decimals, seconds, fractions and
-overflow. Future civil dates are allowed. New genuine timed work must end no later
-than its accepted submission observation; resolve start/end independently, with
-no inferred overnight rollover or automatic overlap adjustment.
-
-The Add timed work and Add date-only work forms are task-bound and initialize
-dates to the current dataset-local date, clocks/duration/comment empty. Save alone
-submits one frozen request through the existing worker. Cancel writes nothing;
-verified completion closes the form. Validation, stale rejection, known rollback
-and unavailable storage preserve editable drafts; uncertainty freezes the same
-request for owner-mediated Retry/Reconcile or the approved exceptional exit.
-Main/mini actions are blocked through the modal form while running time continues.
-
-Both support correction/deletion with immutable prior values and audit details.
-Work-entry UUID remains stable across revisions; reviewed revision changes reject
-stale edits. A displayed daily portion always targets its complete underlying
-entry, never a clipped replacement. Deleting a spanning interval warns about the
-other affected dates. Editing preserves entry type.
-
-Timed entry, changed endpoints and History clocks use minute precision with
-separate start/end dates/times. Reuse accepted clock formats; reject seconds or
-fractions in new clock input. Repeated local minutes require explicit first/second
-UTC-ordered occurrence selection; nonexistent minutes reject. Do not guess
-rollover, an occurrence or a gap adjustment. UTC endpoints determine positivity,
-including earlier-looking fallback stops and cross-date work.
-
-Ordinary timed editing is for closed genuine intervals, independently of another
-running timer. Unchanged Save, including a comment-only change, writes nothing.
-Changing one endpoint preserves the other exactly, including seconds/fractions.
-A draft equivalent to the original minute and occurrence preserves that original
-precision, including after changing back. Preserve it before span validation.
-A stored repeated occurrence may initialize from its instant; changed repeated
-times require explicit selection. Comments are optional. Original/revised values,
-revision identity and audit time remain available. No billing rounding changes
-raw work.
-
-Replacement Reset actions and resettable counters do not exist. Reset boundaries,
-exports and confirmations neither erase nor increase calendar Actual.
-
-## SELECTED — Calendar Actual displays
-
-Package E uses the accepted nested-project D navigation on fresh schema 4.
-Historical flat schema-3 presentation remains an explicit regression policy.
-Native Windows qualification of the changed interface remains outstanding. Main Individual/Cumulative share Today/This Week: Individual is
-direct Actual and Cumulative includes each descendant once. Group Cumulative sums
-member direct report facts over project descendants under the selected nesting model,
-including applicable retained hidden task work. Groups have no Individual work;
-empty groups show zero only with a valid report. Both application totals remain
-visible and never add rollups twice. Mini retains Individual Today and Start/Stop.
-The current schema-4 New Task uses the selected project/group as root destination,
-the selected eligible task as immediate parent, or Unassigned for no selection.
-The complete UUID/path and reviewed destination versions freeze before name entry.
-Move / Reparent uses the one B2 branch operation, not a second assignment policy.
-Application totals retain archived-task work when navigation hides it. Current
-readers retain parent and archived work; live tasks/projects have no
-soft-delete fields. Frozen report task labels retain the existing is_deleted shape
-with value false in newly registered reports; schema 4 preserves that frozen format. One coordinated refresh
-uses one aware UTC cutoff and local observation date for main/mini. This week is the complete containing calendar
-week. Timed work is cutoff-capped; dated amounts belong wholly to their declared
-dates, including later dates within that week.
-
-Show completed-minute HH:MM without changing underlying precision. Calculation
-failure shows **—** and one short “Time totals unavailable.” inline message per
-affected window. Keep Start/Stop available; a later normal refresh can recover.
-Do not present stale numbers as current or silently omit unsupported work.
-
-## SELECTED — Mixed work history
-
-One task-bound modal History shows effective genuine intervals and date-only
-amounts; earlier revisions/deletions are available through details. Main task
-selection → History → **inline editor on that surface** is the replacement route.
-Do not introduce a subordinate correction Toplevel. Metadata forms need not open
-History; legacy recursive task-editor routing is not a target requirement.
-
-At most one History is presented per application. Close it before main/mini
-interaction or choosing another task. It supplies History controls and Close,
-not main-window Start/Stop. Timers continue. Duplicate/reentrant requests do not
-retarget, replace or refresh it. Every application starts newest-first; successful
-date-direction changes persist only in that application session across openings,
-not in settings or a preference file. The selected direction applies to complete
-date/time ordering: newest-first uses newest local date and latest timed segment
-first; oldest-first uses oldest local date and earliest timed segment first.
-Within each date, order timed portions by actual UTC segment start, then segment
-stop, reversing both timestamps for newest-first. Identical timestamps use a stable
-entry-UUID tie-break. Date-only entries follow timed portions in either direction,
-ordered by UUID without fabricated clock positions. Repeated local DST minutes
-remain ordered by UTC instant with the existing offset disambiguation.
-
-Default Current week, inclusive Custom and All history are available. Load on
-presentation, Apply, switching to Current week/All and explicit Refresh. Sorting
-by date reorders displayed rows without new work, cutoff capture or applying
-drafts. Successful replacement/sorting clears selection. Current week is seven
-local dates using the selected week convention, recalculated on refresh.
-
-Custom dates permit typing and owned calendar pickers. Trim surrounding space,
-then require canonical YYYY-MM-DD, real ordered dates and representable boundaries.
-Typing, focus, calendar selection and entering Custom do not Apply. Preserve
-invalid/unapplied drafts across failures and period switches. Refresh uses the
-last applied period and committed Custom bounds; before first success it retries
-Current week. Report last-successful period/as-of truthfully; distinguish not
-loaded, valid empty and failed loading. Prepare complete display content before
-replacement; do not present partial output as successful. Widget failure invalidates
-untrusted output, with explicit later recovery rather than claimed GUI rollback.
-
-Keep full detached row metadata behind temporary widget handles. Linked daily
-portions share the original entry identity, endpoints and continuation flags.
-Columns are link, Date, Kind, Start, End / as of and Duration:
-
-- Date is YYYY-MM-DD; Kind distinguishes Timed, Date only and Running. Dated
-  clocks are blank. Running boundaries are observations, not recorded stops.
-- Segment endpoints use HH:MM, prefixed by actual date when different from the
-  row date (including next-date midnight). Repeated minutes append the actual
-  UTC offset, including non-hour offsets; use valid candidates to detect repeats.
-- Duration: 0:00 for zero, <1 min for positive sub-minute work, otherwise completed
-  minutes as unbounded H:MM. Preserve precise metadata and supplied work amounts.
-- Show ↔ for continuing portions. Selecting a portion highlights related visible
-  task/kind/entry portions without multiselection; running linkage is task-scoped.
-  Dated rows do not link. No routine explanatory text is required.
-
-Inline Cancel and unchanged Save return to browsing without writes. Validation or
-stale conflicts retain the draft, without retargeting a successor. Verified edits
-refresh the last applied period, preserve direction/unapplied drafts and report
-refresh failure truthfully. Database outcome, not widget destruction, establishes
-completion. All active readers must include each exposed work type before its
-writer is activated; History alone does not satisfy this gate.
-
-The UI consumes one detached snapshot containing dataset/task identity, observation,
-resolved period bounds, committed week convention, effective rows and a task-scoped
-deleted-entry index, collected in one read transaction. Details exposes immutable
-creation, correction, deletion and active-start evidence in revision order. Deleted
-identities remain discoverable without adding them to effective Actual.
-
-The standard-library inline calendar owns one panel, changes drafts only and never
-captures another accounting observation. History uses callback-driven local modal
-ownership, without application-authored waits or another event loop. Close restores
-only a surviving eligible origin grab/focus and never displaces a competing owner.
-
-Edit/Delete use the application's existing pending request. Executing I/O blocks
-ordinary Close. Unverified outcomes lock the exact request for Retry/Reconcile or
-the History-owned default-cancel exceptional application exit. Stale reviews keep
-the original draft and disable Save until Cancel, explicit Refresh and fresh review.
-Committed corrections refresh the applied period once; later display failure does
-not undo commitment or make old rows current. Unchanged Save reloads no History.
-
-## SELECTED — Configurable week convention
-
-Any weekday may begin the week; Sunday is the initial default, not permanent
-policy. The setting controls weekly totals, Timesheet periods/columns, project
-subtotals, reconciliation summaries and later allocation periods. It does not
-change civil work dates, amounts, daily confirmations, immutable exports or prior
-work. Exports freeze their original convention. Stage 2A persists the selector in
-dataset metadata, Monday=0 through Sunday=6, with an expected-prior check and
-atomic receipt. Unchanged selection writes nothing. Shared totals and Current
-week history reads use the committed convention. Allocation override effects
-remain reserved for optional expansion; dataset timezone changes remain Open.
-
-## SELECTED — Actual, Exported and Confirmed POL-R are distinct
-
-| Fact | Meaning |
-| --- | --- |
-| Actual | Current genuine/date-only work by task UUID and local date. |
-| Exported | Immutable snapshot of a reviewed Timesheet's values, labels and context. |
-| Confirmed POL-R | Latest explicitly user-confirmed absolute external task/day value in integer quarter-hour units, or Unknown. |
-
-Export and confirmation never add Actual. No automatic POL-R synchronization or
-independent backend verification is selected. User confirmation records reported
-external content, not an independently verified query.
-
-## SELECTED — Decimal-hour replacement output
-
-Keep exact Actual, displayed Actual and POL-R submission distinct. Exact Actual
-retains integer microseconds, genuine instants and declared civil dates. Displayed
-Actual uses the existing completed-minute HH:MM or two-place decimal convention:
-ROUND_HALF_UP once per task/day to integer hundredths; displayed Actual rollups
-sum those cells rather than independently round raw aggregates. This is display
-only, not input to submission rounding. Project subtotals are not additional work.
-
-Proposed and manually/export-confirmed POL-R values must instead be nonnegative
-integer **quarter-hour units**, displayed as multiples of 0.25. Reject invalid
-non-quarter confirmation input, rather than round it into evidence. Positive work
-or a zero suggestion never automatically creates a zero confirmation. See the
-[precision contract](EXPORT_EVIDENCE_CONTRACT.md#decimal-hour-representation).
-
-## SELECTED — Weekly POL-R suggestions
-
-For each task independently, always round its exact complete-week Actual **up**
-to a quarter-hour total. Distribute that total over worked dates by largest exact
-remainder, breaking ties by earlier work date. Zero-work dates receive nothing;
-no date receives more than one additional quarter in the remainder pass. There
-is no cross-task/cross-week transfer or carried remainder. Never modify Actual,
-work dates/revisions or fabricate work to represent the upward adjustment.
-
-Use the selected week-start convention, dataset IANA zone and one explicit
-accounting cutoff. This week, Last week and arbitrary inclusive Custom views
-always calculate the full seven-day basis for every intersecting task/week, then
-show only requested dates/tasks. Partial views need not sum to the complete-week
-target; do not recompute from a subset or expose out-of-scope confirmation cells.
-Freeze sufficient full-week context to prove the reviewed distribution later.
-
-Current-week suggestions are provisional. Further work, later declared dated
-amounts or correction may change target/ranking, including suggestions on other
-dates of that task/week. Timed work remains cutoff-capped; existing future-dated
-amount semantics remain binding. No predicted stop or automatic POL-R adjustment.
-The exact algorithm, proof and mandatory examples have one
-[technical owner](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation).
-
-## SELECTED — Daily reconciliation
-
-Show distinct task/day values:
-
-- **Actual:** exact recorded work with its existing HH:MM/decimal display.
-- **Suggested POL-R / Enter in POL-R:** the current full-week allocation for that
-  date, an absolute quarter-hour replacement value, not arbitrary daily Actual
-  decimals and not Delta.
-- **Confirmed POL-R:** latest explicitly confirmed absolute quarter-hour value,
-  or Unknown; known zero retains confirmation identity.
-- **Daily Delta:** displayed Actual hundredths minus the confirmed quarter amount
-  converted exactly to hundredths when known; otherwise Unverified. Keep this
-  diagnostic, but do not treat every nonzero Actual-minus-Confirmed value as an
-  allocation mismatch.
-- **Suggested-entry gap:** suggested minus known confirmed amount; Unknown stays
-  unresolved, never an invented zero prior.
-- **Weekly rounding adjustment:** exact complete-week target duration minus exact
-  weekly Actual, accurately expressed in minutes/seconds or compatible exact units.
-  It is nonnegative and less than 15 minutes per task/week, not extra work.
-
-Base daily classifications are NOT_APPLICABLE (zero work/suggestion with no
-confirmation), UNKNOWN (positive work or suggestion without confirmation), MATCH
-(known confirmation equals suggestion), MISMATCH (known differing amount), and
-UNAVAILABLE (required evidence/calculation cannot be established). Known zero has
-identity and may match zero. Coverage includes positive work/suggestion/confirmation
-and explicit known zero, but does not demand confirmation for unused dates.
-UNKNOWN and MISMATCH are actionable; unavailable is never all-clear. A complete
-week requires all applicable individual cells to be known and matching. Inclusive
-partial Custom views preserve full-week context and are not complete-week reviews.
-
-Distinguish Unknown/not confirmed, matching suggestion/confirmation, known daily
-allocation mismatch, incomplete review/confirmation coverage, explained upward
-rounding and stale proposals after subsequent work/correction/confirmation.
-Matching weekly totals cannot hide daily mismatches; nonzero Daily Delta may be
-explained when Confirmed matches the approved allocation. Do not persist separate
-Delta, suggestion or rounding-balance counters. See the
-[reconciliation contract](EXPORT_EVIDENCE_CONTRACT.md#displayed-reconciliation).
-
-A worked day may receive 0.00 Suggested POL-R without becoming zero Actual.
-Never auto-confirm zero or mark an Unknown cell fully reconciled solely because
-its suggestion is zero. Explicit checked/manual zero remains supported. External
-zero-entry versus omitted/no-entry treatment requires validation before affected
-Stage 3 connected official reporting and pilot; it does not reopen the formula.
-
-## SELECTED — Mandatory 3:00 → 5:00 contractual behavior test
-
-Retain compatible cases A and B: save a 3.00 suggestion, record 2.00 more, confirm
-frozen 3.00 → **Actual 5.00 / Confirmed 3.00 / Daily Delta +2.00 / Suggested 5.00**.
-Explicitly confirm 5.00 → suggested-entry gap 0.00 (Daily Delta also 0.00).
-Correct Actual to 2.50 against Confirmed 3.00 → **Daily Delta -0.50 / Suggested 2.50**.
-Earlier exports/confirmations remain unchanged. These exact-quarter cases do not
-make arbitrary displayed Actual decimals valid POL-R inputs.
-
-Also mandatory are [cases C–G](EXPORT_EVIDENCE_CONTRACT.md#mandatory-allocation-examples):
-exact weekly distribution, upward adjustment, no carryover, small positive work
-with an earlier-date tie and a zero suggestion, and exact-quarter work.
-Stage 3A implements these examples and partial-Custom/full-week behavior;
-passing implementation evidence does not establish external-policy qualification.
-
-## SELECTED — Preview and saved exports
-
-One modal Timesheet/POL-R workflow replaces old export workflows. Main/mini input
-is blocked while timers continue. Fresh preview defaults to This week/All tasks;
-Last week and Custom, typed dates/pickers, All or explicit task UUIDs are supported.
-Do not expand descendants. Duplicate names remain separate; archived-task work
-stays reportable. Parent selection means only its direct task/day Actual; new
-schema-3 frozen task is_deleted labels are false, with no recoverable-Delete tier.
-Calendar selection only edits drafts;
-cancellation preserves them and invalid drafts remain correctable. Resolve relative periods at explicit
-Preview/Refresh, not by silently advancing an old preview.
-
-Preview prepares a detached frozen candidate with one cutoff and complete text,
-without evidence/file writes. Changed dates/scope/checks invalidate Save readiness
-immediately, even after changing back. Keep old report labeled as previous.
-Preparation/render failure invalidates readiness and reports the original error;
-valid empty All differs from invalid empty Selected. Show applied dates/cutoff,
-not unapplied drafts. Show exact/displayed Actual and suggested POL-R separately.
-The candidate retains full-week allocation context, computed quarter counts and
-reviewed scope. Save publishes exactly that candidate, without recalculation.
-Later work, rename or regrouping does not change it.
-
-Commit the immutable snapshot in SQLite before file publication. Unknown commit
-outcome cannot authorize publication; reconcile the same request/identity against
-the database. File failure retries the saved report independently of any retained
-widget; no global one-pending-operation slot or widget lifetime is authority.
-Default Save/Retry protects existing files, reuses fully verified matching copies
-and creates absent files exclusively. A stable regular-file content conflict
-allows a separate default-cancel confirmation naming the destination; Overwrite
-permission is for that call only. Reject unsuitable/unreadable/unstable objects
-and protect the dataset tree/aliases from all publication, including absent paths.
-Preserve exact frozen
-bytes/digest, staging-only cleanup and truthful post-publication diagnostics;
-see [file rules](EXPORT_EVIDENCE_CONTRACT.md#materialization-and-byte-verification).
-
-Export never stops/resets timers, confirms POL-R, submits legacy markers,
-deletes tasks or dismisses reminders. Saving and later explicit confirmation are
-distinct. Save Timesheet, Retry Save, Save Copy As, Check File Status and Saved
-Reports are explicit actions. The first selected path can populate absent original
-preferred-destination metadata before registration without changing reviewed values
-or text; later paths never rewrite it. Recovery loads frozen context/text by UUID,
-including after restart, without current accounting or a later renderer. READY is
-an observation, never persisted proof or permanent success status.
-
-Before registration, Close discards the preview; after verified completion it permits
-a fresh opening. Executing Save/dialogs block Close/exit/reentrant actions. Unverified
-registration retains the exact Request and prohibits ordinary abandonment; explicit
-reconciliation or the existing default-cancel exceptional application exit remain.
-Registered but unfinished file Save requires default-No Close confirmation, then
-disposes the window and retains only an in-memory UUID/current-path handoff. Fresh
-openings remain This week/All and require Preview; use Saved Reports explicitly to
-recover. Exit warns before losing volatile context without implying evidence/files
-are removed. No hidden retained window, persisted recovery state or automatic retry
-is selected. Overwrite permission is one-call only, never a frozen field.
-
-### Selected Timesheet navigation and review ownership
-
-One TimesheetWindow has persistent **Timesheet**, **Reconciliation**, **Saved
-Reports** and **Confirmation History** sections, one exclusive growing content
-region and a permanent Close footer. Default geometry remains 980x740 and minimum
-800x620. Tables, adjacent scrollbars, actions and status must remain usable there.
-Normal fresh opening remains This week/All tasks with explicit Preview; the reminder
-retains its distinct direct Reconciliation entry. Navigation may use existing
-worker-owned read snapshots but creates no mutation Request or independent writer.
-
-Reconciliation and independent Manual confirmation require no Preview or saved
-report. Saved Reports loads exact SQLite evidence, including after restart or when
-its external copy is missing, into an exclusive registered-report Timesheet view.
-It does not recalculate, register, resave or assume file availability. Navigating
-between sections retains an existing legitimate save attempt. Replacement Load,
-New Preview and Close retain their existing abandonment protections.
-
-Source/manual reviews have explicit Defer/Cancel or context-specific Return.
-Conflicting primary navigation and direct calls refuse while a review is active.
-Close, window-manager close and Escape cannot discard an editable uncommitted
-review; Cancel/Defer is required. No additional navigation confirmation dialog is
-introduced. Known successful confirmation stays visible with its batch UUID until
-Return, including after follow-up read/render failure. Repeated Confirm cannot
-create another batch; a subsequent confirmation requires explicit Refresh review.
-Pending/unverified requests retain their stricter exact-request protections.
-
-Manual Cancel/Return and read-only current-batch inspection entered from
-Reconciliation return to Reconciliation. Preserve its last applied scope and the
-operator's separate unapplied drafts. Refresh the applied scope, never implicitly
-apply those drafts, and mark current only after validated successful rendering.
-Restore selection by task UUID/date; explicitly clear an absent row. Timesheet
-reviews return to Timesheet. Primary History entry clears obsolete temporary
-return context. No navigation state is persisted or restored on restart.
-
-## SELECTED — Explicit POL-R confirmation workflow
-
-Offer whole applicable saved-export, checked task/day, defer/later review and
-manual absolute confirmation without an export. Source-linked proposals use the
-report's **frozen suggested quarters**, never current recalculated Actual or its
-old daily decimal representation. Manual amounts may differ from suggestions,
-but must be valid quarters; show resulting Daily Delta and suggested-entry gap.
-
-Default-select every in-scope frozen suggestion greater than zero, **including
-positive values already equal to current confirmation**. Never default-select
-zero, even on a worked date. Explicit selection means exactly checked source
-cells, including zero if selected. Empty selection is not All; unchecked cells
-retain their previous state. Ordinary bulk confirmation requires neither retyping
-all cells nor a free-text reason per cell.
-
-## SELECTED — Confirmation evidence and batch integrity
-
-Retain complete reviewed in-scope frozen source coverage, including unchecked
-cells: exact source identity/scope/association, canonical task UUID/date, historical
-name and suggested quarter count. Reject partial, substituted, tampered or
-reordered-as-new-evidence proposals. Selection/acknowledgement keys must be genuine
-canonical source keys. Unrelated newer unchecked confirmations need not invalidate
-checked selection when source coverage remains exact.
-
-One transaction freshly validates all selected priors, amounts and stale conflict
-classifications and commits the whole immutable batch/current references/receipt.
-A source older than a newer differing confirmation requires cell-specific
-acknowledgement **exactly** for selected conflicts. Reject missing, extra, duplicate,
-unselected, nonconflicting, blanket or changed-prior acknowledgements. Bind consent
-to task/day, frozen amount and reviewed prior identity. Even intervening equal-value
-confirmation changes identity and rejects stale review. Manual confirmation has
-no source-export acknowledgement, but still checks current prior. Do not refresh
-reviewed priors silently or apply a valid subset.
-
-Exact committed request reuse returns its prior result before stale checks,
-without reapplying old values over newer batches; different content under one ID
-fails closed. Deferral writes nothing. No confirmation changes Actual/timers or
-exports. The [technical contract](EXPORT_EVIDENCE_CONTRACT.md#reviewed-source-integrity-and-default-selection)
-owns the precise selection, coverage and acknowledgement rules; JSONL mechanics
-remain superseded, not prerequisites.
-
-## SELECTED — Corrections and stale exports
-
-Correcting/deleting Actual remains permitted after export/confirmation. Recalculate
-current suggestions from effective exact work, including changed allocations on
-other dates of that same task/week. Retain original frozen weekly context,
-suggestions, saved bytes, confirmations and identities. Show new mismatches and
-require explicit review/subsequent absolute confirmation; never silently revise
-or redistribute confirmed POL-R values, create synthetic work or carry to a new week.
-Older sources may be confirmed only using frozen suggestions with complete source,
-reviewed-prior and stale-acknowledgement safeguards. Do not reinterpret historical
-Actual decimals as new valid quarter-hour evidence.
-
-## SELECTED — Incomplete current workdays
-
-Preview/export/confirmation need no formal day closure. Distinguish running
-observation from a recorded stop. Later work can change Actual, current weekly
-suggestions and gaps, not previous confirmation or committed exports; no automatic
-resubmission, Reset or timer interruption occurs.
-
-## SELECTED — Low-friction primary workflow
-
-Show cells needing attention, copyable absolute quarter-hour suggestions, signed
-Daily Delta, suggested-entry gaps, explained weekly adjustment and visible Unknown.
-Support bulk/checked confirmation, defer/review and
-manual correction without duplicating a second manual timesheet. Recording and
-reconciliation are both core; neither allocations nor an unavailable external
-system may block Actual.
-
-## SELECTED — Reconciliation reminders
-
-Check the previous week every local day the application is used, including
-opening after absence and date rollover while running. Check current week on
-Friday and Monday. Use task/day allocation agreement and review/confirmation
-coverage, not a weekly net that hides opposing mismatches or unexplained Unknown.
-Daily Actual-minus-Confirmed rounding differences alone do not establish an
-allocation mismatch. Banner actions are Open Timesheet and explicit Dismiss for today.
-Opening or saving does not dismiss or confirm. Dismiss for today persists one
-canonical nullable dataset-local date, suppressing both categories across same-day
-restart even after later work. A new date expires suppression by comparison, with
-no cleanup write or replay of absent-day notifications. Friday/Monday are civil
-weekdays independent of the configured reporting-week start. Startup, date rollover,
-relevant committed work/confirmation/week changes and explicit Recheck trigger
-coalesced worker reads; numeric ticks do not query reconciliation each second.
-Evaluation failure is unavailable, never proof of a clean week. Required reminders
-and daily/weekly reconciliation are complete before pilot; monthly prompts belong
-to retained legacy source, not the shipped schedule.
-
-## SELECTED — Optional weekly allocations; implementation DEFERRED
-
-Stage 6 optional expansion, after reserved decisions: user-supplied informational
-allocations with Unknown distinct from zero, task-specific weeks, recurring
-defaults, overrides and manual correction. Allocation minus confirmed and projected
-remaining after Actual are separate estimates, **not reconciliation Delta**.
-Limits may warn but never block recording. Allocation controls, recurrence/override
-rules and week-change interactions require adjudication. They are not core pilot
-gates; no automatic external allocation verification is established.
-
-## Scope inventory — core, optional and unresolved
-
-| Capability | Placement / boundary |
-| --- | --- |
-| Tasks, real-project ownership, Start/Stop/Switch, main/mini | Core; schema-5 mandatory ownership is selected, with isolated SQL foundation only. Ordinary schema 4 retains optional grouping pending integration; not a complete MVP/pilot. |
-| Manual timed/dated work, corrections/deletions/revision details, History, week setting | Core Stage 2 with all required readers. |
-| Frozen exports/full-week quarter-hour suggestions, saved-report recovery, absolute quarter confirmations, daily/weekly reconciliation/reminders | Core Stage 3; mandatory before Stage 5 pilot, with external reporting-policy validation. |
-| Tags and other conveniences | Inventory retained; separately prioritize in Stage 6, no automatic promotion into foundation. Tags do not create exclusive or additional Actual. |
-| Delivered task hierarchy, branch lifecycle, tree main/mini and nested templates under flat projects | A presentation, B1 foundation and B2 movement implemented. C1 Archive/Unarchive and Archived Items delivered for review; C2 unused-only Delete delivered for review; D full nested active task UI delivered for review; E templates delivered for review; nothing inherited from JSONL. |
-| Unlimited organizational project nesting | Fresh schema 4 selected; A supplies isolated schema/forest/history and B candidate root/child creation and project movement services for review. Ordinary E runtime now uses fresh v4; C1 lifecycle/inherited eligibility/derived accounting is implemented for review. C2 backend is accepted for continued development; D candidate graphical source is implemented for independent review with actual connected Tk evidence separately required. E activation is implemented for independent review; F integrated/native acceptance remains outstanding. No migration/import. |
-| Double-click task activation and compact Mini | Implemented for independent review through existing Start/Stop/atomic Switch and shared report paths; native Windows UI acceptance remains outstanding. |
-| Allocations / external POL-R integration | Optional Stage 6 only after their decisions/explicit approval. |
-
-## CURRENT IMPLEMENTATION — Inspected staged and production status
-
-Package B1's fresh schema-2 foundation is accepted for functional development.
-Creation receipts own each project/task; retained administrative version effects
-are independently checked, with protected receipts retained. Service child creation
-supports three levels, matching project/Unassigned membership and reviewed destination
-versions. A running leaf cannot become a parent; only effectively active leaves
-accept new work. Parent direct history remains editable/deletable by revision.
-Derived Individual/Cumulative/project amounts never add extra Actual to reporting.
-B2 adds one atomic move receipt for the complete reviewed subtree, with exact
-retry/no-op behavior and changed-row-only versions/timestamps. Direct work and
-frozen evidence remain unchanged; current grouping/cumulative values follow the
-new structure. C1 adds selected-only Archive/Unarchive with exact accepted UTC
-current timestamps, inherited visibility and complete chronological receipt checks.
-C2 adds irreversible unused-only Delete and finite administrative retirement with
-strict survivor preservation and explicit no-retry uncertainty. D connects the full
-active hierarchy and reviewed movement UI. E adds templates on schema 3; no migration is delivered.
-Historical schema-3 projects remain flat: no parent_project_id exists there.
-Ordinary E now selects fresh schema 4 and the nested presentation. Package A adds isolated schema-4 SQL safeguards,
-iterative project-forest observations and native-v4 administrative reconstruction.
-Package B implements candidate root/child creation and complete-subtree project
-Move / Reparent over caller-owned transactions. Exact reviewed requests, no-op
-without receipt, independent history and original-request reconciliation are
-exercised by a real disposable-SQLite test adapter; it is not a second worker or
-GUI path. C1 adds selected-only Archive/Unarchive across arbitrary project
-ancestry, independent descendant flags, complete active-task containment and
-independent lifecycle receipt reconstruction. Derived project Direct uses task
-Individual once; Cumulative folds descendant project contributions once, without
-changing task/application values, cutoff or frozen evidence. C2 supplies complete
-candidate work/revision/active/frozen-export/POL-R/configuration/template and
-surviving-history validation. Its caller-owned task/template services enforce
-complete project ancestry; nested unused-only Delete requires exact volatile
-review/typed DELETE, finite receipt retirement and complete survivor proof.
-Uncertain Delete never retries. Protected evidence never retires. D supplies the
-same ChronicleApp's candidate Main/Archived Items, explicit project controls,
-movement and task/template destination reviews, complete Delete presentation and
-live path/UUID labels. It consumes C2 snapshots/reports and never writes SQLite
-from Tk. Its internal presentation profile requires matching verified schema-4
-readiness. E ordinary StartupWindow explicitly selects schema4 and requires
-semantic_verified plus ordinary_startup_permitted on actual v4 ready/snapshots.
-The separate candidate bridge remains test-only. Connected Tk evidence requires a display;
-source/model tests do not imply that gate passed. E startup/backup/restore is implemented
-for independent review; F integrated/native acceptance remains outstanding.
-The main Treeview now dispatches eligible clicked leaf UUIDs
-to existing Start/Stop/atomic Switch. Compact Mini projects the same Individual
-Today report and existing typed diagnostics, with read-only Show Main during
-unresolved work subject to modal ownership. These usability changes are implemented
-for independent review; native Windows layout/input acceptance is not established.
-
-Package A presentation remains implemented: empty project groups,
-typed task/group rows, session-local A-Z/period choice, green/red text states,
-in-place row/label updates preserving selection/expansion/scroll, project-scoped
-New Task (superseded by D immediate-child selection) and selected-project rename. Mini adds Show Main, Off-by-default session-
-local Keep Mini Open and guarded topmost. Exact worker observations continue each
-second; only changed visible values repaint. C1 adds the modeless full-depth
-Archived Items tree, four sibling/top-level sorts, shared period values, explicit
-Unarchive and direct History, with existing modal/pending guards. D implements full
-nested active management, ancestor running states, context New Task and reviewed
-Move / Reparent; E adds reusable templates for independent review. C2 adds Delete in main and
-Archived Items through complete preview and exact typed confirmation. Native Windows interface follow-up
-remains required.
-
-The sole shipped source route uses `src/chronicle`: explicit fresh SQLite
-paths, independent task/project controls, Start/Stop/atomic Switch, immutable timed
-revisions, audited active-start recovery, exact receipts, worker-owned I/O and
-coordinated main/mini Actual. It does not discover or modify the former default
-JSONL directory. The retained `task_timer` package and its tests are unshipped
-historical/semantic evidence, not a parallel runtime or compatibility guarantee.
-
-Stage 1A is independently accepted. Stage 1B portable interruption/ownership and
-cleanup reliability is independently accepted at `1e84a043c1c055aced9b8c4b000ef766bbf6d178`.
-Stage 1C selects built-in sqlite3, DELETE/EXTRA/foreign keys, SQLite 3.37.0+ STRICT
-and direct Python execution with pinned pip-installable tzdata. No production
-SQLite databases exist; development datasets are disposable without automatic
-conversion/deletion. Executable-build and WAL-reset version requirements are
-superseded. Stage 1 functionality is independently accepted; native
-Windows source evidence remains required before deployment/pilot, not as a
-permanent Stage 2 development blocker.
-Stage 2A delivers connected Add timed/date-only work and week-start controls,
-immutable closed/date-only correction/deletion services, detached history/revision
-reads and mixed main/mini/daily Actual. All active readers include both exposed
-work types. Stage 2A is independently accepted at
-`7bc1bce2894fd5d4ccddbcedfd7ae0f4e7c1323f`. Stage 2B now connects the main Work History
-command, modal browser, inline whole-entry correction/deletion and immutable details.
-The later Stage 3A approval reports Stage 2B/complete Stage 2 recording independently
-accepted at `adc09ba0935e8718c4ad2101057af9c6022074cc`.
-Stage 3A connects Timesheet / POL-R from the main window: This week/Last week/Custom,
-All/explicit UUIDs including deleted tasks, draft-only calendars and explicit
-Preview/Refresh. It retains immutable full-week basis, in-scope cells, exact text
-and digest without writes during Preview. Stage 3A is independently accepted at
-`d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Stage 3B now connects verified protected
-Save/retry/copy, default-No one-call overwrite, fresh status and Saved Reports.
-Exact committed registration precedes file publication; unknown
-commit cannot publish. Recovery reads immutable evidence independently of widgets.
-Stage 3B is independently accepted at `76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`.
-Stage 3C connects inline source/manual confirmation and read-only immutable history
-through the existing owner/worker. Positive frozen defaults include equal values;
-zero is explicit, unchecked cells stay unchanged, complete source coverage and fresh
-selected priors are validated atomically with exact individual stale consent.
-Current references join immutable absolute quarter cells; Unknown has no reference.
-Immediate task/day feedback is delivered, with optional unavailable calculation
-context shown truthfully. Source/manual drafts and exact uncertain Requests remain
-protected; committed confirmation cannot be undone by display failure.
-The later explicit Stage 3D GO instruction independently accepts Stage 3C for
-functional development. Stage 3D supplies read-only daily classifications
-NOT_APPLICABLE/UNKNOWN/MATCH/MISMATCH/UNAVAILABLE, cell-based coverage, full-task/week
-and cross-task summaries, partial-scope explanation, current/frozen comparison and
-copyable absolute suggestions in the existing modal Timesheet. Work corrections
-change current suggestions, never immutable reports or confirmations. The main
-banner uses the selected local-calendar schedule and explicit durable Dismiss for
-today. Unverified dismissal retains the exact Request; queue acceptance is not
-suppression. The later explicit Stage 4A GO instruction records independent Stage 3
-functional acceptance. Stage 4A connects consistent SQLite backup, full independent
-validation and cold restore to new directories, independently accepted by the later
-Stage 4B GO; the later Stage 4C GO independently accepts Stage 4B. Stage 4B adds
-portable transaction/file/backup interruption and queued
-shutdown evidence, retains failed-probe cleanup ownership and guards authoritative
-outcome delivery against UI faults and mismatched replies. It does not complete
-Stage 4.
-Retained JSONL services do not satisfy these gates. Earlier Phase 2 acceptance
-remains bounded historical evidence. No core/pilot or native qualification follows.
-
-## SELECTED — Consistent backup and cold restore
-
-Backup Chronicle explicitly captures committed SQLite facts through the existing
-worker and supported backup API, without changing work or stopping timers. It
-publishes one independently validated ordinary SQLite image to an absent external
-file; all existing objects and active-dataset paths/aliases are protected. No
-backup overwrite, schedule, registry or persisted operation status is selected.
-A failed/uncertain publication is not success or proof of absence; final output is
-never deleted as rollback. Only proven-owned staging may be removed.
-
-Explicit backup validation is read-only. Cold restore first validates complete
-schema, work/audit/receipt, frozen export and confirmation evidence, then installs
-through private staging/exclusive publication into a previously nonexistent local
-dataset directory. Existing directories, even empty, refuse. Restore exits before
-application construction; a later normal launch creates fresh Tk/app/worker/read
-sessions. No live connection swap or in-place overwrite is allowed.
-
-The original remains untouched. Restored dataset UUID, timezone/week/dismissal,
-active timer and immutable identities/bytes remain unchanged. Original and clone
-must not be operated as competing live authorities for the same work. External
-report copies are not bundled or written on restore; existing recovery can publish
-them explicitly. No restoration confirms POL-R, reconciles work or dismisses a
-reminder. Stage 4A is independently accepted under the later Stage 4B GO; Stage 4B
-portable operational reliability is independently accepted under the later Stage 4C
-GO. Native qualification and the remaining Stage 4 gate precede complete pilot.
-
-## SELECTED — Schema compatibility and future upgrade safety
-
-Current ordinary supported fresh schema is version 4 with application ID
-0x4348524E; versions 1/2/3 are incompatible and preserved. The selected schema-5
-target has only an isolated structural foundation and is not admitted ordinarily.
-A healthy complete current dataset permits ordinary work; older/newer markers,
-same-version differing schema, foreign identity, unsupported profile and damaged or
-unavailable inspection refuse without conversion, recreation or automatic repair.
-A lower marker does not establish an authentic older Chronicle schema.
-
-`--inspect-dataset DATA_DIR` is an explicit cold read-only diagnostic, not an upgrade
-command. Close other sessions first; inspection creates no lock, Tk root, worker,
-backup, receipt or persisted status. It returns detached compatibility diagnostics,
-with trustworthy observations only. Supported current results require complete
-independent integrity, schema, metadata, audit, work, frozen export, confirmation
-and receipt validation plus successful cleanup and final source-stability checks.
-Detected changes, unsafe paths or outstanding journals/sidecars make inspection
-unavailable rather than authorizing recovery. Existing files are never removed or
-repaired to force acceptance. Backup/restore retain their complete current-schema
-validation and protected destination contracts.
-
-The earlier A–F task-hierarchy approval selected fresh creation rather than a version-1
-transformation. No migration/backward compatibility obligation belongs to that
-plan; old files remain protected and incompatible data refuses. The current
-runtime supports only its exact version-4 schema; all version-1/2/3 datasets and
-backups refuse without conversion, replacement or clearing remembered selection.
-No data transition belongs to the project-nesting implementation. Its earlier
-explicit user decision selected a fresh schema-4 database, retaining application
-ID 0x4348524E. No migration, import, schema-3 reader for conversion, transformed
-copy or activation marker is required or implemented. Current ordinary admission
-and native hot-journal recovery remained schema 3 during A/B/C1/C2. The candidate is not a
-second production authority. Package E now admits clean v4, refuses clean v3
-before writable access, recovers supported v4 hot journals, and preserves incompatible
-v3 originals even when journals exist. A raw uncommitted marker cannot prove committed
-identity: E requires complete private paired-copy SQLite recovery/verification, cleanup
-and original stability under the existing lock before native original recovery.
-No recovered copy replaces the original; no migration or fallback exists. Stage 4 remains
-IN PROGRESS; no pilot is authorized.
-
-## OPEN — Reserved user/ChatGPT decisions
-
-| Decision | First affected gate |
-| --- | --- |
-| Dataset-timezone changes and historical date attribution under changes | Stage 1 dataset configuration / Stage 2 accounting, before implementation. Explicit fixed dataset zone is required; change policy is not guessed. |
-| Exact release paths, installation/cutover and retired-data cleanup | Before affected deployment/Stage 5 fresh pilot setup; startup deletion is unauthorized. |
-| Allocation controls/recurrence/overrides/week-change effects | Before optional Stage 6 allocation work. |
-
-These reservations do not reopen Tkinter/SQLite or defer core POL-R. Resolve only
-the affected work; they do not block this authority reconciliation.
-
-## UNVERIFIED EXTERNAL BEHAVIOR — POL-R backend
-
-The 0.25-hour daily input restriction is accepted user-provided context and the
-user approved Chronicle's calculation. Employer/customer authorization for weekly
-redistribution and external zero-entry versus omitted/no-entry treatment on a
-worked zero-suggestion day are not independently verified. Validate them before
-affected Stage 3 connected official reporting and Stage 5 pilot; do not claim
-external compliance or reopen the approved mathematical policy. Unconfirmed zero
-suggestions remain unresolved pending that external boundary.
-
-External allotment administration/enforcement and other direct backend behavior
-are not independently established. User-entered confirmations/allocations are not
-external verification. Future external integration needs explicit approval.
-
-## DEFERRED — Approved implementation work
-
-Stage 0's authority set is independently accepted at
-`a24aca706740b7e02cc1f856baa194042785bbcb`. The authorized
-`feature/chronicle-rewrite` now contains the approved Stage 1A connected timer
-foundation, independently accepted at `897aec2c0d57b6d4aa5c0c5109f55270a4bb1968`.
-Stage 1B portable reliability and Stage 1 functionality are accepted after Stage 1C
-source/runtime simplification; native Windows source
-qualification is separate and remains required before real deployment/pilot.
-Stage 2 recording and Stage 3A/3B/3C are independently accepted for functional
-development. Stage 3 is functionally accepted under the later Stage 4A approval;
-remaining Stage 4 stabilization,
-Stage 5 pilot and native qualification are not delivered. Open policies stay
-reserved before their affected work.
+# Chronicle current requirements
+
+## Authority and scope
+
+The latest user/ChatGPT single-schema replacement instruction supersedes the
+multi-version development and compatibility workstreams. Chronicle has one current
+schema-5 application. Earlier implementations and decisions remain available in
+Git history; they are not supported runtime or test obligations. No migration,
+upgrade, import, compatibility mode, legacy application, backup/restore feature or
+historical qualification infrastructure is selected. No automatic weekly database
+creation or automatic deletion is selected. Personal databases are not test data.
+
+## Projects, tasks and creation
+
+Every task has one valid real-project UUID. No virtual Unassigned group, default
+project or implicit project assignment exists. Projects have unlimited nesting and
+may contain both direct tasks and child projects. Tasks have at most three levels;
+project depth consumes no task level. Project containers never own recorded time.
+Real empty projects remain visible. Duplicate names remain distinct UUID identities.
+
+One owned New Task dialog reviews editable name, real project tree, complete path,
+UUID and root/child context. A selected project prefills its identity but permits
+changing a root-task destination. With no selection, the project is initially empty.
+A selected eligible task creates its immediate child and inherits the real project
+read-only. A running, effectively archived or level-three parent refuses. There is
+no first/recent/default project choice. If no eligible project exists, provide an
+explicit Create Project route that closes this dialog first; never create/retry a
+task automatically. Cancel/X/Escape creates no Request or mutation. Submission
+freezes current versions and ancestry; the service revalidates them atomically.
+
+## Hierarchy and lifecycle
+
+Rename preserves UUID and work. Task Move reviews source, destination and the full
+branch, enforces task depth, archive and running-parent restrictions, and installs
+one atomic move between real projects or eligible parent tasks. It cannot unassign.
+Project Move reviews the full project subtree; its organizational Root means nullable
+parent_project_id, never a projectless task. No-op movement writes no receipt.
+
+Archive/Unarchive changes only the selected explicit flag/timestamp. Descendants
+inherit effective archive state; independent child flags survive ancestor Unarchive.
+A running descendant blocks Archive. Archived Items preserves complete hierarchy
+context with read-only ancestors and existing sorting. No soft Delete/Trash exists.
+Unused-only Delete requires exact reviewed scope, version and typed DELETE. Protected
+work, exports, confirmations and dependent retained evidence block it. Whole-Apply
+dependencies cannot partially retire. Delete has no receipt and an uncertain attempted
+commit never retries or infers history from current absence. Templates are independent
+blueprints with at most two task levels; Apply must fit the three-level task limit,
+review a real destination, create fresh UUIDs and copy no work. Definition changes
+never rewrite applied tasks or frozen Apply evidence.
+
+## Recording and timer operation
+
+New recording is permitted only on eligible leaf tasks. One active timer exists.
+Start accepts one UTC action instant; Stop must be later than effective start.
+Switch closes the current timer and starts the selected different leaf atomically.
+Corrections retain active-start evidence and immutable work revisions. A backwards
+observation is a visible clock error, not an automatic timer adjustment. No implicit
+Stop/Switch, synthetic work or clock manipulation occurs. Date-only work has a civil
+date and positive amount without invented endpoints. Closed timed work uses genuine
+UTC endpoints, with explicit DST occurrence review. History shows one task's direct
+work, full chronological ordering, exact UUID/revision identity, local allocation
+and date-only entries without fabricated instants. Mini uses the Main owner.
+
+## Accounting and week configuration
+
+Retain integer-microsecond Actual and dataset-local calendar attribution. Task
+Individual is direct work; Task Cumulative adds descendants once. Project Direct
+sums direct task contributions assigned there; Project Cumulative includes descendant
+projects without duplication. Application Actual sums task Individual once per task.
+Project totals are never additional work. Preserve work through movement and archive.
+Week start is explicit persisted configuration, Sunday by default, Monday=0 through
+Sunday=6, with reviewed-prior mutation. It never rewrites work or frozen reports.
+
+## Timesheet navigation and report evidence
+
+One TimesheetWindow has four primary sections: Timesheet, Reconciliation, Saved
+Reports and Confirmation History. One exclusive growing content host and permanent
+Close footer use 980x740 default and 800x620 minimum geometry. Tables grow, and
+adjacent vertical/horizontal scrollbars keep UUIDs, dates, actions and status reachable.
+Fresh opening shows This week/All tasks with explicit Preview. Reconciliation and
+Manual confirmation need no Preview or saved report. Navigation performs worker-owned
+read snapshots without mutation Requests or a second writer.
+
+A frozen report is distinct from a fresh Preview. Save registers exact dates,
+cutoff, task/project UUID/name snapshots, full-week basis, values and UTF-8 bytes
+before external file publication. Saved Reports loads that immutable registered
+identity exclusively into Timesheet without recalculation, registration or another
+Save, including after restart and when its external copy is absent. Existing save
+attempts are not detached by primary navigation. Replacing a report, New Preview
+and Close retain explicit unfinished/unverified attempt safeguards. Protected file
+publication, conflicts, explicit overwrite, retry and fresh status remain separate
+from evidence registration. See [the technical contract](EXPORT_EVIDENCE_CONTRACT.md).
+
+## POL-R allocation and absolute confirmation
+
+Actual, Exported and Confirmed are distinct facts. Exact Actual is not quarter-rounded.
+For every task/full week independently, ceil exact work to a quarter-hour target,
+then distribute by largest exact daily remainder with earlier-date ties. Zero-work
+days receive nothing. Partial views retain the full seven-day allocation basis.
+No cross-task/week transfer or accounting arithmetic change is selected. The sole
+normative algorithm and independent examples are in the
+[allocation contract](EXPORT_EVIDENCE_CONTRACT.md#full-week-quarter-hour-allocation).
+
+Source confirmation uses only a registered frozen source. Positive frozen suggestions
+are checked by default, including already-equal values; zeros are unchecked but may
+be explicitly selected. Empty selection is not All. Unchecked cells retain prior
+values. Selected stale conflicts need exact cell-specific acknowledgements; changed
+priors require fresh review. One authoritative transaction commits the whole batch.
+Manual confirmation reviews the current prior and accepts a nonnegative absolute
+quarter-hour total, replacing the total rather than adding a delta. Unknown is not
+confirmed zero. No automatic confirmation or external POL-R submission exists.
+
+Daily Delta is Actual minus Confirmed; suggested-entry gap is Suggested minus
+Confirmed. Opposing daily mismatches cannot net into complete coverage. Current
+correction/reconciliation never rewrites frozen evidence. Successful confirmation
+keeps its batch UUID and known committed outcome visible until explicit Return,
+even if a follow-up read/render fails. A second batch requires renewed explicit
+review. Confirmation History shows immutable batches, source/Manual, audit UTC,
+task/date, absolute amount, prior identity/amount and stale acknowledgements.
+
+## Review ownership and return
+
+Source/manual reviews are temporary subviews in the same modal. Disable conflicting
+navigation and reject direct conflicting calls. Close/X/Escape cannot silently
+abandon editable reviews; Cancel/Defer is explicit. Pending/unverified operations
+retain exact Request ownership. Retry/Reconcile reuses the original Request.
+Return from Reconciliation refreshes its last applied period/task scope, preserves
+unapplied drafts, restores task UUID/date selection semantically and clears a row
+that no longer exists. Draft changes are never silently applied. Return from
+Timesheet goes to Timesheet. A late read cannot overwrite another view or identity.
+Failed reads/rendering must not manufacture current data or erase a known commit.
+
+## Reminders
+
+Read previous-week reconciliation each local day used, and current-week coverage
+on Friday/Monday. Opening/Save does not dismiss or confirm. Explicit Dismiss for
+today persists the local date across restart, without confirmation or cleanup writes.
+A new date expires suppression by comparison. Numeric timer ticks do not query
+reconciliation every second. Read failure is unavailable, never proof of coverage.
+
+## Startup, persistence and limits
+
+One StartupWindow, Tk root, ChronicleApp, serialized DatabaseWorker, worker-owned
+SQLiteStore and transaction authority. Fresh creation installs exact schema 5 with
+integrity/FK constraints. Complete current semantic verification precedes ready.
+One dataset owner excludes a second writer. Existing unsupported files are not
+migrated or automatically replaced. Folder/explicit timezone selection and remembered
+startup are shared by zero-argument and explicit source launch. No public schema
+selector or old-data recovery interface exists. Use standard SQLite transactions.
+
+## Reserved decisions
+
+Dataset-timezone changes, external employer/customer policy, release/cutover and
+pilot deployment remain with the user/ChatGPT. No native Windows qualification,
+merge, release or pilot permission follows from implementation or portable tests.
+Stage 4 remains IN PROGRESS; Stage 5 remains NOT STARTED.

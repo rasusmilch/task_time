@@ -13,5 +13,5 @@ dist/
 
 # Local archives and package metadata
 *.zip
-src/task_timer.egg-info/*
+*.egg-info/
 *.diff

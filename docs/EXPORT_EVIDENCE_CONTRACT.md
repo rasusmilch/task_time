@@ -2,38 +2,13 @@
 
 ## Authority and availability
 
-This owner specifies selected frozen report, decimal, publication/verification,
-absolute confirmation and reconciliation semantics, including the selected
-weekly quarter-hour submission policy. The full allocation algorithm lives only
-in this owner; other documents reference it. [ARCHITECTURE.md](ARCHITECTURE.md)
-owns replacement SQLite schema/transaction/thread boundaries;
-[TIMESHEET_REQUIREMENTS.md](TIMESHEET_REQUIREMENTS.md) owns product behavior;
-[ROADMAP.md](ROADMAP.md) sequences core delivery before pilot. Approval is not
-implementation or platform qualification.
-
-Stage 3A implements exact weekly allocation, detached frozen candidates and the
-connected read-only modal Timesheet Preview. Four immutable SQLite tables retain
-master context, frozen tasks, full-week basis and scoped cells through the existing
-atomic registration/receipt service. Detached list/read and restart validation
-check original committed request content and exact bytes/digest without current
-Actual or a later renderer. Stage 3A is independently accepted at
-`d1e775c33982f109337ec237e3c78e8dc7b56f2e`. Preview itself writes nothing. Stage 3B
-connects protected materialization, fresh status, one-call overwrite consent and
-Saved Reports recovery, independently accepted at
-`76df4d5bc3b5d0796a269b8c9d23d1d3ac66ba57`. Stage 3C explicit source/manual absolute confirmation is independently accepted for
-functional development under the later Stage 3D GO instruction. Stage 3D connects
-derived reconciliation, weekly summaries and reminders. The later Stage 4A GO
-records independent Stage 3 functional acceptance; native and external reporting
-policy qualification remain separate.
-
-**SQLite supersedes the earlier mandatory JSONL envelope, segment manifest,
-physical replay order, fsync/synchronize-journal and Python projection mechanisms.**
-There is one replacement authority, not SQLite alongside a required journal.
-Retained, unshipped source still uses those JSONL mechanisms, documented in
-[Design Notes](../DESIGN_NOTES.md#immutable-export-snapshot-registration-staged).
-They and the accepted old Phase 2 gate are legacy implementation/historical
-evidence only, not replacement instructions. Semantic guarantees below remain
-binding; old API/event field layouts are not backward-compatibility requirements.
+This is the current schema-5 contract for immutable registered reports, exact
+precision, full-week quarter allocation, text publication and absolute confirmation.
+[Requirements](TIMESHEET_REQUIREMENTS.md) own product behavior and
+[Architecture](ARCHITECTURE.md) owns the single SQLite/worker/transaction boundary.
+Implementation and passing portable tests do not establish independent or native
+platform acceptance. The arithmetic and evidence rules below remain unchanged by
+the single-schema cleanup.
 
 ## One authoritative export snapshot
 
@@ -53,12 +28,7 @@ a parent UUID does not expand descendants. A former leaf's retained direct work
 stays reportable; move/archive/unarchive never rewrites frozen labels,
 basis/text/digest, confirmations or prior receipts. Current project membership
 continues grouping current reports; registered reports retain original context.
-B1/B2/C1 implement schema-2 hierarchy/movement/archive foundations; C2 adds
-unused-only Delete without DDL changes or old-data conversion. Existing frozen
-evidence semantics and the POL-R formula are unchanged.
-
-E's fresh schema 3 adds structure-only templates without changing this formula or
-frozen representation. Apply creates fresh task identities under one self-contained
+Apply creates fresh task identities under one self-contained
 administrative receipt. Definition Edit/Archive/Delete never changes applied work,
 exports or confirmations. Definition Delete retains Apply/Duplicate bytes. Task/
 project Delete may retire an Apply receipt only with its entire unused created set;
@@ -74,11 +44,11 @@ no external report file does not establish unused status. Never rewrite referenc
 to manufacture eligibility. Use Archive for entities with protected history.
 
 Export/confirmation receipts, cells/text/digests and prior/current chains remain
-immutable and are never administrative deletion candidates. C2 implements the
+immutable and are never administrative deletion candidates. The current implementation applies the
 owner's narrow exception for proven exclusively owned administrative requests only, without
 historical retry recovery, identity tombstones or a deletion ledger. No Delete
 receipt is stored; uncertain current absence cannot prove historical success.
-It grants no exception to this reporting contract or surviving exact receipts. Existing external files/backups stay untouched; no secure-erasure promise.
+It grants no exception to this reporting contract or surviving exact receipts. Existing external report files stay untouched; no secure-erasure promise.
 
 ## Export identity and contents
 
@@ -89,7 +59,7 @@ a committed request receipt in the same transaction. Preserve:
 | --- | --- |
 | Dates and cutoff | Inclusive civil start/end dates, one UTC accounting observation. |
 | Calendar | Explicit IANA report timezone and selected week-start weekday (Monday=0, Sunday=6). |
-| Scope | All/explicit UUID selection and original request; archived-task inclusion in the hierarchy target. Preserve existing schema-1 retained-deleted inclusion and original supported task/project/Unassigned scope rather than infer it later. No recoverable task Delete tier is implied. |
+| Scope | All/explicit UUID selection and original request; archived-task inclusion in the hierarchy target. Each task has a real project; no deleted-task or Unassigned scope is supported. |
 | Identity/labels | Task UUIDs, historical names and current-at-export project UUID/group labels; duplicate names remain distinct. |
 | In-scope cells | Exact task/day Actual microseconds, displayed Actual hundredths and suggested POL-R integer quarter counts. Actual and suggestion are visibly separate. |
 | Full-week basis | For every included task/week intersecting the report, all seven civil dates with exact reviewed daily Actual and computed suggestions, cutoff, timezone and week convention, sufficient to prove/reproduce allocation without later Actual. Context outside report dates is not an extra report/confirmation cell. |
@@ -319,8 +289,8 @@ same request, not a new identity or JSONL synchronization. A post-commit refresh
 failure changes neither committed evidence nor newer current confirmations.
 
 Reject invalid evidence; do not repair it silently or infer success from UI/file
-visibility. New-runtime backup/restore and schema upgrade protection follow the
-SQLite owner, not archived journal replay or derived snapshot precedence.
+visibility. Current SQLite transaction ownership remains the authority; no database backup,
+restore, upgrade or archived journal mechanism is provided.
 
 ## Absolute confirmation batches
 
@@ -355,7 +325,7 @@ Prior IDs/amounts, source association and individual stale consent remain immuta
 Current reference absence means Unknown; a zero cell has an explicit batch identity.
 Source/manual confirmation is independent of file existence and never changes
 Actual, frozen export cells/text or external copies. See the concrete transaction
-and API boundary in [Architecture](ARCHITECTURE.md#connected-stage-3c-absolute-confirmation).
+and API boundary in [Architecture](ARCHITECTURE.md#absolute-confirmation).
 
 ## Reviewed source integrity and default selection
 
@@ -468,14 +438,14 @@ reviewed-prior/stale protections above.
 Daily/weekly summaries and required previous-week/application-used-day plus
 current-Friday/Monday reminders retain cell-level Unknown, coverage and allocation
 mismatches even when weekly sums agree. Open/Save never dismisses or confirms.
-Stage 3D implements those reads and actions in the existing modal Timesheet.
+The current modal Timesheet implements these reads and actions.
 NOT_APPLICABLE has no work/suggestion/confirmation; positive-work or positive-suggestion
 cells without confirmation are UNKNOWN. Known equal/differing suggestions are
 MATCH/MISMATCH regardless of Daily Delta. UNAVAILABLE is not a clean result.
 Full-week summaries count individual applicable cells, retain all seven allocation
 dates as context and label partial visible scope. Frozen/current comparison flags
 suggestion changes separately from newer-differing confirmation conflicts; it never
-invalidates/reinterprets immutable evidence or bypasses Stage 3C acknowledgement.
+invalidates/reinterprets immutable evidence or bypasses the cell-specific acknowledgement rules.
 Only explicit Dismiss for today changes the one metadata date, through atomic
 request/receipt reconciliation. It is not confirmation or a stored completion flag.
 External unavailability does not block Actual. This is mandatory core Stage 3
@@ -493,18 +463,9 @@ formula because of that uncertainty, or modify Actual date attribution.
 
 ## Implementation boundaries and remaining decisions
 
-Retained unshipped JSONL preparation/registration/materialization/status and confirmation
-services are evidence of semantic foundations, **not SQLite implementation**.
-They do not implement the newly selected quarter-hour policy. Their arbitrary
-hundredth confirmations/Actual-as-Enter are retained legacy behavior, not the target.
-Their exact event layouts, replay, synchronization and retained Save-widget
-recovery are superseded target mechanisms; see [retained source](../DESIGN_NOTES.md).
-Do not reuse legacy checkpoint/submission markers as absolute POL-R evidence.
-
-The rewrite preserves semantics through SQLite transactions, exact units and
-callback-driven Tk views. Core saved-report recovery is independent of widgets.
-Stage 1A approved clock/restart and active-start recovery in the
-[recording requirements](TIMESHEET_REQUIREMENTS.md#selected--recording-and-timer-operation).
-Allocation policy, dataset-timezone changes and release paths remain with the [reserved decision gates](TIMESHEET_REQUIREMENTS.md#open--reserved-userchatgpt-decisions).
-No migration or new external integration is selected. Windows Python-source/Tk/NTFS,
-concurrency and power-loss claims require applicable evidence, not this approval.
+The current application has one schema-5 SQLite authority. No legacy JSONL runtime,
+old-schema compatibility, migration/import or database backup/private-recovery
+workstream is required. Report-file recovery means reproducing a registered frozen
+report, not restoring a database. Recording and reconciliation share current facts
+without an external POL-R integration. Employer/customer policy, dataset-timezone
+changes and release/pilot decisions remain with the user/ChatGPT.

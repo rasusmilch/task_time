@@ -5,34 +5,13 @@ import stat
 import sys
 import traceback
 from tkinter import StringVar, filedialog, ttk
-
 from . import launcher_selection as selection
 from .sqlite_store import DATABASE
 from .timekeeping import load_zone
 from .worker import Message
-
-TIMEZONES = {
-    'Eastern Time (US & Canada)': 'America/New_York',
-    'Central Time (US & Canada)': 'America/Chicago',
-    'Mountain Time (US & Canada)': 'America/Denver',
-    'Pacific Time (US & Canada)': 'America/Los_Angeles',
-    'Arizona': 'America/Phoenix',
-    'Alaska': 'America/Anchorage',
-    'Hawaii': 'Pacific/Honolulu',
-    'UTC': 'Etc/UTC',
-}
+TIMEZONES = {'Eastern Time (US & Canada)': 'America/New_York', 'Central Time (US & Canada)': 'America/Chicago', 'Mountain Time (US & Canada)': 'America/Denver', 'Pacific Time (US & Canada)': 'America/Los_Angeles', 'Arizona': 'America/Phoenix', 'Alaska': 'America/Anchorage', 'Hawaii': 'Pacific/Honolulu', 'UTC': 'Etc/UTC'}
 OTHER = 'Advanced / Other'
-WINDOWS_ZONES = {
-    'Eastern Standard Time': 'America/New_York',
-    'Central Standard Time': 'America/Chicago',
-    'Mountain Standard Time': 'America/Denver',
-    'Pacific Standard Time': 'America/Los_Angeles',
-    'US Mountain Standard Time': 'America/Phoenix',
-    'Alaskan Standard Time': 'America/Anchorage',
-    'Hawaiian Standard Time': 'Pacific/Honolulu',
-    'UTC': 'Etc/UTC',
-}
-
+WINDOWS_ZONES = {'Eastern Standard Time': 'America/New_York', 'Central Standard Time': 'America/Chicago', 'Mountain Standard Time': 'America/Denver', 'Pacific Standard Time': 'America/Los_Angeles', 'US Mountain Standard Time': 'America/Phoenix', 'Alaskan Standard Time': 'America/Anchorage', 'Hawaiian Standard Time': 'Pacific/Honolulu', 'UTC': 'Etc/UTC'}
 
 def windows_zone_id():
     """Read the authoritative Windows key name, never an abbreviation/offset."""
@@ -40,18 +19,15 @@ def windows_zone_id():
         return None
     try:
         import winreg
-        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
-                            r'SYSTEM\CurrentControlSet\Control\TimeZoneInformation') as key:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 'SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation') as key:
             value, kind = winreg.QueryValueEx(key, 'TimeZoneKeyName')
-        return value.rstrip('\0') if kind == winreg.REG_SZ and type(value) is str else None
+        return value.rstrip('\x00') if kind == winreg.REG_SZ and type(value) is str else None
     except OSError:
         return None
-
 
 def suggested_timezone(identifier):
     zone = WINDOWS_ZONES.get(identifier)
     return next((label for label, key in TIMEZONES.items() if key == zone), '')
-
 
 def selected_timezone(label, other):
     key = other.strip() if label == OTHER else TIMEZONES.get(label)
@@ -59,7 +35,6 @@ def selected_timezone(label, other):
         raise ValueError('Choose your timezone before creating a dataset')
     load_zone(key)
     return key
-
 
 def admit_folder(value, *, create):
     path = selection.local_path(value)
@@ -74,18 +49,15 @@ def admit_folder(value, *, create):
         try:
             mode = db.lstat().st_mode
         except FileNotFoundError as exc:
-            raise ValueError('This folder has no Chronicle database. Choose a dataset folder, not a backup file.') from exc
+            raise ValueError('This folder has no Chronicle database. Choose an existing database folder or explicitly create a fresh one.') from exc
         if not stat.S_ISREG(mode):
             raise ValueError('A regular Chronicle database is required; existing objects are retained')
-    return path  # Worker/store final validation, ownership, creation and races remain authoritative.
-
+    return path
 
 class StartupWindow:
-    def __init__(self, root, *, app_factory, worker_factory, locations=None, timezone_id=None,
-                 schema_version=4, initial_selection=None, remember_selection=True):
-        self.root, self.app_factory, self.worker_factory = root, app_factory, worker_factory
-        from .schema_policy import policy_for
-        self.schema_version = policy_for(schema_version).version
+
+    def __init__(self, root, *, app_factory, worker_factory, locations=None, timezone_id=None, initial_selection=None, remember_selection=True):
+        self.root, self.app_factory, self.worker_factory = (root, app_factory, worker_factory)
         self.initial_selection = initial_selection
         self.remember_selection = remember_selection
         if locations is None and initial_selection is not None:
@@ -95,7 +67,7 @@ class StartupWindow:
         self.remember_allowed = self.locations.record is not None
         self.worker = self.app = None
         self.choosing = False
-        self.alive, self.stopped, self.cleanup_failed = True, False, False
+        self.alive, self.stopped, self.cleanup_failed = (True, False, False)
         self.poll_id = self.discover_id = None
         self.failure = None
         self.directory = None
@@ -158,14 +130,16 @@ class StartupWindow:
             return
         if self.initial_selection is not None:
             directory, create, timezone = self.initial_selection
-            self.folder.delete(0, 'end'); self.folder.insert(0, str(directory))
+            self.folder.delete(0, 'end')
+            self.folder.insert(0, str(directory))
             self.begin(directory, create=create, timezone=timezone)
             return
         try:
             if self.locations.record is not None:
                 self.expected = selection.read_selection(self.locations.record)
             if self.expected is not None:
-                self.folder.delete(0, 'end'); self.folder.insert(0, str(self.expected.directory))
+                self.folder.delete(0, 'end')
+                self.folder.insert(0, str(self.expected.directory))
                 self.begin(self.expected.directory, create=False, timezone=None)
                 return
         except Exception as exc:
@@ -190,9 +164,7 @@ class StartupWindow:
         self.choosing = True
         self.controls()
         try:
-            return filedialog.askdirectory(parent=self.root,
-                title='Open Existing Chronicle Dataset' if existing else 'Choose Chronicle dataset folder',
-                mustexist=existing)
+            return filedialog.askdirectory(parent=self.root, title='Open Existing Chronicle Dataset' if existing else 'Choose Chronicle dataset folder', mustexist=existing)
         finally:
             self.choosing = False
             self.controls()
@@ -203,7 +175,8 @@ class StartupWindow:
         try:
             chosen = self.choose_directory(existing=False)
             if chosen:
-                self.folder.delete(0, 'end'); self.folder.insert(0, chosen)
+                self.folder.delete(0, 'end')
+                self.folder.insert(0, chosen)
         except Exception as exc:
             self.diagnostic('Folder selection failed; you can enter a folder or cancel.', exc)
 
@@ -213,7 +186,8 @@ class StartupWindow:
         try:
             chosen = self.choose_directory(existing=True)
             if chosen:
-                self.folder.delete(0, 'end'); self.folder.insert(0, chosen)
+                self.folder.delete(0, 'end')
+                self.folder.insert(0, chosen)
                 self.begin(chosen, create=False, timezone=None)
         except Exception as exc:
             self.diagnostic('Unable to select an existing dataset.', exc)
@@ -228,7 +202,7 @@ class StartupWindow:
             self.diagnostic('Dataset was not submitted for creation. Check the folder and timezone.', exc)
 
     def controls(self):
-        idle = self.worker is None and not self.choosing
+        idle = self.worker is None and (not self.choosing)
         for widget in (self.choose_button, self.create_button, self.open_button, self.cancel_button, self.folder, self.other):
             widget.configure(state='normal' if idle else 'disabled')
         self.timezone.configure(state='readonly' if idle else 'disabled')
@@ -245,8 +219,7 @@ class StartupWindow:
             self.failure = None
             self.stopped = self.cleanup_failed = False
             self.directory = directory
-            self.worker = self.worker_factory(directory, create=create, timezone=timezone,
-                                              schema_version=self.schema_version)
+            self.worker = self.worker_factory(directory, create=create, timezone=timezone)
             self.controls()
             self.status.configure(text='Opening your dataset; please wait for complete validation…')
             self.worker.start()
@@ -283,7 +256,7 @@ class StartupWindow:
                 self.controls()
             elif message.kind == 'stopped':
                 self.stopped = True
-        if self.stopped and not self.worker.is_alive():
+        if self.stopped and (not self.worker.is_alive()):
             self.worker = None
             self.cleanup_failed = False
             self.controls()
@@ -297,23 +270,18 @@ class StartupWindow:
             self.worker.requests.put(Message('shutdown'))
 
     def handoff(self, ready):
-        # No ChronicleApp, session, timer callback or modal grab exists before ready.
         self.frame.pack_forget()
         self.root.unbind('<Escape>', self.escape_binding)
         self.root.unbind('<Destroy>', self.destroy_binding)
         callbacks = set(self.root.tk.call('after', 'info'))
         destroy_script = self.root.bind('<Destroy>') or ''
         try:
-            from .app import backend_profile_matches
-            profile = 'schema4' if self.schema_version == 4 else 'schema3'
-            if not backend_profile_matches(profile,ready.value):
+            from .app import backend_ready
+            if not backend_ready(ready.value):
                 raise ValueError('Worker readiness does not authorize this startup profile')
-            self.app = self.app_factory(self.root, self.worker, presentation_profile=profile)
-            self.app._handle(ready)  # Deliver the actual worker result through the established owner path.
+            self.app = self.app_factory(self.root, self.worker)
+            self.app._handle(ready)
         except Exception as exc:
-            # Construction/ready delivery has not yielded to operator input. Retire
-            # only this partial application's callbacks/widgets, then drain the same
-            # worker's cleanup before enabling another explicit choice.
             if self.app is not None:
                 self.app.alive = False
                 self.app._shutdown_sent = True
@@ -337,15 +305,15 @@ class StartupWindow:
             return
         self.frame.destroy()
         self.alive = False
-        if not self.remember_selection: return
+        if not self.remember_selection:
+            return
         try:
             if not self.remember_allowed:
                 raise ValueError(self.locations.diagnostic or 'The unreadable/unsupported selection record was preserved')
             selection.remember(self.locations.record, self.directory, self.expected)
         except Exception as exc:
             traceback.print_exception(exc)
-            self.app.launcher_notice = ttk.Label(self.root, wraplength=700,
-                text=f'This dataset is open, but its location could not be remembered. Next launch may require choosing it again.\n{type(exc).__name__}: {exc}')
+            self.app.launcher_notice = ttk.Label(self.root, wraplength=700, text=f'This dataset is open, but its location could not be remembered. Next launch may require choosing it again.\n{type(exc).__name__}: {exc}')
             self.app.launcher_notice.grid(row=9, column=0, sticky='w', padx=10, pady=5)
 
     def cancel(self):

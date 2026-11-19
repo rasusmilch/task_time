@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8", "tkcalendar>=1.6.1", "tzlocal>=5"]
+test = ["pytest>=8"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

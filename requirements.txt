@@ -1,2 +1,2 @@
-# Direct-source runtime; retained legacy test dependencies are in pyproject.toml [test].
+# Current direct-source runtime; development dependencies are in pyproject.toml [test].
 tzdata==2026.5
